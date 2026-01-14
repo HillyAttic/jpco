@@ -21,6 +21,12 @@ export const NAV_DATA = [
         items: [],
       },
       {
+        title: "Tasks",
+        url: "/tasks",
+        icon: Icons.TaskIcon,
+        items: [],
+      },
+      {
         title: "Profile",
         url: "/profile",
         icon: Icons.User,
@@ -98,8 +104,17 @@ export const NAV_DATA = [
             title: "Sign In",
             url: "/auth/sign-in",
           },
+          {
+            title: "Sign Up",
+            url: "/auth/signup",
+          },
+          {
+            title: "Forgot Password",
+            url: "/auth/forgot-password",
+          },
         ],
       },
+
     ],
   },
 ];
