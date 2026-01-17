@@ -150,7 +150,7 @@ export function ShiftManagementModal({
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="text-white">
               {loading ? 'Creating...' : 'Create Shift'}
             </Button>
           </div>

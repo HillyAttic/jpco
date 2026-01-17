@@ -12,6 +12,7 @@ import NextTopLoader from "nextjs-toploader";
 import type { PropsWithChildren } from "react";
 import { Providers } from "./providers";
 import { ServiceWorkerProvider } from "./service-worker-provider";
+import { AuthWrapper } from "@/components/Auth/AuthWrapper";
 
 export const metadata: Metadata = {
   title: {
@@ -46,22 +47,9 @@ export default function RootLayout({ children }: PropsWithChildren) {
 
             <NextTopLoader color="#5750F1" showSpinner={false} />
 
-            <div className="flex min-h-screen bg-gray-2 dark:bg-[#020d1a]">
-              <Sidebar />
-
-              <div className="flex-1 flex flex-col min-w-0">
-                <Header />
-
-                <main 
-                  id="main-content"
-                  className="flex-1 isolate mx-auto w-full max-w-screen-2xl overflow-hidden p-4 md:p-6 2xl:p-10"
-                  role="main"
-                  aria-label="Main content"
-                >
-                  {children}
-                </main>
-              </div>
-            </div>
+            <AuthWrapper>
+              {children}
+            </AuthWrapper>
           </ServiceWorkerProvider>
         </Providers>
       </body>

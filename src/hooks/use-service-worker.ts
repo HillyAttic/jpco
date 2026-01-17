@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useResponsive } from './use-responsive';
 
 interface ServiceWorkerState {
@@ -30,6 +30,12 @@ export function useServiceWorker() {
   });
 
   const [offlineQueue, setOfflineQueue] = useState<OfflineQueueItem[]>([]);
+  const offlineQueueRef = useRef<OfflineQueueItem[]>([]);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    offlineQueueRef.current = offlineQueue;
+  }, [offlineQueue]);
 
   // Register service worker
   const registerServiceWorker = useCallback(async () => {
@@ -96,12 +102,8 @@ export function useServiceWorker() {
   const handleOnlineStatus = useCallback(() => {
     const isOnline = navigator.onLine;
     setState(prev => ({ ...prev, isOnline }));
-
-    if (isOnline && offlineQueue.length > 0) {
-      // Process offline queue when back online
-      processOfflineQueue();
-    }
-  }, [offlineQueue]);
+    // Note: processOfflineQueue will be triggered by the useEffect that watches state.isOnline
+  }, []); // Remove offlineQueue dependency to break the loop
 
   // Add request to offline queue
   const queueOfflineRequest = useCallback((
@@ -127,11 +129,14 @@ export function useServiceWorker() {
 
   // Process offline queue when back online
   const processOfflineQueue = useCallback(async () => {
-    if (!state.isOnline || offlineQueue.length === 0) return;
+    const currentQueue = offlineQueueRef.current;
+    const isOnline = navigator.onLine;
+    
+    if (!isOnline || currentQueue.length === 0) return;
 
     const processedItems: string[] = [];
 
-    for (const item of offlineQueue) {
+    for (const item of currentQueue) {
       try {
         const response = await fetch(item.url, {
           method: item.method,
@@ -151,18 +156,16 @@ export function useServiceWorker() {
     }
 
     // Remove processed items from queue
-    setOfflineQueue(prev => 
-      prev.filter(item => 
+    setOfflineQueue(prev => {
+      const filtered = prev.filter(item => 
         !processedItems.includes(`${item.method}-${item.url}-${item.timestamp}`)
-      )
-    );
-
-    // Update localStorage
-    const remainingQueue = offlineQueue.filter(item => 
-      !processedItems.includes(`${item.method}-${item.url}-${item.timestamp}`)
-    );
-    localStorage.setItem('offline-queue', JSON.stringify(remainingQueue));
-  }, [state.isOnline, offlineQueue]);
+      );
+      
+      // Update localStorage with remaining items
+      localStorage.setItem('offline-queue', JSON.stringify(filtered));
+      return filtered;
+    });
+  }, []); // Remove dependencies to break the loop
 
   // Cache critical resources
   const cacheCriticalResources = useCallback(async () => {
@@ -237,7 +240,7 @@ export function useServiceWorker() {
       window.removeEventListener('online', handleOnlineStatus);
       window.removeEventListener('offline', handleOnlineStatus);
     };
-  }, [registerServiceWorker, handleOnlineStatus]);
+  }, [registerServiceWorker]); // Remove handleOnlineStatus dependency to break the loop
 
   // Cache critical resources when service worker is ready
   useEffect(() => {
@@ -246,12 +249,12 @@ export function useServiceWorker() {
     }
   }, [state.isRegistered, cacheCriticalResources]);
 
-  // Process offline queue when online
+  // Process offline queue when online status changes
   useEffect(() => {
     if (state.isOnline && offlineQueue.length > 0) {
       processOfflineQueue();
     }
-  }, [state.isOnline, processOfflineQueue]);
+  }, [state.isOnline]); // Only depend on isOnline, not processOfflineQueue or offlineQueue
 
   return {
     ...state,

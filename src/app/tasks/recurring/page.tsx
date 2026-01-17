@@ -231,7 +231,7 @@ export default function RecurringTasksPage() {
           </div>
           <Button
             onClick={handleCreateNew}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white"
             aria-label="Create new recurring task"
           >
             <PlusIcon className="w-5 h-5" />

@@ -2,16 +2,12 @@
 
 import React, { useState } from 'react';
 import { useClients } from '@/hooks/use-clients';
-import { useBulkSelection } from '@/hooks/use-bulk-selection';
 import { Client } from '@/services/client.service';
 import { ClientList } from '@/components/clients/ClientList';
 import { ClientModal } from '@/components/clients/ClientModal';
-import { BulkActionToolbar } from '@/components/ui/BulkActionToolbar';
-import { BulkDeleteDialog } from '@/components/ui/BulkDeleteDialog';
 import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import { exportToCSV, generateTimestampedFilename } from '@/utils/csv-export';
 
 /**
  * Client Master Page
@@ -28,24 +24,10 @@ export default function ClientsPage() {
     deleteClient,
   } = useClients();
 
-  // Bulk selection state
-  const {
-    selectedIds,
-    selectedItems,
-    selectedCount,
-    allSelected,
-    toggleSelection,
-    selectAll,
-    clearSelection,
-    isSelected,
-  } = useBulkSelection(clients);
-
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
-  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   /**
    * Handle opening the create modal
@@ -140,54 +122,6 @@ export default function ClientsPage() {
     setSelectedClient(null);
   };
 
-  /**
-   * Handle bulk delete
-   * Validates Requirements: 10.1, 10.2
-   */
-  const handleBulkDelete = () => {
-    setIsBulkDeleteDialogOpen(true);
-  };
-
-  /**
-   * Confirm bulk delete
-   */
-  const handleConfirmBulkDelete = async () => {
-    setIsBulkDeleting(true);
-    try {
-      // Delete all selected clients
-      await Promise.all(
-        Array.from(selectedIds).map((id) => deleteClient(id))
-      );
-      clearSelection();
-      setIsBulkDeleteDialogOpen(false);
-    } catch (error) {
-      console.error('Error deleting clients:', error);
-      alert('Failed to delete some clients. Please try again.');
-    } finally {
-      setIsBulkDeleting(false);
-    }
-  };
-
-  /**
-   * Handle bulk export
-   * Validates Requirements: 10.3
-   */
-  const handleBulkExport = () => {
-    // Prepare data for export
-    const exportData = selectedItems.map((client) => ({
-      Name: client.name,
-      Email: client.email,
-      Phone: client.phone,
-      Company: client.company,
-      Status: client.status,
-      'Created At': client.createdAt ? new Date(client.createdAt).toLocaleDateString() : '',
-    }));
-
-    // Generate filename and export
-    const filename = generateTimestampedFilename('clients_export');
-    exportToCSV(exportData, filename);
-  };
-
   return (
     <div className="space-y-6">
       {/* Breadcrumb */}
@@ -207,7 +141,7 @@ export default function ClientsPage() {
         {/* Add New Client Button */}
         <Button
           onClick={handleAddNew}
-          className="flex items-center gap-2"
+          className="flex items-center gap-2 text-white"
           size="lg"
         >
           <PlusIcon className="w-5 h-5" />
@@ -229,31 +163,6 @@ export default function ClientsPage() {
         onEdit={handleEdit}
         onDelete={handleDelete}
         isLoading={loading}
-        selectedIds={selectedIds}
-        onSelect={toggleSelection}
-        isSelected={isSelected}
-      />
-
-      {/* Bulk Action Toolbar */}
-      {selectedCount > 0 && (
-        <BulkActionToolbar
-          selectedCount={selectedCount}
-          totalCount={clients.length}
-          onSelectAll={selectAll}
-          onClearSelection={clearSelection}
-          onBulkDelete={handleBulkDelete}
-          onBulkExport={handleBulkExport}
-        />
-      )}
-
-      {/* Bulk Delete Confirmation Dialog */}
-      <BulkDeleteDialog
-        open={isBulkDeleteDialogOpen}
-        onOpenChange={setIsBulkDeleteDialogOpen}
-        itemCount={selectedCount}
-        itemType="client"
-        onConfirm={handleConfirmBulkDelete}
-        loading={isBulkDeleting}
       />
 
       {/* Client Modal (Create/Edit) */}

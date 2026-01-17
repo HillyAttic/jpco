@@ -234,7 +234,7 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="text-white">
               {loading ? 'Creating...' : 'Create Task'}
             </Button>
           </div>

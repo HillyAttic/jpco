@@ -10,6 +10,7 @@ import { NAV_DATA } from "./data";
 import { ArrowLeftIcon, ChevronUp } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
+import { AdminGuard } from "@/components/Auth/PermissionGuard";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -171,81 +172,25 @@ export function Sidebar() {
 
                 <nav role="navigation" aria-label={section.label}>
                   <ul className="space-y-2">
-                    {section.items.map((item) => (
-                      <li key={item.title}>
-                        {item.items.length ? (
-                          <div>
-                            <MenuItem
-                              isActive={item.items.some(
-                                ({ url }) => url === pathname,
-                              )}
-                              onClick={() => toggleExpanded(item.title)}
-                              className={cn(
-                                // Touch-optimized sizing
-                                isTouchDevice && "min-h-[44px]",
-                                // Tablet condensed state
-                                variant === 'tablet' && !isOpen && "justify-center px-2"
-                              )}
-                            >
-                              <item.icon
-                                className={cn(
-                                  "size-6 shrink-0",
-                                  variant === 'tablet' && !isOpen && "size-5"
-                                )}
-                                aria-hidden="true"
-                              />
-
-                              {(variant !== 'tablet' || isOpen) && (
-                                <>
-                                  <span>{item.title}</span>
-                                  <ChevronUp
-                                    className={cn(
-                                      "ml-auto rotate-180 transition-transform duration-200",
-                                      expandedItems.includes(item.title) && "rotate-0"
-                                    )}
-                                    aria-hidden="true"
-                                  />
-                                </>
-                              )}
-                            </MenuItem>
-
-                            {/* Submenu */}
-                            {expandedItems.includes(item.title) && (variant !== 'tablet' || isOpen) && (
-                              <ul className="ml-9 mr-0 space-y-1.5 pb-[15px] pr-0 pt-2" role="menu">
-                                {item.items.map((subItem) => (
-                                  <li key={subItem.title} role="none">
-                                    <MenuItem
-                                      as="link"
-                                      href={subItem.url}
-                                      isActive={pathname === subItem.url}
-                                      className={cn(
-                                        // Touch-optimized sizing
-                                        isTouchDevice && "min-h-[44px]"
-                                      )}
-                                    >
-                                      <span>{subItem.title}</span>
-                                    </MenuItem>
-                                  </li>
-                                ))}
-                              </ul>
-                            )}
-                          </div>
-                        ) : (
-                          (() => {
-                            const href = "url" in item ? item.url + "" : "/" + item.title.toLowerCase().split(" ").join("-");
-
-                            return (
+                    {section.items.map((item) => {
+                      // Apply admin-only protection to Authentication menu item
+                      const isAuthenticationItem = item.title === "Authentication";
+                      
+                      const menuItemContent = (
+                        <li key={item.title}>
+                          {item.items.length ? (
+                            <div>
                               <MenuItem
+                                isActive={item.items.some(
+                                  ({ url }) => url === pathname,
+                                )}
+                                onClick={() => toggleExpanded(item.title)}
                                 className={cn(
-                                  "flex items-center gap-3 py-3",
                                   // Touch-optimized sizing
                                   isTouchDevice && "min-h-[44px]",
                                   // Tablet condensed state
                                   variant === 'tablet' && !isOpen && "justify-center px-2"
                                 )}
-                                as="link"
-                                href={href}
-                                isActive={pathname === href}
                               >
                                 <item.icon
                                   className={cn(
@@ -256,14 +201,86 @@ export function Sidebar() {
                                 />
 
                                 {(variant !== 'tablet' || isOpen) && (
-                                  <span>{item.title}</span>
+                                  <>
+                                    <span>{item.title}</span>
+                                    <ChevronUp
+                                      className={cn(
+                                        "ml-auto rotate-180 transition-transform duration-200",
+                                        expandedItems.includes(item.title) && "rotate-0"
+                                      )}
+                                      aria-hidden="true"
+                                    />
+                                  </>
                                 )}
                               </MenuItem>
-                            );
-                          })()
-                        )}
-                      </li>
-                    ))}
+
+                              {/* Submenu */}
+                              {expandedItems.includes(item.title) && (variant !== 'tablet' || isOpen) && (
+                                <ul className="ml-9 mr-0 space-y-1.5 pb-[15px] pr-0 pt-2" role="menu">
+                                  {item.items.map((subItem) => (
+                                    <li key={subItem.title} role="none">
+                                      <MenuItem
+                                        as="link"
+                                        href={subItem.url}
+                                        isActive={pathname === subItem.url}
+                                        className={cn(
+                                          // Touch-optimized sizing
+                                          isTouchDevice && "min-h-[44px]"
+                                        )}
+                                      >
+                                        <span>{subItem.title}</span>
+                                      </MenuItem>
+                                    </li>
+                                  ))}
+                                </ul>
+                              )}
+                            </div>
+                          ) : (
+                            (() => {
+                              const href = "url" in item ? item.url + "" : "/" + item.title.toLowerCase().split(" ").join("-");
+
+                              return (
+                                <MenuItem
+                                  className={cn(
+                                    "flex items-center gap-3 py-3",
+                                    // Touch-optimized sizing
+                                    isTouchDevice && "min-h-[44px]",
+                                    // Tablet condensed state
+                                    variant === 'tablet' && !isOpen && "justify-center px-2"
+                                  )}
+                                  as="link"
+                                  href={href}
+                                  isActive={pathname === href}
+                                >
+                                  <item.icon
+                                    className={cn(
+                                      "size-6 shrink-0",
+                                      variant === 'tablet' && !isOpen && "size-5"
+                                    )}
+                                    aria-hidden="true"
+                                  />
+
+                                  {(variant !== 'tablet' || isOpen) && (
+                                    <span>{item.title}</span>
+                                  )}
+                                </MenuItem>
+                              );
+                            })()
+                          )}
+                        </li>
+                      );
+
+                      // Wrap Authentication menu item with AdminGuard
+                      if (isAuthenticationItem) {
+                        return (
+                          <AdminGuard key={item.title} showFallback={false}>
+                            {menuItemContent}
+                          </AdminGuard>
+                        );
+                      }
+
+                      return menuItemContent;
+                    })}
                   </ul>
                 </nav>
               </div>

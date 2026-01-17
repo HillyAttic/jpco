@@ -265,7 +265,7 @@ export function ClientModal({
             >
               Cancel
             </Button>
-            <Button type="submit" loading={isLoading} disabled={isLoading}>
+            <Button type="submit" loading={isLoading} disabled={isLoading} className="text-white">
               {client ? 'Update Client' : 'Create Client'}
             </Button>
           </DialogFooter>

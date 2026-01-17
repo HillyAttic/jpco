@@ -244,7 +244,7 @@ export default function NonRecurringTasksPage() {
           
           <Button
             onClick={handleCreateNew}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white"
             aria-label="Add new task"
           >
             <PlusIcon className="w-5 h-5" />

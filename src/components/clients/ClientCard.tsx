@@ -10,8 +10,6 @@ interface ClientCardProps {
   client: Client;
   onEdit: (client: Client) => void;
   onDelete: (id: string) => void;
-  selected?: boolean;
-  onSelect?: (id: string, selected: boolean) => void;
 }
 
 /**
@@ -19,7 +17,7 @@ interface ClientCardProps {
  * Displays client information in a card format with avatar, contact details, and action buttons
  * Validates Requirements: 1.8, 1.9
  */
-export function ClientCard({ client, onEdit, onDelete, selected = false, onSelect }: ClientCardProps) {
+export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
   // Generate initials from client name for avatar fallback
   const getInitials = (name: string): string => {
     return name
@@ -31,24 +29,13 @@ export function ClientCard({ client, onEdit, onDelete, selected = false, onSelec
   };
 
   return (
-    <Card className={`group hover:shadow-lg transition-all duration-200 ${selected ? 'ring-2 ring-blue-500' : ''}`}>
+    <Card className="group hover:shadow-lg transition-all duration-200">
       <CardContent className="p-6">
-        {/* Selection Checkbox */}
-        {onSelect && (
-          <div className="absolute top-4 left-4 z-10">
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={(e) => onSelect(client.id!, e.target.checked)}
-              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              aria-label={`Select ${client.name}`}
-            />
-          </div>
-        )}
+
         
         <div className="flex items-start justify-between mb-4">
           {/* Avatar and Name */}
-          <div className={`flex items-start gap-4 flex-1 ${onSelect ? 'ml-8' : ''}`}>
+          <div className="flex items-start gap-4 flex-1">
             <Avatar
               src={client.avatarUrl}
               alt={client.name}

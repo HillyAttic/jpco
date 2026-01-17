@@ -367,7 +367,7 @@ export function EmployeeModal({
             >
               Cancel
             </Button>
-            <Button type="submit" loading={isLoading} disabled={isLoading}>
+            <Button type="submit" loading={isLoading} disabled={isLoading} className="text-white">
               {employee ? 'Update Employee' : 'Create Employee'}
             </Button>
           </DialogFooter>

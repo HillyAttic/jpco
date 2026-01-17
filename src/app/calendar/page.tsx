@@ -49,7 +49,7 @@ export default function CalendarPage() {
           <h1 className="text-3xl font-bold text-gray-900">Calendar</h1>
           <p className="text-gray-600 mt-2">View your tasks on a calendar</p>
         </div>
-        <Button onClick={() => setShowCreateModal(true)}>
+        <Button onClick={() => setShowCreateModal(true)} className="text-white">
           <PlusCircleIcon className="w-5 h-5 mr-2" />
           Add Task
         </Button>

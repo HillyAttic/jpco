@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useSidebarContext } from "../sidebar/sidebar-context";
 import { MenuIcon } from "./icons";
 import { Notification } from "./notification";
+import { PWAInstallButton } from "./pwa-install-button";
 import { ThemeToggleSwitch } from "./theme-toggle";
 import { UserInfo } from "./user-info";
 
@@ -68,6 +69,10 @@ export function Header() {
         ${device.type === 'mobile' ? 'min-[375px]:gap-3' : 'min-[375px]:gap-4'}
       `}>
 
+        {/* PWA Install Button (Mobile Only) */}
+        <div className={isTouchDevice ? 'min-h-[44px] flex items-center' : ''}>
+          <PWAInstallButton />
+        </div>
 
         {/* Theme Toggle */}
         <div className={isTouchDevice ? 'min-h-[44px] flex items-center' : ''}>

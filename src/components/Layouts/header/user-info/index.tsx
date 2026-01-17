@@ -10,16 +10,46 @@ import { cn } from "@/lib/utils";
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { LogOutIcon, SettingsIcon, UserIcon } from "./icons";
+import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
 
 export function UserInfo() {
   const [isOpen, setIsOpen] = useState(false);
+  const [isSigningOut, setIsSigningOut] = useState(false);
+  const router = useRouter();
+  const auth = useEnhancedAuth();
 
-  const USER = {
-    name: "John Smith",
-    email: "johnson@jpco.com",
-    img: "/images/user/user-03.png",
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true);
+      await auth.signOut();
+      router.push('/auth/sign-in');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    } finally {
+      setIsSigningOut(false);
+      setIsOpen(false);
+    }
   };
+
+  // Show loading state if auth is not ready
+  if (auth.loading) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="size-12 rounded-full bg-gray-200 animate-pulse"></div>
+        <div className="max-[1024px]:sr-only">
+          <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Default user info if not authenticated
+  const displayName = auth.userProfile?.displayName || auth.user?.email || "User";
+  const displayEmail = auth.user?.email || "user@example.com";
+  const userInitials = auth.getUserInitials ? auth.getUserInitials() : displayName.charAt(0).toUpperCase();
+  const userRole = auth.getRoleDisplayName ? auth.getRoleDisplayName() : "User";
 
   return (
     <Dropdown isOpen={isOpen} setIsOpen={setIsOpen}>
@@ -27,16 +57,22 @@ export function UserInfo() {
         <span className="sr-only">My Account</span>
 
         <figure className="flex items-center gap-3">
-          <Image
-            src={USER.img}
-            className="size-12"
-            alt={`Avatar of ${USER.name}`}
-            role="presentation"
-            width={200}
-            height={200}
-          />
+          {auth.userProfile?.photoURL ? (
+            <Image
+              src={auth.userProfile.photoURL}
+              className="size-12 rounded-full object-cover"
+              alt={`Avatar of ${displayName}`}
+              role="presentation"
+              width={48}
+              height={48}
+            />
+          ) : (
+            <div className="size-12 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
+              {userInitials}
+            </div>
+          )}
           <figcaption className="flex items-center gap-1 font-medium text-dark dark:text-dark-6 max-[1024px]:sr-only">
-            <span>{USER.name}</span>
+            <span>{displayName}</span>
 
             <ChevronUpIcon
               aria-hidden
@@ -57,21 +93,31 @@ export function UserInfo() {
         <h2 className="sr-only">User information</h2>
 
         <figure className="flex items-center gap-2.5 px-5 py-3.5">
-          <Image
-            src={USER.img}
-            className="size-12"
-            alt={`Avatar for ${USER.name}`}
-            role="presentation"
-            width={200}
-            height={200}
-          />
+          {auth.userProfile?.photoURL ? (
+            <Image
+              src={auth.userProfile.photoURL}
+              className="size-12 rounded-full object-cover"
+              alt={`Avatar for ${displayName}`}
+              role="presentation"
+              width={48}
+              height={48}
+            />
+          ) : (
+            <div className="size-12 rounded-full bg-primary flex items-center justify-center text-white font-semibold">
+              {userInitials}
+            </div>
+          )}
 
           <figcaption className="space-y-1 text-base font-medium">
             <div className="mb-2 leading-none text-dark dark:text-white">
-              {USER.name}
+              {displayName}
             </div>
 
-            <div className="leading-none text-gray-6">{USER.email}</div>
+            <div className="leading-none text-gray-6">{displayEmail}</div>
+            
+            <div className="text-xs text-primary font-medium">
+              {userRole}
+            </div>
           </figcaption>
         </figure>
 
@@ -105,12 +151,15 @@ export function UserInfo() {
 
         <div className="p-2 text-base text-[#4B5563] dark:text-dark-6">
           <button
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
-            onClick={() => setIsOpen(false)}
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            onClick={handleSignOut}
+            disabled={isSigningOut}
           >
             <LogOutIcon />
 
-            <span className="text-base font-medium">Log out</span>
+            <span className="text-base font-medium">
+              {isSigningOut ? 'Signing out...' : 'Log out'}
+            </span>
           </button>
         </div>
       </DropdownContent>

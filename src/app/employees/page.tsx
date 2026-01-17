@@ -288,7 +288,7 @@ export default function EmployeesPage() {
               Manage employee records and information
             </p>
           </div>
-          <Button onClick={handleCreateEmployee} className="flex items-center gap-2">
+          <Button onClick={handleCreateEmployee} className="flex items-center gap-2 text-white">
             <PlusIcon className="w-4 h-4" />
             Add New Employee
           </Button>

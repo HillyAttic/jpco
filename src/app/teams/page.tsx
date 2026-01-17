@@ -246,7 +246,7 @@ export default function TeamsPage() {
           {/* Add New Team Button - Requirement 4.2 */}
           <Button
             onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2"
+            className="flex items-center gap-2 text-white"
             disabled={loading}
           >
             <PlusIcon className="w-5 h-5" />

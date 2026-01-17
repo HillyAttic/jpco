@@ -106,7 +106,7 @@ export function AttendanceReportGenerator({
           </Label>
         </div>
 
-        <Button type="submit" disabled={loading} className="w-full">
+        <Button type="submit" disabled={loading} className="w-full text-white">
           <Download className="mr-2 h-4 w-4" />
           {loading ? 'Generating...' : 'Generate Report'}
         </Button>

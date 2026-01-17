@@ -373,7 +373,7 @@ export function TeamModal({
             >
               Cancel
             </Button>
-            <Button type="submit" loading={isLoading} disabled={isLoading}>
+            <Button type="submit" loading={isLoading} disabled={isLoading} className="text-white">
               {team ? 'Update Team' : 'Create Team'}
             </Button>
           </DialogFooter>

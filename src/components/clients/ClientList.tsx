@@ -12,9 +12,6 @@ interface ClientListProps {
   onEdit: (client: Client) => void;
   onDelete: (id: string) => void;
   isLoading?: boolean;
-  selectedIds?: Set<string>;
-  onSelect?: (id: string, selected: boolean) => void;
-  isSelected?: (id: string) => boolean;
 }
 
 /**
@@ -26,10 +23,7 @@ export function ClientList({
   clients, 
   onEdit, 
   onDelete, 
-  isLoading = false,
-  selectedIds,
-  onSelect,
-  isSelected
+  isLoading = false
 }: ClientListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -167,8 +161,6 @@ export function ClientList({
               client={client}
               onEdit={onEdit}
               onDelete={onDelete}
-              selected={isSelected ? isSelected(client.id!) : false}
-              onSelect={onSelect}
             />
           ))}
         </div>

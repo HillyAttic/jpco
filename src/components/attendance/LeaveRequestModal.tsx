@@ -156,7 +156,7 @@ export function LeaveRequestModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" disabled={loading} className="text-white">
               {loading ? 'Submitting...' : 'Submit Request'}
             </Button>
           </div>

@@ -102,6 +102,28 @@ export default function CategoriesPage() {
     );
   }
 
+  // Show seed button if no categories exist and not loading
+  const showSeedButton = !loading && categories.length === 0;
+
+  const handleSeedCategories = async () => {
+    try {
+      const response = await fetch('/api/categories/seed', {
+        method: 'POST',
+      });
+      const result = await response.json();
+      
+      if (response.ok) {
+        toast.success(`${result.message}`);
+        // Refresh the page to show the new categories
+        window.location.reload();
+      } else {
+        toast.error('Failed to seed categories');
+      }
+    } catch (error) {
+      toast.error('Failed to seed categories');
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -109,8 +131,9 @@ export default function CategoriesPage() {
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
           <p className="text-gray-600 mt-2">Organize and manage your task categories</p>
+          <p className="text-sm text-blue-600 mt-1">✅ Connected to Firestore Database</p>
         </div>
-        <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto">
+        <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto text-white">
           <PlusCircleIcon className="w-5 h-5 mr-2" />
           Add Category
         </Button>
@@ -187,11 +210,16 @@ export default function CategoriesPage() {
           
           {filteredCategories.length === 0 && !loading && (
             <div className="text-center py-12">
-              <p className="text-gray-600">
+              <p className="text-gray-600 mb-4">
                 {searchQuery || filterStatus !== 'all'
                   ? 'No categories match your search criteria.'
                   : 'No categories found.'}
               </p>
+              {showSeedButton && (
+                <Button onClick={handleSeedCategories} variant="outline">
+                  🌱 Seed Sample Categories
+                </Button>
+              )}
             </div>
           )}
         </>

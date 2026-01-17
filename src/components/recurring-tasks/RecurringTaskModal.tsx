@@ -370,7 +370,7 @@ export function RecurringTaskModal({
             >
               Cancel
             </Button>
-            <Button type="submit" loading={isLoading} disabled={isLoading}>
+            <Button type="submit" loading={isLoading} disabled={isLoading} className="text-white">
               {task ? 'Update Recurring Task' : 'Create Recurring Task'}
             </Button>
           </DialogFooter>

@@ -88,7 +88,7 @@ export default function AttendancePage() {
         <div className="flex gap-2">
           <Button 
             onClick={() => setShowLeaveModal(true)}
-            className="bg-blue-600 hover:bg-blue-700"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
           >
             Request Leave
           </Button>
@@ -165,7 +165,7 @@ export default function AttendancePage() {
                     </div>
                     <Button
                       size="lg"
-                      className="w-full h-14 text-lg"
+                      className="w-full h-14 text-lg text-white"
                       onClick={() => alert('Demo mode - Clock in functionality disabled')}
                     >
                       <ClockIcon className="mr-2 h-5 w-5" />

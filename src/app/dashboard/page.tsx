@@ -115,7 +115,7 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
           <p className="text-gray-600 mt-2">Welcome back! Here&apos;s what&apos;s happening today.</p>
         </div>
-        <Button>
+        <Button className="text-white">
           <PlusCircleIcon className="w-5 h-5 mr-2" />
           Create Task
         </Button>

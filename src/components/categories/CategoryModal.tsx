@@ -217,7 +217,7 @@ export function CategoryModal({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading}>
+            <Button type="submit" disabled={isLoading} className="text-white">
               {isLoading ? 'Saving...' : category ? 'Update' : 'Create'}
             </Button>
           </DialogFooter>

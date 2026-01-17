@@ -1,5 +1,6 @@
 import * as Icons from "../icons";
 
+// Navigation data with role-based access control
 export const NAV_DATA = [
   {
     label: "MAIN MENU",
@@ -20,12 +21,6 @@ export const NAV_DATA = [
         title: "Categories",
         url: "/categories",
         icon: Icons.Table,
-        items: [],
-      },
-      {
-        title: "Profile",
-        url: "/profile",
-        icon: Icons.User,
         items: [],
       },
     ],
@@ -69,70 +64,11 @@ export const NAV_DATA = [
         icon: Icons.ClockIcon,
         items: [],
       },
-    ],
-  },
-  {
-    label: "PAGES",
-    items: [
-      {
-        title: "Forms",
-        icon: Icons.Alphabet,
-        items: [
-          {
-            title: "Form Elements",
-            url: "/forms/form-elements",
-          },
-          {
-            title: "Form Layout",
-            url: "/forms/form-layout",
-          },
-        ],
-      },
-      {
-        title: "Tables",
-        url: "/tables",
-        icon: Icons.Table,
-        items: [
-          {
-            title: "Tables",
-            url: "/tables",
-          },
-        ],
-      },
       {
         title: "Settings",
         url: "/pages/settings",
         icon: Icons.Alphabet,
         items: [],
-      },
-    ],
-  },
-  {
-    label: "OTHERS",
-    items: [
-      {
-        title: "Charts",
-        icon: Icons.PieChart,
-        items: [
-          {
-            title: "Basic Chart",
-            url: "/charts/basic-chart",
-          },
-        ],
-      },
-      {
-        title: "UI Elements",
-        icon: Icons.FourCircle,
-        items: [
-          {
-            title: "Alerts",
-            url: "/ui-elements/alerts",
-          },
-          {
-            title: "Buttons",
-            url: "/ui-elements/buttons",
-          },
-        ],
       },
       {
         title: "Authentication",
@@ -152,7 +88,6 @@ export const NAV_DATA = [
           },
         ],
       },
-
     ],
   },
 ];

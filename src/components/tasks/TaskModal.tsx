@@ -255,7 +255,7 @@ export function TaskModal({
             >
               Cancel
             </Button>
-            <Button type="submit" loading={isLoading} disabled={isLoading}>
+            <Button type="submit" loading={isLoading} disabled={isLoading} className="text-white">
               {task ? 'Update Task' : 'Create Task'}
             </Button>
           </DialogFooter>
