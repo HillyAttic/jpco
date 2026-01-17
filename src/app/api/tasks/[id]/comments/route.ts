@@ -2,9 +2,9 @@ import { NextRequest } from 'next/server';
 import { taskService } from '@/services/task.service';
 import { Comment } from '@/types/task.types';
 
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const comments = taskService.getCommentsByTaskId(id);
     
     return new Response(JSON.stringify(comments), {
@@ -24,9 +24,9 @@ export async function GET(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const commentData = await request.json();
     
     // Validate required fields

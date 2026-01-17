@@ -1,0 +1,183 @@
+import React from 'react';
+import { Employee } from '@/services/employee.service';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Avatar } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { 
+  PencilSquareIcon, 
+  TrashIcon, 
+  EnvelopeIcon, 
+  PhoneIcon, 
+  BuildingOfficeIcon,
+  UserMinusIcon 
+} from '@heroicons/react/24/outline';
+
+interface EmployeeCardProps {
+  employee: Employee;
+  onEdit: (employee: Employee) => void;
+  onDelete: (id: string) => void;
+  onDeactivate: (id: string) => void;
+  selected?: boolean;
+  onSelect?: (id: string, selected: boolean) => void;
+}
+
+/**
+ * EmployeeCard Component
+ * Displays employee information in a card format with photo, contact details, and action buttons
+ * Validates Requirements: 5.3, 5.5, 5.6
+ */
+export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selected = false, onSelect }: EmployeeCardProps) {
+  // Generate initials from employee name for avatar fallback
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(part => part[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Get badge variant based on status
+  const getStatusBadgeVariant = (status: Employee['status']) => {
+    switch (status) {
+      case 'active':
+        return 'success';
+      case 'on-leave':
+        return 'warning';
+      case 'terminated':
+        return 'danger';
+      default:
+        return 'default';
+    }
+  };
+
+  // Format status for display
+  const formatStatus = (status: Employee['status']) => {
+    switch (status) {
+      case 'on-leave':
+        return 'On Leave';
+      case 'terminated':
+        return 'Terminated';
+      default:
+        return status.charAt(0).toUpperCase() + status.slice(1);
+    }
+  };
+
+  return (
+    <Card className={`group hover:shadow-lg transition-all duration-200 ${selected ? 'ring-2 ring-blue-500' : ''}`}>
+      <CardContent className="p-6">
+        {/* Selection Checkbox */}
+        {onSelect && (
+          <div className="absolute top-4 left-4 z-10">
+            <input
+              type="checkbox"
+              checked={selected}
+              onChange={(e) => onSelect(employee.id!, e.target.checked)}
+              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              aria-label={`Select ${employee.name}`}
+            />
+          </div>
+        )}
+        
+        <div className={`flex items-start justify-between mb-4 ${onSelect ? 'ml-8' : ''}`}>
+          {/* Avatar and Name */}
+          <div className="flex items-start gap-4 flex-1">
+            <Avatar
+              src={employee.avatarUrl}
+              alt={employee.name}
+              fallback={getInitials(employee.name)}
+              size="lg"
+            />
+            
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-semibold text-gray-900 truncate">
+                  {employee.name}
+                </h3>
+                <Badge variant={getStatusBadgeVariant(employee.status)}>
+                  {formatStatus(employee.status)}
+                </Badge>
+              </div>
+              <p className="text-sm text-gray-600 mb-1">{employee.position}</p>
+              <p className="text-sm text-gray-500">{employee.department}</p>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onEdit(employee)}
+              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+              aria-label={`Edit ${employee.name}`}
+            >
+              <PencilSquareIcon className="w-4 h-4" />
+            </Button>
+            
+            {employee.status === 'active' && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onDeactivate(employee.id!)}
+                className="text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                aria-label={`Deactivate ${employee.name}`}
+              >
+                <UserMinusIcon className="w-4 h-4" />
+              </Button>
+            )}
+            
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => onDelete(employee.id!)}
+              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              aria-label={`Delete ${employee.name}`}
+            >
+              <TrashIcon className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Contact Information */}
+        <div className="space-y-2">
+          {/* Employee ID */}
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium">ID:</span>
+            <span>{employee.employeeId}</span>
+          </div>
+
+          {/* Email */}
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
+            <a 
+              href={`mailto:${employee.email}`}
+              className="hover:text-blue-600 truncate"
+            >
+              {employee.email}
+            </a>
+          </div>
+
+          {/* Phone */}
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <PhoneIcon className="w-4 h-4 flex-shrink-0" />
+            <a 
+              href={`tel:${employee.phone}`}
+              className="hover:text-blue-600"
+            >
+              {employee.phone}
+            </a>
+          </div>
+        </div>
+
+        {/* Footer with hire date */}
+        {employee.hireDate && (
+          <div className="mt-4 pt-4 border-t text-xs text-gray-500">
+            Hired {new Date(employee.hireDate).toLocaleDateString()}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

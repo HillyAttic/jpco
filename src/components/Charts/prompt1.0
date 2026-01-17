@@ -1,0 +1,660 @@
+Here's a prompt to create a visually appealing Client Master page for your Next.js app:
+
+```
+Create a comprehensive Client Master management page for a Next.js application with the following specifications:
+
+## UI Components Required:
+
+### 1. Navigation Component
+- Left sidebar navigation with icons similar to the Laravel app
+- Active state highlighting for the current page
+- Client/user icon (fa-mug-hot equivalent) using React Icons
+- Responsive design that works on mobile and desktop
+
+### 2. Client Master Page Layout
+- Header section with page title "Client Master" and breadcrumbs
+- Add New Client button with modal popup
+- Search and filter functionality at the top
+- Client grid/table displaying all clients/contacts
+- Pagination controls for large datasets
+
+### 3. Client Card/List Item Component
+- Professional visual representation of each client
+- Client avatar/photo placeholder
+- Contact information display (name, email, phone)
+- Edit and delete action buttons
+- Status indicators if applicable
+- Tags or categories for client classification
+
+### 4. Add/Edit Client Modal
+- Form with validation using React Hook Form
+- Input fields for client name, email, phone, company, address, etc.
+- Zod schema validation
+- Success/error messaging
+- Image upload capability for client photo
+
+### 5. Visual Design Elements
+- Modern UI with Tailwind CSS styling
+- Consistent color scheme throughout
+- Hover effects and transitions
+- Responsive grid layout (cards on desktop, list on mobile)
+- Loading skeletons while data loads
+- Empty state illustration when no clients exist
+- Professional business aesthetic
+
+## Technical Implementation:
+- Use TypeScript with proper type definitions
+- Create reusable components in the components/ui folder
+- Implement proper accessibility (ARIA labels, keyboard navigation)
+- Include error boundaries for component safety
+- Implement optimistic updates for better UX
+- Add loading states and error handling
+
+## File Structure:
+```
+components/
+├── ui/
+│   ├── card.tsx
+│   ├── button.tsx
+│   ├── input.tsx
+│   ├── dialog.tsx
+│   ├── avatar.tsx
+│   └── badge.tsx
+├── clients/
+│   ├── ClientCard.tsx
+│   ├── ClientModal.tsx
+│   ├── ClientList.tsx
+│   ├── ClientActions.tsx
+│   └── ClientAvatar.tsx
+pages/
+├── clients/
+│   └── page.tsx
+hooks/
+├── use-clients.ts
+services/
+├── client-api.ts
+```
+
+## Styling Requirements:
+- Professional business aesthetic with clean design
+- Card-based layout with subtle shadows
+- Consistent spacing and typography
+- Interactive elements with visual feedback
+- Dark mode support if implemented in the app
+- Smooth animations and transitions
+- Professional color scheme suitable for client management
+
+## Functionality:
+- Create new clients
+- Edit existing client information
+- Delete clients with confirmation
+- Search/filter by name, email, company, etc.
+- Bulk actions if needed
+- Sorting capabilities (by name, date added, etc.)
+- Export client data functionality
+
+## Visual Elements:
+- Client avatars with initials or default images
+- Contact information organized in a clean layout
+- Status badges (active/inactive, priority level)
+- Company logos or industry icons if applicable
+- Professional color coding for different client types
+- Hover effects revealing additional actions
+- Clean typography hierarchy
+
+Make the design visually appealing while maintaining usability and following modern UI/UX best practices for business applications.
+```
+
+This prompt will help you create a professional and visually impressive Client Master page for your Next.js application that matches the functionality of the Laravel version while leveraging modern React development practices.
+
+Here's a prompt to create a visually appealing Non Recurring Tasks page for your Next.js app:
+
+```
+Create a comprehensive Non Recurring Tasks management page for a Next.js application with the following specifications:
+
+## UI Components Required:
+
+### 1. Navigation Component
+- Left sidebar navigation with icons similar to the Laravel app
+- Active state highlighting for the current page
+- Task/checklist icon (fa-list-check equivalent) using React Icons
+- Responsive design that works on mobile and desktop
+
+### 2. Tasks Page Layout
+- Header section with page title "Non Recurring Tasks" and breadcrumbs
+- Add New Task button with modal popup
+- Search and filter functionality at the top
+- Task grid/table displaying all non-recurring tasks
+- Pagination controls for large datasets
+- Quick stats summary cards (total, pending, completed, overdue)
+
+### 3. Task Card/List Item Component
+- Visual representation of each task with status indicators
+- Task title and description preview
+- Due date display with color coding (past, today, future)
+- Priority badges (low, medium, high, urgent)
+- Assigned user avatars/tags
+- Progress indicators if applicable
+- Quick action buttons (edit, delete, mark complete)
+
+### 4. Add/Edit Task Modal
+- Form with validation using React Hook Form
+- Input fields for task name, description, due date, priority, category, assignees
+- Zod schema validation
+- Success/error messaging
+- File attachment capability
+
+### 5. Visual Design Elements
+- Modern UI with Tailwind CSS styling
+- Consistent color scheme throughout
+- Hover effects and transitions
+- Responsive grid layout (cards on desktop, list on mobile)
+- Loading skeletons while data loads
+- Empty state illustration when no tasks exist
+- Status-based color coding (new, in-progress, completed, on-hold)
+
+## Technical Implementation:
+- Use TypeScript with proper type definitions
+- Create reusable components in the components/ui folder
+- Implement proper accessibility (ARIA labels, keyboard navigation)
+- Include error boundaries for component safety
+- Implement optimistic updates for better UX
+- Add loading states and error handling
+
+## File Structure:
+```
+components/
+├── ui/
+│   ├── card.tsx
+│   ├── button.tsx
+│   ├── input.tsx
+│   ├── dialog.tsx
+│   ├── badge.tsx
+│   ├── avatar.tsx
+│   └── select.tsx
+├── tasks/
+│   ├── TaskCard.tsx
+│   ├── TaskModal.tsx
+│   ├── TaskList.tsx
+│   ├── TaskActions.tsx
+│   ├── TaskFilter.tsx
+│   ├── TaskStatusBadge.tsx
+│   └── TaskPriorityBadge.tsx
+pages/
+├── tasks/
+│   └── page.tsx
+hooks/
+├── use-tasks.ts
+services/
+├── task-api.ts
+```
+
+## Styling Requirements:
+- Clean, task-oriented aesthetic with clear visual hierarchy
+- Card-based layout with subtle shadows and borders
+- Consistent spacing and typography
+- Interactive elements with visual feedback
+- Dark mode support if implemented in the app
+- Smooth animations and transitions
+- Color-coded status indicators
+- Priority level visual differentiation
+
+## Functionality:
+- Create new non-recurring tasks
+- Edit existing task details
+- Delete tasks with confirmation
+- Mark tasks as complete/incomplete
+- Search/filter by title, status, priority, assignee, due date
+- Bulk actions (mark complete, delete, reassign)
+- Sorting capabilities (by due date, priority, status, creation date)
+- Task assignment to users/teams
+- Progress tracking
+
+## Visual Elements:
+- Status badges with appropriate colors (blue=new, yellow=in-progress, green=completed, red=on-hold)
+- Priority indicators (color-coded or icon-based)
+- Due date visualization (calendar icon, color coding)
+- User assignment tags with avatars
+- Progress bars for multi-step tasks
+- Hover effects revealing additional actions
+- Clean typography hierarchy with task importance differentiation
+- Subtle animations for task state changes
+
+## Task Details:
+- Task name/title prominently displayed
+- Brief description or excerpt
+- Category tags for organization
+- Creation and modification timestamps
+- Attachment indicators
+- Comment/review counts if applicable
+
+Make the design visually appealing while maintaining usability and following modern UI/UX best practices for task management applications.
+```
+
+This prompt will help you create a comprehensive and visually impressive Non Recurring Tasks page for your Next.js application that matches the functionality of the Laravel version while leveraging modern React development practices.
+
+
+Here's a prompt to create a visually appealing Recurring Tasks page for your Next.js app:
+
+```
+Create a comprehensive Recurring Tasks management page for a Next.js application with the following specifications:
+
+## UI Components Required:
+
+### 1. Navigation Component
+- Left sidebar navigation with icons similar to the Laravel app
+- Active state highlighting for the current page
+- Progress/tracking icon (fa-bars-progress equivalent) using React Icons
+- Responsive design that works on mobile and desktop
+
+### 2. Recurring Tasks Page Layout
+- Header section with page title "Recurring Tasks" and breadcrumbs
+- Add New Recurring Task button with modal popup
+- Search and filter functionality at the top
+- Task grid/table displaying all recurring tasks
+- Pagination controls for large datasets
+- Quick stats summary cards (total, active, completed cycles, upcoming)
+
+### 3. Recurring Task Card/List Item Component
+- Visual representation of each recurring task with cycle indicators
+- Task title and description preview
+- Recurrence pattern display (daily, weekly, monthly, etc.)
+- Next occurrence date with color coding
+- Progress indicators for completion cycles
+- Team assignment visualization
+- Priority badges (low, medium, high, urgent)
+- Quick action buttons (edit, delete, view history)
+
+### 4. Add/Edit Recurring Task Modal
+- Form with validation using React Hook Form
+- Input fields for task name, description, recurrence pattern, start/end dates
+- Team assignment selection
+- Priority setting
+- Zod schema validation
+- Success/error messaging
+- File attachment capability
+
+### 5. Visual Design Elements
+- Modern UI with Tailwind CSS styling
+- Consistent color scheme throughout
+- Hover effects and transitions
+- Responsive grid layout (cards on desktop, list on mobile)
+- Loading skeletons while data loads
+- Empty state illustration when no recurring tasks exist
+- Recurrence pattern visualization
+
+## Technical Implementation:
+- Use TypeScript with proper type definitions
+- Create reusable components in the components/ui folder
+- Implement proper accessibility (ARIA labels, keyboard navigation)
+- Include error boundaries for component safety
+- Implement optimistic updates for better UX
+- Add loading states and error handling
+
+## File Structure:
+```
+components/
+├── ui/
+│   ├── card.tsx
+│   ├── button.tsx
+│   ├── input.tsx
+│   ├── dialog.tsx
+│   ├── badge.tsx
+│   ├── avatar.tsx
+│   ├── select.tsx
+│   └── calendar.tsx
+├── recurring-tasks/
+│   ├── RecurringTaskCard.tsx
+│   ├── RecurringTaskModal.tsx
+│   ├── RecurringTaskList.tsx
+│   ├── RecurringTaskActions.tsx
+│   ├── RecurringTaskFilter.tsx
+│   ├── RecurringTaskStatusBadge.tsx
+│   ├── RecurringTaskPatternBadge.tsx
+│   └── RecurrenceCalendar.tsx
+pages/
+├── recurring-tasks/
+│   └── page.tsx
+hooks/
+├── use-recurring-tasks.ts
+services/
+├── recurring-task-api.ts
+```
+
+## Styling Requirements:
+- Clean, process-oriented aesthetic with clear visual hierarchy
+- Card-based layout with subtle shadows and borders
+- Consistent spacing and typography
+- Interactive elements with visual feedback
+- Dark mode support if implemented in the app
+- Smooth animations and transitions
+- Color-coded recurrence patterns
+- Progress visualization for cyclical tasks
+
+## Functionality:
+- Create new recurring tasks with various patterns (daily, weekly, monthly, quarterly)
+- Edit existing recurring task details
+- Pause/resume recurring tasks
+- Delete recurring tasks with confirmation
+- Track completion history
+- Search/filter by title, recurrence pattern, team, priority
+- Bulk actions (pause, resume, delete)
+- Sorting capabilities (by next due date, priority, creation date)
+- Team assignment for recurring responsibilities
+- Cycle completion tracking
+
+## Visual Elements:
+- Recurrence pattern badges with appropriate icons (daily, weekly, monthly, etc.)
+- Progress bars showing completion rate for recurring cycles
+- Next occurrence date visualization
+- Team assignment tags with avatars
+- Priority indicators with color coding
+- Calendar integration for recurrence visualization
+- Hover effects revealing additional actions
+- Clean typography hierarchy with task importance differentiation
+- Subtle animations for task state changes
+- History timeline visualization
+
+## Recurring Task Details:
+- Task name/title prominently displayed
+- Brief description or excerpt
+- Recurrence frequency pattern
+- Start and end dates for recurrence
+- Associated team/group assignment
+- Creation and last modification timestamps
+- Completion history visualization
+- Next scheduled occurrence indicator
+
+Make the design visually appealing while maintaining usability and following modern UI/UX best practices for recurring task management applications.
+```
+
+This prompt will help you create a comprehensive and visually impressive Recurring Tasks page for your Next.js application that matches the functionality of the Laravel version while leveraging modern React development practices.
+
+Here's a prompt to create a visually appealing Teams page for your Next.js app:
+
+```
+Create a comprehensive Teams management page for a Next.js application with the following specifications:
+
+## UI Components Required:
+
+### 1. Navigation Component
+- Left sidebar navigation with icons similar to the Laravel app
+- Active state highlighting for the current page
+- Users/team icon (fa-users equivalent) using React Icons
+- Responsive design that works on mobile and desktop
+
+### 2. Teams Page Layout
+- Header section with page title "Teams" and breadcrumbs
+- Add New Team button with modal popup
+- Search and filter functionality at the top
+- Team grid/table displaying all teams
+- Pagination controls for large datasets
+- Quick stats summary cards (total teams, total members, active teams)
+
+### 3. Team Card/List Item Component
+- Visual representation of each team with team avatar
+- Team name and description
+- Member count display
+- Team leader/manager identification
+- Team status indicators (active, inactive, archived)
+- Member avatars preview (show first few members)
+- Department/division tags if applicable
+- Quick action buttons (edit, delete, view members, manage)
+
+### 4. Add/Edit Team Modal
+- Form with validation using React Hook Form
+- Input fields for team name, description, leader selection, department
+- Member selection and assignment
+- Zod schema validation
+- Success/error messaging
+- Team logo/avatar upload capability
+
+### 5. Team Detail View Component
+- Team information panel with expanded details
+- Member list with roles and contact information
+- Team statistics and metrics
+- Recent activity feed for the team
+- Task/project assignments for the team
+
+### 6. Visual Design Elements
+- Modern UI with Tailwind CSS styling
+- Consistent color scheme throughout
+- Hover effects and transitions
+- Responsive grid layout (cards on desktop, list on mobile)
+- Loading skeletons while data loads
+- Empty state illustration when no teams exist
+- Member count visualization
+
+## Technical Implementation:
+- Use TypeScript with proper type definitions
+- Create reusable components in the components/ui folder
+- Implement proper accessibility (ARIA labels, keyboard navigation)
+- Include error boundaries for component safety
+- Implement optimistic updates for better UX
+- Add loading states and error handling
+
+## File Structure:
+```
+components/
+├── ui/
+│   ├── card.tsx
+│   ├── button.tsx
+│   ├── input.tsx
+│   ├── dialog.tsx
+│   ├── badge.tsx
+│   ├── avatar.tsx
+│   ├── select.tsx
+│   ├── tabs.tsx
+│   └── tooltip.tsx
+├── teams/
+│   ├── TeamCard.tsx
+│   ├── TeamModal.tsx
+│   ├── TeamList.tsx
+│   ├── TeamActions.tsx
+│   ├── TeamFilter.tsx
+│   ├── TeamStatusBadge.tsx
+│   ├── TeamMemberList.tsx
+│   ├── TeamDetailPanel.tsx
+│   └── TeamAvatar.tsx
+pages/
+├── teams/
+│   └── page.tsx
+hooks/
+├── use-teams.ts
+├── use-team-members.ts
+services/
+├── team-api.ts
+```
+
+## Styling Requirements:
+- Clean, collaborative aesthetic suitable for team management
+- Card-based layout with subtle shadows and borders
+- Consistent spacing and typography
+- Interactive elements with visual feedback
+- Dark mode support if implemented in the app
+- Smooth animations and transitions
+- Color-coded team categories
+- Member avatar grouping visualization
+
+## Functionality:
+- Create new teams
+- Edit existing team details
+- Delete teams with confirmation
+- Manage team members (add/remove)
+- Assign team leaders/managers
+- Search/filter by team name, size, department
+- Bulk actions (archive, delete, reassign)
+- Sorting capabilities (by name, size, creation date)
+- Export team data functionality
+- Team hierarchy visualization
+
+## Visual Elements:
+- Team avatars with initials or default images
+- Member avatars grouped in a circular formation
+- Team status badges with appropriate colors
+- Department/category tags
+- Member count indicators
+- Role badges for different positions
+- Hover effects revealing additional team details
+- Clean typography hierarchy with team information
+- Subtle animations for member additions/removals
+
+## Team Details:
+- Team name and description prominently displayed
+- Team leader/manager identification
+- Department or division assignment
+- Member count and composition
+- Creation and last modification timestamps
+- Recent activity or task assignments
+- Team statistics and performance metrics
+- Contact information for team coordination
+
+Make the design visually appealing while maintaining usability and following modern UI/UX best practices for team management applications.
+```
+
+This prompt will help you create a comprehensive and visually impressive Teams page for your Next.js application that matches the functionality of the Laravel version while leveraging modern React development practices.
+
+Here's a prompt to create a visually appealing Employees page for your Next.js app:
+
+```
+Create a comprehensive Employees management page for a Next.js application with the following specifications:
+
+## UI Components Required:
+
+### 1. Navigation Component
+- Left sidebar navigation with icons similar to the Laravel app
+- Active state highlighting for the current page
+- User plus icon (fa-user-plus equivalent) using React Icons
+- Responsive design that works on mobile and desktop
+
+### 2. Employees Page Layout
+- Header section with page title "Employees" and breadcrumbs
+- Add New Employee button with modal popup
+- Search and filter functionality at the top
+- Employee grid/table displaying all employees
+- Pagination controls for large datasets
+- Quick stats summary cards (total employees, active, on leave, departments)
+
+### 3. Employee Card/List Item Component
+- Visual representation of each employee with profile avatar
+- Employee name and position/job title
+- Department/role identification
+- Employment status indicators (active, on leave, terminated)
+- Contact information preview
+- Team assignment visualization
+- Employee ID display
+- Quick action buttons (edit, delete, view details, deactivate)
+
+### 4. Add/Edit Employee Modal
+- Form with validation using React Hook Form
+- Input fields for name, email, phone, position, department, hire date, salary
+- Profile picture upload
+- Team assignment selection
+- Role/permission assignment
+- Zod schema validation
+- Success/error messaging
+
+### 5. Employee Detail View Component
+- Employee information panel with expanded details
+- Contact information section
+- Employment history and details
+- Assigned tasks/projects overview
+- Performance metrics if applicable
+
+### 6. Visual Design Elements
+- Modern UI with Tailwind CSS styling
+- Consistent color scheme throughout
+- Hover effects and transitions
+- Responsive grid layout (cards on desktop, list on mobile)
+- Loading skeletons while data loads
+- Empty state illustration when no employees exist
+- Status-based color coding
+
+## Technical Implementation:
+- Use TypeScript with proper type definitions
+- Create reusable components in the components/ui folder
+- Implement proper accessibility (ARIA labels, keyboard navigation)
+- Include error boundaries for component safety
+- Implement optimistic updates for better UX
+- Add loading states and error handling
+
+## File Structure:
+```
+components/
+├── ui/
+│   ├── card.tsx
+│   ├── button.tsx
+│   ├── input.tsx
+│   ├── dialog.tsx
+│   ├── badge.tsx
+│   ├── avatar.tsx
+│   ├── select.tsx
+│   ├── tabs.tsx
+│   └── tooltip.tsx
+├── employees/
+│   ├── EmployeeCard.tsx
+│   ├── EmployeeModal.tsx
+│   ├── EmployeeList.tsx
+│   ├── EmployeeActions.tsx
+│   ├── EmployeeFilter.tsx
+│   ├── EmployeeStatusBadge.tsx
+│   ├── EmployeeDetailPanel.tsx
+│   ├── EmployeeAvatar.tsx
+│   └── EmployeeStatsCard.tsx
+pages/
+├── employees/
+│   └── page.tsx
+hooks/
+├── use-employees.ts
+services/
+├── employee-api.ts
+```
+
+## Styling Requirements:
+- Clean, professional aesthetic suitable for HR applications
+- Card-based layout with subtle shadows and borders
+- Consistent spacing and typography
+- Interactive elements with visual feedback
+- Dark mode support if implemented in the app
+- Smooth animations and transitions
+- Color-coded employment status indicators
+- Professional color scheme for employee management
+
+## Functionality:
+- Add new employees
+- Edit existing employee details
+- Deactivate/delete employees with confirmation
+- Search/filter by name, department, role, status
+- Bulk actions (deactivate, assign to team, update role)
+- Sorting capabilities (by name, department, hire date, role)
+- Export employee data functionality
+- Employee onboarding workflow
+- Role and permission management
+
+## Visual Elements:
+- Employee avatars with initials or profile photos
+- Role badges with appropriate colors and icons
+- Department tags for organizational structure
+- Employment status indicators (active, on leave, terminated)
+- Job title and position identification
+- Contact information icons and organization
+- Hover effects revealing additional employee details
+- Clean typography hierarchy with employee information
+- Subtle animations for status changes
+
+## Employee Details:
+- Employee name and profile photo prominently displayed
+- Job title and department assignment
+- Contact information (email, phone, internal extension)
+- Employee ID and hire date
+- Manager/supervisor identification
+- Team assignments and roles
+- Salary and compensation information (if authorized)
+- Performance metrics and ratings
+- Leave balance and time-off information
+- Emergency contact information
+
+Make the design visually appealing while maintaining usability and following modern UI/UX best practices for employee management applications.
+```
+
+This prompt will help you create a comprehensive and visually impressive Employees page for your Next.js application that matches the functionality of the Laravel version while leveraging modern React development practices.

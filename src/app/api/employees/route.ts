@@ -1,0 +1,96 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { employeeService, Employee } from '@/services/employee.service';
+import { z } from 'zod';
+import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
+
+// Validation schema for employee creation
+const createEmployeeSchema = z.object({
+  employeeId: z.string().min(1, 'Employee ID is required').max(50),
+  name: z.string().min(1, 'Name is required').max(100),
+  email: z.string().email('Invalid email format'),
+  phone: z.string().regex(/^\+?[\d\s\-()]+$/, 'Invalid phone format'),
+  position: z.string().min(1, 'Position is required').max(100),
+  department: z.string().min(1, 'Department is required').max(100),
+  hireDate: z.string().transform((str) => new Date(str)).refine((date) => date <= new Date(), {
+    message: 'Hire date cannot be in the future'
+  }),
+  avatarUrl: z.string().optional(),
+  managerId: z.string().optional(),
+  teamIds: z.array(z.string()).default([]),
+  status: z.enum(['active', 'on-leave', 'terminated']).default('active'),
+});
+
+/**
+ * GET /api/employees
+ * List all employees with optional pagination and filters
+ * Validates Requirements: 5.1, 5.7, 5.8
+ */
+export async function GET(request: NextRequest) {
+  try {
+    // TODO: Add authentication check
+    // const user = await verifyAuth(request);
+    // if (!user) {
+    //   return ErrorResponses.unauthorized();
+    // }
+
+    const searchParams = request.nextUrl.searchParams;
+    const status = searchParams.get('status') || undefined;
+    const department = searchParams.get('department') || undefined;
+    const search = searchParams.get('search') || undefined;
+    const limit = parseInt(searchParams.get('limit') || '20');
+
+    const employees = await employeeService.getAll({
+      status,
+      department,
+      search,
+      limit,
+    });
+
+    return NextResponse.json({
+      data: employees,
+      total: employees.length,
+    });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+/**
+ * POST /api/employees
+ * Create a new employee
+ * Validates Requirements: 5.2
+ */
+export async function POST(request: NextRequest) {
+  try {
+    // TODO: Add authentication check
+    // const user = await verifyAuth(request);
+    // if (!user) {
+    //   return ErrorResponses.unauthorized();
+    // }
+
+    const body = await request.json();
+
+    // Validate request body
+    const validationResult = createEmployeeSchema.safeParse(body);
+    if (!validationResult.success) {
+      return ErrorResponses.badRequest(
+        'Validation failed',
+        validationResult.error.flatten().fieldErrors as Record<string, string[]>
+      );
+    }
+
+    const employeeData = validationResult.data;
+
+    // Create employee
+    const newEmployee = await employeeService.create(employeeData);
+
+    return NextResponse.json(newEmployee, { status: 201 });
+  } catch (error) {
+    // Handle specific error for duplicate employee ID
+    if (error instanceof Error && error.message === 'Employee ID already exists') {
+      return ErrorResponses.conflict('Employee ID already exists');
+    }
+
+    return handleApiError(error);
+  }
+}

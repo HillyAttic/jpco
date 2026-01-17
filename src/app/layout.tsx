@@ -26,6 +26,11 @@ export default function RootLayout({ children }: PropsWithChildren) {
     <html lang="en" suppressHydrationWarning>
       <body>
         <Providers>
+          {/* Skip to main content link for keyboard navigation - Requirement 7.4 */}
+          <a href="#main-content" className="skip-to-main">
+            Skip to main content
+          </a>
+
           <NextTopLoader color="#5750F1" showSpinner={false} />
 
           <div className="flex min-h-screen">
@@ -34,7 +39,12 @@ export default function RootLayout({ children }: PropsWithChildren) {
             <div className="w-full bg-gray-2 dark:bg-[#020d1a]">
               <Header />
 
-              <main className="isolate mx-auto w-full max-w-screen-2xl overflow-hidden p-4 md:p-6 2xl:p-10">
+              <main 
+                id="main-content"
+                className="isolate mx-auto w-full max-w-screen-2xl overflow-hidden p-4 md:p-6 2xl:p-10"
+                role="main"
+                aria-label="Main content"
+              >
                 {children}
               </main>
             </div>

@@ -6,13 +6,9 @@ export const NAV_DATA = [
     items: [
       {
         title: "Dashboard",
+        url: "/dashboard",
         icon: Icons.HomeIcon,
-        items: [
-          {
-            title: "eCommerce",
-            url: "/",
-          },
-        ],
+        items: [],
       },
       {
         title: "Calendar",
@@ -21,9 +17,9 @@ export const NAV_DATA = [
         items: [],
       },
       {
-        title: "Tasks",
-        url: "/tasks",
-        icon: Icons.TaskIcon,
+        title: "Categories",
+        url: "/categories",
+        icon: Icons.Table,
         items: [],
       },
       {
@@ -32,6 +28,58 @@ export const NAV_DATA = [
         icon: Icons.User,
         items: [],
       },
+    ],
+  },
+  {
+    label: "MANAGEMENT",
+    items: [
+      {
+        title: "Clients",
+        url: "/clients",
+        icon: Icons.User,
+        items: [],
+      },
+      {
+        title: "Tasks",
+        icon: Icons.TaskIcon,
+        items: [
+          {
+            title: "All Tasks",
+            url: "/tasks",
+          },
+          {
+            title: "Non-Recurring",
+            url: "/tasks/non-recurring",
+          },
+          {
+            title: "Recurring",
+            url: "/tasks/recurring",
+          },
+        ],
+      },
+      {
+        title: "Teams",
+        url: "/teams",
+        icon: Icons.User,
+        items: [],
+      },
+      {
+        title: "Employees",
+        url: "/employees",
+        icon: Icons.User,
+        items: [],
+      },
+      {
+        title: "Attendance",
+        url: "/attendance",
+        icon: Icons.ClockIcon,
+        items: [],
+      },
+    ],
+  },
+  {
+    label: "PAGES",
+    items: [
       {
         title: "Forms",
         icon: Icons.Alphabet,
@@ -58,14 +106,10 @@ export const NAV_DATA = [
         ],
       },
       {
-        title: "Pages",
+        title: "Settings",
+        url: "/pages/settings",
         icon: Icons.Alphabet,
-        items: [
-          {
-            title: "Settings",
-            url: "/pages/settings",
-          },
-        ],
+        items: [],
       },
     ],
   },
