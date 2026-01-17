@@ -59,4 +59,8 @@ describe('Attendance Validation Schemas', () => {
 
     it('should reject invalid longitude', () => {
       const invalidData = {
-        timestamp: ne
+        timestamp: new Date().toISOString(),
+        latitude: 40.7128,
+        longitude: 200, // Invalid longitude
+        accuracy: 10
+      };

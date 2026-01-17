@@ -40,22 +40,16 @@ export const NAV_DATA = [
         items: [],
       },
       {
-        title: "Tasks",
-        icon: Icons.TaskIcon,
-        items: [
-          {
-            title: "All Tasks",
-            url: "/tasks",
-          },
-          {
-            title: "Non-Recurring",
-            url: "/tasks/non-recurring",
-          },
-          {
-            title: "Recurring",
-            url: "/tasks/recurring",
-          },
-        ],
+        title: "Non-Recurring",
+        url: "/tasks/non-recurring",
+        icon: Icons.NonRecurringIcon,
+        items: [],
+      },
+      {
+        title: "Recurring",
+        url: "/tasks/recurring",
+        icon: Icons.RecurringIcon,
+        items: [],
       },
       {
         title: "Teams",

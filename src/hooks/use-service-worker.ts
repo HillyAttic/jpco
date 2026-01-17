@@ -1,0 +1,342 @@
+import { useEffect, useState, useCallback } from 'react';
+import { useResponsive } from './use-responsive';
+
+interface ServiceWorkerState {
+  isSupported: boolean;
+  isRegistered: boolean;
+  isOnline: boolean;
+  updateAvailable: boolean;
+  registration: ServiceWorkerRegistration | null;
+  error: string | null;
+}
+
+interface OfflineQueueItem {
+  url: string;
+  method: string;
+  body?: any;
+  headers?: Record<string, string>;
+  timestamp: number;
+}
+
+export function useServiceWorker() {
+  const { device } = useResponsive();
+  const [state, setState] = useState<ServiceWorkerState>({
+    isSupported: false,
+    isRegistered: false,
+    isOnline: navigator.onLine,
+    updateAvailable: false,
+    registration: null,
+    error: null
+  });
+
+  const [offlineQueue, setOfflineQueue] = useState<OfflineQueueItem[]>([]);
+
+  // Register service worker
+  const registerServiceWorker = useCallback(async () => {
+    if (!('serviceWorker' in navigator)) {
+      setState(prev => ({
+        ...prev,
+        isSupported: false,
+        error: 'Service Worker not supported'
+      }));
+      return;
+    }
+
+    try {
+      const registration = await navigator.serviceWorker.register('/sw.js', {
+        scope: '/'
+      });
+
+      setState(prev => ({
+        ...prev,
+        isSupported: true,
+        isRegistered: true,
+        registration,
+        error: null
+      }));
+
+      // Check for updates
+      registration.addEventListener('updatefound', () => {
+        const newWorker = registration.installing;
+        if (newWorker) {
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              setState(prev => ({
+                ...prev,
+                updateAvailable: true
+              }));
+            }
+          });
+        }
+      });
+
+      console.log('Service Worker registered successfully');
+    } catch (error) {
+      setState(prev => ({
+        ...prev,
+        error: `Service Worker registration failed: ${error}`
+      }));
+      console.error('Service Worker registration failed:', error);
+    }
+  }, []);
+
+  // Update service worker
+  const updateServiceWorker = useCallback(async () => {
+    if (state.registration) {
+      try {
+        await state.registration.update();
+        window.location.reload();
+      } catch (error) {
+        console.error('Service Worker update failed:', error);
+      }
+    }
+  }, [state.registration]);
+
+  // Handle online/offline status
+  const handleOnlineStatus = useCallback(() => {
+    const isOnline = navigator.onLine;
+    setState(prev => ({ ...prev, isOnline }));
+
+    if (isOnline && offlineQueue.length > 0) {
+      // Process offline queue when back online
+      processOfflineQueue();
+    }
+  }, [offlineQueue]);
+
+  // Add request to offline queue
+  const queueOfflineRequest = useCallback((
+    url: string,
+    method: string = 'GET',
+    body?: any,
+    headers?: Record<string, string>
+  ) => {
+    const queueItem: OfflineQueueItem = {
+      url,
+      method,
+      body,
+      headers,
+      timestamp: Date.now()
+    };
+
+    setOfflineQueue(prev => [...prev, queueItem]);
+    
+    // Store in localStorage for persistence
+    const existingQueue = JSON.parse(localStorage.getItem('offline-queue') || '[]');
+    localStorage.setItem('offline-queue', JSON.stringify([...existingQueue, queueItem]));
+  }, []);
+
+  // Process offline queue when back online
+  const processOfflineQueue = useCallback(async () => {
+    if (!state.isOnline || offlineQueue.length === 0) return;
+
+    const processedItems: string[] = [];
+
+    for (const item of offlineQueue) {
+      try {
+        const response = await fetch(item.url, {
+          method: item.method,
+          body: item.body ? JSON.stringify(item.body) : undefined,
+          headers: {
+            'Content-Type': 'application/json',
+            ...item.headers
+          }
+        });
+
+        if (response.ok) {
+          processedItems.push(`${item.method}-${item.url}-${item.timestamp}`);
+        }
+      } catch (error) {
+        console.error('Failed to process offline queue item:', error);
+      }
+    }
+
+    // Remove processed items from queue
+    setOfflineQueue(prev => 
+      prev.filter(item => 
+        !processedItems.includes(`${item.method}-${item.url}-${item.timestamp}`)
+      )
+    );
+
+    // Update localStorage
+    const remainingQueue = offlineQueue.filter(item => 
+      !processedItems.includes(`${item.method}-${item.url}-${item.timestamp}`)
+    );
+    localStorage.setItem('offline-queue', JSON.stringify(remainingQueue));
+  }, [state.isOnline, offlineQueue]);
+
+  // Cache critical resources
+  const cacheCriticalResources = useCallback(async () => {
+    if (!state.registration) return;
+
+    const criticalResources = [
+      '/',
+      '/dashboard',
+      '/images/logo/logo.svg',
+      '/images/logo/logo-icon.svg'
+    ];
+
+    // Add device-specific resources
+    if (device.type === 'mobile') {
+      criticalResources.push('/mobile-styles.css');
+    }
+
+    try {
+      const cache = await caches.open('jpco-critical-v1');
+      await cache.addAll(criticalResources);
+      console.log('Critical resources cached');
+    } catch (error) {
+      console.error('Failed to cache critical resources:', error);
+    }
+  }, [state.registration, device.type]);
+
+  // Get cache usage information
+  const getCacheUsage = useCallback(async () => {
+    if (!('storage' in navigator) || !('estimate' in navigator.storage)) {
+      return null;
+    }
+
+    try {
+      const estimate = await navigator.storage.estimate();
+      return {
+        used: estimate.usage || 0,
+        available: estimate.quota || 0,
+        percentage: estimate.quota ? Math.round((estimate.usage || 0) / estimate.quota * 100) : 0
+      };
+    } catch (error) {
+      console.error('Failed to get cache usage:', error);
+      return null;
+    }
+  }, []);
+
+  // Clear cache
+  const clearCache = useCallback(async () => {
+    try {
+      const cacheNames = await caches.keys();
+      await Promise.all(
+        cacheNames.map(cacheName => caches.delete(cacheName))
+      );
+      console.log('Cache cleared');
+    } catch (error) {
+      console.error('Failed to clear cache:', error);
+    }
+  }, []);
+
+  // Initialize service worker and event listeners
+  useEffect(() => {
+    registerServiceWorker();
+
+    // Load offline queue from localStorage
+    const savedQueue = JSON.parse(localStorage.getItem('offline-queue') || '[]');
+    setOfflineQueue(savedQueue);
+
+    // Add online/offline event listeners
+    window.addEventListener('online', handleOnlineStatus);
+    window.addEventListener('offline', handleOnlineStatus);
+
+    return () => {
+      window.removeEventListener('online', handleOnlineStatus);
+      window.removeEventListener('offline', handleOnlineStatus);
+    };
+  }, [registerServiceWorker, handleOnlineStatus]);
+
+  // Cache critical resources when service worker is ready
+  useEffect(() => {
+    if (state.isRegistered) {
+      cacheCriticalResources();
+    }
+  }, [state.isRegistered, cacheCriticalResources]);
+
+  // Process offline queue when online
+  useEffect(() => {
+    if (state.isOnline && offlineQueue.length > 0) {
+      processOfflineQueue();
+    }
+  }, [state.isOnline, processOfflineQueue]);
+
+  return {
+    ...state,
+    updateServiceWorker,
+    queueOfflineRequest,
+    processOfflineQueue,
+    cacheCriticalResources,
+    getCacheUsage,
+    clearCache,
+    offlineQueueLength: offlineQueue.length
+  };
+}
+
+// Hook for offline-aware API calls
+export function useOfflineAPI() {
+  const { isOnline, queueOfflineRequest } = useServiceWorker();
+
+  const apiCall = useCallback(async (
+    url: string,
+    options: RequestInit = {}
+  ) => {
+    if (!isOnline && options.method && options.method !== 'GET') {
+      // Queue non-GET requests for later
+      queueOfflineRequest(
+        url,
+        options.method,
+        options.body,
+        options.headers as Record<string, string>
+      );
+      
+      throw new Error('Request queued for when online');
+    }
+
+    // Proceed with normal fetch
+    return fetch(url, options);
+  }, [isOnline, queueOfflineRequest]);
+
+  return {
+    apiCall,
+    isOnline
+  };
+}
+
+// Hook for offline-aware form submissions
+export function useOfflineForm() {
+  const { isOnline, queueOfflineRequest } = useServiceWorker();
+  const [pendingSubmissions, setPendingSubmissions] = useState<number>(0);
+
+  const submitForm = useCallback(async (
+    url: string,
+    formData: any,
+    options: RequestInit = {}
+  ) => {
+    if (!isOnline) {
+      queueOfflineRequest(
+        url,
+        'POST',
+        formData,
+        { 'Content-Type': 'application/json', ...options.headers as Record<string, string> }
+      );
+      
+      setPendingSubmissions(prev => prev + 1);
+      return { success: true, queued: true };
+    }
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...options.headers
+        },
+        body: JSON.stringify(formData),
+        ...options
+      });
+
+      return { success: response.ok, queued: false, response };
+    } catch (error) {
+      throw error;
+    }
+  }, [isOnline, queueOfflineRequest]);
+
+  return {
+    submitForm,
+    isOnline,
+    pendingSubmissions
+  };
+}
