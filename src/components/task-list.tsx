@@ -97,14 +97,14 @@ export function TaskList({ tasks, onTaskClick, showStatus = true }: TaskListProp
                 )}
                 
                 <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  {task.assignedUsers && task.assignedUsers.length > 0 && (
+                  {task.assignedTo && task.assignedTo.length > 0 && (
                     <div className="flex items-center">
                       <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center mr-2">
                         <span className="text-xs font-medium text-gray-700">
-                          {task.assignedUsers[0].charAt(0).toUpperCase()}
+                          {task.assignedTo[0].charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <span>{task.assignedUsers[0]}</span>
+                      <span>{task.assignedTo[0]}</span>
                     </div>
                   )}
                   

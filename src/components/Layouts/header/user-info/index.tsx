@@ -48,8 +48,8 @@ export function UserInfo() {
   // Default user info if not authenticated
   const displayName = auth.userProfile?.displayName || auth.user?.email || "User";
   const displayEmail = auth.user?.email || "user@example.com";
-  const userInitials = auth.getUserInitials ? auth.getUserInitials() : displayName.charAt(0).toUpperCase();
-  const userRole = auth.getRoleDisplayName ? auth.getRoleDisplayName() : "User";
+  const userInitials = displayName.charAt(0).toUpperCase();
+  const userRole = auth.userProfile?.role || "User";
 
   return (
     <Dropdown isOpen={isOpen} setIsOpen={setIsOpen}>

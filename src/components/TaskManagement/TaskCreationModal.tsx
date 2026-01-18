@@ -39,8 +39,8 @@ export const TaskCreationModal: React.FC<TaskCreationModalProps> = ({
       description: description.trim(),
       status,
       priority,
-      dueDate: dueDate ? new Date(dueDate) : undefined,
-      assignedUsers: assignedUsers.filter(user => user.trim() !== ''),
+      dueDate: dueDate ? new Date(dueDate) : new Date(),
+      assignedTo: assignedUsers.filter(user => user.trim() !== ''),
       category: category.trim(),
     };
     

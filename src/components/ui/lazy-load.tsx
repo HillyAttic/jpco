@@ -45,7 +45,7 @@ export function LazyLoad({
 
   return (
     <div 
-      ref={elementRef} 
+      ref={elementRef as React.RefObject<HTMLDivElement>} 
       className={cn('w-full', className)}
       style={{ minHeight }}
     >
@@ -112,7 +112,7 @@ export function LazyComponent<T = any>({
 
   if (hasError) {
     return (
-      <div ref={elementRef} className={className}>
+      <div ref={elementRef as React.RefObject<HTMLDivElement>} className={className}>
         {errorFallback || defaultErrorFallback}
       </div>
     );
@@ -120,16 +120,16 @@ export function LazyComponent<T = any>({
 
   if (isLoading || !Component) {
     return (
-      <div ref={elementRef} className={className}>
+      <div ref={elementRef as React.RefObject<HTMLDivElement>} className={className}>
         {fallback || defaultFallback}
       </div>
     );
   }
 
   return (
-    <div ref={elementRef} className={className}>
+    <div ref={elementRef as React.RefObject<HTMLDivElement>} className={className}>
       <Suspense fallback={fallback || defaultFallback}>
-        <Component {...(componentProps as T)} />
+        <Component {...(componentProps as any)} />
       </Suspense>
     </div>
   );
@@ -198,7 +198,7 @@ export function LazyImage({
   );
 
   return (
-    <div ref={elementRef}>
+    <div ref={elementRef as React.RefObject<HTMLDivElement>}>
       {shouldLoad ? (
         <img
           src={src}

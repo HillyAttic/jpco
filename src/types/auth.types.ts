@@ -1,4 +1,5 @@
-import { User, Timestamp } from 'firebase/auth';
+import { User } from 'firebase/auth';
+import { Timestamp } from 'firebase/firestore';
 
 export type UserRole = 'admin' | 'employee' | 'manager';
 

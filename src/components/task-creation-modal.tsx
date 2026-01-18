@@ -63,11 +63,11 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
     try {
       const taskData = {
         title: formData.title.trim(),
-        description: formData.description.trim() || undefined,
+        description: formData.description.trim() || '',
         status: formData.status,
         priority: formData.priority,
-        dueDate: formData.dueDate ? new Date(formData.dueDate) : undefined,
-        assignedUsers: formData.assignee ? [formData.assignee.trim()] : [],
+        dueDate: formData.dueDate ? new Date(formData.dueDate) : new Date(),
+        assignedTo: formData.assignee ? [formData.assignee.trim()] : [],
         category: undefined,
         commentCount: 0
       };

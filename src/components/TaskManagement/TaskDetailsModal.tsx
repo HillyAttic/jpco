@@ -93,7 +93,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
         // Update comment count on task
         setEditedTask({
           ...editedTask,
-          commentCount: editedTask.commentCount + 1,
+          commentCount: (editedTask.commentCount || 0) + 1,
         });
         
         addNotification({ type: 'success', message: 'Comment added successfully!' });
@@ -211,7 +211,7 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
                   value={editedTask.dueDate ? new Date(editedTask.dueDate).toISOString().split('T')[0] : ''}
                   onChange={(e) => setEditedTask({
                     ...editedTask, 
-                    dueDate: e.target.value ? new Date(e.target.value) : undefined
+                    dueDate: e.target.value ? new Date(e.target.value) : new Date()
                   })}
                   className="w-full p-2 bg-gray-50 dark:bg-boxdark-2 border border-stroke dark:border-strokedark rounded-lg text-black dark:text-white"
                 />
@@ -225,9 +225,9 @@ export const TaskDetailsModal: React.FC<TaskDetailsModalProps> = ({
             <div>
               <h3 className="text-lg font-semibold text-black dark:text-white mb-2">Assigned To</h3>
               <div className="flex items-center space-x-2">
-                <UserAvatar users={task.assignedUsers} size="md" />
+                <UserAvatar users={task.assignedTo} size="md" />
                 <span className="text-gray-600 dark:text-gray-300">
-                  {task.assignedUsers.join(', ')}
+                  {task.assignedTo.join(', ')}
                 </span>
               </div>
             </div>

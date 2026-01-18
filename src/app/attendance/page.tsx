@@ -47,8 +47,7 @@ export default function AttendancePage() {
     totalDays: 22,
     presentDays: 21,
     absentDays: 1,
-    lateDays: 3,
-    earlyDepartures: 1
+    leaveDays: 0
   };
 
   const demoCurrentStatus = {
@@ -180,18 +179,10 @@ export default function AttendancePage() {
                 <ClockInOutWidget
                   currentStatus={currentStatus}
                   onClockIn={async (data) => {
-                    await clockIn({
-                      ...data,
-                      employeeId: mockEmployeeId,
-                      employeeName: mockEmployeeName
-                    });
+                    await clockIn(data);
                   }}
                   onClockOut={async (data) => {
-                    await clockOut({
-                      ...data,
-                      employeeId: mockEmployeeId,
-                      employeeName: mockEmployeeName
-                    });
+                    await clockOut(data);
                   }}
                   onStartBreak={async () => {
                     if (currentStatus?.currentRecordId) {
@@ -298,9 +289,10 @@ export default function AttendancePage() {
             </Card>
           ) : (
             <AttendanceCalendar
-              employeeId={mockEmployeeId}
-              month={new Date().getMonth()}
-              year={new Date().getFullYear()}
+              month={new Date()}
+              days={[]}
+              onDateClick={(date) => console.log('Date clicked:', date)}
+              onMonthChange={(month) => console.log('Month changed:', month)}
             />
           )}
         </TabsContent>
@@ -321,7 +313,10 @@ export default function AttendancePage() {
               </div>
             </Card>
           ) : (
-            <TeamAttendanceOverview />
+            <TeamAttendanceOverview
+              teamMembers={[]}
+              onEmployeeClick={(employeeId) => console.log('Employee clicked:', employeeId)}
+            />
           )}
         </TabsContent>
 
@@ -342,7 +337,10 @@ export default function AttendancePage() {
             </Card>
           ) : (
             <AttendanceReportGenerator
-              employeeId={mockEmployeeId}
+              onGenerate={async (config) => {
+                console.log('Generate report:', config);
+              }}
+              loading={false}
             />
           )}
         </TabsContent>
@@ -362,14 +360,80 @@ export default function AttendancePage() {
           console.log('Leave request:', data);
         }}
         leaveTypes={demoMode ? [
-          { id: '1', name: 'Annual Leave', maxDays: 25, carryOverDays: 5, isActive: true, createdAt: new Date(), updatedAt: new Date() },
-          { id: '2', name: 'Sick Leave', maxDays: 10, carryOverDays: 0, isActive: true, createdAt: new Date(), updatedAt: new Date() },
-          { id: '3', name: 'Personal Leave', maxDays: 5, carryOverDays: 0, isActive: true, createdAt: new Date(), updatedAt: new Date() }
+          { 
+            id: '1', 
+            name: 'Annual Leave', 
+            code: 'AL',
+            isPaid: true,
+            requiresApproval: true,
+            maxDaysPerYear: 25, 
+            accrualRate: 2.08,
+            carryOverAllowed: true,
+            color: '#3B82F6',
+            isActive: true, 
+            createdAt: new Date(), 
+            updatedAt: new Date() 
+          },
+          { 
+            id: '2', 
+            name: 'Sick Leave', 
+            code: 'SL',
+            isPaid: true,
+            requiresApproval: false,
+            maxDaysPerYear: 10, 
+            accrualRate: 0.83,
+            carryOverAllowed: false,
+            color: '#EF4444',
+            isActive: true, 
+            createdAt: new Date(), 
+            updatedAt: new Date() 
+          },
+          { 
+            id: '3', 
+            name: 'Personal Leave', 
+            code: 'PL',
+            isPaid: false,
+            requiresApproval: true,
+            maxDaysPerYear: 5, 
+            accrualRate: 0.42,
+            carryOverAllowed: false,
+            color: '#10B981',
+            isActive: true, 
+            createdAt: new Date(), 
+            updatedAt: new Date() 
+          }
         ] : []}
         leaveBalances={demoMode ? [
-          { id: '1', employeeId: mockEmployeeId, leaveTypeId: '1', totalDays: 25, usedDays: 8, remainingDays: 17, year: new Date().getFullYear() },
-          { id: '2', employeeId: mockEmployeeId, leaveTypeId: '2', totalDays: 10, usedDays: 2, remainingDays: 8, year: new Date().getFullYear() },
-          { id: '3', employeeId: mockEmployeeId, leaveTypeId: '3', totalDays: 5, usedDays: 1, remainingDays: 4, year: new Date().getFullYear() }
+          { 
+            leaveTypeId: '1', 
+            leaveTypeName: 'Annual Leave',
+            totalDays: 25, 
+            usedDays: 8, 
+            remainingDays: 17, 
+            accrualRate: 2.08,
+            lastAccrualDate: new Date(),
+            updatedAt: new Date()
+          },
+          { 
+            leaveTypeId: '2', 
+            leaveTypeName: 'Sick Leave',
+            totalDays: 10, 
+            usedDays: 2, 
+            remainingDays: 8, 
+            accrualRate: 0.83,
+            lastAccrualDate: new Date(),
+            updatedAt: new Date()
+          },
+          { 
+            leaveTypeId: '3', 
+            leaveTypeName: 'Personal Leave',
+            totalDays: 5, 
+            usedDays: 1, 
+            remainingDays: 4, 
+            accrualRate: 0.42,
+            lastAccrualDate: new Date(),
+            updatedAt: new Date()
+          }
         ] : []}
         loading={false}
       />

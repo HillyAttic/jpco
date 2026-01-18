@@ -3,9 +3,11 @@ import { leaveService } from '@/services/leave.service';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
+    
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
       return NextResponse.json(
@@ -24,7 +26,7 @@ export async function PATCH(
       );
     }
 
-    const leaveRequest = await leaveService.approveLeaveRequest(params.id, approverId);
+    const leaveRequest = await leaveService.approveLeaveRequest(id, approverId);
 
     return NextResponse.json(leaveRequest, { status: 200 });
   } catch (error: any) {

@@ -11,7 +11,7 @@ let tasks: Task[] = [
     dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
     createdAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    assignedUsers: ['John Doe'],
+    assignedTo: ['John Doe'],
     category: 'Design',
     commentCount: 3,
   },
@@ -24,7 +24,7 @@ let tasks: Task[] = [
     dueDate: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000),
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    assignedUsers: ['Jane Smith', 'Bob Johnson'],
+    assignedTo: ['Jane Smith', 'Bob Johnson'],
     category: 'Development',
     commentCount: 1,
   },
@@ -37,7 +37,7 @@ let tasks: Task[] = [
     dueDate: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
     createdAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
     updatedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    assignedUsers: ['Alice Williams'],
+    assignedTo: ['Alice Williams'],
     category: 'Documentation',
     commentCount: 5,
   },
@@ -101,7 +101,7 @@ export const taskService = {
           task.title.toLowerCase().includes(searchTerm) ||
           task.description?.toLowerCase().includes(searchTerm) ||
           task.category?.toLowerCase().includes(searchTerm) ||
-          task.assignedUsers.some(user => user.toLowerCase().includes(searchTerm))
+          task.assignedTo.some(user => user.toLowerCase().includes(searchTerm))
       );
     }
 
@@ -166,7 +166,7 @@ export const taskService = {
     comments.push(newComment);
 
     // Update comment count on the task
-    task.commentCount += 1;
+    task.commentCount = (task.commentCount || 0) + 1;
     task.updatedAt = new Date();
 
     return newComment;

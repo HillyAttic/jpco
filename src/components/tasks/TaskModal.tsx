@@ -80,7 +80,7 @@ export function TaskModal({
         description: task.description || '',
         dueDate: formattedDate,
         priority: task.priority,
-        status: task.status,
+        status: task.status === 'todo' ? 'pending' : task.status,
         assignedTo: task.assignedTo?.join(', ') || '',
         category: task.category || '',
       });

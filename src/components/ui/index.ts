@@ -37,8 +37,6 @@ export type { LabelProps } from './label';
 
 export {
   Select,
-  SelectTrigger,
-  SelectValue,
   SelectContent,
   SelectItem,
 } from './select';

@@ -66,7 +66,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
         status: editingTask.status,
         priority: editingTask.priority,
         dueDate: editingTask.dueDate,
-        assignedUsers: editingTask.assignedUsers
+        assignedTo: editingTask.assignedTo
       });
       
       onUpdate?.(updatedTask);
@@ -193,7 +193,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 value={editingTask.dueDate ? (editingTask.dueDate instanceof Date ? editingTask.dueDate.toISOString().split('T')[0] : new Date(editingTask.dueDate).toISOString().split('T')[0]) : ''}
                 onChange={(e) => setEditingTask({
                   ...editingTask, 
-                  dueDate: e.target.value ? new Date(e.target.value) : undefined
+                  dueDate: e.target.value ? new Date(e.target.value) : new Date()
                 })}
                 className="w-full"
               />
@@ -204,10 +204,10 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 Assigned Users
               </label>
               <Input
-                value={editingTask.assignedUsers.join(', ')}
+                value={editingTask.assignedTo.join(', ')}
                 onChange={(e) => setEditingTask({
                   ...editingTask, 
-                  assignedUsers: e.target.value.split(',').map(u => u.trim()).filter(u => u)
+                  assignedTo: e.target.value.split(',').map(u => u.trim()).filter(u => u)
                 })}
                 placeholder="Enter usernames separated by commas"
                 className="w-full"

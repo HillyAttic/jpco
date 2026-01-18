@@ -3,9 +3,10 @@ import { shiftService } from '@/services/shift.service';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const authHeader = request.headers.get('authorization');
     if (!authHeader) {
       return NextResponse.json(
@@ -24,7 +25,7 @@ export async function POST(
       );
     }
 
-    await shiftService.assignShiftToEmployee(params.id, employeeId);
+    await shiftService.assignShiftToEmployee(id, employeeId);
 
     return NextResponse.json(
       { message: 'Shift assigned successfully' },

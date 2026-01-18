@@ -1,7 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { useRouter } from 'next/navigation';
-import { ProtectedRoute, AdminRoute, ManagerRoute } from '@/components/auth/ProtectedRoute';
+import { ProtectedRoute, AdminRoute, ManagerRoute } from '@/components/Auth/ProtectedRoute';
 import { useAuthEnhanced } from '@/hooks/use-auth-enhanced';
 
 // Mock Next.js router
@@ -20,7 +20,7 @@ jest.mock('@/components/ui/loading-spinner', () => ({
 }));
 
 // Mock unauthorized page
-jest.mock('@/components/auth/UnauthorizedPage', () => ({
+jest.mock('@/components/Auth/UnauthorizedPage', () => ({
   UnauthorizedPage: () => <div data-testid="unauthorized-page">Unauthorized</div>,
 }));
 

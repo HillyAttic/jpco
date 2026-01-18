@@ -72,6 +72,7 @@ export interface CurrentAttendanceStatus {
   elapsedTime: number; // in seconds
   breakDuration: number; // in seconds
   currentRecordId?: string;
+  currentBreakId?: string;
 }
 
 // Leave Types

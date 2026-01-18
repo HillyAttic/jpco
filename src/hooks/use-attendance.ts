@@ -44,8 +44,8 @@ export function useAttendance(employeeId?: string) {
     
     try {
       const monthStats = await attendanceService.getAttendanceStats(employeeId, {
-        startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
-        endDate: new Date()
+        start: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+        end: new Date()
       });
       setStats(monthStats);
     } catch (err) {
@@ -55,9 +55,19 @@ export function useAttendance(employeeId?: string) {
 
   // Clock in
   const clockIn = useCallback(async (data: ClockInData) => {
+    if (!employeeId) {
+      throw new Error('Employee ID is required');
+    }
+    
     try {
       setIsLoading(true);
-      const record = await attendanceService.clockIn(data);
+      // Add employee info to the clock in data
+      const clockInData = {
+        ...data,
+        employeeId,
+        employeeName: 'Employee' // TODO: Get actual employee name
+      };
+      const record = await attendanceService.clockIn(clockInData);
       setTodayRecord(record);
       await fetchCurrentStatus();
       return record;
@@ -68,13 +78,17 @@ export function useAttendance(employeeId?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchCurrentStatus]);
+  }, [employeeId, fetchCurrentStatus]);
 
   // Clock out
   const clockOut = useCallback(async (data: ClockOutData) => {
+    if (!currentStatus?.currentRecordId) {
+      throw new Error('No active clock-in record found');
+    }
+    
     try {
       setIsLoading(true);
-      const record = await attendanceService.clockOut(data);
+      const record = await attendanceService.clockOut(currentStatus.currentRecordId, data);
       setTodayRecord(record);
       await fetchCurrentStatus();
       return record;
@@ -85,7 +99,7 @@ export function useAttendance(employeeId?: string) {
     } finally {
       setIsLoading(false);
     }
-  }, [fetchCurrentStatus]);
+  }, [currentStatus?.currentRecordId, fetchCurrentStatus]);
 
   // Start break
   const startBreak = useCallback(async (recordId: string) => {
@@ -100,9 +114,9 @@ export function useAttendance(employeeId?: string) {
   }, [fetchCurrentStatus]);
 
   // End break
-  const endBreak = useCallback(async (recordId: string, breakId: string) => {
+  const endBreak = useCallback(async (recordId: string, breakId?: string) => {
     try {
-      await attendanceService.endBreak(recordId, breakId);
+      await attendanceService.endBreak(recordId);
       await fetchCurrentStatus();
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to end break';

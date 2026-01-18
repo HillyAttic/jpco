@@ -74,7 +74,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick }) => {
       
       <div className="flex justify-between items-center">
         <div className="flex items-center space-x-2">
-          <UserAvatar users={task.assignedUsers} size="sm" />
+          <UserAvatar users={task.assignedTo} size="sm" />
           <span className="text-xs text-gray-500 dark:text-gray-400">
             {formatDate(task.dueDate)}
           </span>

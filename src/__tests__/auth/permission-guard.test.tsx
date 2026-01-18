@@ -6,7 +6,7 @@ import {
   ManagerGuard, 
   UserManagementGuard,
   ConditionalRender 
-} from '@/components/auth/PermissionGuard';
+} from '@/components/Auth/PermissionGuard';
 import { useAuthEnhanced } from '@/hooks/use-auth-enhanced';
 
 // Mock auth hook

@@ -277,7 +277,6 @@ export const attendanceService = {
     if (filters.limit) {
       options.pagination = {
         pageSize: filters.limit,
-        page: filters.page || 1,
       };
     }
 

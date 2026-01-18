@@ -23,7 +23,7 @@ export function usePerformanceOptimization() {
 
   const frameCount = useRef(0);
   const lastTime = useRef(performance.now());
-  const animationFrameId = useRef<number>();
+  const animationFrameId = useRef<number | undefined>(undefined);
 
   // FPS monitoring
   const measureFPS = useCallback(() => {
@@ -144,7 +144,7 @@ export function usePerformanceOptimization() {
 
   // Debounced resize handler for performance
   const useDebouncedResize = useCallback((callback: () => void, delay: number = 150) => {
-    const timeoutRef = useRef<NodeJS.Timeout>();
+    const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
     useEffect(() => {
       const handleResize = () => {
@@ -187,7 +187,7 @@ export function usePerformanceOptimization() {
 
   // Optimized animation frame callback
   const useOptimizedAnimationFrame = useCallback((callback: () => void) => {
-    const animationRef = useRef<number>();
+    const animationRef = useRef<number | undefined>(undefined);
     const isRunning = useRef(false);
 
     const animate = useCallback(() => {
@@ -238,7 +238,7 @@ export function usePerformanceOptimization() {
 export function useRenderPerformance(componentName: string) {
   const renderCount = useRef(0);
   const renderTimes = useRef<number[]>([]);
-  const startTime = useRef<number>();
+  const startTime = useRef<number | undefined>(undefined);
 
   useEffect(() => {
     startTime.current = performance.now();

@@ -151,7 +151,7 @@ export function RecurringTaskCard({
             <input
               type="checkbox"
               checked={selected}
-              onChange={(e) => onSelect(task.id, e.target.checked)}
+              onChange={(e) => task.id && onSelect(task.id, e.target.checked)}
               className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
               aria-label={`Select ${task.title}`}
             />

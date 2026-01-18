@@ -138,9 +138,9 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskDelete, onTaskEdit }: K
                       )}
                     </div>
                     
-                    {task.assignedUsers.length > 0 && (
+                    {task.assignedTo.length > 0 && (
                       <div className="mt-2 flex -space-x-2">
-                        {task.assignedUsers.slice(0, 3).map((user, idx) => (
+                        {task.assignedTo.slice(0, 3).map((user, idx) => (
                           <div 
                             key={idx}
                             className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center text-xs font-medium text-gray-700 border-2 border-white"
@@ -149,9 +149,9 @@ export function KanbanBoard({ tasks, onTaskUpdate, onTaskDelete, onTaskEdit }: K
                             {user.charAt(0).toUpperCase()}
                           </div>
                         ))}
-                        {task.assignedUsers.length > 3 && (
+                        {task.assignedTo.length > 3 && (
                           <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center text-xs font-medium text-gray-600 border-2 border-white">
-                            +{task.assignedUsers.length - 3}
+                            +{task.assignedTo.length - 3}
                           </div>
                         )}
                       </div>

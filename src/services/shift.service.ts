@@ -188,7 +188,7 @@ export const shiftService = {
   /**
    * Check if two time ranges overlap
    */
-  private checkTimeOverlap(
+  checkTimeOverlap(
     start1: string,
     end1: string,
     start2: string,

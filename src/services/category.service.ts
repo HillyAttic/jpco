@@ -32,6 +32,8 @@ export const categoryService = {
       ...categoryData,
       taskCount: 0, // Initialize task count to 0
       isActive: categoryData.isActive ?? true, // Default to active if not specified
+      createdAt: new Date(),
+      updatedAt: new Date(),
     };
 
     return categoryFirebaseService.create(newCategory);

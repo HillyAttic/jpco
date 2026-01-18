@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from './button';
-import { Dialog } from './dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
 
 interface ConfirmDialogProps {
   title: string;
@@ -24,9 +24,14 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   variant = 'default',
 }) => {
   return (
-    <Dialog open onClose={onCancel} title={title}>
-      <div className="space-y-4">
-        <p className="text-gray-700">{message}</p>
+    <Dialog open={true} onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <p className="text-gray-700">{message}</p>
+        </div>
         
         <div className="flex justify-end space-x-3">
           <Button variant="outline" onClick={onCancel}>
@@ -39,7 +44,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             {confirmText}
           </Button>
         </div>
-      </div>
+      </DialogContent>
     </Dialog>
   );
 };

@@ -5,8 +5,8 @@
 import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { EnhancedAuthProvider } from '@/contexts/enhanced-auth.context';
-import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
-import { PermissionGuard } from '@/components/auth/PermissionGuard';
+import { ProtectedRoute } from '@/components/Auth/ProtectedRoute';
+import { PermissionGuard } from '@/components/Auth/PermissionGuard';
 import { useAuthEnhanced } from '@/hooks/use-auth-enhanced';
 
 // Mock Firebase
