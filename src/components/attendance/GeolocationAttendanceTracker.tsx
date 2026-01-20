@@ -34,47 +34,17 @@ interface AttendanceStatus {
 export function GeolocationAttendanceTracker() {
   const auth = useEnhancedAuth();
   const [status, setStatus] = useState<AttendanceStatus>(() => {
-    // Initialize from localStorage if available
-    if (typeof window !== 'undefined') {
-      const savedStatus = localStorage.getItem('attendanceStatus');
-      if (savedStatus) {
-        try {
-          const parsed = JSON.parse(savedStatus);
-          // Only use saved status if it's for the current user
-          if (parsed.userId === auth.user?.uid) {
-            return parsed.status;
-          }
-        } catch (e) {
-          console.error('Error parsing saved attendance status:', e);
-        }
-      }
-    }
+    // Always initialize as loading - we'll fetch the real status from backend
+    // Don't rely on localStorage for initial state to ensure we get current data
     return { 
       status: 'loading', 
       data: null 
     };
   });
   
-  const [location, setLocation] = useState<LocationData>(() => {
-    // Initialize location from localStorage if available
-    if (typeof window !== 'undefined') {
-      const savedLocation = localStorage.getItem('attendanceLocation');
-      if (savedLocation) {
-        try {
-          const parsed = JSON.parse(savedLocation);
-          // Only use saved location if it's for the current user
-          if (parsed.userId === auth.user?.uid) {
-            return parsed.location;
-          }
-        } catch (e) {
-          console.error('Error parsing saved attendance location:', e);
-        }
-      }
-    }
-    return { 
-      lat: null, 
-      lng: null 
-    };
+  const [location, setLocation] = useState<LocationData>({ 
+    lat: null, 
+    lng: null 
   });
   
   const [loading, setLoading] = useState(false);
@@ -83,35 +53,38 @@ export function GeolocationAttendanceTracker() {
   // Check if we're running in a secure context (HTTPS)
   const isSecureContext = typeof window !== 'undefined' ? window.isSecureContext : true;
 
-  // Save attendance status to localStorage whenever it changes
-  useEffect(() => {
-    if (auth.user && status && typeof window !== 'undefined') {
-      const statusToSave = {
-        userId: auth.user.uid,
-        status,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('attendanceStatus', JSON.stringify(statusToSave));
-    }
-  }, [status, auth.user]);
-
-  // Save location to localStorage whenever it changes
-  useEffect(() => {
-    if (auth.user && location && typeof window !== 'undefined') {
-      const locationToSave = {
-        userId: auth.user.uid,
-        location,
-        timestamp: Date.now()
-      };
-      localStorage.setItem('attendanceLocation', JSON.stringify(locationToSave));
-    }
-  }, [location, auth.user]);
-
   useEffect(() => {
     if (auth.user) {
+      console.log('User authenticated, triggering cleanup and status load');
+      // Clean up any duplicate records first
+      cleanupDuplicateRecordsForUser(auth.user.uid);
       loadStatus();
     }
   }, [auth.user]);
+
+  // Cleanup duplicate records for the current user
+  const cleanupDuplicateRecordsForUser = async (employeeId: string) => {
+    console.log('Attempting to cleanup duplicate records for:', employeeId);
+    try {
+      const response = await fetch('/api/attendance/cleanup-duplicates', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ employeeId }),
+      });
+      
+      console.log('Cleanup API response status:', response.status);
+      
+      if (response.ok) {
+        console.log('Duplicate records cleanup initiated');
+      } else {
+        console.error('Cleanup API failed:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error cleaning up duplicate records:', error);
+    }
+  };
 
   const loadStatus = async () => {
     if (!auth.user) return;
@@ -120,10 +93,16 @@ export function GeolocationAttendanceTracker() {
       setStatus({ status: 'loading', data: null });
       const result = await attendanceService.getCurrentStatus(auth.user.uid);
       
+      // Check if user has already clocked in today (even if they've clocked out)
+      const hasClockedInToday = await attendanceService.hasClockedInToday(auth.user.uid);
+      
       // Map the service response to our status format
       let mappedStatus: AttendanceStatus['status'] = 'NOT_CLOCKED_IN';
       if (result.isClockedIn) {
         mappedStatus = result.isOnBreak ? 'ON_BREAK' : 'CLOCKED_IN';
+      } else if (!result.isClockedIn && hasClockedInToday) {
+        // User has already clocked in today but is not currently clocked in
+        mappedStatus = 'CLOCKED_OUT';
       }
       
       setStatus({
@@ -139,12 +118,10 @@ export function GeolocationAttendanceTracker() {
     }
   };
 
-  // Clear cached attendance data from localStorage
+  // Clear cached attendance data (placeholder for future use)
   const clearCachedAttendance = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('attendanceStatus');
-      localStorage.removeItem('attendanceLocation');
-    }
+    // No localStorage cleanup needed since we're not using it for initialization
+    console.log('Clearing cached attendance data');
   };
 
   const getCurrentLocation = (): Promise<LocationData> => {
@@ -220,13 +197,45 @@ export function GeolocationAttendanceTracker() {
         }
       });
       
-      // Refresh status to ensure UI is in sync with backend
-      await loadStatus();
+      if (record === null) {
+        // User was already clocked in, just refresh the status
+        setError('You are already clocked in for today');
+        await loadStatus();
+      } else {
+        // Successfully clocked in, refresh the status
+        await loadStatus();
+      }
+      
+      // Brief pause to ensure smooth UI transition
+      await new Promise(resolve => setTimeout(resolve, 50));
     } catch (err: any) {
       console.error('Geolocation tracker clock in error:', err);
       setError(err.message || 'Failed to clock in');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Helper function to safely format clock in time
+  const formatClockInTime = (clockInTime: any): string => {
+    try {
+      // Convert to Date object if it's not already
+      const date = clockInTime instanceof Date ? clockInTime : new Date(clockInTime);
+      
+      // Check if the date is valid
+      if (isNaN(date.getTime())) {
+        return 'Invalid time';
+      }
+      
+      // Format as time only (HH:MM:SS)
+      return date.toLocaleTimeString([], { 
+        hour: '2-digit', 
+        minute: '2-digit', 
+        second: '2-digit' 
+      });
+    } catch (error) {
+      console.error('Error formatting clock in time:', error);
+      return 'Time unavailable';
     }
   };
 
@@ -265,11 +274,11 @@ export function GeolocationAttendanceTracker() {
         }
       });
       
-      // Clear cached attendance data after clocking out
-      clearCachedAttendance();
-      
       // Refresh status to ensure UI is in sync with backend
       await loadStatus();
+      
+      // Brief pause to ensure smooth UI transition
+      await new Promise(resolve => setTimeout(resolve, 50));
       
     } catch (err: any) {
       setError(err.message || 'Failed to clock out');
@@ -278,13 +287,11 @@ export function GeolocationAttendanceTracker() {
     }
   };
 
-  // Clean up cached data when component unmounts
+  // Component cleanup
   useEffect(() => {
     return () => {
-      // Only clear if user is not clocked in anymore (to preserve state if they're still clocked in)
-      if (status.status !== 'CLOCKED_IN' && status.status !== 'ON_BREAK') {
-        clearCachedAttendance();
-      }
+      // Cleanup logic when component unmounts
+      console.log('GeolocationAttendanceTracker unmounted');
     };
   }, []);
 
@@ -405,7 +412,7 @@ export function GeolocationAttendanceTracker() {
           
           {status.data?.clockInTime && (
             <p className="text-sm text-gray-600">
-              Clocked in at {status.data.clockInTime.toLocaleTimeString()}
+              Clocked in at {formatClockInTime(status.data.clockInTime)}
             </p>
           )}
           

@@ -112,7 +112,18 @@ export const attendanceService = {
    */
   async clockIn(data: ClockInData & { employeeId: string; employeeName: string }): Promise<AttendanceRecord | null> {
     try {
-      // Check if employee is already clocked in
+      console.log('Clock in attempt for employee:', data.employeeId);
+      console.log('Clock in data:', data);
+      
+      // Check if user has already clocked in today (regardless of current status)
+      const hasAlreadyClockedIn = await this.hasClockedInToday(data.employeeId);
+      if (hasAlreadyClockedIn) {
+        console.log('Employee has already clocked in today:', data.employeeId);
+        // Return null to indicate already clocked in today
+        return null;
+      }
+      
+      // Also check if employee is already clocked in (active session)
       const currentStatus = await this.getCurrentStatus(data.employeeId);
       if (currentStatus.isClockedIn) {
         // Instead of throwing, return null to indicate already clocked in
@@ -556,5 +567,99 @@ export const attendanceService = {
         notes: 'Auto clock out',
       });
     }
+  },
+
+  /**
+   * Check if employee has already clocked in today (regardless of clock out status)
+   */
+  async hasClockedInToday(employeeId: string): Promise<boolean> {
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    
+    const records = await attendanceFirebaseService.getAll({
+      filters: [
+        { field: 'employeeId', operator: '==', value: employeeId },
+        { field: 'clockIn', operator: '>=', value: Timestamp.fromDate(startOfDay) },
+      ],
+    });
+    
+    // Convert timestamps in the retrieved records
+    const convertedRecords = records.map(record => convertTimestamps(record));
+    
+    // Filter records that are from today
+    const todayRecords = convertedRecords.filter(record => {
+      const recordDate = record.clockIn instanceof Date ? record.clockIn : new Date(record.clockIn);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const recordStartOfDay = new Date(recordDate);
+      recordStartOfDay.setHours(0, 0, 0, 0);
+      return recordStartOfDay.getTime() === today.getTime();
+    });
+    
+    return todayRecords.length > 0;
+  },
+
+  /**
+   * Cleanup duplicate attendance records for an employee
+   */
+  async cleanupDuplicateRecords(employeeId: string): Promise<void> {
+    console.log('Starting cleanup for employee:', employeeId);
+    
+    // Get all records for the employee
+    const allRecords = await attendanceFirebaseService.getAll({
+      filters: [
+        { field: 'employeeId', operator: '==', value: employeeId }
+      ],
+      orderByField: 'clockIn',
+      orderDirection: 'asc'
+    });
+    
+    console.log(`Found ${allRecords.length} total records for cleanup`);
+    
+    // Convert timestamps in the retrieved records
+    const convertedRecords = allRecords.map(record => convertTimestamps(record));
+    
+    // Group records by date
+    const recordsByDate = new Map<string, typeof convertedRecords>();
+    
+    convertedRecords.forEach(record => {
+      const recordDate = record.clockIn instanceof Date ? record.clockIn : new Date(record.clockIn);
+      const dateKey = recordDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      
+      if (!recordsByDate.has(dateKey)) {
+        recordsByDate.set(dateKey, []);
+      }
+      recordsByDate.get(dateKey)!.push(record);
+    });
+    
+    console.log(`Grouped records into ${recordsByDate.size} dates`);
+    
+    // For each date, keep the first record and delete the rest
+    for (const [date, records] of recordsByDate.entries()) {
+      if (records.length > 1) {
+        console.log(`Found ${records.length} records for ${date}, keeping first and deleting rest`);
+        
+        // Sort by clock in time to keep the earliest record
+        const sortedRecords = records.sort((a, b) => {
+          const aTime = (a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn)).getTime();
+          const bTime = (b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn)).getTime();
+          return aTime - bTime;
+        });
+        
+        // Keep the first record, delete the rest
+        for (let i = 1; i < sortedRecords.length; i++) {
+          const recordToDelete = sortedRecords[i];
+          console.log(`Deleting duplicate record: ${recordToDelete.id}`);
+          try {
+            await attendanceFirebaseService.delete(recordToDelete.id!);
+            console.log(`Successfully deleted duplicate record: ${recordToDelete.id}`);
+          } catch (error) {
+            console.error(`Error deleting record ${recordToDelete.id}:`, error);
+          }
+        }
+      }
+    }
+    
+    console.log('Cleanup completed');
   },
 };

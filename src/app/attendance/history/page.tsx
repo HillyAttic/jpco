@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { 
   collection, 
   query, 
@@ -21,7 +21,11 @@ import {
   Calendar, 
   Loader2,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Trash2,
+  AlertTriangle,
+  X,
+  Check
 } from 'lucide-react';
 
 interface AttendanceRecord {
@@ -48,11 +52,133 @@ export default function AttendanceHistoryPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const itemsPerPage = 10;
+  
+  // State for delete confirmation modal
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [recordToDelete, setRecordToDelete] = useState<AttendanceRecord | null>(null);
+  const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
+  
+  // State for bulk selection
+  const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
+  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
+  const [deletingBulkRecords, setDeletingBulkRecords] = useState(false);
+
+  // Delete functions
+  const confirmDelete = (record: AttendanceRecord) => {
+    setRecordToDelete(record);
+    setShowDeleteModal(true);
+  };
+
+  const cancelDelete = () => {
+    setShowDeleteModal(false);
+    setRecordToDelete(null);
+  };
+
+  const deleteRecord = async () => {
+    if (!recordToDelete) return;
+
+    try {
+      setDeletingRecordId(recordToDelete.id);
+      
+      const response = await fetch(`/api/attendance/${recordToDelete.id}?t=${Date.now()}`, {
+        method: 'DELETE',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+
+      if (response.ok) {
+        // Remove the deleted record from the local state
+        setAttendances(attendances.filter(record => record.id !== recordToDelete.id));
+        setShowDeleteModal(false);
+        setRecordToDelete(null);
+        
+        // Refresh the data after a brief moment to ensure indexes are updated
+        setTimeout(() => {
+          if (user?.uid) {
+            fetchAttendanceHistory(currentPage);
+          }
+        }, 500);
+      } else {
+        console.error('Failed to delete record:', await response.text());
+      }
+    } catch (error) {
+      console.error('Error deleting record:', error);
+    } finally {
+      setDeletingRecordId(null);
+    }
+  };
+
+  // Bulk selection functions
+  const toggleSelectRecord = (id: string) => {
+    setSelectedRecords(prev => 
+      prev.includes(id) 
+        ? prev.filter(recordId => recordId !== id)
+        : [...prev, id]
+    );
+  };
+
+  const selectAllRecords = () => {
+    if (selectedRecords.length === attendances.length) {
+      setSelectedRecords([]);
+    } else {
+      setSelectedRecords(attendances.map(record => record.id));
+    }
+  };
+
+  const confirmBulkDelete = () => {
+    setShowBulkDeleteModal(true);
+  };
+
+  const cancelBulkDelete = () => {
+    setShowBulkDeleteModal(false);
+  };
+
+  const bulkDeleteRecords = async () => {
+    if (selectedRecords.length === 0) return;
+
+    try {
+      setDeletingBulkRecords(true);
+      
+      // Delete each selected record
+      const deletePromises = selectedRecords.map(id =>
+        fetch(`/api/attendance/${id}?t=${Date.now()}`, { 
+          method: 'DELETE',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        })
+      );
+      
+      const responses = await Promise.all(deletePromises);
+      const successfulDeletes = responses.filter(response => response.ok);
+      
+      if (successfulDeletes.length > 0) {
+        // Remove deleted records from local state
+        setAttendances(attendances.filter(record => 
+          !selectedRecords.includes(record.id)
+        ));
+        
+        // Clear selections
+        setSelectedRecords([]);
+        setShowBulkDeleteModal(false);
+        
+        // Refresh the data after a brief moment to ensure indexes are updated
+        setTimeout(() => {
+          if (user?.uid) {
+            fetchAttendanceHistory(currentPage);
+          }
+        }, 500);
+      }
+    } catch (error) {
+      console.error('Error bulk deleting records:', error);
+    } finally {
+      setDeletingBulkRecords(false);
+    }
+  };
 
   // Convert Firestore timestamp to Date
   const convertTimestamps = (record: any): AttendanceRecord => {
-    console.log('Converting record:', record);
-    
     // Helper function to safely convert timestamp
     const convertTimestamp = (timestamp: any): Date | undefined => {
       if (!timestamp) return undefined;
@@ -95,7 +221,6 @@ export default function AttendanceHistoryPage() {
       updatedAt: convertTimestamp(record.updatedAt),
     };
     
-    console.log('Converted record:', convertedRecord);
     return convertedRecord;
   };
 
@@ -112,6 +237,7 @@ export default function AttendanceHistoryPage() {
         limit(page * itemsPerPage)
       );
 
+      // Force a fresh fetch by using a fresh query
       const snapshot = await getDocs(q);
       
       if (snapshot.empty) {
@@ -184,26 +310,35 @@ export default function AttendanceHistoryPage() {
     }
   };
 
-  // Calculate duration between clock in and clock out
-  const calculateDuration = (clockIn: Date, clockOut?: Date) => {
+  // Format datetime for display
+  const formatDateTime = (date: Date | undefined) => {
+    if (!date) return 'N/A';
     try {
-      console.log('Calculating duration:', { clockIn, clockOut });
-            
+      // Ensure we have a valid Date object
+      const validDate = date instanceof Date ? date : new Date(date);
+      if (isNaN(validDate.getTime())) return 'Invalid Date';
+      return validDate.toLocaleString();
+    } catch (error) {
+      console.error('Error formatting datetime:', error, date);
+      return 'Error';
+    }
+  };
+
+  // Calculate duration between clock in and clock out
+  const calculateDuration = React.useCallback((clockIn: Date, clockOut?: Date) => {
+    try {
       // Validate inputs
       if (!clockIn || isNaN(clockIn.getTime())) return 'Invalid Start Time';
       if (!clockOut) return 'In Progress';
       if (isNaN(clockOut.getTime())) return 'Invalid End Time';
             
       const diffMs = clockOut.getTime() - clockIn.getTime();
-      console.log('Time difference in ms:', diffMs);
             
       // Handle negative durations
       if (diffMs < 0) return 'Negative Duration';
             
       const hours = Math.floor(diffMs / 3600000);
       const minutes = Math.floor((diffMs % 3600000) / 60000);
-            
-      console.log('Calculated duration:', { hours, minutes });
             
       if (hours > 0) {
         return `${hours}h ${minutes}m`;
@@ -214,7 +349,7 @@ export default function AttendanceHistoryPage() {
       console.error('Error calculating duration:', error, { clockIn, clockOut });
       return 'Calculation Error';
     }
-  };
+  }, []); // Empty dependency array to memoize the function
 
   // Get status badge
   const getStatusBadge = (record: AttendanceRecord) => {
@@ -254,14 +389,48 @@ export default function AttendanceHistoryPage() {
           <h1 className="text-3xl font-bold text-gray-900">Attendance History</h1>
           <p className="text-gray-600 mt-2">View your historical attendance records</p>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => window.history.back()}
-          className="flex items-center gap-2"
-        >
-          <ChevronLeft className="h-4 w-4" />
-          Back
-        </Button>
+        <div className="flex items-center gap-3">
+          {selectedRecords.length > 0 && (
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">
+                {selectedRecords.length} selected
+              </span>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={confirmBulkDelete}
+                className="flex items-center gap-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Selected
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSelectedRecords([])}
+              >
+                Clear
+              </Button>
+            </div>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => fetchAttendanceHistory(currentPage)}
+            className="flex items-center gap-1"
+          >
+            <Loader2 className="h-4 w-4" />
+            Refresh
+          </Button>
+          <Button 
+            variant="outline" 
+            onClick={() => window.history.back()}
+            className="flex items-center gap-2"
+          >
+            <ChevronLeft className="h-4 w-4" />
+            Back
+          </Button>
+        </div>
       </div>
 
       {attendances.length === 0 && !loading && !isInitialLoad ? (
@@ -276,21 +445,52 @@ export default function AttendanceHistoryPage() {
         </Card>
       ) : (
         <div className="space-y-6">
+          {/* Header with Select All checkbox */}
+          {attendances.length > 0 && (
+            <div className="flex items-center gap-3 pl-6 pr-4 py-3 bg-gray-50 rounded-lg border">
+              <input
+                type="checkbox"
+                checked={selectedRecords.length === attendances.length && attendances.length > 0}
+                onChange={selectAllRecords}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">
+                {selectedRecords.length} of {attendances.length} selected
+              </span>
+            </div>
+          )}
+          
           {attendances.map((record) => (
             <Card key={record.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="flex items-center gap-2 text-xl">
-                      <Calendar className="h-5 w-5 text-gray-500" />
-                      {formatDate(record.clockIn)}
-                    </CardTitle>
-                    <p className="text-sm text-gray-500 mt-1">
-                      {record.employeeName}
-                    </p>
+                  <div className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selectedRecords.includes(record.id)}
+                      onChange={() => toggleSelectRecord(record.id)}
+                      className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <div>
+                      <CardTitle className="flex items-center gap-2 text-xl">
+                        <Calendar className="h-5 w-5 text-gray-500" />
+                        {formatDate(record.clockIn)}
+                      </CardTitle>
+                      <p className="text-sm text-gray-500 mt-1">
+                        {record.employeeName}
+                      </p>
+                    </div>
                   </div>
                   <div className="flex items-center gap-3">
                     {getStatusBadge(record)}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => confirmDelete(record)}
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>
@@ -358,7 +558,7 @@ export default function AttendanceHistoryPage() {
                       </div>
                     </div>
                     <div className="text-xs text-gray-400">
-                      Updated: {record.updatedAt.toLocaleString()}
+                      Updated: {formatDateTime(record.updatedAt)}
                     </div>
                   </div>
                 </div>
@@ -380,13 +580,13 @@ export default function AttendanceHistoryPage() {
               <ChevronLeft className="h-4 w-4 mr-2" />
               Previous
             </Button>
-            
+          
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">
                 Page {currentPage} {hasMoreData ? 'of many' : ''}
               </span>
             </div>
-            
+          
             <Button 
               onClick={() => {
                 const nextPage = currentPage + 1;
@@ -409,6 +609,112 @@ export default function AttendanceHistoryPage() {
               </div>
             </div>
           )}
+        </div>
+      )}
+    
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && recordToDelete && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to delete this attendance record?
+            </p>
+            
+            <p className="text-sm text-gray-500 mb-6">
+              Date: {formatDate(recordToDelete.clockIn)}
+            </p>
+            
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={cancelDelete}
+                disabled={!!deletingRecordId}
+                className="flex-1"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              
+              <Button
+                variant="destructive"
+                onClick={deleteRecord}
+                disabled={!!deletingRecordId}
+                className="flex-1"
+              >
+                {deletingRecordId ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">Confirm Bulk Deletion</h3>
+            </div>
+            
+            <p className="text-gray-600 mb-2">
+              Are you sure you want to delete these attendance records?
+            </p>
+            
+            <p className="text-sm text-gray-500 mb-6">
+              Number of records to delete: {selectedRecords.length}
+            </p>
+            
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={cancelBulkDelete}
+                disabled={deletingBulkRecords}
+                className="flex-1"
+              >
+                <X className="h-4 w-4 mr-2" />
+                Cancel
+              </Button>
+              
+              <Button
+                variant="destructive"
+                onClick={bulkDeleteRecords}
+                disabled={deletingBulkRecords}
+                className="flex-1"
+              >
+                {deletingBulkRecords ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete All
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>
