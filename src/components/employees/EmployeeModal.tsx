@@ -26,10 +26,18 @@ const employeeFormSchema = z.object({
   hireDate: z.date({ message: 'Invalid date format' }).refine((date) => date <= new Date(), {
     message: 'Hire date cannot be in the future'
   }),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
   avatar: z.instanceof(File).optional(),
   managerId: z.string().optional(),
   status: z.enum(['active', 'on-leave', 'terminated']),
-});
+}).refine(
+  (data) => data.password === data.confirmPassword,
+  {
+    message: 'Passwords must match',
+    path: ['confirmPassword'],
+  }
+);
 
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;
 
@@ -74,6 +82,8 @@ export function EmployeeModal({
       position: '',
       department: '',
       hireDate: new Date(),
+      password: '',
+      confirmPassword: '',
       managerId: '',
       status: 'active',
     },
@@ -177,7 +187,7 @@ export function EmployeeModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {employee ? 'Edit Employee' : 'Create New Employee'}
@@ -339,6 +349,38 @@ export function EmployeeModal({
               )}
             </div>
           </div>
+
+          {/* Password fields - only for new employees */}
+          {!employee && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                <div>
+                  <Input
+                    id="password"
+                    type="password"
+                    label="Password"
+                    {...register('password')}
+                    placeholder="Enter password"
+                    error={errors.password?.message}
+                    required={!employee}
+                    disabled={isLoading}
+                  />
+                </div>
+                <div>
+                  <Input
+                    id="confirmPassword"
+                    type="password"
+                    label="Confirm Password"
+                    {...register('confirmPassword')}
+                    placeholder="Confirm password"
+                    error={errors.confirmPassword?.message}
+                    required={!employee}
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
           {/* Status */}
           <div>

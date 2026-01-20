@@ -2,22 +2,18 @@
 
 import React, { useState } from 'react';
 import { useTeams } from '@/hooks/use-teams';
-import { useBulkSelection } from '@/hooks/use-bulk-selection';
 import { Team } from '@/services/team.service';
 import { TeamFormData } from '@/lib/validation';
 import { TeamCard } from '@/components/teams/TeamCard';
 import { TeamModal } from '@/components/teams/TeamModal';
 import { TeamDetailPanel } from '@/components/teams/TeamDetailPanel';
 import { TeamFilter, TeamFilterState } from '@/components/teams/TeamFilter';
-import { BulkActionToolbar } from '@/components/ui/BulkActionToolbar';
-import { BulkDeleteDialog } from '@/components/ui/BulkDeleteDialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { NoResultsEmptyState, NoDataEmptyState } from '@/components/ui/empty-state';
 import { CardGridSkeleton } from '@/components/ui/loading-skeletons';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
-import { exportToCSV, generateTimestampedFilename } from '@/utils/csv-export';
 import {
   PlusIcon,
   UserGroupIcon,
@@ -27,7 +23,7 @@ import {
 /**
  * Teams Page Component
  * Main page for team management with CRUD operations, filtering, and team details
- * Validates Requirements: 4.1, 4.2, 10.1, 10.2, 10.3, 10.4
+ * Validates Requirements: 4.1, 4.2
  */
 export default function TeamsPage() {
   const {
@@ -46,25 +42,12 @@ export default function TeamsPage() {
     refreshTeams,
   } = useTeams();
 
-  // Bulk selection state - Requirement 10.1
-  const {
-    selectedIds,
-    selectedItems,
-    selectedCount,
-    allSelected,
-    toggleSelection,
-    selectAll,
-    clearSelection,
-    isSelected,
-  } = useBulkSelection(teams);
-
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [detailTeam, setDetailTeam] = useState<Team | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // 'grid' or 'list' view mode
 
   // Get unique departments for filter
   const availableDepartments = Array.from(
@@ -176,56 +159,6 @@ export default function TeamsPage() {
 
   const handleCloseDetailPanel = () => {
     setDetailTeam(null);
-  };
-
-  /**
-   * Handle bulk delete
-   * Validates Requirements: 10.1, 10.2
-   */
-  const handleBulkDelete = () => {
-    setIsBulkDeleteDialogOpen(true);
-  };
-
-  /**
-   * Confirm bulk delete
-   * Deletes all selected teams
-   */
-  const handleConfirmBulkDelete = async () => {
-    setIsBulkDeleting(true);
-    try {
-      // Delete all selected teams
-      await Promise.all(
-        Array.from(selectedIds).map((id) => deleteTeam(id))
-      );
-      clearSelection();
-      setIsBulkDeleteDialogOpen(false);
-    } catch (error) {
-      console.error('Error deleting teams:', error);
-      alert('Failed to delete some teams. Please try again.');
-    } finally {
-      setIsBulkDeleting(false);
-    }
-  };
-
-  /**
-   * Handle bulk export
-   * Validates Requirements: 10.3
-   */
-  const handleBulkExport = () => {
-    // Prepare data for export
-    const exportData = selectedItems.map((team) => ({
-      Name: team.name,
-      Description: team.description || '',
-      Leader: team.leaderName || '',
-      'Member Count': team.members.length,
-      Department: team.department || '',
-      Status: team.status,
-      'Created At': team.createdAt ? new Date(team.createdAt).toLocaleDateString() : '',
-    }));
-
-    // Generate filename and export
-    const filename = generateTimestampedFilename('teams_export');
-    exportToCSV(exportData, filename);
   };
 
   return (
@@ -353,6 +286,26 @@ export default function TeamsPage() {
           availableDepartments={availableDepartments}
         />
 
+        {/* View Toggle Buttons */}
+        <div className="flex justify-end">
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+              aria-label="Grid view"
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+              aria-label="List view"
+            >
+              List
+            </button>
+          </div>
+        </div>
+
         {/* Teams Grid */}
         <div className="space-y-6">
           {loading ? (
@@ -371,44 +324,86 @@ export default function TeamsPage() {
               />
             )
           ) : (
-            // Teams grid
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {teams.map((team) => (
-                <TeamCard
-                  key={team.id}
-                  team={team}
-                  onEdit={handleEditClick}
-                  onDelete={handleDeleteTeam}
-                  onViewDetails={handleViewDetails}
-                  selected={isSelected(team.id!)}
-                  onSelect={toggleSelection}
-                />
-              ))}
-            </div>
+            // Teams grid/list view
+            viewMode === 'grid' ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {teams.map((team) => (
+                  <TeamCard
+                    key={team.id}
+                    team={team}
+                    onEdit={handleEditClick}
+                    onDelete={handleDeleteTeam}
+                    onViewDetails={handleViewDetails}
+                  />
+                ))}
+              </div>
+            ) : (
+              /* List View */
+              <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                  <div className="col-span-3">Team Name</div>
+                  <div className="col-span-2">Leader</div>
+                  <div className="col-span-2">Department</div>
+                  <div className="col-span-1">Members</div>
+                  <div className="col-span-2">Status</div>
+                  <div className="col-span-2">Actions</div>
+                </div>
+                <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {teams.map((team) => (
+                    <div 
+                      key={team.id} 
+                      className="grid grid-cols-12 gap-4 px-6 py-4 text-sm bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <div className="col-span-3">
+                        <div className="font-medium text-gray-900 dark:text-white">{team.name}</div>
+                        <div className="text-gray-500 dark:text-gray-400 text-xs mt-1">
+                          {team.description || 'No description'}
+                        </div>
+                      </div>
+                      <div className="col-span-2 text-gray-700 dark:text-gray-300">
+                        {team.leaderName || 'Unassigned'}
+                      </div>
+                      <div className="col-span-2 text-gray-700 dark:text-gray-300">
+                        {team.department || 'N/A'}
+                      </div>
+                      <div className="col-span-1 text-gray-700 dark:text-gray-300">
+                        {team.members.length + 1}
+                      </div>
+                      <div className="col-span-2">
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${team.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
+                          {team.status}
+                        </span>
+                      </div>
+                      <div className="col-span-2 flex space-x-2">
+                        <button 
+                          onClick={() => handleViewDetails(team.id!)}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+                          aria-label="View details"
+                        >
+                          View
+                        </button>
+                        <button 
+                          onClick={() => handleEditClick(team)}
+                          className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm"
+                          aria-label="Edit team"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteTeam(team.id!)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                          aria-label="Delete team"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
           )}
         </div>
-
-        {/* Bulk Action Toolbar - Requirements 10.1, 10.4 */}
-        {selectedCount > 0 && (
-          <BulkActionToolbar
-            selectedCount={selectedCount}
-            totalCount={teams.length}
-            onSelectAll={selectAll}
-            onClearSelection={clearSelection}
-            onBulkDelete={handleBulkDelete}
-            onBulkExport={handleBulkExport}
-          />
-        )}
-
-        {/* Bulk Delete Confirmation Dialog - Requirement 10.2 */}
-        <BulkDeleteDialog
-          open={isBulkDeleteDialogOpen}
-          onOpenChange={setIsBulkDeleteDialogOpen}
-          itemCount={selectedCount}
-          itemType="team"
-          onConfirm={handleConfirmBulkDelete}
-          loading={isBulkDeleting}
-        />
 
         {/* Create Team Modal - Requirement 4.2 */}
         <TeamModal
@@ -429,9 +424,9 @@ export default function TeamsPage() {
 
         {/* Team Detail Panel */}
         {detailTeam && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-              <div className="p-6">
+          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
+            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[70vh] overflow-y-auto">
+              <div className="p-3 sm:p-4">
                 <TeamDetailPanel
                   team={detailTeam}
                   onTeamUpdate={handleTeamUpdate}

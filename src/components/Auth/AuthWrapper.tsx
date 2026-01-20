@@ -12,14 +12,12 @@ interface AuthWrapperProps {
 
 const publicRoutes = [
   '/auth/sign-in',
-  '/auth/signup',
   '/auth/forgot-password',
   '/auth/reset-password',
 ];
 
 const authRoutes = [
   '/auth/sign-in',
-  '/auth/signup',
   '/auth/forgot-password',
 ];
 

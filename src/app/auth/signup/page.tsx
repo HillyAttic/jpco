@@ -258,4 +258,12 @@ const SignUpPage = () => {
   );
 };
 
-export default SignUpPage;
+import { AdminGuard } from '@/components/Auth/PermissionGuard';
+
+export default function ProtectedSignUpPage() {
+  return (
+    <AdminGuard>
+      <SignUpPage />
+    </AdminGuard>
+  );
+};

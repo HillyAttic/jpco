@@ -64,6 +64,7 @@ export default function EmployeesPage() {
   });
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // 'grid' or 'list' view mode
 
   // Get unique departments from employees for filter dropdown
   const availableDepartments = useMemo(() => {
@@ -180,7 +181,8 @@ export default function EmployeesPage() {
       if (editingEmployee) {
         await updateEmployee(editingEmployee.id!, employeeData);
       } else {
-        await createEmployee(employeeData);
+        // For new employees, pass the password to create Firebase Auth account
+        await createEmployee(employeeData, data.password);
       }
 
       setIsModalOpen(false);
@@ -309,30 +311,108 @@ export default function EmployeesPage() {
           availableDepartments={availableDepartments}
         />
 
-        {/* Results Summary */}
+        {/* Results Summary and View Toggle */}
         <div className="flex items-center justify-between">
           <p className="text-sm text-gray-600">
             Showing {filteredEmployees.length} of {employees.length} employees
           </p>
+          
+          {/* View Toggle Buttons */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+              aria-label="Grid view"
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+              aria-label="List view"
+            >
+              List
+            </button>
+          </div>
         </div>
 
-        {/* Employee Grid */}
+        {/* Employee Grid/List View */}
         {loading ? (
           <CardGridSkeleton count={6} />
         ) : filteredEmployees.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredEmployees.map((employee) => (
-              <EmployeeCard
-                key={employee.id}
-                employee={employee}
-                onEdit={handleEditEmployee}
-                onDelete={handleDeleteEmployee}
-                onDeactivate={handleDeactivateEmployee}
-                selected={isSelected(employee.id!)}
-                onSelect={toggleSelection}
-              />
-            ))}
-          </div>
+          viewMode === 'grid' ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredEmployees.map((employee) => (
+                <EmployeeCard
+                  key={employee.id}
+                  employee={employee}
+                  onEdit={handleEditEmployee}
+                  onDelete={handleDeleteEmployee}
+                  onDeactivate={handleDeactivateEmployee}
+                  selected={isSelected(employee.id!)}
+                  onSelect={toggleSelection}
+                />
+              ))}
+            </div>
+          ) : (
+            /* List View */
+            <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                <div className="col-span-1">Select</div>
+                <div className="col-span-2">ID</div>
+                <div className="col-span-3">Name</div>
+                <div className="col-span-2">Position</div>
+                <div className="col-span-2">Department</div>
+                <div className="col-span-1">Status</div>
+                <div className="col-span-1">Actions</div>
+              </div>
+              <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                {filteredEmployees.map((employee) => (
+                  <div 
+                    key={employee.id} 
+                    className={`grid grid-cols-12 gap-4 px-6 py-4 text-sm ${isSelected(employee.id!) ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-gray-dark'}`}
+                  >
+                    <div className="col-span-1 flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isSelected(employee.id!)}
+                        onChange={() => toggleSelection(employee.id!)}
+                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      />
+                    </div>
+                    <div className="col-span-2 font-medium text-gray-900 dark:text-white">{employee.employeeId}</div>
+                    <div className="col-span-3">
+                      <div className="font-medium text-gray-900 dark:text-white">{employee.name}</div>
+                      <div className="text-gray-500 dark:text-gray-400 text-xs">{employee.email}</div>
+                    </div>
+                    <div className="col-span-2 text-gray-700 dark:text-gray-300">{employee.position}</div>
+                    <div className="col-span-2 text-gray-700 dark:text-gray-300">{employee.department}</div>
+                    <div className="col-span-1">
+                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${employee.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : employee.status === 'on-leave' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
+                        {employee.status.replace('-', ' ')}
+                      </span>
+                    </div>
+                    <div className="col-span-1 flex space-x-2">
+                      <button 
+                        onClick={() => handleEditEmployee(employee)}
+                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
+                        aria-label="Edit employee"
+                      >
+                        Edit
+                      </button>
+                      <button 
+                        onClick={() => handleDeleteEmployee(employee.id!)}
+                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
+                        aria-label="Delete employee"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )
         ) : (
           filters.search || filters.status !== 'all' || filters.department !== 'all' ? (
             <NoResultsEmptyState 

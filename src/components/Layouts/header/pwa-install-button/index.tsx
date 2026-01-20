@@ -151,25 +151,8 @@ export function PWAInstallButton() {
     return isMobileUA || (isMobileScreen && isTouchDevice) || device.type === 'mobile';
   };
 
-  // Debug logging
-  console.log('PWA Install Button Debug:', {
-    deviceType: device.type,
-    isSupported,
-    isInstallable,
-    isInstalled,
-    isIOS,
-    deferredPrompt: !!deferredPrompt,
-    isMobileDevice: isMobileDevice()
-  });
-
   // Show on mobile devices when installable, not installed, and PWA is supported
   if (!isMobileDevice() || !isSupported || !isInstallable || isInstalled) {
-    console.log('PWA Install Button hidden because:', {
-      notMobile: !isMobileDevice(),
-      notSupported: !isSupported,
-      notInstallable: !isInstallable,
-      alreadyInstalled: isInstalled
-    });
     return null;
   }
 

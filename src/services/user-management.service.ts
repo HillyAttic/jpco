@@ -204,7 +204,14 @@ export class UserManagementService {
         targetUser: uid,
         details: { updates },
       });
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`User document not found for UID: ${uid}. This may be expected for new users.`);
+        // Don't throw error for missing documents - this can happen for new users
+        return;
+      }
+      
       console.error('Error updating user profile:', error);
       throw new Error('Failed to update user profile');
     }
@@ -238,7 +245,13 @@ export class UserManagementService {
 
       // Note: In a real implementation, you would also delete the user from Firebase Auth
       // This requires Firebase Admin SDK on the server side
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`Cannot delete user ${uid} - user document not found`);
+        return;
+      }
+      
       console.error('Error deleting user:', error);
       throw new Error('Failed to delete user');
     }
@@ -298,9 +311,10 @@ export class UserManagementService {
     },
     createdBy: string
   ): Promise<User> {
+    let userCredential;
     try {
       // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(
+      userCredential = await createUserWithEmailAndPassword(
         auth,
         userData.email,
         userData.password
@@ -329,7 +343,15 @@ export class UserManagementService {
       });
 
       return userCredential.user;
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`Cannot create user ${userData.email} - user document not found`);
+        if (userCredential) {
+          return userCredential.user; // Return user if profile creation failed
+        }
+      }
+      
       console.error('Error creating user:', error);
       throw new Error('Failed to create user');
     }

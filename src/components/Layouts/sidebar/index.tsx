@@ -1,6 +1,6 @@
 "use client";
 
-import { Logo } from "@/components/logo";
+
 import { cn } from "@/lib/utils";
 import { useResponsive } from "@/hooks/use-responsive";
 import Link from "next/link";
@@ -64,7 +64,7 @@ export function Sidebar() {
 
   const getSidebarWidth = () => {
     if (variant === 'mobile') return isOpen ? 'w-full' : 'w-0';
-    if (variant === 'tablet') return isOpen ? 'w-64' : 'w-16';
+    if (variant === 'tablet') return isOpen ? 'w-64' : 'w-0';
     return isOpen ? 'w-[290px]' : 'w-0';
   };
 
@@ -83,9 +83,7 @@ export function Sidebar() {
       return cn(
         baseClasses,
         "sticky top-0 h-screen",
-        getSidebarWidth(),
-        // Condensed state styling
-        !isOpen && "hover:w-64 hover:shadow-lg"
+        getSidebarWidth()
       );
     }
     
@@ -118,26 +116,6 @@ export function Sidebar() {
         <div className="flex h-full flex-col py-6 pl-6 pr-2 md:py-10 md:pl-[25px] md:pr-[7px]">
           {/* Header */}
           <div className="relative pr-4.5">
-            <Link
-              href={"/"}
-              onClick={() => isMobile && toggleSidebar()}
-              className={cn(
-                "block px-0 py-2.5",
-                // Touch-optimized sizing
-                isTouchDevice && "min-h-[44px] flex items-center",
-                // Tablet condensed state
-                variant === 'tablet' && !isOpen && "justify-center"
-              )}
-            >
-              {variant === 'tablet' && !isOpen ? (
-                <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">J</span>
-                </div>
-              ) : (
-                <Logo />
-              )}
-            </Link>
-
             {/* Mobile close button */}
             {isMobile && (
               <button
@@ -152,23 +130,39 @@ export function Sidebar() {
                 <ArrowLeftIcon className="h-6 w-6" />
               </button>
             )}
+            
+            {/* Tablet open button - shown when sidebar is closed */}
+            {isTablet && !isOpen && (
+              <button
+                onClick={toggleSidebar}
+                className={cn(
+                  "absolute right-4.5 top-1/2 -translate-y-1/2",
+                  // Touch-optimized sizing
+                  "min-h-[44px] min-w-[44px] flex items-center justify-center"
+                )}
+                aria-label="Open Menu"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            )}
           </div>
 
           {/* Navigation */}
           <div className={cn(
             "custom-scrollbar mt-6 flex-1 overflow-y-auto pr-3",
-            "md:mt-10",
-            // Hide navigation in tablet condensed state unless hovered
-            variant === 'tablet' && !isOpen && "opacity-0 group-hover:opacity-100"
+            "md:mt-10"
           )}>
             {NAV_DATA.map((section) => (
               <div key={section.label} className="mb-6">
-                {/* Section header - hide in condensed tablet mode */}
-                {(variant !== 'tablet' || isOpen) && (
-                  <h2 className="mb-5 text-sm font-medium text-dark-4 dark:text-dark-6">
-                    {section.label}
-                  </h2>
-                )}
+                {/* Section header */}
+                <h2 className={cn(
+                  "mb-5 text-sm font-medium text-dark-4 dark:text-dark-6",
+                  variant === 'tablet' && !isOpen && "hidden"
+                )}>
+                  {section.label}
+                </h2>
 
                 <nav role="navigation" aria-label={section.label}>
                   <ul className="space-y-2">
@@ -200,17 +194,18 @@ export function Sidebar() {
                                   aria-hidden="true"
                                 />
 
-                                {(variant !== 'tablet' || isOpen) && (
-                                  <>
-                                    <span>{item.title}</span>
-                                    <ChevronUp
-                                      className={cn(
-                                        "ml-auto rotate-180 transition-transform duration-200",
-                                        expandedItems.includes(item.title) && "rotate-0"
-                                      )}
-                                      aria-hidden="true"
-                                    />
-                                  </>
+                                <span className={cn(
+                                  variant === 'tablet' && !isOpen && "hidden"
+                                )}>{item.title}</span>
+                                {(variant !== 'tablet' || isOpen) && item.items.length > 0 && (
+                                  <ChevronUp
+                                    className={cn(
+                                      "ml-auto rotate-180 transition-transform duration-200",
+                                      expandedItems.includes(item.title) && "rotate-0",
+                                      variant === 'tablet' && !isOpen && "hidden"
+                                    )}
+                                    aria-hidden="true"
+                                  />
                                 )}
                               </MenuItem>
 
@@ -260,9 +255,9 @@ export function Sidebar() {
                                     aria-hidden="true"
                                   />
 
-                                  {(variant !== 'tablet' || isOpen) && (
-                                    <span>{item.title}</span>
-                                  )}
+                                  <span className={cn(
+                                    variant === 'tablet' && !isOpen && "hidden"
+                                  )}>{item.title}</span>
                                 </MenuItem>
                               );
                             })()

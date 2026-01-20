@@ -212,6 +212,11 @@ async function handleImageRequest(request) {
 }
 
 function getOptimizedImageUrl(url, deviceType) {
+  // Only apply responsive optimization to actual image files
+  if (!IMAGE_EXTENSIONS.some(ext => url.pathname.includes(ext))) {
+    return url.href;
+  }
+  
   // Simple responsive image optimization
   // In a real implementation, you might have different image sizes
   const pathname = url.pathname;

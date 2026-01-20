@@ -179,9 +179,7 @@ export function useServiceWorker() {
     ];
 
     // Add device-specific resources
-    if (device.type === 'mobile') {
-      criticalResources.push('/mobile-styles.css');
-    }
+    // Note: Removed mobile-styles.css as it doesn't exist
 
     try {
       const cache = await caches.open('jpco-critical-v1');

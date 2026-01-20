@@ -222,7 +222,7 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-3">
-            <CardTitle className="text-2xl">{currentTeam.name}</CardTitle>
+            <CardTitle className="text-xl">{currentTeam.name}</CardTitle>
             <Badge variant={getStatusVariant(currentTeam.status)}>
               {currentTeam.status}
             </Badge>
@@ -237,8 +237,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
           {/* Description */}
           {currentTeam.description && (
             <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-1">Description</h4>
-              <p className="text-gray-600">{currentTeam.description}</p>
+              <h4 className="text-xs font-medium text-gray-600 mb-1">Description</h4>
+              <p className="text-sm text-gray-600">{currentTeam.description}</p>
             </div>
           )}
 
@@ -247,14 +247,14 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
             {/* Department */}
             {currentTeam.department && (
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-1">Department</h4>
-                <p className="text-gray-600">{currentTeam.department}</p>
+                <h4 className="text-xs font-medium text-gray-600 mb-1">Department</h4>
+                <p className="text-sm text-gray-600">{currentTeam.department}</p>
               </div>
             )}
 
             {/* Member Count */}
             <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-1">Team Size</h4>
+              <h4 className="text-xs font-medium text-gray-600 mb-1">Team Size</h4>
               <div className="flex items-center gap-2">
                 <UserGroupIcon className="w-4 h-4 text-gray-500" />
                 <span className="text-gray-600">
@@ -267,8 +267,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
             {/* Created Date */}
             {currentTeam.createdAt && (
               <div>
-                <h4 className="text-sm font-medium text-gray-700 mb-1">Created</h4>
-                <p className="text-gray-600">
+                <h4 className="text-xs font-medium text-gray-600 mb-1">Created</h4>
+                <p className="text-sm text-gray-600">
                   {new Date(currentTeam.createdAt).toLocaleDateString()}
                 </p>
               </div>
@@ -280,22 +280,22 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
       {/* Team Leader */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <UserIcon className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <UserIcon className="w-4 h-4" />
             Team Leader
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Avatar
               src={leaderInfo.avatarUrl}
               alt={leaderInfo.name}
               fallback={getInitials(leaderInfo.name)}
-              size="md"
+              size="sm"
             />
             <div>
-              <p className="font-medium text-gray-900">{leaderInfo.name}</p>
-              <p className="text-sm text-gray-500">Team Leader</p>
+              <p className="font-medium text-gray-900 text-sm">{leaderInfo.name}</p>
+              <p className="text-xs text-gray-500">Team Leader</p>
             </div>
           </div>
         </CardContent>
@@ -304,8 +304,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
       {/* Team Members - Requirement 4.4 (complete member list with roles) */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <UserGroupIcon className="w-5 h-5" />
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <UserGroupIcon className="w-4 h-4" />
             Team Members ({currentTeam.members.length})
           </CardTitle>
           {/* Add Member Button - Requirement 4.5 */}
@@ -331,9 +331,9 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
               {currentTeam.members.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
+                  className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <Avatar
                       src={member.avatar}
                       alt={member.name}
@@ -341,8 +341,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
                       size="sm"
                     />
                     <div>
-                      <p className="font-medium text-gray-900">{member.name}</p>
-                      <p className="text-sm text-gray-600">{member.role}</p>
+                      <p className="font-medium text-gray-900 text-sm">{member.name}</p>
+                      <p className="text-xs text-gray-600">{member.role}</p>
                     </div>
                   </div>
                   

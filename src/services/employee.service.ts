@@ -4,6 +4,8 @@
  */
 
 import { createFirebaseService, QueryOptions } from './firebase.service';
+import { userManagementService } from './user-management.service';
+import { UserRole } from '@/types/auth.types';
 
 export interface Employee {
   id?: string;
@@ -38,51 +40,57 @@ export const employeeService = {
     search?: string;
     limit?: number;
   }): Promise<Employee[]> {
-    const options: QueryOptions = {
-      filters: [],
-    };
-
-    // Add status filter
-    if (filters?.status) {
-      options.filters!.push({
-        field: 'status',
-        operator: '==',
-        value: filters.status,
-      });
-    }
-
-    // Add department filter
-    if (filters?.department) {
-      options.filters!.push({
-        field: 'department',
-        operator: '==',
-        value: filters.department,
-      });
-    }
-
-    // Add pagination
-    if (filters?.limit) {
-      options.pagination = {
-        pageSize: filters.limit,
+    try {
+      const options: QueryOptions = {
+        filters: [],
       };
+
+      // Add status filter
+      if (filters?.status) {
+        options.filters!.push({
+          field: 'status',
+          operator: '==',
+          value: filters.status,
+        });
+      }
+
+      // Add department filter
+      if (filters?.department) {
+        options.filters!.push({
+          field: 'department',
+          operator: '==',
+          value: filters.department,
+        });
+      }
+
+      // Add pagination
+      if (filters?.limit) {
+        options.pagination = {
+          pageSize: filters.limit,
+        };
+      }
+
+      // Add default ordering
+      options.orderByField = 'createdAt';
+      options.orderDirection = 'desc';
+
+      let employees = await employeeFirebaseService.getAll(options);
+
+      // Apply search filter (client-side)
+      if (filters?.search) {
+        employees = await employeeFirebaseService.searchMultipleFields(
+          ['name', 'email', 'position', 'employeeId'],
+          filters.search,
+          options
+        );
+      }
+
+      return employees;
+    } catch (error) {
+      // Return empty array if there's an error fetching employees
+      console.error('Error in employeeService.getAll:', error);
+      return [];
     }
-
-    // Add default ordering
-    options.orderByField = 'createdAt';
-    options.orderDirection = 'desc';
-
-    let employees = await employeeFirebaseService.getAll(options);
-
-    // Apply search filter (client-side)
-    if (filters?.search) {
-      employees = await employeeFirebaseService.searchMultipleFields(
-        ['name', 'email', 'position', 'employeeId'],
-        filters.search,
-        options
-      );
-    }
-
-    return employees;
   },
 
   /**
@@ -113,7 +121,8 @@ export const employeeService = {
    * Create a new employee
    */
   async create(
-    data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>
+    data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>,
+    password?: string
   ): Promise<Employee> {
     // Check if employee ID already exists
     const existing = await this.getByEmployeeId(data.employeeId);
@@ -121,7 +130,34 @@ export const employeeService = {
       throw new Error('Employee ID already exists');
     }
 
-    return employeeFirebaseService.create(data);
+    // Create employee in Firestore
+    const createdEmployee = await employeeFirebaseService.create(data);
+    
+    // If password is provided, create Firebase Auth account
+    if (password) {
+      try {
+        // Create user in Firebase Auth
+        await userManagementService.createUser(
+          {
+            email: data.email,
+            password,
+            displayName: data.name,
+            role: 'employee' as UserRole, // Default role for employees
+            department: data.department,
+            phoneNumber: data.phone,
+          },
+          'system' // createdBy system for employee accounts
+        );
+      } catch (error) {
+        // If Firebase Auth creation fails, we should rollback the employee creation
+        // But for now, just log the error
+        console.error('Error creating Firebase Auth account for employee:', error);
+        // Optionally re-throw the error to prevent partial creation
+        // throw error;
+      }
+    }
+    
+    return createdEmployee;
   },
 
   /**

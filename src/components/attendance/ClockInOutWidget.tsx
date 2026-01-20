@@ -7,13 +7,14 @@ import {
   CurrentAttendanceStatus,
   ClockInData,
   ClockOutData,
+  AttendanceRecord,
 } from '@/types/attendance.types';
 import { formatDuration } from '@/utils/time-calculations';
 import { Clock, Coffee, LogIn, LogOut } from 'lucide-react';
 
 interface ClockInOutWidgetProps {
   currentStatus: CurrentAttendanceStatus | null;
-  onClockIn: (data: ClockInData) => Promise<void>;
+  onClockIn: (data: ClockInData) => Promise<AttendanceRecord | null>;
   onClockOut: (data: ClockOutData) => Promise<void>;
   onStartBreak: () => Promise<void>;
   onEndBreak: () => Promise<void>;
@@ -63,11 +64,21 @@ export function ClockInOutWidget({
 
   const handleClockIn = async () => {
     try {
-      await onClockIn({
+      console.log('Attempting to clock in...');
+      const result = await onClockIn({
         timestamp: new Date(),
       });
+      
+      console.log('Clock in result:', result);
+      
+      // If result is null, it means user was already clocked in
+      if (result === null) {
+        // Optionally show a notification that user is already clocked in
+        console.log('User was already clocked in');
+      }
     } catch (error) {
       console.error('Clock in error:', error);
+      console.error('Full error details:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
     }
   };
 

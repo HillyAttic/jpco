@@ -13,6 +13,7 @@ export type AlertSeverity = 'low' | 'medium' | 'high';
 export interface GeolocationCoordinates {
   latitude: number;
   longitude: number;
+  accuracy?: number;
 }
 
 // Break Record

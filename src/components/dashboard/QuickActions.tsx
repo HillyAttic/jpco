@@ -16,7 +16,6 @@ interface QuickActionsProps {
   onViewAnalytics?: () => void;
   onViewReports?: () => void;
   onManageProjects?: () => void;
-  onSettings?: () => void;
 }
 
 export function QuickActions({
@@ -25,7 +24,6 @@ export function QuickActions({
   onViewAnalytics,
   onViewReports,
   onManageProjects,
-  onSettings
 }: QuickActionsProps) {
   const actions = [
     {
@@ -57,12 +55,6 @@ export function QuickActions({
       icon: <FolderIcon className="w-5 h-5" />,
       onClick: onManageProjects,
       color: 'bg-indigo-600 hover:bg-indigo-700'
-    },
-    {
-      label: 'Settings',
-      icon: <Cog6ToothIcon className="w-5 h-5" />,
-      onClick: onSettings,
-      color: 'bg-gray-600 hover:bg-gray-700'
     }
   ];
 

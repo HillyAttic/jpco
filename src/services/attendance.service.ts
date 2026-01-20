@@ -59,80 +59,154 @@ function convertTimestamps(record: any): AttendanceRecord {
 /**
  * Attendance Service API
  */
+// Helper function to validate and clean location data
+function validateLocationData(location: any) {
+  if (!location) return undefined;
+  
+  // Check if both latitude and longitude are valid numbers
+  if (location.latitude !== undefined && 
+      location.longitude !== undefined && 
+      typeof location.latitude === 'number' && 
+      typeof location.longitude === 'number' &&
+      !isNaN(location.latitude) && 
+      !isNaN(location.longitude)) {
+    const result: any = {
+      latitude: location.latitude,
+      longitude: location.longitude,
+    };
+    
+    // Only add accuracy if it's a valid number
+    if (location.accuracy !== undefined && typeof location.accuracy === 'number' && !isNaN(location.accuracy)) {
+      result.accuracy = location.accuracy;
+    }
+    
+    return result;
+  }
+  
+  // Additional check for location object with lat/lng properties
+  if (location.lat !== undefined && 
+      location.lng !== undefined && 
+      typeof location.lat === 'number' && 
+      typeof location.lng === 'number' &&
+      !isNaN(location.lat) && 
+      !isNaN(location.lng)) {
+    const result: any = {
+      latitude: location.lat,
+      longitude: location.lng,
+    };
+    
+    // Only add accuracy if it's a valid number
+    if (location.accuracy !== undefined && typeof location.accuracy === 'number' && !isNaN(location.accuracy)) {
+      result.accuracy = location.accuracy;
+    }
+    
+    return result;
+  }
+  
+  return undefined;
+}
+
 export const attendanceService = {
   /**
    * Clock in an employee
    */
-  async clockIn(data: ClockInData & { employeeId: string; employeeName: string }): Promise<AttendanceRecord> {
-    // Check if employee is already clocked in
-    const currentStatus = await this.getCurrentStatus(data.employeeId);
-    if (currentStatus.isClockedIn) {
-      throw new Error('Employee is already clocked in');
+  async clockIn(data: ClockInData & { employeeId: string; employeeName: string }): Promise<AttendanceRecord | null> {
+    try {
+      // Check if employee is already clocked in
+      const currentStatus = await this.getCurrentStatus(data.employeeId);
+      if (currentStatus.isClockedIn) {
+        // Instead of throwing, return null to indicate already clocked in
+        return null;
+      }
+
+      const validatedLocation = validateLocationData(data.location);
+      
+      const record: Omit<AttendanceRecord, 'id'> = {
+        employeeId: data.employeeId,
+        employeeName: data.employeeName,
+        clockIn: data.timestamp,
+        breaks: [],
+        totalHours: 0,
+        regularHours: 0,
+        overtimeHours: 0,
+        status: 'active',
+        location: validatedLocation ? { clockIn: validatedLocation } : undefined,
+        notes: data.notes ? { clockIn: data.notes } : undefined,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+
+      console.log('Creating attendance record with data:', { ...record, clockIn: record.clockIn.toString() });
+      
+      return await attendanceFirebaseService.create(record);
+    } catch (error) {
+      console.error('Error in clockIn service:', error);
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error || {}), 2));
+      throw error;
     }
-
-    const record: Omit<AttendanceRecord, 'id'> = {
-      employeeId: data.employeeId,
-      employeeName: data.employeeName,
-      clockIn: data.timestamp,
-      breaks: [],
-      totalHours: 0,
-      regularHours: 0,
-      overtimeHours: 0,
-      status: 'active',
-      location: data.location ? { clockIn: data.location } : undefined,
-      notes: data.notes ? { clockIn: data.notes } : undefined,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    return attendanceFirebaseService.create(record);
   },
 
   /**
    * Clock out an employee
    */
   async clockOut(recordId: string, data: ClockOutData): Promise<AttendanceRecord> {
-    const record = await attendanceFirebaseService.getById(recordId);
-    if (!record) {
-      throw new Error('Attendance record not found');
+    try {
+      let record = await attendanceFirebaseService.getById(recordId);
+      if (!record) {
+        throw new Error('Attendance record not found');
+      }
+      
+      // Convert timestamps in the retrieved record
+      record = convertTimestamps(record);
+
+      if (record.clockOut) {
+        throw new Error('Employee is already clocked out');
+      }
+
+      // Calculate hours
+      const totalHours = calculateWorkHours(record.clockIn, data.timestamp, record.breaks);
+      const overtimeHours = calculateOvertimeHours(totalHours);
+      const regularHours = calculateRegularHours(totalHours, overtimeHours);
+
+      const updates: Partial<AttendanceRecord> = {
+        clockOut: data.timestamp,
+        totalHours,
+        regularHours,
+        overtimeHours,
+        status: 'completed',
+        location: record.location ? {
+          ...record.location,
+          clockOut: validateLocationData(data.location),
+        } : validateLocationData(data.location) ? {
+          clockOut: validateLocationData(data.location)
+        } : undefined,
+        notes: {
+          ...record.notes,
+          clockOut: data.notes,
+        },
+      };
+
+      console.log('Updating attendance record with data:', { ...updates, clockOut: updates.clockOut?.toString() });
+      
+      return await attendanceFirebaseService.update(recordId, updates);
+    } catch (error) {
+      console.error('Error in clockOut service:', error);
+      console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error || {}), 2));
+      throw error;
     }
-
-    if (record.clockOut) {
-      throw new Error('Employee is already clocked out');
-    }
-
-    // Calculate hours
-    const totalHours = calculateWorkHours(record.clockIn, data.timestamp, record.breaks);
-    const overtimeHours = calculateOvertimeHours(totalHours);
-    const regularHours = calculateRegularHours(totalHours, overtimeHours);
-
-    const updates: Partial<AttendanceRecord> = {
-      clockOut: data.timestamp,
-      totalHours,
-      regularHours,
-      overtimeHours,
-      status: 'completed',
-      location: {
-        ...record.location,
-        clockOut: data.location,
-      },
-      notes: {
-        ...record.notes,
-        clockOut: data.notes,
-      },
-    };
-
-    return attendanceFirebaseService.update(recordId, updates);
   },
 
   /**
    * Start a break
    */
   async startBreak(recordId: string): Promise<AttendanceRecord> {
-    const record = await attendanceFirebaseService.getById(recordId);
+    let record = await attendanceFirebaseService.getById(recordId);
     if (!record) {
       throw new Error('Attendance record not found');
     }
+    
+    // Convert timestamps in the retrieved record
+    record = convertTimestamps(record);
 
     if (record.clockOut) {
       throw new Error('Cannot start break after clocking out');
@@ -161,10 +235,13 @@ export const attendanceService = {
    * End a break
    */
   async endBreak(recordId: string): Promise<AttendanceRecord> {
-    const record = await attendanceFirebaseService.getById(recordId);
+    let record = await attendanceFirebaseService.getById(recordId);
     if (!record) {
       throw new Error('Attendance record not found');
     }
+    
+    // Convert timestamps in the retrieved record
+    record = convertTimestamps(record);
 
     // Find the active break
     const breakIndex = record.breaks.findIndex((b) => !b.endTime);
@@ -191,18 +268,32 @@ export const attendanceService = {
    * Get current attendance status for an employee
    */
   async getCurrentStatus(employeeId: string): Promise<CurrentAttendanceStatus> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get today's start of day
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
-    const records = await attendanceFirebaseService.getAll({
+    let records = await attendanceFirebaseService.getAll({
       filters: [
         { field: 'employeeId', operator: '==', value: employeeId },
-        { field: 'clockIn', operator: '>=', value: Timestamp.fromDate(today) },
         { field: 'status', operator: '==', value: 'active' },
+        { field: 'clockIn', operator: '>=', value: Timestamp.fromDate(startOfDay) },
       ],
     });
+    
+    // Convert timestamps in the retrieved records
+    records = records.map(record => convertTimestamps(record));
+    
+    // Filter records that are from today (client-side filtering for end-of-day)
+    const todayRecords = records.filter(record => {
+      const recordDate = record.clockIn instanceof Date ? record.clockIn : new Date(record.clockIn);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const recordStartOfDay = new Date(recordDate);
+      recordStartOfDay.setHours(0, 0, 0, 0);
+      return recordStartOfDay.getTime() === today.getTime();
+    });
 
-    if (records.length === 0) {
+    if (todayRecords.length === 0) {
       return {
         isClockedIn: false,
         isOnBreak: false,
@@ -211,7 +302,7 @@ export const attendanceService = {
       };
     }
 
-    const record = records[0];
+    const record = todayRecords[0];
     const isOnBreak = record.breaks.some((b) => !b.endTime);
     const breakStartTime = isOnBreak
       ? record.breaks.find((b) => !b.endTime)?.startTime
@@ -254,16 +345,6 @@ export const attendanceService = {
       });
     }
 
-    if (filters.endDate) {
-      const endOfDay = new Date(filters.endDate);
-      endOfDay.setHours(23, 59, 59, 999);
-      options.filters!.push({
-        field: 'clockIn',
-        operator: '<=',
-        value: Timestamp.fromDate(endOfDay),
-      });
-    }
-
     // Add status filter
     if (filters.status) {
       options.filters!.push({
@@ -284,14 +365,28 @@ export const attendanceService = {
     options.orderByField = 'clockIn';
     options.orderDirection = 'desc';
 
-    return attendanceFirebaseService.getAll(options);
+    let records = await attendanceFirebaseService.getAll(options);
+    
+    // Convert timestamps in the retrieved records
+    records = records.map(record => convertTimestamps(record));
+    
+    // Apply end date filter client-side if provided to avoid composite index requirements
+    if (filters.endDate !== undefined) {
+      records = records.filter(record => {
+        const recordDate = record.clockIn instanceof Date ? record.clockIn : new Date(record.clockIn);
+        return recordDate <= filters.endDate!;
+      });
+    }
+    
+    return records;
   },
 
   /**
    * Get a single attendance record
    */
   async getAttendanceRecord(id: string): Promise<AttendanceRecord | null> {
-    return attendanceFirebaseService.getById(id);
+    const record = await attendanceFirebaseService.getById(id);
+    return record ? convertTimestamps(record) : null;
   },
 
   /**
@@ -314,9 +409,11 @@ export const attendanceService = {
     if (data.clockIn || data.clockOut || data.breaks) {
       const record = await attendanceFirebaseService.getById(id);
       if (record) {
-        const clockIn = data.clockIn || record.clockIn;
-        const clockOut = data.clockOut || record.clockOut;
-        const breaks = data.breaks || record.breaks;
+        // Convert timestamps in the retrieved record
+        const convertedRecord = convertTimestamps(record);
+        const clockIn = data.clockIn || convertedRecord.clockIn;
+        const clockOut = data.clockOut || convertedRecord.clockOut;
+        const breaks = data.breaks || convertedRecord.breaks;
 
         if (clockOut) {
           const totalHours = calculateWorkHours(clockIn, clockOut, breaks);
@@ -347,13 +444,19 @@ export const attendanceService = {
     const records = await this.getAttendanceRecords({
       employeeId,
       startDate: period.start,
-      endDate: period.end,
+      // endDate filter is handled client-side to avoid composite index requirements
       status: 'completed',
     });
+    
+    // Apply end date filter client-side
+    const filteredRecords = records.filter(record => {
+      const recordDate = record.clockIn instanceof Date ? record.clockIn : new Date(record.clockIn);
+      return recordDate <= period.end;
+    });
 
-    const totalDays = records.length;
-    const totalHours = records.reduce((sum, r) => sum + r.totalHours, 0);
-    const overtimeHours = records.reduce((sum, r) => sum + r.overtimeHours, 0);
+    const totalDays = filteredRecords.length;
+    const totalHours = filteredRecords.reduce((sum, r) => sum + r.totalHours, 0);
+    const overtimeHours = filteredRecords.reduce((sum, r) => sum + r.overtimeHours, 0);
     const averageHours = totalDays > 0 ? totalHours / totalDays : 0;
 
     // Calculate attendance rate (assuming 5-day work week)
@@ -401,8 +504,8 @@ export const attendanceService = {
     const q = query(
       collection(db, 'attendance-records'),
       where('employeeId', '==', employeeId),
-      where('clockIn', '>=', Timestamp.fromDate(today)),
-      where('status', '==', 'active')
+      where('status', '==', 'active'),
+      where('clockIn', '>=', Timestamp.fromDate(today))
     );
 
     return onSnapshot(q, (snapshot) => {

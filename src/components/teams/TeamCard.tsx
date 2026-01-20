@@ -61,29 +61,13 @@ export function TeamCard({ team, onEdit, onDelete, onViewDetails, selected = fal
   return (
     <Card 
       className={`group hover:shadow-lg transition-all duration-200 cursor-pointer ${selected ? 'ring-2 ring-blue-500' : ''}`}
-      onClick={(e) => {
-        // Don't trigger view details if clicking checkbox
-        if (!(e.target as HTMLElement).closest('input[type="checkbox"]')) {
-          onViewDetails(team.id!);
-        }
+      onClick={() => {
+        onViewDetails(team.id!);
       }}
     >
       <CardContent className="p-6">
-        {/* Selection Checkbox */}
-        {onSelect && (
-          <div className="absolute top-4 left-4 z-10" onClick={(e) => e.stopPropagation()}>
-            <input
-              type="checkbox"
-              checked={selected}
-              onChange={(e) => onSelect(team.id!, e.target.checked)}
-              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-              aria-label={`Select ${team.name}`}
-            />
-          </div>
-        )}
-        
         {/* Header with Team Name and Status Badge */}
-        <div className={`flex items-start justify-between mb-4 ${onSelect ? 'ml-8' : ''}`}>
+        <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0 pr-4">
             <div className="flex items-center gap-2 mb-1">
               <h3 className="text-lg font-semibold text-gray-900 truncate">
@@ -121,7 +105,7 @@ export function TeamCard({ team, onEdit, onDelete, onViewDetails, selected = fal
             </Button>
           </div>
         </div>
-
+        
         {/* Description - Requirement 4.3 */}
         {team.description && (
           <p className="text-sm text-gray-600 mb-4 line-clamp-2">

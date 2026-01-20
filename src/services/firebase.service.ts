@@ -93,6 +93,32 @@ export class FirebaseService<T extends { id?: string }> {
   }
 
   /**
+   * Recursively remove undefined values from an object
+   */
+  private removeUndefinedValues(obj: any): any {
+    if (obj === null || obj === undefined) {
+      return obj;
+    }
+
+    if (Array.isArray(obj)) {
+      return obj.map(item => this.removeUndefinedValues(item));
+    }
+
+    if (typeof obj === 'object') {
+      const cleaned: any = {};
+      Object.keys(obj).forEach(key => {
+        const value = obj[key];
+        if (value !== undefined) {
+          cleaned[key] = this.removeUndefinedValues(value);
+        }
+      });
+      return cleaned;
+    }
+
+    return obj;
+  }
+
+  /**
    * Convert Date objects to Firestore timestamps for storage
    */
   private prepareForStorage(data: any): any {
@@ -102,7 +128,7 @@ export class FirebaseService<T extends { id?: string }> {
         prepared[key] = Timestamp.fromDate(prepared[key]);
       }
     });
-    return prepared;
+    return this.removeUndefinedValues(prepared);
   }
 
   /**
@@ -141,6 +167,14 @@ export class FirebaseService<T extends { id?: string }> {
    * Handle Firebase errors and convert to service errors
    */
   private handleError(error: any): FirebaseServiceError {
+    // Handle case where error is an empty object or null
+    if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
+      return {
+        code: 'unknown',
+        message: 'An unknown error occurred',
+      };
+    }
+    
     const serviceError: FirebaseServiceError = {
       code: error.code || 'unknown',
       message: error.message || 'An unknown error occurred',

@@ -3,7 +3,7 @@
 import { useResponsive } from "@/hooks/use-responsive";
 import { createContext, useContext, useEffect, useState } from "react";
 
-type SidebarState = "expanded" | "collapsed" | "condensed";
+type SidebarState = "expanded" | "collapsed";
 
 type SidebarContextType = {
   state: SidebarState;
@@ -53,7 +53,6 @@ export function SidebarProvider({
 
   const getSidebarState = (): SidebarState => {
     if (!isOpen) return "collapsed";
-    if (device.type === 'tablet') return "condensed";
     return "expanded";
   };
 

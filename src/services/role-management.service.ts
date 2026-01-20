@@ -57,7 +57,13 @@ export class RoleManagementService {
       // In a real implementation, you would also update Firebase custom claims
       // This requires Firebase Admin SDK on the server side
       console.log(`Role ${role} assigned to user ${uid}`);
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`Cannot assign role to user ${uid} - user document not found`);
+        return;
+      }
+      
       console.error('Error assigning role:', error);
       throw new Error('Failed to assign role');
     }
@@ -77,7 +83,13 @@ export class RoleManagementService {
       }
       
       return 'employee'; // Default role
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`User document not found for UID: ${uid}`);
+        return 'employee'; // Default role
+      }
+      
       console.error('Error getting user role:', error);
       return 'employee';
     }
@@ -96,7 +108,13 @@ export class RoleManagementService {
       }
       
       return null;
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`User document not found for UID: ${uid}`);
+        return null;
+      }
+      
       console.error('Error getting user profile:', error);
       return null;
     }
@@ -151,7 +169,13 @@ export class RoleManagementService {
       }
 
       await setDoc(userRef, userProfile);
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`Cannot create profile for user ${uid} - user document not found`);
+        return;
+      }
+      
       console.error('Error creating user profile:', error);
       throw new Error('Failed to create user profile');
     }
@@ -167,7 +191,14 @@ export class RoleManagementService {
         ...updates,
         updatedAt: serverTimestamp(),
       });
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`User document not found for UID: ${uid}. This may be expected for new users.`);
+        // Don't throw error for missing documents - this can happen for new users
+        return;
+      }
+      
       console.error('Error updating user profile:', error);
       throw new Error('Failed to update user profile');
     }
@@ -193,7 +224,13 @@ export class RoleManagementService {
         targetUser: uid,
         details: { reason: 'Manual deactivation' },
       });
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`Cannot deactivate user ${uid} - user document not found`);
+        return;
+      }
+      
       console.error('Error deactivating user:', error);
       throw new Error('Failed to deactivate user');
     }
@@ -219,7 +256,13 @@ export class RoleManagementService {
         targetUser: uid,
         details: { reason: 'Manual activation' },
       });
-    } catch (error) {
+    } catch (error: any) {
+      // Handle "No document to update" error gracefully
+      if (error?.code === 'not-found' || error?.message?.includes('No document to update')) {
+        console.warn(`Cannot activate user ${uid} - user document not found`);
+        return;
+      }
+      
       console.error('Error activating user:', error);
       throw new Error('Failed to activate user');
     }

@@ -9,7 +9,7 @@ interface UseEmployeesReturn {
   employees: Employee[];
   loading: boolean;
   error: Error | null;
-  createEmployee: (data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  createEmployee: (data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>, password?: string) => Promise<void>;
   updateEmployee: (id: string, data: Partial<Omit<Employee, 'id'>>) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   deactivateEmployee: (id: string) => Promise<void>;
@@ -77,7 +77,7 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
    * Validates Requirements: 9.3
    */
   const createEmployee = useCallback(
-    async (data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>) => {
+    async (data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>, password?: string) => {
       // Generate temporary ID for optimistic update
       const tempId = `temp-${Date.now()}`;
       const optimisticEmployee: Employee = {
@@ -99,6 +99,7 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
           body: JSON.stringify({
             ...data,
             hireDate: data.hireDate.toISOString(),
+            password, // Include password if provided
           }),
         });
 

@@ -93,8 +93,18 @@ export function TeamModal({
       try {
         const activeEmployees = await employeeService.getAll({ status: 'active' });
         setEmployees(activeEmployees);
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error loading employees:', error);
+        console.error('Error details:', {
+          message: error?.message,
+          code: error?.code,
+          name: error?.name,
+          stack: error?.stack,
+          rawError: error
+        });
+        
+        // Set empty array to prevent further errors
+        setEmployees([]);
       } finally {
         setLoadingEmployees(false);
       }
@@ -176,8 +186,15 @@ export function TeamModal({
       reset();
       setSelectedMembers([]);
       onClose();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting team:', error);
+      console.error('Submission error details:', {
+        message: error?.message,
+        code: error?.code,
+        name: error?.name,
+        stack: error?.stack,
+        rawError: error
+      });
     }
   };
 
@@ -189,7 +206,7 @@ export function TeamModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {team ? 'Edit Team' : 'Create New Team'}
@@ -259,6 +276,42 @@ export function TeamModal({
             )}
             {loadingEmployees && (
               <p className="text-sm text-gray-500 mt-1">Loading employees...</p>
+            )}
+            {!loadingEmployees && employees.length === 0 && (
+              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-sm text-yellow-800 mb-2">
+                  No employees found. You need to create employees first before assigning team leaders.
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={async () => {
+                    try {
+                      setLoadingEmployees(true);
+                      const response = await fetch('/api/employees/seed', { method: 'POST' });
+                      if (response.ok) {
+                        // Reload employees after seeding
+                        const activeEmployees = await employeeService.getAll({ status: 'active' });
+                        setEmployees(activeEmployees);
+                      }
+                    } catch (error: any) {
+                      console.error('Error seeding employees:', error);
+                      console.error('Seeding error details:', {
+                        message: error?.message,
+                        code: error?.code,
+                        name: error?.name,
+                        stack: error?.stack,
+                        rawError: error
+                      });
+                    } finally {
+                      setLoadingEmployees(false);
+                    }
+                  }}
+                  disabled={loadingEmployees}
+                >
+                  🌱 Seed Sample Employees
+                </Button>
+              </div>
             )}
           </div>
 

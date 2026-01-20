@@ -11,7 +11,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { LogOutIcon, SettingsIcon, UserIcon } from "./icons";
+import { LogOutIcon, UserIcon } from "./icons";
 import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
 
 export function UserInfo() {
@@ -49,7 +49,14 @@ export function UserInfo() {
   const displayName = auth.userProfile?.displayName || auth.user?.email || "User";
   const displayEmail = auth.user?.email || "user@example.com";
   const userInitials = displayName.charAt(0).toUpperCase();
-  const userRole = auth.userProfile?.role || "User";
+  
+  // Determine user role based on auth context which has the proper role hierarchy
+  let userRole = "User";
+  if (auth.claims?.role) {
+    userRole = auth.claims.role.charAt(0).toUpperCase() + auth.claims.role.slice(1);
+  } else if (auth.userProfile?.role) {
+    userRole = auth.userProfile.role.charAt(0).toUpperCase() + auth.userProfile.role.slice(1);
+  }
 
   return (
     <Dropdown isOpen={isOpen} setIsOpen={setIsOpen}>
@@ -123,32 +130,20 @@ export function UserInfo() {
 
         <hr className="border-[#E8E8E8] dark:border-dark-3" />
 
-        <div className="p-2 text-base text-[#4B5563] dark:text-dark-6 [&>*]:cursor-pointer">
+        <div className="p-2 text-base text-[#4B5563] dark:text-dark-6">
           <Link
-            href={"/profile"}
+            href="/profile"
             onClick={() => setIsOpen(false)}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
+            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white cursor-pointer"
           >
             <UserIcon />
-
+        
             <span className="mr-auto text-base font-medium">View profile</span>
           </Link>
-
-          <Link
-            href={"/pages/settings"}
-            onClick={() => setIsOpen(false)}
-            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white"
-          >
-            <SettingsIcon />
-
-            <span className="mr-auto text-base font-medium">
-              Account Settings
-            </span>
-          </Link>
         </div>
-
+        
         <hr className="border-[#E8E8E8] dark:border-dark-3" />
-
+        
         <div className="p-2 text-base text-[#4B5563] dark:text-dark-6">
           <button
             className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-[9px] hover:bg-gray-2 hover:text-dark dark:hover:bg-dark-3 dark:hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
@@ -156,7 +151,7 @@ export function UserInfo() {
             disabled={isSigningOut}
           >
             <LogOutIcon />
-
+        
             <span className="text-base font-medium">
               {isSigningOut ? 'Signing out...' : 'Log out'}
             </span>

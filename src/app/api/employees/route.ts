@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { employeeService, Employee } from '@/services/employee.service';
+import { userManagementService } from '@/services/user-management.service';
+import { UserRole } from '@/types/auth.types';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
@@ -18,6 +20,7 @@ const createEmployeeSchema = z.object({
   managerId: z.string().optional(),
   teamIds: z.array(z.string()).default([]),
   status: z.enum(['active', 'on-leave', 'terminated']).default('active'),
+  password: z.string().optional(),
 });
 
 /**
@@ -81,8 +84,11 @@ export async function POST(request: NextRequest) {
 
     const employeeData = validationResult.data;
 
+    // Extract password from the data
+    const { password, ...employeeWithoutPassword } = employeeData;
+
     // Create employee
-    const newEmployee = await employeeService.create(employeeData);
+    const newEmployee = await employeeService.create(employeeWithoutPassword, password);
 
     return NextResponse.json(newEmployee, { status: 201 });
   } catch (error) {
