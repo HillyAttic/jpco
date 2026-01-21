@@ -64,7 +64,7 @@ export default function EmployeesPage() {
   });
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid'); // 'grid' or 'list' view mode
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // 'grid' or 'list' view mode
 
   // Get unique departments from employees for filter dropdown
   const availableDepartments = useMemo(() => {

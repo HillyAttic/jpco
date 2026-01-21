@@ -56,10 +56,41 @@ export function GeolocationAttendanceTracker() {
   useEffect(() => {
     if (auth.user) {
       console.log('User authenticated, triggering cleanup and status load');
-      // Clean up any duplicate records first
+      // Clean up any duplicate records first (only on initial mount)
       cleanupDuplicateRecordsForUser(auth.user.uid);
       loadStatus();
     }
+  }, [auth.user]);
+
+  // Reload status when page becomes visible (user navigates back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && auth.user) {
+        console.log('Page became visible, reloading status');
+        loadStatus();
+      }
+    };
+
+    const handleFocus = () => {
+      if (auth.user) {
+        console.log('Window focused, reloading status');
+        loadStatus();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    // Also load status immediately when component mounts
+    if (auth.user) {
+      console.log('Component mounted, loading status immediately');
+      loadStatus();
+    }
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [auth.user]);
 
   // Cleanup duplicate records for the current user
@@ -90,26 +121,35 @@ export function GeolocationAttendanceTracker() {
     if (!auth.user) return;
     
     try {
+      console.log('Loading status for user:', auth.user.uid);
       setStatus({ status: 'loading', data: null });
       const result = await attendanceService.getCurrentStatus(auth.user.uid);
+      console.log('getCurrentStatus result:', result);
       
       // Check if user has already clocked in today (even if they've clocked out)
       const hasClockedInToday = await attendanceService.hasClockedInToday(auth.user.uid);
+      console.log('hasClockedInToday:', hasClockedInToday);
       
       // Map the service response to our status format
       let mappedStatus: AttendanceStatus['status'] = 'NOT_CLOCKED_IN';
       if (result.isClockedIn) {
         mappedStatus = result.isOnBreak ? 'ON_BREAK' : 'CLOCKED_IN';
+        console.log('User is clocked in, status:', mappedStatus);
       } else if (!result.isClockedIn && hasClockedInToday) {
         // User has already clocked in today but is not currently clocked in
         mappedStatus = 'CLOCKED_OUT';
+        console.log('User has clocked out for today');
+      } else {
+        console.log('User is not clocked in');
       }
       
+      console.log('Final mapped status:', mappedStatus);
       setStatus({
         status: mappedStatus,
         data: result
       });
     } catch (err: any) {
+      console.error('Error loading status:', err);
       setStatus({ 
         status: 'error', 
         data: null, 
@@ -184,9 +224,11 @@ export function GeolocationAttendanceTracker() {
     setError('');
     
     try {
+      console.log('Starting clock in process...');
       const loc = await getCurrentLocation();
       setLocation(loc);
       
+      console.log('Location obtained:', loc);
       const record = await attendanceService.clockIn({
         employeeId: auth.user.uid,
         employeeName: auth.userProfile?.displayName || auth.user.email || 'User',
@@ -197,17 +239,20 @@ export function GeolocationAttendanceTracker() {
         }
       });
       
+      console.log('Clock in result:', record);
+      
       if (record === null) {
         // User was already clocked in, just refresh the status
+        console.log('User already clocked in, refreshing status');
         setError('You are already clocked in for today');
         await loadStatus();
       } else {
-        // Successfully clocked in, refresh the status
+        // Successfully clocked in, wait a bit for Firestore to propagate, then refresh
+        console.log('Clock in successful, waiting for Firestore propagation...');
+        await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms for Firestore
+        console.log('Refreshing status after clock in...');
         await loadStatus();
       }
-      
-      // Brief pause to ensure smooth UI transition
-      await new Promise(resolve => setTimeout(resolve, 50));
     } catch (err: any) {
       console.error('Geolocation tracker clock in error:', err);
       setError(err.message || 'Failed to clock in');

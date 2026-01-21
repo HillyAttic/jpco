@@ -119,16 +119,36 @@ export class FirebaseService<T extends { id?: string }> {
   }
 
   /**
-   * Convert Date objects to Firestore timestamps for storage
+   * Convert Date objects to Firestore timestamps for storage (recursive)
    */
   private prepareForStorage(data: any): any {
-    const prepared = { ...data };
-    Object.keys(prepared).forEach((key) => {
-      if (prepared[key] instanceof Date) {
-        prepared[key] = Timestamp.fromDate(prepared[key]);
-      }
-    });
-    return this.removeUndefinedValues(prepared);
+    if (data === null || data === undefined) {
+      return data;
+    }
+
+    // Handle Date objects
+    if (data instanceof Date) {
+      return Timestamp.fromDate(data);
+    }
+
+    // Handle arrays
+    if (Array.isArray(data)) {
+      return data.map(item => this.prepareForStorage(item));
+    }
+
+    // Handle objects
+    if (typeof data === 'object') {
+      const prepared: any = {};
+      Object.keys(data).forEach((key) => {
+        const value = data[key];
+        if (value !== undefined) {
+          prepared[key] = this.prepareForStorage(value);
+        }
+      });
+      return prepared;
+    }
+
+    return data;
   }
 
   /**

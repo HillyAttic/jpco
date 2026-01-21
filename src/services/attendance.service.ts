@@ -42,17 +42,25 @@ const attendanceFirebaseService =
  * Convert Firestore timestamp to Date
  */
 function convertTimestamps(record: any): AttendanceRecord {
+  // Helper to safely convert to Date
+  const safeToDate = (value: any): Date | undefined => {
+    if (!value) return undefined;
+    if (value.toDate) return value.toDate();
+    const date = new Date(value);
+    return isNaN(date.getTime()) ? undefined : date;
+  };
+
   return {
     ...record,
-    clockIn: record.clockIn?.toDate ? record.clockIn.toDate() : new Date(record.clockIn),
-    clockOut: record.clockOut?.toDate ? record.clockOut.toDate() : record.clockOut ? new Date(record.clockOut) : undefined,
+    clockIn: safeToDate(record.clockIn) || new Date(),
+    clockOut: safeToDate(record.clockOut),
     breaks: record.breaks?.map((b: any) => ({
       ...b,
-      startTime: b.startTime?.toDate ? b.startTime.toDate() : new Date(b.startTime),
-      endTime: b.endTime?.toDate ? b.endTime.toDate() : b.endTime ? new Date(b.endTime) : undefined,
+      startTime: safeToDate(b.startTime) || new Date(),
+      endTime: safeToDate(b.endTime),
     })) || [],
-    createdAt: record.createdAt?.toDate ? record.createdAt.toDate() : new Date(record.createdAt),
-    updatedAt: record.updatedAt?.toDate ? record.updatedAt.toDate() : new Date(record.updatedAt),
+    createdAt: safeToDate(record.createdAt) || new Date(),
+    updatedAt: safeToDate(record.updatedAt) || new Date(),
   };
 }
 
@@ -279,17 +287,22 @@ export const attendanceService = {
    * Get current attendance status for an employee
    */
   async getCurrentStatus(employeeId: string): Promise<CurrentAttendanceStatus> {
+    console.log('getCurrentStatus called for employee:', employeeId);
+    
     // Get today's start of day
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
+    console.log('Querying records from:', startOfDay);
 
+    // Query for ALL records today (not just active ones)
     let records = await attendanceFirebaseService.getAll({
       filters: [
         { field: 'employeeId', operator: '==', value: employeeId },
-        { field: 'status', operator: '==', value: 'active' },
         { field: 'clockIn', operator: '>=', value: Timestamp.fromDate(startOfDay) },
       ],
     });
+    
+    console.log('Found records (all statuses):', records.length);
     
     // Convert timestamps in the retrieved records
     records = records.map(record => convertTimestamps(record));
@@ -304,7 +317,13 @@ export const attendanceService = {
       return recordStartOfDay.getTime() === today.getTime();
     });
 
-    if (todayRecords.length === 0) {
+    console.log('Today records after filtering:', todayRecords.length);
+    
+    // Find the most recent record without a clock out (active session)
+    const activeRecord = todayRecords.find(record => !record.clockOut);
+
+    if (!activeRecord) {
+      console.log('No active record found (no record without clockOut)');
       return {
         isClockedIn: false,
         isOnBreak: false,
@@ -313,21 +332,25 @@ export const attendanceService = {
       };
     }
 
-    const record = todayRecords[0];
-    const isOnBreak = record.breaks.some((b) => !b.endTime);
+    console.log('Active record found:', activeRecord.id, 'Status:', activeRecord.status, 'ClockOut:', activeRecord.clockOut);
+    
+    const isOnBreak = activeRecord.breaks.some((b) => !b.endTime);
     const breakStartTime = isOnBreak
-      ? record.breaks.find((b) => !b.endTime)?.startTime
+      ? activeRecord.breaks.find((b) => !b.endTime)?.startTime
       : undefined;
 
-    return {
+    const status = {
       isClockedIn: true,
-      clockInTime: record.clockIn,
+      clockInTime: activeRecord.clockIn,
       isOnBreak,
       breakStartTime,
-      elapsedTime: calculateElapsedTime(record.clockIn, record.breaks),
-      breakDuration: calculateTotalBreakDuration(record.breaks),
-      currentRecordId: record.id,
+      elapsedTime: calculateElapsedTime(activeRecord.clockIn, activeRecord.breaks),
+      breakDuration: calculateTotalBreakDuration(activeRecord.breaks),
+      currentRecordId: activeRecord.id,
     };
+    
+    console.log('Returning status:', status);
+    return status;
   },
 
   /**
@@ -623,13 +646,24 @@ export const attendanceService = {
     const recordsByDate = new Map<string, typeof convertedRecords>();
     
     convertedRecords.forEach(record => {
-      const recordDate = record.clockIn instanceof Date ? record.clockIn : new Date(record.clockIn);
-      const dateKey = recordDate.toISOString().split('T')[0]; // YYYY-MM-DD
-      
-      if (!recordsByDate.has(dateKey)) {
-        recordsByDate.set(dateKey, []);
+      try {
+        const recordDate = record.clockIn instanceof Date ? record.clockIn : new Date(record.clockIn);
+        
+        // Skip records with invalid dates
+        if (isNaN(recordDate.getTime())) {
+          console.warn(`Skipping record ${record.id} with invalid date`);
+          return;
+        }
+        
+        const dateKey = recordDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        
+        if (!recordsByDate.has(dateKey)) {
+          recordsByDate.set(dateKey, []);
+        }
+        recordsByDate.get(dateKey)!.push(record);
+      } catch (error) {
+        console.error(`Error processing record ${record.id}:`, error);
       }
-      recordsByDate.get(dateKey)!.push(record);
     });
     
     console.log(`Grouped records into ${recordsByDate.size} dates`);

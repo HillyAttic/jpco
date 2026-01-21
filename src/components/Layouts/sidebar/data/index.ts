@@ -60,9 +60,17 @@ export const NAV_DATA = [
       },
       {
         title: "Attendance",
-        url: "/attendance",
         icon: Icons.ClockIcon,
-        items: [],
+        items: [
+          {
+            title: "Track Attendance",
+            url: "/attendance",
+          },
+          {
+            title: "Attendance Tray",
+            url: "/attendance/tray",
+          },
+        ],
       },
 
       {
