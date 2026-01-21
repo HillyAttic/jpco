@@ -28,6 +28,7 @@ export default function ClientsPage() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   /**
    * Handle opening the create modal
@@ -157,12 +158,33 @@ export default function ClientsPage() {
         </div>
       )}
 
+      {/* View Toggle Buttons */}
+      <div className="flex justify-end">
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+            aria-label="Grid view"
+          >
+            Grid
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+            aria-label="List view"
+          >
+            List
+          </button>
+        </div>
+      </div>
+
       {/* Client List */}
       <ClientList
         clients={clients}
         onEdit={handleEdit}
         onDelete={handleDelete}
         isLoading={loading}
+        viewMode={viewMode}
       />
 
       {/* Client Modal (Create/Edit) */}

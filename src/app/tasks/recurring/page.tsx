@@ -5,6 +5,7 @@ import { useRecurringTasks } from '@/hooks/use-recurring-tasks';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { RecurringTaskCard } from '@/components/recurring-tasks/RecurringTaskCard';
+import { RecurringTaskListView } from '@/components/recurring-tasks/RecurringTaskListView';
 import { RecurringTaskModal } from '@/components/recurring-tasks/RecurringTaskModal';
 import { BulkActionToolbar } from '@/components/ui/BulkActionToolbar';
 import { BulkDeleteDialog } from '@/components/ui/BulkDeleteDialog';
@@ -51,6 +52,7 @@ export default function RecurringTasksPage() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   /**
    * Handle opening modal for creating new task
@@ -260,22 +262,56 @@ export default function RecurringTasksPage() {
           />
         )}
 
-        {/* Task Grid */}
-        {tasks.length > 0 && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {tasks.map((task) => (
-              <RecurringTaskCard
-                key={task.id}
-                task={task}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-                onPause={handlePause}
-                onResume={handleResume}
-                selected={isSelected(task.id!)}
-                onSelect={toggleSelection}
-              />
-            ))}
+        {/* View Toggle Buttons */}
+        {!loading && tasks.length > 0 && (
+          <div className="flex justify-end">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                aria-label="Grid view"
+              >
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                aria-label="List view"
+              >
+                List
+              </button>
+            </div>
           </div>
+        )}
+
+        {/* Task Grid/List */}
+        {tasks.length > 0 && (
+          viewMode === 'list' ? (
+            <RecurringTaskListView
+              tasks={tasks}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              onPause={handlePause}
+              onResume={handleResume}
+              selected={Array.from(selectedIds)}
+              onSelect={toggleSelection}
+            />
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {tasks.map((task) => (
+                <RecurringTaskCard
+                  key={task.id}
+                  task={task}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                  onPause={handlePause}
+                  onResume={handleResume}
+                  selected={isSelected(task.id!)}
+                  onSelect={toggleSelection}
+                />
+              ))}
+            </div>
+          )
         )}
 
         {/* Task Count */}

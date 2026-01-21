@@ -276,14 +276,13 @@ export default function AttendanceTrayPage() {
 
   // Export to CSV
   const exportToCSV = () => {
-    const headers = ['Date', 'Employee', 'Clock In', 'Clock Out', 'Duration', 'Total Hours', 'Status'];
+    const headers = ['Date', 'Employee', 'Clock In', 'Clock Out', 'Duration', 'Status'];
     const rows = attendances.map(record => [
       formatDate(record.clockIn),
       record.employeeName,
       formatTime(record.clockIn),
       formatTime(record.clockOut),
       calculateDuration(record.clockIn, record.clockOut),
-      record.totalHours.toFixed(2),
       record.clockOut ? 'Completed' : 'Active'
     ]);
 
@@ -482,10 +481,6 @@ export default function AttendanceTrayPage() {
                     <div className="text-center">
                       <p className="text-xs text-gray-500 mb-1">Duration</p>
                       <p className="font-medium text-gray-900">{calculateDuration(record.clockIn, record.clockOut)}</p>
-                    </div>
-                    <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Total Hours</p>
-                      <p className="font-medium text-gray-900">{record.totalHours.toFixed(2)}h</p>
                     </div>
                   </div>
 

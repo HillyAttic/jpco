@@ -550,12 +550,6 @@ export default function AttendanceHistoryPage() {
                           {calculateDuration(record.clockIn, record.clockOut)}
                         </span>
                       </div>
-                      <div>
-                        <span className="text-sm text-gray-500">Total Hours:</span>
-                        <span className="ml-2 text-sm font-medium text-gray-900">
-                          {record.totalHours.toFixed(2)}h
-                        </span>
-                      </div>
                     </div>
                     <div className="text-xs text-gray-400">
                       Updated: {formatDateTime(record.updatedAt)}

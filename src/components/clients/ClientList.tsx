@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Client } from '@/services/client.service';
 import { ClientCard } from './ClientCard';
+import { ClientListView } from './ClientListView';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CardGridSkeleton } from '@/components/ui/loading-skeletons';
@@ -12,6 +13,7 @@ interface ClientListProps {
   onEdit: (client: Client) => void;
   onDelete: (id: string) => void;
   isLoading?: boolean;
+  viewMode?: 'grid' | 'list';
 }
 
 /**
@@ -23,7 +25,8 @@ export function ClientList({
   clients, 
   onEdit, 
   onDelete, 
-  isLoading = false
+  isLoading = false,
+  viewMode = 'list'
 }: ClientListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -141,7 +144,7 @@ export function ClientList({
         {searchQuery && ` matching "${searchQuery}"`}
       </div>
 
-      {/* Client Grid */}
+      {/* Client Grid/List */}
       {paginatedClients.length === 0 ? (
         searchQuery || statusFilter !== 'all' ? (
           <NoResultsEmptyState 
@@ -153,6 +156,12 @@ export function ClientList({
         ) : (
           <NoDataEmptyState entityName="Clients" />
         )
+      ) : viewMode === 'list' ? (
+        <ClientListView
+          clients={paginatedClients}
+          onEdit={onEdit}
+          onDelete={onDelete}
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {paginatedClients.map((client) => (
