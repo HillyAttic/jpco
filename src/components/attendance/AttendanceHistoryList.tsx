@@ -14,6 +14,7 @@ import { db } from '@/lib/firebase';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LocationMapModal } from './LocationMapModal';
 import { 
   Clock, 
   MapPin, 
@@ -58,6 +59,10 @@ export function AttendanceHistoryList({
   const [currentPage, setCurrentPage] = useState(1);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const itemsPerPage = 10;
+
+  // State for location map modal
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number; title: string } | null>(null);
 
   // Convert Firestore timestamp to Date
   const convertTimestamps = (record: any): AttendanceRecord => {
@@ -223,6 +228,12 @@ export function AttendanceHistoryList({
     }
   };
 
+  // Handle location click
+  const handleLocationClick = (latitude: number, longitude: number, title: string) => {
+    setSelectedLocation({ latitude, longitude, title });
+    setShowMapModal(true);
+  };
+
   if (!userId) {
     return (
       <div className="text-center py-8">
@@ -292,12 +303,19 @@ export function AttendanceHistoryList({
                       <h4 className="text-sm font-medium text-gray-500 mb-1">Clock In</h4>
                       <p className="text-lg font-semibold text-gray-900">{formatTime(record.clockIn)}</p>
                       {record.location?.clockIn && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <MapPin className="h-3 w-3 text-gray-400" />
-                          <span className="text-xs text-gray-500">
+                        <button
+                          onClick={() => handleLocationClick(
+                            record.location.clockIn.latitude,
+                            record.location.clockIn.longitude,
+                            `Clock In Location - ${formatDate(record.clockIn)}`
+                          )}
+                          className="flex items-center gap-1 mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        >
+                          <MapPin className="h-3 w-3" />
+                          <span className="text-xs">
                             {record.location.clockIn.latitude.toFixed(4)}, {record.location.clockIn.longitude.toFixed(4)}
                           </span>
-                        </div>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -313,12 +331,19 @@ export function AttendanceHistoryList({
                       <h4 className="text-sm font-medium text-gray-500 mb-1">Clock Out</h4>
                       <p className="text-lg font-semibold text-gray-900">{formatTime(record.clockOut)}</p>
                       {record.location?.clockOut && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <MapPin className="h-3 w-3 text-gray-400" />
-                          <span className="text-xs text-gray-500">
+                        <button
+                          onClick={() => handleLocationClick(
+                            record.location.clockOut.latitude,
+                            record.location.clockOut.longitude,
+                            `Clock Out Location - ${formatDate(record.clockIn)}`
+                          )}
+                          className="flex items-center gap-1 mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        >
+                          <MapPin className="h-3 w-3" />
+                          <span className="text-xs">
                             {record.location.clockOut.latitude.toFixed(4)}, {record.location.clockOut.longitude.toFixed(4)}
                           </span>
-                        </div>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -394,6 +419,20 @@ export function AttendanceHistoryList({
             </div>
           )}
         </div>
+      )}
+
+      {/* Location Map Modal */}
+      {selectedLocation && (
+        <LocationMapModal
+          isOpen={showMapModal}
+          onClose={() => {
+            setShowMapModal(false);
+            setSelectedLocation(null);
+          }}
+          latitude={selectedLocation.latitude}
+          longitude={selectedLocation.longitude}
+          title={selectedLocation.title}
+        />
       )}
     </div>
   );

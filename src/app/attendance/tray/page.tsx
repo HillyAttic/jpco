@@ -15,6 +15,7 @@ import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { LocationMapModal } from '@/components/attendance/LocationMapModal';
 import { 
   Clock, 
   MapPin, 
@@ -67,6 +68,10 @@ export default function AttendanceTrayPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<string>('all');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [dateFilter, setDateFilter] = useState<string>('all');
+
+  // State for location map modal
+  const [showMapModal, setShowMapModal] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number; title: string } | null>(null);
 
   // Convert Firestore timestamp to Date
   const convertTimestamps = (record: any): AttendanceRecord => {
@@ -299,6 +304,12 @@ export default function AttendanceTrayPage() {
     a.click();
   };
 
+  // Handle location click
+  const handleLocationClick = (latitude: number, longitude: number, title: string) => {
+    setSelectedLocation({ latitude, longitude, title });
+    setShowMapModal(true);
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -493,18 +504,32 @@ export default function AttendanceTrayPage() {
                 {/* Location Info */}
                 {(record.location?.clockIn || record.location?.clockOut) && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-4 text-xs text-gray-500">
+                    <div className="flex items-center gap-4 text-xs">
                       {record.location?.clockIn && (
-                        <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleLocationClick(
+                            record.location.clockIn.latitude,
+                            record.location.clockIn.longitude,
+                            `${record.employeeName} - Clock In Location`
+                          )}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        >
                           <MapPin className="h-3 w-3" />
                           <span>In: {record.location.clockIn.latitude.toFixed(4)}, {record.location.clockIn.longitude.toFixed(4)}</span>
-                        </div>
+                        </button>
                       )}
                       {record.location?.clockOut && (
-                        <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => handleLocationClick(
+                            record.location.clockOut.latitude,
+                            record.location.clockOut.longitude,
+                            `${record.employeeName} - Clock Out Location`
+                          )}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        >
                           <MapPin className="h-3 w-3" />
                           <span>Out: {record.location.clockOut.latitude.toFixed(4)}, {record.location.clockOut.longitude.toFixed(4)}</span>
-                        </div>
+                        </button>
                       )}
                     </div>
                   </div>
@@ -555,6 +580,20 @@ export default function AttendanceTrayPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Location Map Modal */}
+      {selectedLocation && (
+        <LocationMapModal
+          isOpen={showMapModal}
+          onClose={() => {
+            setShowMapModal(false);
+            setSelectedLocation(null);
+          }}
+          latitude={selectedLocation.latitude}
+          longitude={selectedLocation.longitude}
+          title={selectedLocation.title}
+        />
       )}
     </div>
   );
