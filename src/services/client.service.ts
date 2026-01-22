@@ -8,10 +8,17 @@ import { createFirebaseService, QueryOptions } from './firebase.service';
 export interface Client {
   id?: string;
   name: string;
-  email: string;
-  phone: string;
-  company: string;
-  avatarUrl?: string;
+  businessName?: string;
+  pan?: string;
+  tan?: string;
+  gstin?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zipCode?: string;
   status: 'active' | 'inactive';
   createdAt?: Date;
   updatedAt?: Date;
@@ -19,10 +26,32 @@ export interface Client {
 
 export interface ClientFormData {
   name: string;
-  email: string;
-  phone: string;
-  company: string;
-  avatar?: File;
+  businessName?: string;
+  pan?: string;
+  tan?: string;
+  gstin?: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  zipCode?: string;
+}
+
+export interface ClientImportRow {
+  Name: string;
+  'Business Name'?: string;
+  'P.A.N.'?: string;
+  'T.A.N.'?: string;
+  GSTIN?: string;
+  Email?: string;
+  Phone?: string;
+  Address?: string;
+  City?: string;
+  State?: string;
+  Country?: string;
+  'Zip Code'?: string;
 }
 
 // Create the Firebase service instance for clients
@@ -70,7 +99,7 @@ export const clientService = {
     // Apply search filter (client-side)
     if (filters?.search) {
       clients = await clientFirebaseService.searchMultipleFields(
-        ['name', 'email', 'company'],
+        ['name', 'businessName', 'email', 'phone', 'gstin', 'pan'],
         filters.search,
         options
       );
@@ -129,9 +158,40 @@ export const clientService = {
    */
   async search(query: string): Promise<Client[]> {
     return clientFirebaseService.searchMultipleFields(
-      ['name', 'email', 'company'],
+      ['name', 'businessName', 'email', 'phone', 'gstin', 'pan'],
       query
     );
+  },
+
+  /**
+   * Bulk import clients from CSV data
+   */
+  async bulkImport(clients: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>[]): Promise<{
+    success: number;
+    failed: number;
+    errors: Array<{ row: number; error: string; data: any }>;
+  }> {
+    const results = {
+      success: 0,
+      failed: 0,
+      errors: [] as Array<{ row: number; error: string; data: any }>,
+    };
+
+    for (let i = 0; i < clients.length; i++) {
+      try {
+        await clientFirebaseService.create(clients[i]);
+        results.success++;
+      } catch (error) {
+        results.failed++;
+        results.errors.push({
+          row: i + 1,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          data: clients[i],
+        });
+      }
+    }
+
+    return results;
   },
 
   /**

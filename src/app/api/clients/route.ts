@@ -6,10 +6,17 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 // Validation schema for client creation
 const createClientSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
-  email: z.string().email('Invalid email format'),
-  phone: z.string().regex(/^\+?[\d\s\-()]+$/, 'Invalid phone format'),
-  company: z.string().min(1, 'Company is required').max(100),
-  avatarUrl: z.string().optional(),
+  businessName: z.string().optional(),
+  pan: z.string().optional(),
+  tan: z.string().optional(),
+  gstin: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  zipCode: z.string().optional(),
   status: z.enum(['active', 'inactive']).default('active'),
 });
 
@@ -30,12 +37,11 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || undefined;
     const search = searchParams.get('search') || undefined;
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '1000'); // Increased to 1000 to show all clients
 
     const clients = await clientService.getAll({
       status,
       search,
-      page,
       limit,
     });
 

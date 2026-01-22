@@ -19,10 +19,11 @@ export function ClientListView({ clients, onEdit, onDelete }: ClientListViewProp
     <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
       {/* Table Header */}
       <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-        <div className="col-span-3">Name</div>
-        <div className="col-span-3">Email</div>
-        <div className="col-span-2">Company</div>
-        <div className="col-span-2">Phone</div>
+        <div className="col-span-2">Name</div>
+        <div className="col-span-2">Business Name</div>
+        <div className="col-span-2">P.A.N.</div>
+        <div className="col-span-2">T.A.N.</div>
+        <div className="col-span-2">GSTIN</div>
         <div className="col-span-1">Status</div>
         <div className="col-span-1">Actions</div>
       </div>
@@ -35,21 +36,13 @@ export function ClientListView({ clients, onEdit, onDelete }: ClientListViewProp
             className="grid grid-cols-12 gap-4 px-6 py-4 text-sm bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
           >
             {/* Name */}
-            <div className="col-span-3">
+            <div className="col-span-2">
               <div className="flex items-center gap-3">
-                {client.avatarUrl ? (
-                  <img
-                    src={client.avatarUrl}
-                    alt={client.name}
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                    <span className="text-blue-600 dark:text-blue-300 font-medium text-sm">
-                      {client.name.charAt(0).toUpperCase()}
-                    </span>
-                  </div>
-                )}
+                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                  <span className="text-blue-600 dark:text-blue-300 font-medium text-sm">
+                    {client.name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
                 <div>
                   <div className="font-medium text-gray-900 dark:text-white">
                     {client.name}
@@ -58,19 +51,24 @@ export function ClientListView({ clients, onEdit, onDelete }: ClientListViewProp
               </div>
             </div>
 
-            {/* Email */}
-            <div className="col-span-3 text-gray-700 dark:text-gray-300 truncate">
-              {client.email}
+            {/* Business Name */}
+            <div className="col-span-2 text-gray-700 dark:text-gray-300 truncate">
+              {client.businessName || '-'}
             </div>
 
-            {/* Company */}
+            {/* P.A.N. */}
             <div className="col-span-2 text-gray-700 dark:text-gray-300">
-              {client.company}
+              {client.pan || '-'}
             </div>
 
-            {/* Phone */}
+            {/* T.A.N. */}
             <div className="col-span-2 text-gray-700 dark:text-gray-300">
-              {client.phone}
+              {client.tan || '-'}
+            </div>
+
+            {/* GSTIN */}
+            <div className="col-span-2 text-gray-700 dark:text-gray-300">
+              {client.gstin || '-'}
             </div>
 
             {/* Status */}

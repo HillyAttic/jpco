@@ -6,10 +6,17 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 // Validation schema for client update
 const updateClientSchema = z.object({
   name: z.string().min(1).max(100).optional(),
-  email: z.string().email().optional(),
-  phone: z.string().regex(/^\+?[\d\s\-()]+$/).optional(),
-  company: z.string().min(1).max(100).optional(),
-  avatarUrl: z.string().optional(),
+  businessName: z.string().optional(),
+  pan: z.string().optional(),
+  tan: z.string().optional(),
+  gstin: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  zipCode: z.string().optional(),
   status: z.enum(['active', 'inactive']).optional(),
 });
 

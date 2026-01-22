@@ -19,10 +19,17 @@ import { PhotoIcon } from '@heroicons/react/24/outline';
 // Form-specific schema with required status
 const clientFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
-  email: z.string().email({ message: 'Invalid email format' }),
-  phone: z.string().regex(/^\+?[\d\s\-()]+$/, { message: 'Invalid phone format' }),
-  company: z.string().min(1, 'Company is required').max(100, 'Company must be less than 100 characters'),
-  avatar: z.instanceof(File).optional(),
+  businessName: z.string().optional(),
+  pan: z.string().optional(),
+  tan: z.string().optional(),
+  gstin: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  country: z.string().optional(),
+  zipCode: z.string().optional(),
   status: z.enum(['active', 'inactive']),
 });
 
@@ -61,9 +68,17 @@ export function ClientModal({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
       name: '',
+      businessName: '',
+      pan: '',
+      tan: '',
+      gstin: '',
       email: '',
       phone: '',
-      company: '',
+      address: '',
+      city: '',
+      state: '',
+      country: '',
+      zipCode: '',
       status: 'active',
     },
   });
@@ -89,18 +104,34 @@ export function ClientModal({
     if (client) {
       reset({
         name: client.name,
+        businessName: client.businessName,
+        pan: client.pan || '',
+        tan: client.tan || '',
+        gstin: client.gstin || '',
         email: client.email,
         phone: client.phone,
-        company: client.company,
+        address: client.address || '',
+        city: client.city || '',
+        state: client.state || '',
+        country: client.country || '',
+        zipCode: client.zipCode || '',
         status: client.status,
       });
-      setAvatarPreview(client.avatarUrl || null);
+      setAvatarPreview(null);
     } else {
       reset({
         name: '',
+        businessName: '',
+        pan: '',
+        tan: '',
+        gstin: '',
         email: '',
         phone: '',
-        company: '',
+        address: '',
+        city: '',
+        state: '',
+        country: '',
+        zipCode: '',
         status: 'active',
       });
       setAvatarPreview(null);
@@ -111,8 +142,6 @@ export function ClientModal({
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setValue('avatar', file);
-      
       // Create preview URL
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -141,7 +170,7 @@ export function ClientModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {client ? 'Edit Client' : 'Create New Client'}
@@ -149,42 +178,8 @@ export function ClientModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          {/* Avatar Upload */}
-          <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              {avatarPreview ? (
-                <img
-                  src={avatarPreview}
-                  alt="Avatar preview"
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-semibold">
-                  {getInitials(currentName) || <PhotoIcon className="w-12 h-12" />}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex flex-col items-center gap-2">
-              <Label
-                htmlFor="avatar-upload"
-                className="cursor-pointer text-sm text-blue-600 hover:text-blue-700"
-              >
-                {avatarPreview ? 'Change Photo' : 'Upload Photo'}
-              </Label>
-              <input
-                id="avatar-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
-              <p className="text-xs text-gray-500">
-                JPG, PNG or GIF (max 5MB)
-              </p>
-            </div>
-          </div>
-
+          {/* Avatar Upload - Removed for now */}
+          
           {/* Client Name */}
           <div>
             <Input
@@ -198,6 +193,18 @@ export function ClientModal({
             />
           </div>
 
+          {/* Business Name */}
+          <div>
+            <Input
+              id="businessName"
+              label="Business Name"
+              {...register('businessName')}
+              placeholder="Enter business name"
+              error={errors.businessName?.message}
+              disabled={isLoading}
+            />
+          </div>
+
           {/* Email */}
           <div>
             <Input
@@ -207,7 +214,6 @@ export function ClientModal({
               {...register('email')}
               placeholder="client@example.com"
               error={errors.email?.message}
-              required
               disabled={isLoading}
             />
           </div>
@@ -221,22 +227,98 @@ export function ClientModal({
               {...register('phone')}
               placeholder="+1 (555) 123-4567"
               error={errors.phone?.message}
-              required
               disabled={isLoading}
             />
           </div>
 
-          {/* Company */}
+          {/* Tax Information */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Input
+                id="pan"
+                label="P.A.N."
+                {...register('pan')}
+                placeholder="ABCDE1234F"
+                error={errors.pan?.message}
+                disabled={isLoading}
+              />
+            </div>
+            <div>
+              <Input
+                id="tan"
+                label="T.A.N."
+                {...register('tan')}
+                placeholder="ABCD12345E"
+                error={errors.tan?.message}
+                disabled={isLoading}
+              />
+            </div>
+            <div>
+              <Input
+                id="gstin"
+                label="GSTIN"
+                {...register('gstin')}
+                placeholder="22AAAAA0000A1Z5"
+                error={errors.gstin?.message}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
+
+          {/* Address */}
           <div>
             <Input
-              id="company"
-              label="Company"
-              {...register('company')}
-              placeholder="Enter company name"
-              error={errors.company?.message}
-              required
+              id="address"
+              label="Address"
+              {...register('address')}
+              placeholder="Enter street address"
+              error={errors.address?.message}
               disabled={isLoading}
             />
+          </div>
+
+          {/* City, State, Country, Zip */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Input
+                id="city"
+                label="City"
+                {...register('city')}
+                placeholder="Enter city"
+                error={errors.city?.message}
+                disabled={isLoading}
+              />
+            </div>
+            <div>
+              <Input
+                id="state"
+                label="State"
+                {...register('state')}
+                placeholder="Enter state"
+                error={errors.state?.message}
+                disabled={isLoading}
+              />
+            </div>
+            <div>
+              <Input
+                id="country"
+                label="Country"
+                {...register('country')}
+                placeholder="Enter country"
+                error={errors.country?.message}
+                disabled={isLoading}
+              />
+            </div>
+            <div>
+              <Input
+                id="zipCode"
+                label="Zip Code"
+                {...register('zipCode')}
+                placeholder="Enter zip code"
+                error={errors.zipCode?.message}
+                disabled={isLoading}
+              />
+            </div>
           </div>
 
           {/* Status */}

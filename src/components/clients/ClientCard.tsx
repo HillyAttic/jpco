@@ -36,12 +36,11 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
         <div className="flex items-start justify-between mb-4">
           {/* Avatar and Name */}
           <div className="flex items-start gap-4 flex-1">
-            <Avatar
-              src={client.avatarUrl}
-              alt={client.name}
-              fallback={getInitials(client.name)}
-              size="lg"
-            />
+            <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+              <span className="text-blue-600 dark:text-blue-300 font-semibold text-lg">
+                {getInitials(client.name)}
+              </span>
+            </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -83,32 +82,38 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
         {/* Contact Information */}
         <div className="space-y-2">
           {/* Email */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
-            <a 
-              href={`mailto:${client.email}`}
-              className="hover:text-blue-600 truncate"
-            >
-              {client.email}
-            </a>
-          </div>
+          {client.email && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
+              <a 
+                href={`mailto:${client.email}`}
+                className="hover:text-blue-600 truncate"
+              >
+                {client.email}
+              </a>
+            </div>
+          )}
 
           {/* Phone */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <PhoneIcon className="w-4 h-4 flex-shrink-0" />
-            <a 
-              href={`tel:${client.phone}`}
-              className="hover:text-blue-600"
-            >
-              {client.phone}
-            </a>
-          </div>
+          {client.phone && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <PhoneIcon className="w-4 h-4 flex-shrink-0" />
+              <a 
+                href={`tel:${client.phone}`}
+                className="hover:text-blue-600"
+              >
+                {client.phone}
+              </a>
+            </div>
+          )}
 
-          {/* Company */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <BuildingOfficeIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="truncate">{client.company}</span>
-          </div>
+          {/* Business Name */}
+          {client.businessName && (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <BuildingOfficeIcon className="w-4 h-4 flex-shrink-0" />
+              <span className="truncate">{client.businessName}</span>
+            </div>
+          )}
         </div>
 
         {/* Footer with creation date */}

@@ -5,9 +5,10 @@ import { useClients } from '@/hooks/use-clients';
 import { Client } from '@/services/client.service';
 import { ClientList } from '@/components/clients/ClientList';
 import { ClientModal } from '@/components/clients/ClientModal';
+import { ClientBulkImportModal } from '@/components/clients/ClientBulkImportModal';
 import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import { Button } from '@/components/ui/button';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
 
 /**
  * Client Master Page
@@ -25,6 +26,7 @@ export default function ClientsPage() {
   } = useClients();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
@@ -36,6 +38,21 @@ export default function ClientsPage() {
   const handleAddNew = () => {
     setSelectedClient(null);
     setIsModalOpen(true);
+  };
+
+  /**
+   * Handle opening the import modal
+   */
+  const handleImport = () => {
+    setIsImportModalOpen(true);
+  };
+
+  /**
+   * Handle import completion
+   */
+  const handleImportComplete = () => {
+    // Refresh the client list
+    window.location.reload();
   };
 
   /**
@@ -86,22 +103,35 @@ export default function ClientsPage() {
         // Update existing client
         await updateClient(selectedClient.id!, {
           name: data.name,
+          businessName: data.businessName,
+          pan: data.pan,
+          tan: data.tan,
+          gstin: data.gstin,
           email: data.email,
           phone: data.phone,
-          company: data.company,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+          zipCode: data.zipCode,
           status: data.status,
-          // TODO: Handle avatar upload
-          avatarUrl: data.avatar ? undefined : selectedClient.avatarUrl,
         });
       } else {
         // Create new client
         await createClient({
           name: data.name,
+          businessName: data.businessName,
+          pan: data.pan,
+          tan: data.tan,
+          gstin: data.gstin,
           email: data.email,
           phone: data.phone,
-          company: data.company,
+          address: data.address,
+          city: data.city,
+          state: data.state,
+          country: data.country,
+          zipCode: data.zipCode,
           status: data.status,
-          // TODO: Handle avatar upload
         });
       }
 
@@ -140,14 +170,25 @@ export default function ClientsPage() {
         </div>
 
         {/* Add New Client Button */}
-        <Button
-          onClick={handleAddNew}
-          className="flex items-center gap-2 text-white"
-          size="lg"
-        >
-          <PlusIcon className="w-5 h-5" />
-          Add New Client
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button
+            onClick={handleImport}
+            variant="outline"
+            className="flex items-center gap-2"
+            size="lg"
+          >
+            <CloudArrowUpIcon className="w-5 h-5" />
+            Bulk Import
+          </Button>
+          <Button
+            onClick={handleAddNew}
+            className="flex items-center gap-2 text-white"
+            size="lg"
+          >
+            <PlusIcon className="w-5 h-5" />
+            Add New Client
+          </Button>
+        </div>
       </div>
 
       {/* Error Display */}
@@ -194,6 +235,13 @@ export default function ClientsPage() {
         onSubmit={handleSubmit}
         client={selectedClient}
         isLoading={isSubmitting}
+      />
+
+      {/* Bulk Import Modal */}
+      <ClientBulkImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportComplete={handleImportComplete}
       />
     </div>
   );

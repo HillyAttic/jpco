@@ -42,13 +42,16 @@ export function ClientList({
       filtered = filtered.filter(client => client.status === statusFilter);
     }
 
-    // Apply search filter (case-insensitive search across name, email, and company)
+    // Apply search filter (case-insensitive search across name, email, and businessName)
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(client =>
         client.name.toLowerCase().includes(query) ||
-        client.email.toLowerCase().includes(query) ||
-        client.company.toLowerCase().includes(query)
+        (client.email && client.email.toLowerCase().includes(query)) ||
+        (client.businessName && client.businessName.toLowerCase().includes(query)) ||
+        (client.phone && client.phone.toLowerCase().includes(query)) ||
+        (client.gstin && client.gstin.toLowerCase().includes(query)) ||
+        (client.pan && client.pan.toLowerCase().includes(query))
       );
     }
 
@@ -83,7 +86,7 @@ export function ClientList({
           <div className="flex-1">
             <Input
               type="text"
-              placeholder="Search by name, email, or company..."
+              placeholder="Search by name, email, business, phone, GSTIN, or PAN..."
               disabled
               className="pl-10"
             />
@@ -114,7 +117,7 @@ export function ClientList({
           <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
           <Input
             type="text"
-            placeholder="Search by name, email, or company..."
+            placeholder="Search by name, email, business, phone, GSTIN, or PAN..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10"
