@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTeams } from '@/hooks/use-teams';
 import { Team } from '@/services/team.service';
 import { TeamFormData } from '@/lib/validation';
@@ -19,6 +19,26 @@ import {
   UserGroupIcon,
   ExclamationTriangleIcon,
 } from '@heroicons/react/24/outline';
+
+// Wrapper component to manage body class for detail panel
+function DetailPanelWrapper({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
+  useEffect(() => {
+    document.body.classList.add('modal-open');
+    return () => {
+      document.body.classList.remove('modal-open');
+    };
+  }, []);
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
+      <div className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-lg w-full max-h-[70vh] overflow-y-auto">
+        <div className="p-3 sm:p-4">
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 /**
  * Teams Page Component
@@ -424,17 +444,13 @@ export default function TeamsPage() {
 
         {/* Team Detail Panel */}
         {detailTeam && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
-            <div className="bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[70vh] overflow-y-auto">
-              <div className="p-3 sm:p-4">
-                <TeamDetailPanel
-                  team={detailTeam}
-                  onTeamUpdate={handleTeamUpdate}
-                  onClose={handleCloseDetailPanel}
-                />
-              </div>
-            </div>
-          </div>
+          <DetailPanelWrapper onClose={handleCloseDetailPanel}>
+            <TeamDetailPanel
+              team={detailTeam}
+              onTeamUpdate={handleTeamUpdate}
+              onClose={handleCloseDetailPanel}
+            />
+          </DetailPanelWrapper>
         )}
       </div>
     </ErrorBoundary>

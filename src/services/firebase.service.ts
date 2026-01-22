@@ -187,23 +187,35 @@ export class FirebaseService<T extends { id?: string }> {
    * Handle Firebase errors and convert to service errors
    */
   private handleError(error: any): FirebaseServiceError {
+    // Log the raw error for debugging
+    console.error('Firebase Service Error Details:', {
+      error,
+      errorType: typeof error,
+      errorConstructor: error?.constructor?.name,
+      errorKeys: error && typeof error === 'object' ? Object.keys(error) : [],
+      errorString: String(error),
+      stack: error?.stack,
+    });
+
     // Handle case where error is an empty object or null
     if (!error || (typeof error === 'object' && Object.keys(error).length === 0)) {
       return {
         code: 'unknown',
-        message: 'An unknown error occurred',
+        message: 'An unknown error occurred. Please check your Firebase configuration and network connection.',
+        details: { rawError: error },
       };
     }
     
     const serviceError: FirebaseServiceError = {
       code: error.code || 'unknown',
       message: error.message || 'An unknown error occurred',
+      details: error,
     };
 
     // Map common Firebase errors to user-friendly messages
     switch (error.code) {
       case 'permission-denied':
-        serviceError.message = 'You do not have permission to perform this action';
+        serviceError.message = 'You do not have permission to perform this action. Check Firestore security rules.';
         break;
       case 'not-found':
         serviceError.message = 'The requested resource was not found';
@@ -219,6 +231,9 @@ export class FirebaseService<T extends { id?: string }> {
         break;
       case 'unavailable':
         serviceError.message = 'Service is temporarily unavailable. Please try again';
+        break;
+      case 'failed-precondition':
+        serviceError.message = 'Operation failed. The collection may require an index. Check Firebase console.';
         break;
     }
 
@@ -292,6 +307,7 @@ export class FirebaseService<T extends { id?: string }> {
 
       return documents;
     } catch (error) {
+      console.error(`Error in FirebaseService.getAll for collection '${this.collectionName}':`, error);
       throw this.handleError(error);
     }
   }

@@ -3,6 +3,11 @@
  * Enhanced mobile-first responsive design for all devices
  */
 
+/* Modal Open - Hide Header */
+body.modal-open header {
+  display: none !important;
+}
+
 /* Base Mobile Optimizations */
 @media (max-width: 768px) {
   /* Ensure proper touch targets (minimum 44x44px) */

@@ -87,8 +87,18 @@ export const employeeService = {
 
       return employees;
     } catch (error) {
+      // Log detailed error information for debugging
+      console.error('Error in employeeService.getAll:', {
+        error,
+        errorType: typeof error,
+        errorKeys: error && typeof error === 'object' ? Object.keys(error) : [],
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorCode: (error as any)?.code,
+        filters,
+      });
+      
       // Return empty array if there's an error fetching employees
-      console.error('Error in employeeService.getAll:', error);
+      // This allows the UI to continue functioning even if the fetch fails
       return [];
     }
   },
