@@ -1,15 +1,12 @@
-import React from 'react';
 import { Employee } from '@/services/employee.service';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { 
   PencilSquareIcon, 
   TrashIcon, 
   EnvelopeIcon, 
-  PhoneIcon, 
-  BuildingOfficeIcon,
+  PhoneIcon,
   UserMinusIcon 
 } from '@heroicons/react/24/outline';
 
@@ -81,14 +78,14 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
         )}
         
         <div className={`flex items-start justify-between mb-4 ${onSelect ? 'ml-8' : ''}`}>
-          {/* Avatar and Name */}
+          {/* Name and Role */}
           <div className="flex items-start gap-4 flex-1">
-            <Avatar
-              src={employee.avatarUrl}
-              alt={employee.name}
-              fallback={getInitials(employee.name)}
-              size="lg"
-            />
+            {/* Avatar with initials */}
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+              <span className="text-blue-600 font-semibold text-lg">
+                {getInitials(employee.name)}
+              </span>
+            </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
@@ -99,8 +96,7 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
                   {formatStatus(employee.status)}
                 </Badge>
               </div>
-              <p className="text-sm text-gray-600 mb-1">{employee.position}</p>
-              <p className="text-sm text-gray-500">{employee.department}</p>
+              <p className="text-sm text-gray-600">{employee.role}</p>
             </div>
           </div>
 
@@ -170,13 +166,6 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
             </a>
           </div>
         </div>
-
-        {/* Footer with hire date */}
-        {employee.hireDate && (
-          <div className="mt-4 pt-4 border-t text-xs text-gray-500">
-            Hired {new Date(employee.hireDate).toLocaleDateString()}
-          </div>
-        )}
       </CardContent>
     </Card>
   );

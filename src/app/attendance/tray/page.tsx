@@ -50,8 +50,9 @@ interface Employee {
   employeeId: string;
   name: string;
   email: string;
-  department: string;
-  position: string;
+  phone: string;
+  role: 'Manager' | 'Admin' | 'Employee';
+  status: 'active' | 'on-leave' | 'terminated';
 }
 
 export default function AttendanceTrayPage() {
@@ -279,31 +280,6 @@ export default function AttendanceTrayPage() {
     }
   };
 
-  // Export to CSV
-  const exportToCSV = () => {
-    const headers = ['Date', 'Employee', 'Clock In', 'Clock Out', 'Duration', 'Status'];
-    const rows = attendances.map(record => [
-      formatDate(record.clockIn),
-      record.employeeName,
-      formatTime(record.clockIn),
-      formatTime(record.clockOut),
-      calculateDuration(record.clockIn, record.clockOut),
-      record.clockOut ? 'Completed' : 'Active'
-    ]);
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `attendance-tray-${new Date().toISOString().split('T')[0]}.csv`;
-    a.click();
-  };
-
   // Handle location click
   const handleLocationClick = (latitude: number, longitude: number, title: string) => {
     setSelectedLocation({ latitude, longitude, title });
@@ -342,16 +318,6 @@ export default function AttendanceTrayPage() {
           <p className="text-gray-600 mt-2">View attendance history for all employees</p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={exportToCSV}
-            className="flex items-center gap-2"
-            disabled={attendances.length === 0}
-          >
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -401,7 +367,7 @@ export default function AttendanceTrayPage() {
                 <option value="all">All Employees</option>
                 {employees.map((emp) => (
                   <option key={emp.id} value={emp.id}>
-                    {emp.name} - {emp.department}
+                    {emp.name} - {emp.role}
                   </option>
                 ))}
               </select>

@@ -15,7 +15,6 @@ import { NoResultsEmptyState, NoDataEmptyState } from '@/components/ui/empty-sta
 import { CardGridSkeleton, StatsGridSkeleton } from '@/components/ui/loading-skeletons';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
-import { exportToCSV, generateTimestampedFilename } from '@/utils/csv-export';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { z } from 'zod';
 
@@ -25,13 +24,10 @@ const employeeFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   email: z.string().email('Invalid email format'),
   phone: z.string().regex(/^\+?[\d\s\-()]+$/, 'Invalid phone format'),
-  position: z.string().min(1, 'Position is required').max(100),
-  department: z.string().min(1, 'Department is required').max(100),
-  hireDate: z.date(),
+  role: z.enum(['Manager', 'Admin', 'Employee']),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
   avatar: z.instanceof(File).optional(),
-  managerId: z.string().optional(),
   status: z.enum(['active', 'on-leave', 'terminated']),
 });
 
@@ -61,23 +57,11 @@ export default function EmployeesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [filters, setFilters] = useState<EmployeeFilterState>({
     status: 'all',
-    department: 'all',
     search: '',
   });
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // 'grid' or 'list' view mode
-
-  // Get unique departments from employees for filter dropdown
-  const availableDepartments = useMemo(() => {
-    const departments = new Set(employees.map(emp => emp.department).filter(Boolean));
-    return Array.from(departments).sort();
-  }, [employees]);
-
-  // Get potential managers (active employees only)
-  const potentialManagers = useMemo(() => {
-    return employees.filter(emp => emp.status === 'active');
-  }, [employees]);
 
   // Filter employees based on current filters
   const filteredEmployees = useMemo(() => {
@@ -87,18 +71,13 @@ export default function EmployeesPage() {
         return false;
       }
 
-      // Department filter
-      if (filters.department !== 'all' && employee.department !== filters.department) {
-        return false;
-      }
-
-      // Search filter (name, email, position, employee ID)
+      // Search filter (name, email, role, employee ID)
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const matchesSearch = 
           employee.name.toLowerCase().includes(searchLower) ||
           employee.email.toLowerCase().includes(searchLower) ||
-          employee.position.toLowerCase().includes(searchLower) ||
+          employee.role.toLowerCase().includes(searchLower) ||
           employee.employeeId.toLowerCase().includes(searchLower);
         
         if (!matchesSearch) {
@@ -113,9 +92,7 @@ export default function EmployeesPage() {
   // Bulk selection state - Requirement 10.1
   const {
     selectedIds,
-    selectedItems,
     selectedCount,
-    allSelected,
     toggleSelection,
     selectAll,
     clearSelection,
@@ -127,7 +104,6 @@ export default function EmployeesPage() {
     searchEmployees(filters.search);
     filterEmployees({
       status: filters.status === 'all' ? undefined : filters.status,
-      department: filters.department === 'all' ? undefined : filters.department,
     });
   }, [filters, searchEmployees, filterEmployees]);
 
@@ -166,24 +142,28 @@ export default function EmployeesPage() {
   const handleSubmitEmployee = async (data: EmployeeFormData) => {
     setIsSubmitting(true);
     try {
-      const employeeData = {
-        employeeId: data.employeeId,
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        position: data.position,
-        department: data.department,
-        hireDate: data.hireDate,
-        avatarUrl: data.avatar ? URL.createObjectURL(data.avatar) : undefined,
-        managerId: data.managerId || undefined,
-        teamIds: [],
-        status: data.status,
-      };
-
       if (editingEmployee) {
-        await updateEmployee(editingEmployee.id!, employeeData);
+        // Update existing employee - only update allowed fields
+        const employeeData = {
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          role: data.role,
+          status: data.status,
+        };
+        // Pass password if provided (optional for updates)
+        await updateEmployee(editingEmployee.id!, employeeData, data.password || undefined);
       } else {
-        // For new employees, pass the password to create Firebase Auth account
+        // Create new employee - minimal fields
+        const employeeData = {
+          employeeId: data.employeeId,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          role: data.role,
+          status: data.status,
+        };
+        // Pass password separately for hashing
         await createEmployee(employeeData, data.password || '');
       }
 
@@ -204,7 +184,6 @@ export default function EmployeesPage() {
   const handleClearFilters = () => {
     setFilters({
       status: 'all',
-      department: 'all',
       search: '',
     });
   };
@@ -236,30 +215,6 @@ export default function EmployeesPage() {
     } finally {
       setIsBulkDeleting(false);
     }
-  };
-
-  /**
-   * Handle bulk export
-   * Validates Requirements: 10.3
-   */
-  const handleBulkExport = () => {
-    // Prepare data for export
-    const exportData = selectedItems.map((employee) => ({
-      'Employee ID': employee.employeeId,
-      Name: employee.name,
-      Email: employee.email,
-      Phone: employee.phone,
-      Position: employee.position,
-      Department: employee.department,
-      Status: employee.status,
-      'Hire Date': employee.hireDate ? new Date(employee.hireDate).toLocaleDateString() : '',
-      'Manager ID': employee.managerId || '',
-      'Created At': employee.createdAt ? new Date(employee.createdAt).toLocaleDateString() : '',
-    }));
-
-    // Generate filename and export
-    const filename = generateTimestampedFilename('employees_export');
-    exportToCSV(exportData, filename);
   };
 
   if (error) {
@@ -310,7 +265,6 @@ export default function EmployeesPage() {
           filters={filters}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          availableDepartments={availableDepartments}
         />
 
         {/* Results Summary and View Toggle */}
@@ -359,12 +313,12 @@ export default function EmployeesPage() {
           ) : (
             /* List View */
             <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-              <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+              <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
                 <div className="col-span-1">Select</div>
-                <div className="col-span-2">ID</div>
+                <div className="col-span-1">ID</div>
                 <div className="col-span-3">Name</div>
-                <div className="col-span-2">Position</div>
-                <div className="col-span-2">Department</div>
+                <div className="col-span-3">Email</div>
+                <div className="col-span-2">Role</div>
                 <div className="col-span-1">Status</div>
                 <div className="col-span-1">Actions</div>
               </div>
@@ -372,43 +326,86 @@ export default function EmployeesPage() {
                 {filteredEmployees.map((employee) => (
                   <div 
                     key={employee.id} 
-                    className={`grid grid-cols-12 gap-4 px-6 py-4 text-sm ${isSelected(employee.id!) ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-gray-dark'}`}
+                    className={`grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-4 md:px-6 py-4 text-sm ${isSelected(employee.id!) ? 'bg-blue-50 dark:bg-blue-900/30' : 'bg-white dark:bg-gray-dark'}`}
                   >
-                    <div className="col-span-1 flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={isSelected(employee.id!)}
-                        onChange={(e) => toggleSelection(employee.id!, e.target.checked)}
-                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      />
+                    {/* Mobile View */}
+                    <div className="md:hidden space-y-3">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-center gap-3 flex-1">
+                          <input
+                            type="checkbox"
+                            checked={isSelected(employee.id!)}
+                            onChange={(e) => toggleSelection(employee.id!, e.target.checked)}
+                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary mt-1"
+                          />
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">{employee.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{employee.employeeId}</div>
+                          </div>
+                        </div>
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${employee.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : employee.status === 'on-leave' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
+                          {employee.status.replace('-', ' ')}
+                        </span>
+                      </div>
+                      <div className="pl-7 space-y-1">
+                        <div className="text-gray-700 dark:text-gray-300 truncate">{employee.email}</div>
+                        <div className="text-gray-600 dark:text-gray-400 text-xs">{employee.role}</div>
+                      </div>
+                      <div className="pl-7 flex gap-3">
+                        <button 
+                          onClick={() => handleEditEmployee(employee)}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
+                          aria-label="Edit employee"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteEmployee(employee.id!)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
+                          aria-label="Delete employee"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
-                    <div className="col-span-2 font-medium text-gray-900 dark:text-white">{employee.employeeId}</div>
-                    <div className="col-span-3">
-                      <div className="font-medium text-gray-900 dark:text-white">{employee.name}</div>
-                      <div className="text-gray-500 dark:text-gray-400 text-xs">{employee.email}</div>
-                    </div>
-                    <div className="col-span-2 text-gray-700 dark:text-gray-300">{employee.position}</div>
-                    <div className="col-span-2 text-gray-700 dark:text-gray-300">{employee.department}</div>
-                    <div className="col-span-1">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${employee.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : employee.status === 'on-leave' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
-                        {employee.status.replace('-', ' ')}
-                      </span>
-                    </div>
-                    <div className="col-span-1 flex space-x-2">
-                      <button 
-                        onClick={() => handleEditEmployee(employee)}
-                        className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300"
-                        aria-label="Edit employee"
-                      >
-                        Edit
-                      </button>
-                      <button 
-                        onClick={() => handleDeleteEmployee(employee.id!)}
-                        className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                        aria-label="Delete employee"
-                      >
-                        Delete
-                      </button>
+
+                    {/* Desktop View */}
+                    <div className="hidden md:contents">
+                      <div className="col-span-1 flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={isSelected(employee.id!)}
+                          onChange={(e) => toggleSelection(employee.id!, e.target.checked)}
+                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                        />
+                      </div>
+                      <div className="col-span-1 font-medium text-gray-900 dark:text-white flex items-center">{employee.employeeId}</div>
+                      <div className="col-span-3 flex items-center">
+                        <div className="font-medium text-gray-900 dark:text-white truncate">{employee.name}</div>
+                      </div>
+                      <div className="col-span-3 text-gray-700 dark:text-gray-300 truncate flex items-center">{employee.email}</div>
+                      <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">{employee.role}</div>
+                      <div className="col-span-1 flex items-center">
+                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium whitespace-nowrap ${employee.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : employee.status === 'on-leave' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-500' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'}`}>
+                          {employee.status.replace('-', ' ')}
+                        </span>
+                      </div>
+                      <div className="col-span-1 flex items-center gap-2">
+                        <button 
+                          onClick={() => handleEditEmployee(employee)}
+                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 whitespace-nowrap"
+                          aria-label="Edit employee"
+                        >
+                          Edit
+                        </button>
+                        <button 
+                          onClick={() => handleDeleteEmployee(employee.id!)}
+                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 whitespace-nowrap"
+                          aria-label="Delete employee"
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -416,9 +413,9 @@ export default function EmployeesPage() {
             </div>
           )
         ) : (
-          filters.search || filters.status !== 'all' || filters.department !== 'all' ? (
+          filters.search || filters.status !== 'all' ? (
             <NoResultsEmptyState 
-              onClearFilters={() => setFilters({ search: '', status: 'all', department: 'all' })}
+              onClearFilters={() => setFilters({ search: '', status: 'all' })}
             />
           ) : (
             <NoDataEmptyState 
@@ -436,7 +433,6 @@ export default function EmployeesPage() {
             onSelectAll={selectAll}
             onClearSelection={clearSelection}
             onBulkDelete={handleBulkDelete}
-            onBulkExport={handleBulkExport}
           />
         )}
 
@@ -460,7 +456,6 @@ export default function EmployeesPage() {
           onSubmit={handleSubmitEmployee}
           employee={editingEmployee}
           isLoading={isSubmitting}
-          managers={potentialManagers}
         />
       </div>
     </ErrorBoundary>

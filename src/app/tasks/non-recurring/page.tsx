@@ -18,7 +18,6 @@ import { CardGridSkeleton, StatsGridSkeleton } from '@/components/ui/loading-ske
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
-import { exportToCSV, generateTimestampedFilename } from '@/utils/csv-export';
 
 /**
  * Non-Recurring Tasks Page
@@ -193,28 +192,6 @@ export default function NonRecurringTasksPage() {
     } finally {
       setIsBulkDeleting(false);
     }
-  };
-
-  /**
-   * Handle bulk export
-   * Validates Requirements: 10.3
-   */
-  const handleBulkExport = () => {
-    // Prepare data for export
-    const exportData = selectedItems.map((task) => ({
-      Title: task.title,
-      Description: task.description,
-      Status: task.status,
-      Priority: task.priority,
-      'Due Date': task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '',
-      'Assigned To': task.assignedTo?.join(', ') || '',
-      Category: task.category || '',
-      'Created At': task.createdAt ? new Date(task.createdAt).toLocaleDateString() : '',
-    }));
-
-    // Generate filename and export
-    const filename = generateTimestampedFilename('tasks_export');
-    exportToCSV(exportData, filename);
   };
 
   // Convert NonRecurringTask to Task type for components
@@ -393,7 +370,6 @@ export default function NonRecurringTasksPage() {
             onSelectAll={selectAll}
             onClearSelection={clearSelection}
             onBulkDelete={handleBulkDelete}
-            onBulkExport={handleBulkExport}
           />
         )}
 

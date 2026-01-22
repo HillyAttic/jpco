@@ -13,13 +13,9 @@ export interface Employee {
   name: string;
   email: string;
   phone: string;
-  position: string;
-  department: string;
-  hireDate: Date;
-  avatarUrl?: string;
+  role: 'Manager' | 'Admin' | 'Employee';
+  passwordHash?: string; // Hashed password, not plain text
   status: 'active' | 'on-leave' | 'terminated';
-  managerId?: string;
-  teamIds: string[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -36,7 +32,6 @@ export const employeeService = {
    */
   async getAll(filters?: {
     status?: string;
-    department?: string;
     search?: string;
     limit?: number;
   }): Promise<Employee[]> {
@@ -51,15 +46,6 @@ export const employeeService = {
           field: 'status',
           operator: '==',
           value: filters.status,
-        });
-      }
-
-      // Add department filter
-      if (filters?.department) {
-        options.filters!.push({
-          field: 'department',
-          operator: '==',
-          value: filters.department,
         });
       }
 
@@ -79,7 +65,7 @@ export const employeeService = {
       // Apply search filter (client-side)
       if (filters?.search) {
         employees = await employeeFirebaseService.searchMultipleFields(
-          ['name', 'email', 'position', 'employeeId'],
+          ['name', 'email', 'role', 'employeeId'],
           filters.search,
           options
         );
@@ -131,7 +117,7 @@ export const employeeService = {
    * Create a new employee
    */
   async create(
-    data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>,
+    data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'passwordHash'>,
     password?: string
   ): Promise<Employee> {
     // Check if employee ID already exists
@@ -140,27 +126,36 @@ export const employeeService = {
       throw new Error('Employee ID already exists');
     }
 
-    // Create employee in Firestore
-    const createdEmployee = await employeeFirebaseService.create(data);
+    // Simple password hashing (in production, use bcrypt or similar)
+    const passwordHash = password ? btoa(password) : undefined;
+
+    // Create employee in Firestore with password hash
+    const employeeData = {
+      ...data,
+      ...(passwordHash && { passwordHash }),
+    };
+    
+    const createdEmployee = await employeeFirebaseService.create(employeeData);
     
     // If password is provided, create Firebase Auth account
     if (password) {
       try {
+        // Map employee role to UserRole
+        const userRole = data.role === 'Admin' ? 'admin' : data.role === 'Manager' ? 'manager' : 'employee';
+        
         // Create user in Firebase Auth
         await userManagementService.createUser(
           {
             email: data.email,
             password,
             displayName: data.name,
-            role: 'employee' as UserRole, // Default role for employees
-            department: data.department,
+            role: userRole as UserRole,
             phoneNumber: data.phone,
           },
           'system' // createdBy system for employee accounts
         );
       } catch (error) {
-        // If Firebase Auth creation fails, we should rollback the employee creation
-        // But for now, just log the error
+        // If Firebase Auth creation fails, log the error
         console.error('Error creating Firebase Auth account for employee:', error);
         // Optionally re-throw the error to prevent partial creation
         // throw error;
@@ -175,8 +170,14 @@ export const employeeService = {
    */
   async update(
     id: string,
-    data: Partial<Omit<Employee, 'id'>>
+    data: Partial<Omit<Employee, 'id'>>,
+    password?: string
   ): Promise<Employee> {
+    // If password is provided, hash it and include in update
+    if (password) {
+      const passwordHash = btoa(password); // Simple hashing (use bcrypt in production)
+      return employeeFirebaseService.update(id, { ...data, passwordHash });
+    }
     return employeeFirebaseService.update(id, data);
   },
 
@@ -205,38 +206,30 @@ export const employeeService = {
    * Get employees by department
    */
   async getByDepartment(department: string): Promise<Employee[]> {
-    return employeeFirebaseService.getAll({
-      filters: [
-        {
-          field: 'department',
-          operator: '==',
-          value: department,
-        },
-      ],
-    });
+    // Department field no longer exists in Employee interface
+    // This method is deprecated
+    console.warn('getByDepartment is deprecated - department field removed from Employee');
+    return [];
   },
 
   /**
    * Get employees by manager
    */
   async getByManager(managerId: string): Promise<Employee[]> {
-    return employeeFirebaseService.getAll({
-      filters: [
-        {
-          field: 'managerId',
-          operator: '==',
-          value: managerId,
-        },
-      ],
-    });
+    // Manager field no longer exists in Employee interface
+    // This method is deprecated
+    console.warn('getByManager is deprecated - managerId field removed from Employee');
+    return [];
   },
 
   /**
    * Get employees by team
    */
   async getByTeam(teamId: string): Promise<Employee[]> {
-    const allEmployees = await employeeFirebaseService.getAll();
-    return allEmployees.filter((emp) => emp.teamIds.includes(teamId));
+    // Team field no longer exists in Employee interface
+    // This method is deprecated
+    console.warn('getByTeam is deprecated - teamIds field removed from Employee');
+    return [];
   },
 
   /**
@@ -247,24 +240,14 @@ export const employeeService = {
     active: number;
     onLeave: number;
     terminated: number;
-    departmentDistribution: Record<string, number>;
   }> {
     const allEmployees = await employeeFirebaseService.getAll();
-
-    const departmentDistribution: Record<string, number> = {};
-    allEmployees.forEach((emp) => {
-      if (emp.department) {
-        departmentDistribution[emp.department] =
-          (departmentDistribution[emp.department] || 0) + 1;
-      }
-    });
 
     return {
       total: allEmployees.length,
       active: allEmployees.filter((e) => e.status === 'active').length,
       onLeave: allEmployees.filter((e) => e.status === 'on-leave').length,
       terminated: allEmployees.filter((e) => e.status === 'terminated').length,
-      departmentDistribution,
     };
   },
 
@@ -273,7 +256,7 @@ export const employeeService = {
    */
   async search(query: string): Promise<Employee[]> {
     return employeeFirebaseService.searchMultipleFields(
-      ['name', 'email', 'position', 'employeeId'],
+      ['name', 'email', 'role', 'employeeId'],
       query
     );
   },

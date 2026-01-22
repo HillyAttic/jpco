@@ -23,38 +23,38 @@ interface StatItemProps {
 
 function StatItem({ icon, label, value, color, bgColor }: StatItemProps) {
   return (
-    <div className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
-      <div className={`flex items-center justify-center w-12 h-12 rounded-full ${bgColor}`}>
+    <div className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+      <div className={`flex items-center justify-center w-10 h-10 rounded-full ${bgColor}`}>
         <div className={color}>
           {icon}
         </div>
       </div>
       <div>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <p className="text-sm text-gray-600">{label}</p>
+        <p className="text-xl font-bold text-gray-900">{value}</p>
+        <p className="text-xs text-gray-600">{label}</p>
       </div>
     </div>
   );
 }
 
-interface DepartmentItemProps {
-  department: string;
+interface RoleItemProps {
+  role: string;
   count: number;
   percentage: number;
 }
 
-function DepartmentItem({ department, count, percentage }: DepartmentItemProps) {
+function RoleItem({ role, count, percentage }: RoleItemProps) {
   return (
-    <div className="flex items-center justify-between py-2">
+    <div className="flex items-center justify-between py-1.5">
       <div className="flex items-center gap-2">
-        <BuildingOfficeIcon className="w-4 h-4 text-gray-500" />
-        <span className="text-sm font-medium text-gray-700">{department}</span>
+        <BuildingOfficeIcon className="w-3.5 h-3.5 text-gray-500" />
+        <span className="text-xs font-medium text-gray-700">{role}</span>
       </div>
       <div className="flex items-center gap-2">
-        <span className="text-sm text-gray-600">{count}</span>
-        <div className="w-16 bg-gray-200 rounded-full h-2">
+        <span className="text-xs text-gray-600">{count}</span>
+        <div className="w-12 bg-gray-200 rounded-full h-1.5">
           <div
-            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+            className="bg-blue-600 h-1.5 rounded-full transition-all duration-300"
             style={{ width: `${percentage}%` }}
           />
         </div>
@@ -84,32 +84,31 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
     employee => employee.status === 'terminated'
   ).length;
 
-  // Calculate department distribution
-  const departmentDistribution: Record<string, number> = {};
+  // Calculate role distribution
+  const roleDistribution: Record<string, number> = {};
   employees.forEach(employee => {
-    if (employee.department) {
-      departmentDistribution[employee.department] = 
-        (departmentDistribution[employee.department] || 0) + 1;
+    if (employee.role) {
+      roleDistribution[employee.role] = 
+        (roleDistribution[employee.role] || 0) + 1;
     }
   });
 
-  // Sort departments by count (descending)
-  const sortedDepartments = Object.entries(departmentDistribution)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5); // Show top 5 departments
+  // Sort roles by count (descending)
+  const sortedRoles = Object.entries(roleDistribution)
+    .sort(([, a], [, b]) => b - a);
 
   return (
     <Card>
-      <CardContent className="p-6">
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Employee Overview</h2>
-          <p className="text-sm text-gray-600 mt-1">Summary of all employee statuses</p>
+      <CardContent className="p-4">
+        <div className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-900">Employee Overview</h2>
+          <p className="text-xs text-gray-600 mt-0.5">Summary of all employee statuses</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
           {/* Total Employees */}
           <StatItem
-            icon={<UsersIcon className="w-6 h-6" />}
+            icon={<UsersIcon className="w-5 h-5" />}
             label="Total Employees"
             value={totalEmployees}
             color="text-blue-600"
@@ -118,7 +117,7 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
 
           {/* Active Employees */}
           <StatItem
-            icon={<UserIcon className="w-6 h-6" />}
+            icon={<UserIcon className="w-5 h-5" />}
             label="Active"
             value={activeEmployees}
             color="text-green-600"
@@ -127,7 +126,7 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
 
           {/* On Leave Employees */}
           <StatItem
-            icon={<ClockIcon className="w-6 h-6" />}
+            icon={<ClockIcon className="w-5 h-5" />}
             label="On Leave"
             value={onLeaveEmployees}
             color="text-yellow-600"
@@ -136,7 +135,7 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
 
           {/* Terminated Employees */}
           <StatItem
-            icon={<UserMinusIcon className="w-6 h-6" />}
+            icon={<UserMinusIcon className="w-5 h-5" />}
             label="Terminated"
             value={terminatedEmployees}
             color="text-red-600"
@@ -144,19 +143,19 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
           />
         </div>
 
-        {/* Department Distribution */}
-        {sortedDepartments.length > 0 && (
-          <div className="pt-6 border-t border-gray-200">
-            <div className="mb-4">
-              <h3 className="text-lg font-medium text-gray-900">Department Distribution</h3>
-              <p className="text-sm text-gray-600">Top departments by employee count</p>
+        {/* Role Distribution */}
+        {sortedRoles.length > 0 && (
+          <div className="pt-4 border-t border-gray-200">
+            <div className="mb-3">
+              <h3 className="text-sm font-medium text-gray-900">Role Distribution</h3>
+              <p className="text-xs text-gray-600">Employees by role</p>
             </div>
             
-            <div className="space-y-2">
-              {sortedDepartments.map(([department, count]) => (
-                <DepartmentItem
-                  key={department}
-                  department={department}
+            <div className="space-y-1.5">
+              {sortedRoles.map(([role, count]) => (
+                <RoleItem
+                  key={role}
+                  role={role}
                   count={count}
                   percentage={totalEmployees > 0 ? (count / totalEmployees) * 100 : 0}
                 />
@@ -167,16 +166,16 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
 
         {/* Active Employee Rate */}
         {totalEmployees > 0 && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Active Employee Rate</span>
-              <span className="text-sm font-semibold text-gray-900">
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <div className="flex items-center justify-between mb-1.5">
+              <span className="text-xs font-medium text-gray-700">Active Employee Rate</span>
+              <span className="text-xs font-semibold text-gray-900">
                 {Math.round((activeEmployees / totalEmployees) * 100)}%
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className="bg-green-600 h-2.5 rounded-full transition-all duration-300"
+                className="bg-green-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${(activeEmployees / totalEmployees) * 100}%` }}
               />
             </div>

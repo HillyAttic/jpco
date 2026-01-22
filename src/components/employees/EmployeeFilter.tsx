@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 
 export interface EmployeeFilterState {
   status: string;
-  department: string;
   search: string;
 }
 
@@ -14,31 +13,22 @@ interface EmployeeFilterProps {
   filters: EmployeeFilterState;
   onFilterChange: (filters: EmployeeFilterState) => void;
   onClearFilters: () => void;
-  availableDepartments?: string[];
 }
 
 /**
  * EmployeeFilter Component
- * Provides department, status filter dropdowns and search input for employee management
+ * Provides status filter dropdown and search input for employee management
  * Validates Requirements: 5.7, 5.8
  */
 export function EmployeeFilter({ 
   filters, 
   onFilterChange, 
-  onClearFilters,
-  availableDepartments = []
+  onClearFilters
 }: EmployeeFilterProps) {
   const handleStatusChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onFilterChange({
       ...filters,
       status: e.target.value,
-    });
-  };
-
-  const handleDepartmentChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onFilterChange({
-      ...filters,
-      department: e.target.value,
     });
   };
 
@@ -49,7 +39,7 @@ export function EmployeeFilter({
     });
   };
 
-  const hasActiveFilters = filters.status !== 'all' || filters.department !== 'all' || filters.search !== '';
+  const hasActiveFilters = filters.status !== 'all' || filters.search !== '';
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm">
@@ -94,7 +84,7 @@ export function EmployeeFilter({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
           {/* Status Filter - Requirement 5.7 */}
           <div>
             <Label htmlFor="status-filter" className="text-sm font-medium text-gray-700">
@@ -111,42 +101,6 @@ export function EmployeeFilter({
               <option value="active">Active</option>
               <option value="on-leave">On Leave</option>
               <option value="terminated">Terminated</option>
-            </select>
-          </div>
-
-          {/* Department Filter - Requirement 5.7 */}
-          <div>
-            <Label htmlFor="department-filter" className="text-sm font-medium text-gray-700">
-              Department
-            </Label>
-            <select
-              id="department-filter"
-              value={filters.department}
-              onChange={handleDepartmentChange}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-sm"
-              aria-label="Filter by department"
-            >
-              <option value="all">All Departments</option>
-              {availableDepartments.length > 0 ? (
-                availableDepartments.map((dept) => (
-                  <option key={dept} value={dept}>
-                    {dept}
-                  </option>
-                ))
-              ) : (
-                <>
-                  <option value="Engineering">Engineering</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Sales">Sales</option>
-                  <option value="HR">HR</option>
-                  <option value="Finance">Finance</option>
-                  <option value="Operations">Operations</option>
-                  <option value="Product">Product</option>
-                  <option value="Design">Design</option>
-                  <option value="Customer Support">Customer Support</option>
-                  <option value="Legal">Legal</option>
-                </>
-              )}
             </select>
           </div>
         </div>
@@ -176,19 +130,6 @@ export function EmployeeFilter({
                   onClick={() => onFilterChange({ ...filters, status: 'all' })}
                   className="ml-1 hover:text-blue-900"
                   aria-label="Remove status filter"
-                >
-                  <XMarkIcon className="w-3 h-3" />
-                </button>
-              </span>
-            )}
-            
-            {filters.department !== 'all' && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
-                Department: {filters.department}
-                <button
-                  onClick={() => onFilterChange({ ...filters, department: 'all' })}
-                  className="ml-1 hover:text-green-900"
-                  aria-label="Remove department filter"
                 >
                   <XMarkIcon className="w-3 h-3" />
                 </button>

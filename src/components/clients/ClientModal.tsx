@@ -83,9 +83,6 @@ export function ClientModal({
     },
   });
 
-  // Watch avatar field for preview
-  const avatarFile = watch('avatar');
-
   // Generate initials for avatar fallback
   const getInitials = (name: string): string => {
     if (!name) return '';

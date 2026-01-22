@@ -9,14 +9,7 @@ const updateEmployeeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
   phone: z.string().regex(/^\+?[\d\s\-()]+$/).optional(),
-  position: z.string().min(1).max(100).optional(),
-  department: z.string().min(1).max(100).optional(),
-  hireDate: z.string().transform((str) => new Date(str)).refine((date) => date <= new Date(), {
-    message: 'Hire date cannot be in the future'
-  }).optional(),
-  avatarUrl: z.string().optional(),
-  managerId: z.string().optional(),
-  teamIds: z.array(z.string()).optional(),
+  role: z.enum(['Manager', 'Admin', 'Employee']).optional(),
   status: z.enum(['active', 'on-leave', 'terminated']).optional(),
 });
 
@@ -69,8 +62,11 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
+    // Extract password from body before validation
+    const { password, ...dataToValidate } = body;
+
     // Validate request body
-    const validationResult = updateEmployeeSchema.safeParse(body);
+    const validationResult = updateEmployeeSchema.safeParse(dataToValidate);
     if (!validationResult.success) {
       return ErrorResponses.badRequest(
         'Validation failed',
@@ -94,8 +90,8 @@ export async function PUT(
       }
     }
 
-    // Update employee
-    const updatedEmployee = await employeeService.update(id, updateData);
+    // Update employee with optional password
+    const updatedEmployee = await employeeService.update(id, updateData, password);
 
     return NextResponse.json(updatedEmployee);
   } catch (error) {

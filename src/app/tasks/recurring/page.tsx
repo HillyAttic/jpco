@@ -15,7 +15,6 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from '@heroicons/react/24/outline';
-import { exportToCSV, generateTimestampedFilename } from '@/utils/csv-export';
 
 /**
  * Recurring Tasks Page
@@ -194,29 +193,6 @@ export default function RecurringTasksPage() {
    * Handle bulk export
    * Validates Requirements: 10.3
    */
-  const handleBulkExport = () => {
-    // Prepare data for export
-    const exportData = selectedItems.map((task) => ({
-      Title: task.title,
-      Description: task.description,
-      Status: task.status,
-      Priority: task.priority,
-      'Recurrence Pattern': task.recurrencePattern,
-      'Next Occurrence': task.nextOccurrence ? new Date(task.nextOccurrence).toLocaleDateString() : '',
-      'Start Date': task.startDate ? new Date(task.startDate).toLocaleDateString() : '',
-      'End Date': task.endDate ? new Date(task.endDate).toLocaleDateString() : '',
-      'Is Paused': task.isPaused ? 'Yes' : 'No',
-      'Assigned To': task.assignedTo?.join(', ') || '',
-      'Team ID': task.teamId || '',
-      'Completion Count': task.completionHistory?.length || 0,
-      'Created At': task.createdAt ? new Date(task.createdAt).toLocaleDateString() : '',
-    }));
-
-    // Generate filename and export
-    const filename = generateTimestampedFilename('recurring_tasks_export');
-    exportToCSV(exportData, filename);
-  };
-
   return (
     <ErrorBoundary>
       <div className="space-y-6">
@@ -329,7 +305,6 @@ export default function RecurringTasksPage() {
             onSelectAll={selectAll}
             onClearSelection={clearSelection}
             onBulkDelete={handleBulkDelete}
-            onBulkExport={handleBulkExport}
           />
         )}
 

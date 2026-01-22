@@ -11,7 +11,7 @@ interface BulkActionToolbarProps {
   onSelectAll: () => void;
   onClearSelection: () => void;
   onBulkDelete: () => void;
-  onBulkExport: () => void;
+  onBulkExport?: () => void;
   className?: string;
 }
 
@@ -81,17 +81,19 @@ export function BulkActionToolbar({
 
       {/* Action Buttons */}
       <div className="flex items-center gap-2">
-        {/* Export Button */}
-        <Button
-          size="sm"
-          variant="outline"
-          onClick={onBulkExport}
-          className="flex items-center gap-2"
-          aria-label={`Export ${selectedCount} items`}
-        >
-          <ArrowDownTrayIcon className="w-4 h-4" />
-          Export
-        </Button>
+        {/* Export Button - Optional */}
+        {onBulkExport && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onBulkExport}
+            className="flex items-center gap-2"
+            aria-label={`Export ${selectedCount} items`}
+          >
+            <ArrowDownTrayIcon className="w-4 h-4" />
+            Export
+          </Button>
+        )}
 
         {/* Delete Button */}
         <Button

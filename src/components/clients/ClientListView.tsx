@@ -37,16 +37,14 @@ export function ClientListView({ clients, onEdit, onDelete }: ClientListViewProp
           >
             {/* Name */}
             <div className="col-span-2">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                  <span className="text-blue-600 dark:text-blue-300 font-medium text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
+                  <span className="text-blue-600 dark:text-blue-300 font-medium text-xs">
                     {client.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
-                <div>
-                  <div className="font-medium text-gray-900 dark:text-white">
-                    {client.name}
-                  </div>
+                <div className="font-medium text-gray-900 dark:text-white truncate">
+                  {client.name}
                 </div>
               </div>
             </div>

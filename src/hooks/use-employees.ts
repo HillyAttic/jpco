@@ -10,7 +10,7 @@ interface UseEmployeesReturn {
   loading: boolean;
   error: Error | null;
   createEmployee: (data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>, password?: string) => Promise<void>;
-  updateEmployee: (id: string, data: Partial<Omit<Employee, 'id'>>) => Promise<void>;
+  updateEmployee: (id: string, data: Partial<Omit<Employee, 'id'>>, password?: string) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   deactivateEmployee: (id: string) => Promise<void>;
   refreshEmployees: () => Promise<void>;
@@ -98,7 +98,6 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
           },
           body: JSON.stringify({
             ...data,
-            hireDate: data.hireDate.toISOString(),
             password, // Include password if provided
           }),
         });
@@ -130,7 +129,7 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
    * Update an existing employee with optimistic update
    */
   const updateEmployee = useCallback(
-    async (id: string, data: Partial<Omit<Employee, 'id'>>) => {
+    async (id: string, data: Partial<Omit<Employee, 'id'>>, password?: string) => {
       // Store original employee for rollback
       const originalEmployee = employees.find((e) => e.id === id);
       if (!originalEmployee) {
@@ -147,18 +146,15 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
       );
 
       try {
-        const requestData = { ...data };
-        // Convert date to ISO string if present
-        if (data.hireDate) {
-          requestData.hireDate = data.hireDate.toISOString() as any;
-        }
-
         const response = await fetch(`/api/employees/${id}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(requestData),
+          body: JSON.stringify({
+            ...data,
+            password, // Include password if provided
+          }),
         });
 
         if (!response.ok) {

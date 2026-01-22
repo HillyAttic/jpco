@@ -21,23 +21,11 @@ const employeeFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   email: z.string().email({ message: 'Invalid email format' }),
   phone: z.string().regex(/^\+?[\d\s\-()]+$/, { message: 'Invalid phone format' }),
-  position: z.string().min(1, 'Position is required').max(100, 'Position must be less than 100 characters'),
-  department: z.string().min(1, 'Department is required').max(100, 'Department must be less than 100 characters'),
-  hireDate: z.date({ message: 'Invalid date format' }).refine((date) => date <= new Date(), {
-    message: 'Hire date cannot be in the future'
-  }),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string(),
-  avatar: z.instanceof(File).optional(),
-  managerId: z.string().optional(),
+  role: z.enum(['Manager', 'Admin', 'Employee'], { message: 'Please select a role' }),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
   status: z.enum(['active', 'on-leave', 'terminated']),
-}).refine(
-  (data) => data.password === data.confirmPassword,
-  {
-    message: 'Passwords must match',
-    path: ['confirmPassword'],
-  }
-);
+});
 
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;
 
@@ -63,14 +51,11 @@ export function EmployeeModal({
   isLoading = false,
   managers = [],
 }: EmployeeModalProps) {
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
-    setValue,
     watch,
   } = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeFormSchema),
@@ -79,18 +64,12 @@ export function EmployeeModal({
       name: '',
       email: '',
       phone: '',
-      position: '',
-      department: '',
-      hireDate: new Date(),
+      role: 'Employee',
       password: '',
       confirmPassword: '',
-      managerId: '',
       status: 'active',
     },
   });
-
-  // Watch avatar field for preview
-  const avatarFile = watch('avatar');
 
   // Generate initials for avatar fallback
   const getInitials = (name: string): string => {
@@ -113,61 +92,53 @@ export function EmployeeModal({
         name: employee.name,
         email: employee.email,
         phone: employee.phone,
-        position: employee.position,
-        department: employee.department,
-        hireDate: new Date(employee.hireDate),
-        managerId: employee.managerId || '',
+        role: employee.role || 'Employee',
         status: employee.status,
+        password: '',
+        confirmPassword: '',
       });
-      setAvatarPreview(employee.avatarUrl || null);
     } else {
       reset({
         employeeId: '',
         name: '',
         email: '',
         phone: '',
-        position: '',
-        department: '',
-        hireDate: new Date(),
-        managerId: '',
+        role: 'Employee',
         status: 'active',
+        password: '',
+        confirmPassword: '',
       });
-      setAvatarPreview(null);
     }
   }, [employee, reset]);
 
-  // Handle avatar file selection with validation
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // Validate file size (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert('File size must be less than 5MB');
-        return;
-      }
-
-      // Validate file type
-      if (!file.type.startsWith('image/')) {
-        alert('Please select a valid image file');
-        return;
-      }
-
-      setValue('avatar', file);
-      
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setAvatarPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleFormSubmit = async (data: EmployeeFormData) => {
     try {
+      // Validate password for new employees
+      if (!employee) {
+        if (!data.password || data.password.length < 6) {
+          alert('Password is required and must be at least 6 characters for new employees');
+          return;
+        }
+        if (data.password !== data.confirmPassword) {
+          alert('Passwords do not match');
+          return;
+        }
+      } else {
+        // For existing employees, validate password only if provided
+        if (data.password) {
+          if (data.password.length < 6) {
+            alert('Password must be at least 6 characters');
+            return;
+          }
+          if (data.password !== data.confirmPassword) {
+            alert('Passwords do not match');
+            return;
+          }
+        }
+      }
+      
       await onSubmit(data);
       reset();
-      setAvatarPreview(null);
       onClose();
     } catch (error) {
       console.error('Error submitting employee:', error);
@@ -176,13 +147,7 @@ export function EmployeeModal({
 
   const handleClose = () => {
     reset();
-    setAvatarPreview(null);
     onClose();
-  };
-
-  // Format date for input
-  const formatDateForInput = (date: Date) => {
-    return date.toISOString().split('T')[0];
   };
 
   return (
@@ -195,39 +160,10 @@ export function EmployeeModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          {/* Avatar Upload */}
+          {/* Avatar Display with Initials */}
           <div className="flex flex-col items-center gap-4">
-            <div className="relative">
-              {avatarPreview ? (
-                <img
-                  src={avatarPreview}
-                  alt="Avatar preview"
-                  className="w-24 h-24 rounded-full object-cover"
-                />
-              ) : (
-                <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-semibold">
-                  {getInitials(currentName) || <PhotoIcon className="w-12 h-12" />}
-                </div>
-              )}
-            </div>
-            
-            <div className="flex flex-col items-center gap-2">
-              <Label
-                htmlFor="avatar-upload"
-                className="cursor-pointer text-sm text-blue-600 hover:text-blue-700"
-              >
-                {avatarPreview ? 'Change Photo' : 'Upload Photo'}
-              </Label>
-              <input
-                id="avatar-upload"
-                type="file"
-                accept="image/*"
-                onChange={handleAvatarChange}
-                className="hidden"
-              />
-              <p className="text-xs text-gray-500">
-                JPG, PNG or GIF (max 5MB)
-              </p>
+            <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-semibold">
+              {getInitials(currentName) || <PhotoIcon className="w-12 h-12" />}
             </div>
           </div>
 
@@ -286,101 +222,57 @@ export function EmployeeModal({
               />
             </div>
 
-            {/* Position */}
+            {/* Role */}
             <div>
-              <Input
-                id="position"
-                label="Position"
-                {...register('position')}
-                placeholder="Software Engineer"
-                error={errors.position?.message}
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Department */}
-            <div>
-              <Input
-                id="department"
-                label="Department"
-                {...register('department')}
-                placeholder="Engineering"
-                error={errors.department?.message}
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            {/* Hire Date */}
-            <div>
-              <Label htmlFor="hireDate">Hire Date</Label>
-              <input
-                id="hireDate"
-                type="date"
-                {...register('hireDate', { valueAsDate: true })}
-                max={formatDateForInput(new Date())}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isLoading}
-              />
-              {errors.hireDate && (
-                <p className="text-sm text-red-600 mt-1">{errors.hireDate.message}</p>
-              )}
-            </div>
-
-            {/* Manager Selection */}
-            <div>
-              <Label htmlFor="managerId">Manager (Optional)</Label>
+              <Label htmlFor="role">Role</Label>
               <select
-                id="managerId"
-                {...register('managerId')}
+                id="role"
+                {...register('role')}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
               >
-                <option value="">Select a manager</option>
-                {managers.map((manager) => (
-                  <option key={manager.id} value={manager.id}>
-                    {manager.name} - {manager.position}
-                  </option>
-                ))}
+                <option value="Manager">Manager</option>
+                <option value="Admin">Admin</option>
+                <option value="Employee">Employee</option>
               </select>
-              {errors.managerId && (
-                <p className="text-sm text-red-600 mt-1">{errors.managerId.message}</p>
+              {errors.role && (
+                <p className="text-sm text-red-600 mt-1">{errors.role.message}</p>
               )}
             </div>
           </div>
 
-          {/* Password fields - only for new employees */}
-          {!employee && (
-            <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                <div>
-                  <Input
-                    id="password"
-                    type="password"
-                    label="Password"
-                    {...register('password')}
-                    placeholder="Enter password"
-                    error={errors.password?.message}
-                    required={!employee}
-                    disabled={isLoading}
-                  />
-                </div>
-                <div>
-                  <Input
-                    id="confirmPassword"
-                    type="password"
-                    label="Confirm Password"
-                    {...register('confirmPassword')}
-                    placeholder="Confirm password"
-                    error={errors.confirmPassword?.message}
-                    required={!employee}
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          {/* Password fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            <div>
+              <Input
+                id="password"
+                type="password"
+                label={employee ? "New Password (optional)" : "Password"}
+                {...register('password')}
+                placeholder={employee ? "Leave blank to keep current" : "Enter password"}
+                error={errors.password?.message}
+                required={!employee}
+                disabled={isLoading}
+              />
+              {employee && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave blank to keep current password
+                </p>
+              )}
+            </div>
+            <div>
+              <Input
+                id="confirmPassword"
+                type="password"
+                label={employee ? "Confirm New Password" : "Confirm Password"}
+                {...register('confirmPassword')}
+                placeholder="Confirm password"
+                error={errors.confirmPassword?.message}
+                required={!employee}
+                disabled={isLoading}
+              />
+            </div>
+          </div>
 
           {/* Status */}
           <div>

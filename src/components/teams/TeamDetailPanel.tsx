@@ -114,7 +114,7 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
       const newMember: TeamMember = {
         id: selectedEmployee.id!,
         name: selectedEmployee.name,
-        avatar: selectedEmployee.avatarUrl,
+        avatar: undefined, // Avatar removed from Employee interface
         role: newMemberRole.trim(),
       };
 
@@ -397,7 +397,7 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
                 <option value="">Choose an employee...</option>
                 {getAvailableEmployees().map((employee) => (
                   <option key={employee.id} value={employee.id}>
-                    {employee.name} - {employee.position} ({employee.department})
+                    {employee.name} - {employee.role}
                   </option>
                 ))}
               </Select>

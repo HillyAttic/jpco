@@ -364,7 +364,7 @@ export function TeamModal({
               <option value="">Add team member...</option>
               {getAvailableEmployees().map((employee) => (
                 <option key={employee.id} value={employee.id}>
-                  {employee.name} - {employee.position} ({employee.department})
+                  {employee.name} - {employee.role}
                 </option>
               ))}
             </Select>

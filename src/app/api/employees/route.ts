@@ -11,14 +11,7 @@ const createEmployeeSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   email: z.string().email('Invalid email format'),
   phone: z.string().regex(/^\+?[\d\s\-()]+$/, 'Invalid phone format'),
-  position: z.string().min(1, 'Position is required').max(100),
-  department: z.string().min(1, 'Department is required').max(100),
-  hireDate: z.string().transform((str) => new Date(str)).refine((date) => date <= new Date(), {
-    message: 'Hire date cannot be in the future'
-  }),
-  avatarUrl: z.string().optional(),
-  managerId: z.string().optional(),
-  teamIds: z.array(z.string()).default([]),
+  role: z.enum(['Manager', 'Admin', 'Employee']),
   status: z.enum(['active', 'on-leave', 'terminated']).default('active'),
   password: z.string().optional(),
 });
@@ -38,13 +31,11 @@ export async function GET(request: NextRequest) {
 
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || undefined;
-    const department = searchParams.get('department') || undefined;
     const search = searchParams.get('search') || undefined;
     const limit = parseInt(searchParams.get('limit') || '20');
 
     const employees = await employeeService.getAll({
       status,
-      department,
       search,
       limit,
     });
