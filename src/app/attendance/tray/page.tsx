@@ -508,8 +508,8 @@ export default function AttendanceTrayPage() {
                       {record.location?.clockIn && (
                         <button
                           onClick={() => handleLocationClick(
-                            record.location.clockIn.latitude,
-                            record.location.clockIn.longitude,
+                            record.location!.clockIn!.latitude,
+                            record.location!.clockIn!.longitude,
                             `${record.employeeName} - Clock In Location`
                           )}
                           className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
@@ -521,8 +521,8 @@ export default function AttendanceTrayPage() {
                       {record.location?.clockOut && (
                         <button
                           onClick={() => handleLocationClick(
-                            record.location.clockOut.latitude,
-                            record.location.clockOut.longitude,
+                            record.location!.clockOut!.latitude,
+                            record.location!.clockOut!.longitude,
                             `${record.employeeName} - Clock Out Location`
                           )}
                           className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"

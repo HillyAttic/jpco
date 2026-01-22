@@ -3,17 +3,11 @@ import type { NextRequest } from 'next/server';
 
 // Define public routes that don't require authentication
 const publicRoutes = [
+  '/',
   '/auth/sign-in',
   '/auth/signup', 
   '/auth/forgot-password',
   '/auth/reset-password',
-];
-
-// Define routes that should redirect to dashboard if already authenticated
-const authRoutes = [
-  '/auth/sign-in',
-  '/auth/signup',
-  '/auth/forgot-password',
 ];
 
 export function middleware(request: NextRequest) {
@@ -21,7 +15,7 @@ export function middleware(request: NextRequest) {
   
   // Allow public routes and static files
   if (
-    publicRoutes.some(route => pathname.startsWith(route)) ||
+    publicRoutes.some(route => pathname === route || pathname.startsWith(route + '/')) ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
     pathname.startsWith('/images') ||
@@ -31,13 +25,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // For the root path, redirect to sign-in
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL('/auth/sign-in', request.url));
-  }
-
   // For all other routes, let the client-side authentication handle the redirect
-  // This allows the auth context to determine if the user is authenticated
   return NextResponse.next();
 }
 

@@ -226,17 +226,28 @@ export function GeolocationAttendanceTracker() {
     try {
       console.log('Starting clock in process...');
       const loc = await getCurrentLocation();
+      console.log('Location obtained - Raw:', loc);
+      console.log('Location lat:', loc.lat, 'lng:', loc.lng);
       setLocation(loc);
       
-      console.log('Location obtained:', loc);
+      // Validate location before sending
+      if (!loc.lat || !loc.lng || isNaN(loc.lat) || isNaN(loc.lng)) {
+        throw new Error('Invalid location data captured. Please try again.');
+      }
+      
+      const locationData = {
+        latitude: loc.lat,
+        longitude: loc.lng,
+        accuracy: loc.accuracy
+      };
+      
+      console.log('Sending location data to service:', locationData);
+      
       const record = await attendanceService.clockIn({
         employeeId: auth.user.uid,
         employeeName: auth.userProfile?.displayName || auth.user.email || 'User',
         timestamp: new Date(),
-        location: {
-          latitude: loc.lat!,
-          longitude: loc.lng!
-        }
+        location: locationData
       });
       
       console.log('Clock in result:', record);
@@ -309,14 +320,26 @@ export function GeolocationAttendanceTracker() {
     
     try {
       const loc = await getCurrentLocation();
+      console.log('Clock out - Location obtained - Raw:', loc);
+      console.log('Clock out - Location lat:', loc.lat, 'lng:', loc.lng);
       setLocation(loc);
+      
+      // Validate location before sending
+      if (!loc.lat || !loc.lng || isNaN(loc.lat) || isNaN(loc.lng)) {
+        throw new Error('Invalid location data captured. Please try again.');
+      }
+      
+      const locationData = {
+        latitude: loc.lat,
+        longitude: loc.lng,
+        accuracy: loc.accuracy
+      };
+      
+      console.log('Sending clock out location data to service:', locationData);
       
       await attendanceService.clockOut(recordId, {
         timestamp: new Date(),
-        location: {
-          latitude: loc.lat!,
-          longitude: loc.lng!
-        }
+        location: locationData
       });
       
       // Refresh status to ensure UI is in sync with backend

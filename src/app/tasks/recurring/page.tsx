@@ -294,7 +294,7 @@ export default function RecurringTasksPage() {
               onPause={handlePause}
               onResume={handleResume}
               selected={Array.from(selectedIds)}
-              onSelect={toggleSelection}
+              onSelect={(id) => toggleSelection(id, !selectedIds.has(id))}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

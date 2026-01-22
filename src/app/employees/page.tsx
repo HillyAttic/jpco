@@ -28,6 +28,8 @@ const employeeFormSchema = z.object({
   position: z.string().min(1, 'Position is required').max(100),
   department: z.string().min(1, 'Department is required').max(100),
   hireDate: z.date(),
+  password: z.string().optional(),
+  confirmPassword: z.string().optional(),
   avatar: z.instanceof(File).optional(),
   managerId: z.string().optional(),
   status: z.enum(['active', 'on-leave', 'terminated']),
@@ -182,7 +184,7 @@ export default function EmployeesPage() {
         await updateEmployee(editingEmployee.id!, employeeData);
       } else {
         // For new employees, pass the password to create Firebase Auth account
-        await createEmployee(employeeData, data.password);
+        await createEmployee(employeeData, data.password || '');
       }
 
       setIsModalOpen(false);
@@ -376,7 +378,7 @@ export default function EmployeesPage() {
                       <input
                         type="checkbox"
                         checked={isSelected(employee.id!)}
-                        onChange={() => toggleSelection(employee.id!)}
+                        onChange={(e) => toggleSelection(employee.id!, e.target.checked)}
                         className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                       />
                     </div>

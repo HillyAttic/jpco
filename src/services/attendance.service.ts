@@ -69,7 +69,12 @@ function convertTimestamps(record: any): AttendanceRecord {
  */
 // Helper function to validate and clean location data
 function validateLocationData(location: any) {
-  if (!location) return undefined;
+  console.log('validateLocationData called with:', location);
+  
+  if (!location) {
+    console.log('validateLocationData: location is null/undefined');
+    return undefined;
+  }
   
   // Check if both latitude and longitude are valid numbers
   if (location.latitude !== undefined && 
@@ -82,6 +87,8 @@ function validateLocationData(location: any) {
       latitude: location.latitude,
       longitude: location.longitude,
     };
+    
+    console.log('validateLocationData: Valid latitude/longitude format:', result);
     
     // Only add accuracy if it's a valid number
     if (location.accuracy !== undefined && typeof location.accuracy === 'number' && !isNaN(location.accuracy)) {
@@ -103,6 +110,8 @@ function validateLocationData(location: any) {
       longitude: location.lng,
     };
     
+    console.log('validateLocationData: Valid lat/lng format, converted to:', result);
+    
     // Only add accuracy if it's a valid number
     if (location.accuracy !== undefined && typeof location.accuracy === 'number' && !isNaN(location.accuracy)) {
       result.accuracy = location.accuracy;
@@ -111,6 +120,7 @@ function validateLocationData(location: any) {
     return result;
   }
   
+  console.log('validateLocationData: Invalid location format, returning undefined');
   return undefined;
 }
 
@@ -121,7 +131,8 @@ export const attendanceService = {
   async clockIn(data: ClockInData & { employeeId: string; employeeName: string }): Promise<AttendanceRecord | null> {
     try {
       console.log('Clock in attempt for employee:', data.employeeId);
-      console.log('Clock in data:', data);
+      console.log('Clock in data received:', JSON.stringify(data, null, 2));
+      console.log('Location data received:', data.location);
       
       // Check if user has already clocked in today (regardless of current status)
       const hasAlreadyClockedIn = await this.hasClockedInToday(data.employeeId);
@@ -139,6 +150,7 @@ export const attendanceService = {
       }
 
       const validatedLocation = validateLocationData(data.location);
+      console.log('Validated location data:', validatedLocation);
       
       const record: Omit<AttendanceRecord, 'id'> = {
         employeeId: data.employeeId,
@@ -155,7 +167,7 @@ export const attendanceService = {
         updatedAt: new Date(),
       };
 
-      console.log('Creating attendance record with data:', { ...record, clockIn: record.clockIn.toString() });
+      console.log('Creating attendance record with location:', record.location);
       
       return await attendanceFirebaseService.create(record);
     } catch (error) {
@@ -170,6 +182,10 @@ export const attendanceService = {
    */
   async clockOut(recordId: string, data: ClockOutData): Promise<AttendanceRecord> {
     try {
+      console.log('Clock out attempt for record:', recordId);
+      console.log('Clock out data received:', JSON.stringify(data, null, 2));
+      console.log('Clock out location data received:', data.location);
+      
       let record = await attendanceFirebaseService.getById(recordId);
       if (!record) {
         throw new Error('Attendance record not found');
@@ -187,6 +203,9 @@ export const attendanceService = {
       const overtimeHours = calculateOvertimeHours(totalHours);
       const regularHours = calculateRegularHours(totalHours, overtimeHours);
 
+      const validatedClockOutLocation = validateLocationData(data.location);
+      console.log('Validated clock out location:', validatedClockOutLocation);
+      
       const updates: Partial<AttendanceRecord> = {
         clockOut: data.timestamp,
         totalHours,
@@ -195,9 +214,9 @@ export const attendanceService = {
         status: 'completed',
         location: record.location ? {
           ...record.location,
-          clockOut: validateLocationData(data.location),
-        } : validateLocationData(data.location) ? {
-          clockOut: validateLocationData(data.location)
+          clockOut: validatedClockOutLocation,
+        } : validatedClockOutLocation ? {
+          clockOut: validatedClockOutLocation
         } : undefined,
         notes: {
           ...record.notes,
@@ -205,7 +224,7 @@ export const attendanceService = {
         },
       };
 
-      console.log('Updating attendance record with data:', { ...updates, clockOut: updates.clockOut?.toString() });
+      console.log('Updating attendance record with location:', updates.location);
       
       return await attendanceFirebaseService.update(recordId, updates);
     } catch (error) {

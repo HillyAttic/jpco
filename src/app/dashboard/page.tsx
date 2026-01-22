@@ -108,21 +108,21 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 p-4 md:p-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600 mt-2">Welcome back! Here&apos;s what&apos;s happening today.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Welcome back! Here&apos;s what&apos;s happening today.</p>
         </div>
-        <Button className="text-white">
+        <Button className="text-white w-full sm:w-auto">
           <PlusCircleIcon className="w-5 h-5 mr-2" />
           Create Task
         </Button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
         <StatCard
           title="Total Tasks"
           value={stats.total}
@@ -168,15 +168,15 @@ export default function DashboardPage() {
       </div>
 
       {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
         {/* Left Column - Task Overview & Upcoming Deadlines */}
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           <TaskOverview tasks={tasks} />
           <UpcomingDeadlines tasks={tasks} />
         </div>
 
         {/* Middle Column - Charts */}
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           <TaskDistributionChart
             completed={stats.completed}
             inProgress={stats.inProgress}
@@ -187,13 +187,13 @@ export default function DashboardPage() {
         </div>
 
         {/* Right Column - Activity & Team Performance */}
-        <div className="space-y-6">
+        <div className="space-y-4 md:space-y-6">
           <ActivityFeed activities={activities} />
         </div>
       </div>
 
       {/* Bottom Section - Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
         <WeeklyProgressChart data={weeklyData} />
         <TeamPerformanceChart teamMembers={teamData} />
       </div>

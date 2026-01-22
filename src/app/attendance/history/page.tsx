@@ -521,8 +521,8 @@ export default function AttendanceHistoryPage() {
                       {record.location?.clockIn && (
                         <button
                           onClick={() => handleLocationClick(
-                            record.location.clockIn.latitude,
-                            record.location.clockIn.longitude,
+                            record.location!.clockIn!.latitude,
+                            record.location!.clockIn!.longitude,
                             `Clock In Location - ${formatDate(record.clockIn)}`
                           )}
                           className="flex items-center gap-1 mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
@@ -549,8 +549,8 @@ export default function AttendanceHistoryPage() {
                       {record.location?.clockOut && (
                         <button
                           onClick={() => handleLocationClick(
-                            record.location.clockOut.latitude,
-                            record.location.clockOut.longitude,
+                            record.location!.clockOut!.latitude,
+                            record.location!.clockOut!.longitude,
                             `Clock Out Location - ${formatDate(record.clockIn)}`
                           )}
                           className="flex items-center gap-1 mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"

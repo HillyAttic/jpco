@@ -1,5 +1,6 @@
 import "@/css/satoshi.css";
 import "@/css/style.css";
+import "@/css/mobile-responsive.css";
 
 import { Sidebar } from "@/components/Layouts/sidebar";
 

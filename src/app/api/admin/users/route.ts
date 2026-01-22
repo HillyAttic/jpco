@@ -103,7 +103,7 @@ export const GET = withAdminAuth(async () => {
     return NextResponse.json({ users: result.users }, { status: 200 });
   } catch (error: any) {
     console.error('Error fetching users:', error);
-    return Response.json(
+    return NextResponse.json(
       { error: error.message || 'Failed to fetch users' },
       { status: 500 }
     );
