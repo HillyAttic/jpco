@@ -6,6 +6,9 @@
 import { Category, CreateCategoryInput } from '@/types/category.types';
 import { createFirebaseService, QueryOptions } from './firebase.service';
 
+// Re-export Category type for convenience
+export type { Category };
+
 // Create a Firebase service instance for categories
 const categoryFirebaseService = createFirebaseService<Category>('categories');
 

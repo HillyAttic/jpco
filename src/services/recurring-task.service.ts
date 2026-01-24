@@ -15,18 +15,17 @@ export interface RecurringTask {
   id?: string;
   title: string;
   description: string;
-  dueDate: Date;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'in-progress' | 'completed';
-  assignedTo: string[];
-  category?: string;
-  recurrencePattern: 'daily' | 'weekly' | 'monthly' | 'quarterly';
+  contactIds: string[]; // Array of contact IDs
+  categoryId?: string; // Category ID
+  recurrencePattern: 'monthly' | 'quarterly' | 'half-yearly' | 'yearly';
   nextOccurrence: Date;
   startDate: Date;
   endDate?: Date;
   completionHistory: CompletionRecord[];
   isPaused: boolean;
-  teamId?: string;
+  teamId?: string; // Team ID
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -74,7 +73,7 @@ export const recurringTaskService = {
     // Add category filter
     if (filters?.category) {
       options.filters!.push({
-        field: 'category',
+        field: 'categoryId',
         operator: '==',
         value: filters.category,
       });
@@ -105,7 +104,7 @@ export const recurringTaskService = {
     // Apply search filter (client-side)
     if (filters?.search) {
       tasks = await recurringTaskFirebaseService.searchMultipleFields(
-        ['title', 'description', 'category'],
+        ['title', 'description'],
         filters.search,
         options
       );
@@ -231,20 +230,20 @@ export const recurringTaskService = {
   calculateTotalCycles(
     startDate: Date,
     currentDate: Date,
-    pattern: 'daily' | 'weekly' | 'monthly' | 'quarterly'
+    pattern: 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
   ): number {
     const diffTime = Math.abs(currentDate.getTime() - startDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     switch (pattern) {
-      case 'daily':
-        return diffDays;
-      case 'weekly':
-        return Math.floor(diffDays / 7);
       case 'monthly':
         return Math.floor(diffDays / 30);
       case 'quarterly':
         return Math.floor(diffDays / 90);
+      case 'half-yearly':
+        return Math.floor(diffDays / 180);
+      case 'yearly':
+        return Math.floor(diffDays / 365);
       default:
         return 0;
     }

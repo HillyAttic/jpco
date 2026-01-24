@@ -15,7 +15,7 @@ export interface Employee {
   phone: string;
   role: 'Manager' | 'Admin' | 'Employee';
   passwordHash?: string; // Hashed password, not plain text
-  status: 'active' | 'on-leave' | 'terminated';
+  status: 'active' | 'on-leave';
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -189,10 +189,10 @@ export const employeeService = {
   },
 
   /**
-   * Deactivate an employee (soft delete)
+   * Deactivate an employee (set to on-leave)
    */
   async deactivate(id: string): Promise<Employee> {
-    return employeeFirebaseService.update(id, { status: 'terminated' });
+    return employeeFirebaseService.update(id, { status: 'on-leave' });
   },
 
   /**
@@ -239,7 +239,6 @@ export const employeeService = {
     total: number;
     active: number;
     onLeave: number;
-    terminated: number;
   }> {
     const allEmployees = await employeeFirebaseService.getAll();
 
@@ -247,7 +246,6 @@ export const employeeService = {
       total: allEmployees.length,
       active: allEmployees.filter((e) => e.status === 'active').length,
       onLeave: allEmployees.filter((e) => e.status === 'on-leave').length,
-      terminated: allEmployees.filter((e) => e.status === 'terminated').length,
     };
   },
 

@@ -1,8 +1,11 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { RecurringTask } from '@/services/recurring-task.service';
+import { Team, teamService } from '@/services/team.service';
+import { Category, categoryService } from '@/services/category.service';
+import { Client, clientService } from '@/services/client.service';
 import {
   Dialog,
   DialogContent,
@@ -14,18 +17,19 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import Select from '@/components/ui/select';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 
 // Form-specific schema matching the design requirements
 // Requirement 3.2, 3.8
 const recurringTaskFormSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
   description: z.string().max(1000, 'Description must be less than 1000 characters'),
-  dueDate: z.string().min(1, 'Due date is required'),
   priority: z.enum(['low', 'medium', 'high', 'urgent'], { message: 'Invalid priority value' }),
   status: z.enum(['pending', 'in-progress', 'completed']),
-  assignedTo: z.string().min(1, 'At least one assignee is required'),
-  category: z.string().optional(),
-  recurrencePattern: z.enum(['daily', 'weekly', 'monthly', 'quarterly'], { 
+  contactIds: z.string().min(1, 'At least one contact is required'),
+  categoryId: z.string().optional(),
+  recurrencePattern: z.enum(['monthly', 'quarterly', 'half-yearly', 'yearly'], { 
     message: 'Invalid recurrence pattern' 
   }),
   startDate: z.string().min(1, 'Start date is required'),
@@ -66,39 +70,149 @@ export function RecurringTaskModal({
   task,
   isLoading = false,
 }: RecurringTaskModalProps) {
+  const [teams, setTeams] = useState<Team[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClients, setSelectedClients] = useState<Client[]>([]);
+  const [clientFilter, setClientFilter] = useState<'all' | 'gstin' | 'tan' | 'pan'>('all');
+  const [loadingTeams, setLoadingTeams] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [loadingClients, setLoadingClients] = useState(false);
+  
   const {
     register,
     handleSubmit,
     formState: { errors },
     reset,
     watch,
+    setValue,
   } = useForm<RecurringTaskFormData>({
     resolver: zodResolver(recurringTaskFormSchema),
     defaultValues: {
       title: '',
       description: '',
-      dueDate: '',
       priority: 'medium',
       status: 'pending',
-      assignedTo: '',
-      category: '',
-      recurrencePattern: 'weekly',
+      contactIds: '',
+      categoryId: '',
+      recurrencePattern: 'monthly',
       startDate: '',
       endDate: '',
       teamId: '',
     },
   });
 
-  // Watch startDate to set minimum for endDate
   const startDate = watch('startDate');
+
+  // Load teams for team selection
+  useEffect(() => {
+    const loadTeams = async () => {
+      setLoadingTeams(true);
+      try {
+        const activeTeams = await teamService.getAll({ status: 'active' });
+        setTeams(activeTeams);
+      } catch (error) {
+        console.error('Error loading teams:', error);
+        setTeams([]);
+      } finally {
+        setLoadingTeams(false);
+      }
+    };
+
+    if (isOpen) {
+      loadTeams();
+    }
+  }, [isOpen]);
+
+  // Load categories for category selection
+  useEffect(() => {
+    const loadCategories = async () => {
+      setLoadingCategories(true);
+      try {
+        const activeCategories = await categoryService.getFiltered({ isActive: true });
+        setCategories(activeCategories);
+      } catch (error) {
+        console.error('Error loading categories:', error);
+        setCategories([]);
+      } finally {
+        setLoadingCategories(false);
+      }
+    };
+
+    if (isOpen) {
+      loadCategories();
+    }
+  }, [isOpen]);
+
+  // Load clients for contact selection
+  useEffect(() => {
+    const loadClients = async () => {
+      setLoadingClients(true);
+      try {
+        const activeClients = await clientService.getAll({ status: 'active', limit: 1000 });
+        setClients(activeClients);
+      } catch (error) {
+        console.error('Error loading clients:', error);
+        setClients([]);
+      } finally {
+        setLoadingClients(false);
+      }
+    };
+
+    if (isOpen) {
+      loadClients();
+    }
+  }, [isOpen]);
+
+  // Get filtered clients based on selected filter
+  const getFilteredClients = () => {
+    if (clientFilter === 'all') {
+      return clients;
+    }
+    
+    return clients.filter(client => {
+      switch (clientFilter) {
+        case 'gstin':
+          return client.gstin && client.gstin.trim() !== '';
+        case 'tan':
+          return client.tan && client.tan.trim() !== '';
+        case 'pan':
+          return client.pan && client.pan.trim() !== '';
+        default:
+          return true;
+      }
+    });
+  };
+
+  // Get available clients (not already selected)
+  const getAvailableClients = () => {
+    const filteredClients = getFilteredClients();
+    return filteredClients.filter(client => 
+      !selectedClients.some(selected => selected.id === client.id)
+    );
+  };
+
+  // Handle client selection
+  const handleClientSelect = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client) return;
+
+    const newSelectedClients = [...selectedClients, client];
+    setSelectedClients(newSelectedClients);
+    setValue('contactIds', newSelectedClients.map(c => c.id!).join(', '));
+  };
+
+  // Handle client removal
+  const handleClientRemove = (clientId: string) => {
+    const newSelectedClients = selectedClients.filter(c => c.id !== clientId);
+    setSelectedClients(newSelectedClients);
+    setValue('contactIds', newSelectedClients.map(c => c.id!).join(', '));
+  };
 
   // Update form when task prop changes (edit mode)
   useEffect(() => {
     if (task) {
       // Format dates for input fields
-      const formattedDueDate = task.dueDate 
-        ? new Date(task.dueDate).toISOString().split('T')[0]
-        : '';
       const formattedStartDate = task.startDate
         ? new Date(task.startDate).toISOString().split('T')[0]
         : '';
@@ -109,40 +223,43 @@ export function RecurringTaskModal({
       reset({
         title: task.title,
         description: task.description || '',
-        dueDate: formattedDueDate,
         priority: task.priority,
         status: task.status,
-        assignedTo: task.assignedTo?.join(', ') || '',
-        category: task.category || '',
+        contactIds: task.contactIds?.join(', ') || '',
+        categoryId: task.categoryId || '',
         recurrencePattern: task.recurrencePattern,
         startDate: formattedStartDate,
         endDate: formattedEndDate,
         teamId: task.teamId || '',
       });
+
+      // Set selected clients for display
+      if (task.contactIds && task.contactIds.length > 0) {
+        const taskClients = clients.filter(client => 
+          task.contactIds.includes(client.id!)
+        );
+        setSelectedClients(taskClients);
+      }
     } else {
       // Set default dates for new task
       const today = new Date();
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
       const formattedToday = today.toISOString().split('T')[0];
-      const formattedTomorrow = tomorrow.toISOString().split('T')[0];
       
       reset({
         title: '',
         description: '',
-        dueDate: formattedTomorrow,
         priority: 'medium',
         status: 'pending',
-        assignedTo: '',
-        category: '',
-        recurrencePattern: 'weekly',
+        contactIds: '',
+        categoryId: '',
+        recurrencePattern: 'monthly',
         startDate: formattedToday,
         endDate: '',
         teamId: '',
       });
+      setSelectedClients([]);
     }
-  }, [task, reset]);
+  }, [task, reset, clients]);
 
   const handleFormSubmit = async (data: RecurringTaskFormData) => {
     try {
@@ -156,6 +273,8 @@ export function RecurringTaskModal({
 
   const handleClose = () => {
     reset();
+    setSelectedClients([]);
+    setClientFilter('all');
     onClose();
   };
 
@@ -205,25 +324,221 @@ export function RecurringTaskModal({
 
           {/* Recurrence Pattern Selector - Requirement 3.2 */}
           <div>
-            <Label htmlFor="recurrencePattern">Recurrence Pattern</Label>
+            <Label htmlFor="recurrencePattern">Recurring Type</Label>
             <select
               id="recurrencePattern"
               {...register('recurrencePattern')}
               className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
-              <option value="daily">Daily</option>
-              <option value="weekly">Weekly</option>
               <option value="monthly">Monthly</option>
               <option value="quarterly">Quarterly</option>
+              <option value="half-yearly">Half Yearly</option>
+              <option value="yearly">Yearly</option>
             </select>
             {errors.recurrencePattern && (
               <p className="text-sm text-red-600 mt-1">{errors.recurrencePattern.message}</p>
             )}
           </div>
 
+          {/* Team Assignment - Requirement 3.8 */}
+          <div>
+            <Label htmlFor="teamId">Team</Label>
+            <Select
+              id="teamId"
+              {...register('teamId')}
+              disabled={isLoading || loadingTeams}
+              className="mt-1"
+            >
+              <option value="">Select a team (optional)</option>
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name} {team.leaderName ? `- Led by ${team.leaderName}` : ''}
+                </option>
+              ))}
+            </Select>
+            {errors.teamId && (
+              <p className="text-sm text-red-600 mt-1">{errors.teamId.message}</p>
+            )}
+            {loadingTeams && (
+              <p className="text-sm text-gray-500 mt-1">Loading teams...</p>
+            )}
+            {!loadingTeams && teams.length === 0 && (
+              <p className="text-sm text-gray-500 mt-1">No teams available</p>
+            )}
+          </div>
+
+          {/* Category ID */}
+          <div>
+            <Label htmlFor="categoryId">Category ID</Label>
+            <Select
+              id="categoryId"
+              {...register('categoryId')}
+              disabled={isLoading || loadingCategories}
+              className="mt-1"
+            >
+              <option value="">Select a category (optional)</option>
+              {categories.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name} {category.description ? `- ${category.description}` : ''}
+                </option>
+              ))}
+            </Select>
+            {errors.categoryId && (
+              <p className="text-sm text-red-600 mt-1">{errors.categoryId.message}</p>
+            )}
+            {loadingCategories && (
+              <p className="text-sm text-gray-500 mt-1">Loading categories...</p>
+            )}
+            {!loadingCategories && categories.length === 0 && (
+              <p className="text-sm text-gray-500 mt-1">No categories available</p>
+            )}
+          </div>
+
+          {/* Assign Contacts */}
+          <div>
+            <Label htmlFor="contactIds">Assign Contacts</Label>
+            
+            {/* Client Filter */}
+            <div className="mt-2 mb-3">
+              <Label htmlFor="client-filter" className="text-xs">Filter Clients By</Label>
+              <Select
+                id="client-filter"
+                value={clientFilter}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setClientFilter(e.target.value as any)}
+                disabled={isLoading || loadingClients}
+                className="mt-1"
+              >
+                <option value="all">All Clients</option>
+                <option value="gstin">Only with GSTIN</option>
+                <option value="tan">Only with T.A.N.</option>
+                <option value="pan">Only with P.A.N.</option>
+              </Select>
+            </div>
+
+            {/* Select All Button */}
+            {getAvailableClients().length > 0 && (
+              <div className="mb-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    const availableClients = getAvailableClients();
+                    const newSelectedClients = [...selectedClients, ...availableClients];
+                    setSelectedClients(newSelectedClients);
+                    setValue('contactIds', newSelectedClients.map(c => c.id!).join(', '));
+                  }}
+                  disabled={isLoading || loadingClients}
+                  className="w-full"
+                >
+                  Select All Filtered Clients ({getAvailableClients().length})
+                </Button>
+              </div>
+            )}
+
+            {/* Multi-Select Client List */}
+            <div className="mb-3">
+              <Label className="text-xs mb-2 block">Select Clients (Click to add multiple)</Label>
+              <div className="border border-gray-300 rounded-md max-h-60 overflow-y-auto">
+                {loadingClients ? (
+                  <div className="p-4 text-center text-gray-500">Loading clients...</div>
+                ) : getAvailableClients().length === 0 ? (
+                  <div className="p-4 text-center text-gray-500">
+                    {clientFilter !== 'all' 
+                      ? `No clients with ${clientFilter.toUpperCase()} available to add` 
+                      : selectedClients.length > 0 
+                        ? 'All clients have been selected'
+                        : 'No clients available'}
+                  </div>
+                ) : (
+                  <div className="divide-y divide-gray-200">
+                    {getAvailableClients().map((client) => (
+                      <button
+                        key={client.id}
+                        type="button"
+                        onClick={() => handleClientSelect(client.id!)}
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors focus:bg-blue-100 focus:outline-none"
+                        disabled={isLoading}
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-900">{client.name}</span>
+                          <span className="text-xs text-gray-600">
+                            {client.businessName || 'No Business Name'}
+                            {client.gstin ? ` • GSTIN: ${client.gstin}` : 
+                             client.tan ? ` • TAN: ${client.tan}` : 
+                             client.pan ? ` • PAN: ${client.pan}` : ''}
+                          </span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Selected Clients Display */}
+            {selectedClients.length > 0 && (
+              <div className="mt-2 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-gray-600">Selected Clients ({selectedClients.length})</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedClients([]);
+                      setValue('contactIds', '');
+                    }}
+                    disabled={isLoading}
+                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    Clear All
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedClients.map((client) => (
+                    <div
+                      key={client.id}
+                      className="flex items-center gap-2 bg-white border border-gray-300 rounded-md px-2.5 py-1.5 shadow-sm"
+                    >
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-900">{client.name}</span>
+                        <span className="text-xs text-gray-500">
+                          {client.gstin ? `GSTIN: ${client.gstin}` : 
+                           client.tan ? `TAN: ${client.tan}` : 
+                           client.pan ? `PAN: ${client.pan}` : 
+                           client.businessName || 'No ID'}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleClientRemove(client.id!)}
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1 ml-1 transition-colors"
+                        disabled={isLoading}
+                        aria-label={`Remove ${client.name}`}
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            <p className="text-xs text-gray-500 mt-1">
+              Use the filter to show specific clients, then click "Select All" or click individual clients to add them.
+            </p>
+            
+            {errors.contactIds && (
+              <p className="text-sm text-red-600 mt-1">{errors.contactIds.message}</p>
+            )}
+
+            {/* Hidden input to store contact IDs */}
+            <input type="hidden" {...register('contactIds')} />
+          </div>
+
           {/* Date Fields Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Start Date - Requirement 3.2 */}
             <div>
               <Label htmlFor="startDate">Start Date</Label>
@@ -256,23 +571,6 @@ export function RecurringTaskModal({
                 <p className="text-sm text-red-600 mt-1">{errors.endDate.message}</p>
               )}
             </div>
-
-            {/* Due Date */}
-            <div>
-              <Label htmlFor="dueDate">First Due Date</Label>
-              <input
-                id="dueDate"
-                type="date"
-                {...register('dueDate')}
-                min={startDate || getMinDate()}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isLoading}
-                required
-              />
-              {errors.dueDate && (
-                <p className="text-sm text-red-600 mt-1">{errors.dueDate.message}</p>
-              )}
-            </div>
           </div>
 
           {/* Priority Selector */}
@@ -291,73 +589,6 @@ export function RecurringTaskModal({
             </select>
             {errors.priority && (
               <p className="text-sm text-red-600 mt-1">{errors.priority.message}</p>
-            )}
-          </div>
-
-          {/* Status */}
-          <div>
-            <Label htmlFor="status">Status</Label>
-            <select
-              id="status"
-              {...register('status')}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              disabled={isLoading}
-            >
-              <option value="pending">Pending</option>
-              <option value="in-progress">In Progress</option>
-              <option value="completed">Completed</option>
-            </select>
-            {errors.status && (
-              <p className="text-sm text-red-600 mt-1">{errors.status.message}</p>
-            )}
-          </div>
-
-          {/* Assignee Multi-Select */}
-          <div>
-            <Label htmlFor="assignedTo">Assigned To</Label>
-            <Input
-              id="assignedTo"
-              {...register('assignedTo')}
-              placeholder="Enter assignee names (comma-separated)"
-              helperText="Enter multiple names separated by commas"
-              error={errors.assignedTo?.message}
-              required
-              disabled={isLoading}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Example: John Doe, Jane Smith, Bob Johnson
-            </p>
-          </div>
-
-          {/* Team Assignment Selector - Requirement 3.8 */}
-          <div>
-            <Label htmlFor="teamId">Team Assignment (Optional)</Label>
-            <Input
-              id="teamId"
-              {...register('teamId')}
-              placeholder="Enter team ID or name"
-              helperText="Assign this recurring task to a team"
-              disabled={isLoading}
-            />
-            {errors.teamId && (
-              <p className="text-sm text-red-600 mt-1">{errors.teamId.message}</p>
-            )}
-            <p className="text-xs text-gray-500 mt-1">
-              Team assignment will apply to all future occurrences
-            </p>
-          </div>
-
-          {/* Category */}
-          <div>
-            <Label htmlFor="category">Category (Optional)</Label>
-            <Input
-              id="category"
-              {...register('category')}
-              placeholder="Enter task category"
-              disabled={isLoading}
-            />
-            {errors.category && (
-              <p className="text-sm text-red-600 mt-1">{errors.category.message}</p>
             )}
           </div>
 

@@ -26,8 +26,8 @@ export async function PATCH(
       return ErrorResponses.notFound('Employee');
     }
 
-    // Check if employee is already terminated
-    if (existingEmployee.status === 'terminated') {
+    // Check if employee is already on leave (deactivated)
+    if (existingEmployee.status === 'on-leave') {
       return ErrorResponses.badRequest('Employee is already deactivated');
     }
 

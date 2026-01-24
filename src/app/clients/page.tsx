@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useClients } from '@/hooks/use-clients';
 import { Client } from '@/services/client.service';
 import { ClientList } from '@/components/clients/ClientList';
 import { ClientModal } from '@/components/clients/ClientModal';
 import { ClientBulkImportModal } from '@/components/clients/ClientBulkImportModal';
+import { ClientFilter, ClientFilterState } from '@/components/clients/ClientFilter';
 import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { PlusIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
@@ -31,6 +32,55 @@ export default function ClientsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [filters, setFilters] = useState<ClientFilterState>({
+    status: 'all',
+    filterBy: 'all',
+  });
+
+  // Filter clients based on selected criteria
+  const filteredClients = useMemo(() => {
+    let result = [...clients];
+
+    // Apply status filter
+    if (filters.status !== 'all') {
+      result = result.filter(client => client.status === filters.status);
+    }
+
+    // Apply field filter - show only rows that have data in the selected field
+    if (filters.filterBy !== 'all') {
+      result = result.filter(client => {
+        const fieldValue = client[filters.filterBy as keyof Client];
+        // Check if field has a value (not null, undefined, or empty string)
+        return fieldValue !== null && fieldValue !== undefined && fieldValue !== '';
+      });
+    }
+
+    // Sort by name for consistent display
+    result.sort((a, b) => {
+      const aName = a.name || '';
+      const bName = b.name || '';
+      return aName.localeCompare(bName);
+    });
+
+    return result;
+  }, [clients, filters]);
+
+  /**
+   * Handle filter changes
+   */
+  const handleFilterChange = (newFilters: ClientFilterState) => {
+    setFilters(newFilters);
+  };
+
+  /**
+   * Handle clear filters
+   */
+  const handleClearFilters = () => {
+    setFilters({
+      status: 'all',
+      filterBy: 'all',
+    });
+  };
 
   /**
    * Handle opening the create modal
@@ -199,6 +249,13 @@ export default function ClientsPage() {
         </div>
       )}
 
+      {/* Filters */}
+      <ClientFilter
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        onClearFilters={handleClearFilters}
+      />
+
       {/* View Toggle Buttons */}
       <div className="flex justify-end">
         <div className="flex items-center space-x-2">
@@ -221,7 +278,7 @@ export default function ClientsPage() {
 
       {/* Client List */}
       <ClientList
-        clients={clients}
+        clients={filteredClients}
         onEdit={handleEdit}
         onDelete={handleDelete}
         isLoading={loading}

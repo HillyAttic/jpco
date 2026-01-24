@@ -42,8 +42,6 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
         return 'success';
       case 'on-leave':
         return 'warning';
-      case 'terminated':
-        return 'danger';
       default:
         return 'default';
     }
@@ -54,8 +52,6 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
     switch (status) {
       case 'on-leave':
         return 'On Leave';
-      case 'terminated':
-        return 'Terminated';
       default:
         return status.charAt(0).toUpperCase() + status.slice(1);
     }

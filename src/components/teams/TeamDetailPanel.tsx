@@ -20,7 +20,6 @@ import {
   UserIcon,
   PlusIcon,
   TrashIcon,
-  PencilSquareIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 
@@ -40,8 +39,6 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
   const [currentTeam, setCurrentTeam] = useState<Team>(team);
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
-  const [isEditRoleModalOpen, setIsEditRoleModalOpen] = useState(false);
-  const [selectedMemberForEdit, setSelectedMemberForEdit] = useState<TeamMember | null>(null);
   const [newMemberRole, setNewMemberRole] = useState('');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -97,8 +94,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
 
   // Handle adding a member - Requirement 4.5
   const handleAddMember = async () => {
-    if (!selectedEmployeeId || !newMemberRole.trim()) {
-      setError('Please select an employee and enter a role');
+    if (!selectedEmployeeId) {
+      setError('Please select an employee');
       return;
     }
 
@@ -115,7 +112,7 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
         id: selectedEmployee.id!,
         name: selectedEmployee.name,
         avatar: undefined, // Avatar removed from Employee interface
-        role: newMemberRole.trim(),
+        role: selectedEmployee.role, // Use employee's role instead of custom role
       };
 
       const updatedTeam = await teamService.addMember(currentTeam.id!, newMember);
@@ -155,48 +152,10 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
     }
   };
 
-  // Handle updating member role
-  const handleUpdateMemberRole = async () => {
-    if (!selectedMemberForEdit || !newMemberRole.trim()) {
-      setError('Please enter a role');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const updatedTeam = await teamService.updateMemberRole(
-        currentTeam.id!,
-        selectedMemberForEdit.id,
-        newMemberRole.trim()
-      );
-      setCurrentTeam(updatedTeam);
-      onTeamUpdate?.(updatedTeam);
-
-      // Reset and close modal
-      setSelectedMemberForEdit(null);
-      setNewMemberRole('');
-      setIsEditRoleModalOpen(false);
-    } catch (error) {
-      console.error('Error updating member role:', error);
-      setError(error instanceof Error ? error.message : 'Failed to update member role');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Open edit role modal
-  const openEditRoleModal = (member: TeamMember) => {
-    setSelectedMemberForEdit(member);
-    setNewMemberRole(member.role);
-    setIsEditRoleModalOpen(true);
-  };
-
   // Get leader information
   const getLeaderInfo = () => {
     const leader = employees.find(emp => emp.id === currentTeam.leaderId);
-    return leader || { name: currentTeam.leaderName, avatarUrl: undefined };
+    return leader || { name: currentTeam.leaderName };
   };
 
   const leaderInfo = getLeaderInfo();
@@ -243,15 +202,7 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
           )}
 
           {/* Team Details */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* Department */}
-            {currentTeam.department && (
-              <div>
-                <h4 className="text-xs font-medium text-gray-600 mb-1">Department</h4>
-                <p className="text-sm text-gray-600">{currentTeam.department}</p>
-              </div>
-            )}
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Member Count */}
             <div>
               <h4 className="text-xs font-medium text-gray-600 mb-1">Team Size</h4>
@@ -288,9 +239,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
         <CardContent>
           <div className="flex items-center gap-2">
             <Avatar
-              src={leaderInfo.avatarUrl}
               alt={leaderInfo.name}
-              fallback={getInitials(leaderInfo.name)}
+              fallback={getInitials(leaderInfo.name || 'Unknown')}
               size="sm"
             />
             <div>
@@ -351,16 +301,6 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => openEditRoleModal(member)}
-                      disabled={loading}
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                      title="Edit role"
-                    >
-                      <PencilSquareIcon className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
                       onClick={() => handleRemoveMember(member.id)}
                       disabled={loading}
                       className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -408,19 +348,6 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
               )}
             </div>
 
-            {/* Role Input */}
-            <div>
-              <Label htmlFor="role">Role in Team</Label>
-              <Input
-                id="role"
-                value={newMemberRole}
-                onChange={(e) => setNewMemberRole(e.target.value)}
-                placeholder="e.g., Developer, Designer, Analyst"
-                disabled={loading}
-                className="mt-1"
-              />
-            </div>
-
             {error && (
               <p className="text-sm text-red-600">{error}</p>
             )}
@@ -441,76 +368,10 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
             </Button>
             <Button
               onClick={handleAddMember}
-              disabled={loading || !selectedEmployeeId || !newMemberRole.trim()}
+              disabled={loading || !selectedEmployeeId}
               loading={loading}
             >
               Add Member
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Edit Role Modal */}
-      <Dialog open={isEditRoleModalOpen} onOpenChange={setIsEditRoleModalOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Edit Member Role</DialogTitle>
-          </DialogHeader>
-          
-          {selectedMemberForEdit && (
-            <div className="space-y-4">
-              {/* Member Info */}
-              <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-                <Avatar
-                  src={selectedMemberForEdit.avatar}
-                  alt={selectedMemberForEdit.name}
-                  fallback={getInitials(selectedMemberForEdit.name)}
-                  size="sm"
-                />
-                <div>
-                  <p className="font-medium text-gray-900">{selectedMemberForEdit.name}</p>
-                  <p className="text-sm text-gray-600">Current role: {selectedMemberForEdit.role}</p>
-                </div>
-              </div>
-
-              {/* New Role Input */}
-              <div>
-                <Label htmlFor="newRole">New Role</Label>
-                <Input
-                  id="newRole"
-                  value={newMemberRole}
-                  onChange={(e) => setNewMemberRole(e.target.value)}
-                  placeholder="Enter new role"
-                  disabled={loading}
-                  className="mt-1"
-                />
-              </div>
-
-              {error && (
-                <p className="text-sm text-red-600">{error}</p>
-              )}
-            </div>
-          )}
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsEditRoleModalOpen(false);
-                setSelectedMemberForEdit(null);
-                setNewMemberRole('');
-                setError(null);
-              }}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleUpdateMemberRole}
-              disabled={loading || !newMemberRole.trim()}
-              loading={loading}
-            >
-              Update Role
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -234,7 +234,7 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
       setEmployees((prev) =>
         prev.map((employee) =>
           employee.id === id
-            ? { ...employee, status: 'terminated' as const, updatedAt: new Date() }
+            ? { ...employee, status: 'on-leave' as const, updatedAt: new Date() }
             : employee
         )
       );

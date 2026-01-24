@@ -101,8 +101,8 @@ export function useTeams(): UseTeamsReturn {
       description: data.description || '',
       leaderId: data.leaderId,
       leaderName: '', // Will be populated by API
+      memberIds: data.memberIds || [],
       members: [],
-      department: data.department,
       status: data.status || 'active',
       createdAt: new Date(),
     };

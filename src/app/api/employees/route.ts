@@ -12,7 +12,7 @@ const createEmployeeSchema = z.object({
   email: z.string().email('Invalid email format'),
   phone: z.string().regex(/^\+?[\d\s\-()]+$/, 'Invalid phone format'),
   role: z.enum(['Manager', 'Admin', 'Employee']),
-  status: z.enum(['active', 'on-leave', 'terminated']).default('active'),
+  status: z.enum(['active', 'on-leave']).default('active'),
   password: z.string().optional(),
 });
 
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || undefined;
     const search = searchParams.get('search') || undefined;
-    const limit = parseInt(searchParams.get('limit') || '20');
+    const limit = parseInt(searchParams.get('limit') || '1000'); // Increased from 20 to 1000
 
     const employees = await employeeService.getAll({
       status,

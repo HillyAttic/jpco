@@ -119,20 +119,20 @@ export function RecurringTaskCard({
   const calculateTotalCycles = (
     startDate: Date,
     currentDate: Date,
-    pattern: 'daily' | 'weekly' | 'monthly' | 'quarterly'
+    pattern: 'monthly' | 'quarterly' | 'half-yearly' | 'yearly'
   ): number => {
     const diffTime = Math.abs(new Date(currentDate).getTime() - new Date(startDate).getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
     switch (pattern) {
-      case 'daily':
-        return diffDays;
-      case 'weekly':
-        return Math.floor(diffDays / 7);
       case 'monthly':
         return Math.floor(diffDays / 30);
       case 'quarterly':
         return Math.floor(diffDays / 90);
+      case 'half-yearly':
+        return Math.floor(diffDays / 180);
+      case 'yearly':
+        return Math.floor(diffDays / 365);
       default:
         return 0;
     }
@@ -254,22 +254,22 @@ export function RecurringTaskCard({
             </Badge>
           </div>
 
-          {/* Assigned Users */}
-          {task.assignedTo && task.assignedTo.length > 0 && (
+          {/* Assigned Contacts */}
+          {task.contactIds && task.contactIds.length > 0 && (
             <div className="flex items-center gap-2">
               <span className="text-sm text-gray-600">Assigned to:</span>
               <div className="flex -space-x-2">
-                {task.assignedTo.slice(0, 3).map((userId) => (
+                {task.contactIds.slice(0, 3).map((contactId) => (
                   <Avatar
-                    key={userId}
-                    fallback={getInitials(userId)}
+                    key={contactId}
+                    fallback={getInitials(contactId)}
                     size="sm"
                     className="border-2 border-white"
                   />
                 ))}
-                {task.assignedTo.length > 3 && (
+                {task.contactIds.length > 3 && (
                   <div className="h-8 w-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
-                    +{task.assignedTo.length - 3}
+                    +{task.contactIds.length - 3}
                   </div>
                 )}
               </div>

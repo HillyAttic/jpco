@@ -134,11 +134,11 @@ export default function NonRecurringTasksPage() {
     setIsSubmitting(true);
     
     try {
-      // Convert assignedTo string to array
+      // Convert assignedTo string (employee IDs) to array
       const assignedToArray = formData.assignedTo
         .split(',')
-        .map((name: string) => name.trim())
-        .filter((name: string) => name.length > 0);
+        .map((id: string) => id.trim())
+        .filter((id: string) => id.length > 0);
 
       const taskData = {
         title: formData.title,
@@ -147,7 +147,8 @@ export default function NonRecurringTasksPage() {
         priority: formData.priority,
         status: formData.status,
         assignedTo: assignedToArray,
-        category: formData.category || undefined,
+        categoryId: formData.categoryId || undefined,
+        contactId: formData.contactId || undefined,
       };
 
       if (selectedTask) {
@@ -205,7 +206,9 @@ export default function NonRecurringTasksPage() {
     createdAt: task.createdAt,
     updatedAt: task.updatedAt,
     assignedTo: task.assignedTo,
-    category: task.category,
+    category: task.categoryId,
+    categoryId: task.categoryId,
+    contactId: task.contactId,
   });
 
   return (

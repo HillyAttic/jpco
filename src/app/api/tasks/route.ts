@@ -13,7 +13,8 @@ const createTaskSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   status: z.enum(['pending', 'in-progress', 'completed']).default('pending'),
   assignedTo: z.array(z.string()).default([]),
-  category: z.string().optional(),
+  categoryId: z.string().optional(),
+  contactId: z.string().optional(),
 });
 
 /**

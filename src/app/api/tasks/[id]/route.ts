@@ -13,7 +13,8 @@ const updateTaskSchema = z.object({
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   status: z.enum(['pending', 'in-progress', 'completed']).optional(),
   assignedTo: z.array(z.string()).optional(),
-  category: z.string().optional(),
+  categoryId: z.string().optional(),
+  contactId: z.string().optional(),
 });
 
 /**
@@ -78,7 +79,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (taskData.priority !== undefined) taskToUpdate.priority = taskData.priority;
     if (taskData.status !== undefined) taskToUpdate.status = taskData.status;
     if (taskData.assignedTo !== undefined) taskToUpdate.assignedTo = taskData.assignedTo;
-    if (taskData.category !== undefined) taskToUpdate.category = taskData.category;
+    if (taskData.categoryId !== undefined) taskToUpdate.categoryId = taskData.categoryId;
+    if (taskData.contactId !== undefined) taskToUpdate.contactId = taskData.contactId;
     
     const updatedTask = await nonRecurringTaskService.update(id, taskToUpdate);
     

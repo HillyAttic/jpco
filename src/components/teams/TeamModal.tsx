@@ -24,9 +24,8 @@ import { XMarkIcon } from '@heroicons/react/24/outline';
 type TeamFormFields = {
   name: string;
   description?: string;
-  leaderId: string;
+  leaderId?: string;
   memberIds: string[];
-  department?: string;
   status: 'active' | 'inactive' | 'archived';
 };
 
@@ -68,7 +67,6 @@ export function TeamModal({
       description: '',
       leaderId: '',
       memberIds: [],
-      department: '',
       status: 'active' as const,
     },
   });
@@ -121,9 +119,8 @@ export function TeamModal({
       reset({
         name: team.name,
         description: team.description,
-        leaderId: team.leaderId,
+        leaderId: team.leaderId || '',
         memberIds: team.members.map(m => m.id),
-        department: team.department || '',
         status: team.status,
       });
 
@@ -138,7 +135,6 @@ export function TeamModal({
         description: '',
         leaderId: '',
         memberIds: [],
-        department: '',
         status: 'active',
       });
       setSelectedMembers([]);
@@ -243,18 +239,6 @@ export function TeamModal({
             )}
           </div>
 
-          {/* Department */}
-          <div>
-            <Input
-              id="department"
-              label="Department"
-              {...register('department')}
-              placeholder="Enter department name"
-              error={errors.department?.message}
-              disabled={isLoading}
-            />
-          </div>
-
           {/* Team Leader Selection */}
           <div>
             <Label htmlFor="leaderId">Team Leader</Label>
@@ -267,7 +251,7 @@ export function TeamModal({
               <option value="">Select a team leader</option>
               {employees.map((employee) => (
                 <option key={employee.id} value={employee.id}>
-                  {employee.name} - {employee.position}
+                  {employee.name} - {employee.role}
                 </option>
               ))}
             </Select>
@@ -321,26 +305,29 @@ export function TeamModal({
             
             {/* Selected Members Display */}
             {selectedMembers.length > 0 && (
-              <div className="mt-2 mb-3">
+              <div className="mt-2 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <p className="text-xs font-medium text-gray-600 mb-2">Selected Members ({selectedMembers.length})</p>
                 <div className="flex flex-wrap gap-2">
                   {selectedMembers.map((member) => (
                     <div
                       key={member.id}
-                      className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2"
+                      className="flex items-center gap-2 bg-white border border-gray-300 rounded-md px-2.5 py-1.5 shadow-sm hover:shadow-md transition-shadow"
                     >
                       <Avatar
-                        src={member.avatarUrl}
                         alt={member.name}
                         fallback={getInitials(member.name)}
                         size="sm"
                       />
-                      <span className="text-sm font-medium">{member.name}</span>
-                      <span className="text-xs text-gray-500">({member.position})</span>
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-gray-900">{member.name}</span>
+                        <span className="text-xs text-gray-500">{member.role}</span>
+                      </div>
                       <button
                         type="button"
                         onClick={() => handleMemberRemove(member.id!)}
-                        className="text-red-500 hover:text-red-700 ml-1"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1 ml-1 transition-colors"
                         disabled={isLoading}
+                        aria-label={`Remove ${member.name}`}
                       >
                         <XMarkIcon className="w-4 h-4" />
                       </button>

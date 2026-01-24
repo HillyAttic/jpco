@@ -128,14 +128,6 @@ export function TeamCard({ team, onEdit, onDelete, onViewDetails, selected = fal
             <span className="font-medium text-gray-700">Members:</span>
             <span>{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
           </div>
-
-          {/* Department */}
-          {team.department && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
-              <span className="font-medium text-gray-700">Department:</span>
-              <span className="truncate">{team.department}</span>
-            </div>
-          )}
         </div>
 
         {/* Member Avatar Previews - Requirement 4.8 */}

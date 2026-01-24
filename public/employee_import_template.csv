@@ -1,0 +1,4 @@
+Employee ID,Name,Email,Phone,Role,Password,Status
+EMP001,John Doe,john.doe@example.com,+1234567890,Employee,password123,active
+EMP002,Jane Smith,jane.smith@example.com,+1234567891,Manager,password123,active
+EMP003,Bob Johnson,bob.johnson@example.com,+1234567892,Admin,password123,on-leave

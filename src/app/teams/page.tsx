@@ -69,10 +69,16 @@ export default function TeamsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // 'grid' or 'list' view mode
 
-  // Get unique departments for filter
-  const availableDepartments = Array.from(
-    new Set(teams.filter(team => team.department).map(team => team.department!))
-  ).sort();
+  // Auto-refresh teams every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      refreshTeams();
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(interval);
+  }, [refreshTeams]);
+
+  // Department filter removed since teams no longer have department field
 
   // Handle create team
   const handleCreateTeam = async (data: TeamFormData) => {
@@ -277,22 +283,6 @@ export default function TeamsPage() {
               </div>
             </CardContent>
           </Card>
-
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-purple-100 rounded-lg">
-                  <UserGroupIcon className="w-6 h-6 text-purple-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Departments</p>
-                  <p className="text-2xl font-bold text-gray-900">
-                    {availableDepartments.length}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Filters */}
@@ -303,7 +293,7 @@ export default function TeamsPage() {
           }}
           onFilterChange={handleFilterChange}
           onClearFilters={handleClearFilters}
-          availableDepartments={availableDepartments}
+          availableDepartments={[]}
         />
 
         {/* View Toggle Buttons */}
@@ -361,11 +351,10 @@ export default function TeamsPage() {
               /* List View */
               <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-                  <div className="col-span-3">Team Name</div>
-                  <div className="col-span-2">Leader</div>
-                  <div className="col-span-2">Department</div>
-                  <div className="col-span-1">Members</div>
-                  <div className="col-span-2">Status</div>
+                  <div className="col-span-4">Team Name</div>
+                  <div className="col-span-3">Leader</div>
+                  <div className="col-span-2">Members</div>
+                  <div className="col-span-1">Status</div>
                   <div className="col-span-2">Actions</div>
                 </div>
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">
@@ -374,22 +363,19 @@ export default function TeamsPage() {
                       key={team.id} 
                       className="grid grid-cols-12 gap-4 px-6 py-4 text-sm bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
-                      <div className="col-span-3">
+                      <div className="col-span-4">
                         <div className="font-medium text-gray-900 dark:text-white">{team.name}</div>
-                        <div className="text-gray-500 dark:text-gray-400 text-xs mt-1">
+                        <div className="text-gray-500 dark:text-gray-400 text-xs mt-1 truncate">
                           {team.description || 'No description'}
                         </div>
                       </div>
-                      <div className="col-span-2 text-gray-700 dark:text-gray-300">
+                      <div className="col-span-3 text-gray-700 dark:text-gray-300">
                         {team.leaderName || 'Unassigned'}
                       </div>
                       <div className="col-span-2 text-gray-700 dark:text-gray-300">
-                        {team.department || 'N/A'}
+                        {team.members.length}
                       </div>
-                      <div className="col-span-1 text-gray-700 dark:text-gray-300">
-                        {team.members.length + 1}
-                      </div>
-                      <div className="col-span-2">
+                      <div className="col-span-1">
                         <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${team.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
                           {team.status}
                         </span>

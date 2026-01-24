@@ -12,8 +12,9 @@ export interface NonRecurringTask {
   dueDate: Date;
   priority: 'low' | 'medium' | 'high' | 'urgent';
   status: 'pending' | 'in-progress' | 'completed';
-  assignedTo: string[];
-  category?: string;
+  assignedTo: string[]; // Array of employee IDs
+  categoryId?: string; // Category ID reference
+  contactId?: string; // Client ID reference
   createdAt?: Date;
   updatedAt?: Date;
 }

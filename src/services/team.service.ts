@@ -16,10 +16,10 @@ export interface Team {
   id?: string;
   name: string;
   description: string;
-  leaderId: string;
-  leaderName: string;
+  leaderId?: string;
+  leaderName?: string;
+  memberIds: string[];
   members: TeamMember[];
-  department?: string;
   status: 'active' | 'inactive' | 'archived';
   createdAt?: Date;
   updatedAt?: Date;

@@ -78,10 +78,17 @@ export const taskSchema = z.object({
 });
 
 // Recurring Task validation schema
-export const recurringTaskSchema = taskSchema.extend({
-  recurrencePattern: z.enum(['daily', 'weekly', 'monthly', 'quarterly'], { message: 'Invalid recurrence pattern' }),
+export const recurringTaskSchema = z.object({
+  title: z.string().min(1, 'Title is required').max(200, 'Title must be less than 200 characters'),
+  description: z.string().max(1000, 'Description must be less than 1000 characters').optional(),
+  priority: z.enum(['low', 'medium', 'high', 'urgent'], { message: 'Invalid priority value' }),
+  status: z.enum(['pending', 'in-progress', 'completed']).optional().default('pending'),
+  contactIds: z.array(z.string()).min(1, 'At least one contact is required'),
+  categoryId: z.string().optional(),
+  recurrencePattern: z.enum(['monthly', 'quarterly', 'half-yearly', 'yearly'], { message: 'Invalid recurrence pattern' }),
   startDate: z.date({ message: 'Invalid date format' }),
   endDate: z.date({ message: 'Invalid date format' }).optional(),
+  teamId: z.string().optional(),
   isPaused: z.boolean().optional().default(false)
 }).refine(
   (data) => !data.endDate || data.endDate > data.startDate,
@@ -100,9 +107,8 @@ export const commentSchema = z.object({
 export const teamSchema = z.object({
   name: z.string().min(1, 'Team name is required').max(100, 'Team name must be less than 100 characters'),
   description: z.string().max(500, 'Description must be less than 500 characters').optional(),
-  leaderId: z.string().min(1, 'Team leader is required'),
+  leaderId: z.string().optional(),
   memberIds: z.array(z.string()).optional().default([]),
-  department: z.string().optional(),
   status: z.enum(['active', 'inactive', 'archived']).optional().default('active')
 });
 

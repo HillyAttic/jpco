@@ -4,12 +4,12 @@
  * Validates Requirement: 3.4
  */
 
-export type RecurrencePattern = 'daily' | 'weekly' | 'monthly' | 'quarterly';
+export type RecurrencePattern = 'monthly' | 'quarterly' | 'half-yearly' | 'yearly';
 
 /**
  * Calculate the next occurrence date based on the recurrence pattern
  * @param currentDate - The current occurrence date
- * @param pattern - The recurrence pattern (daily, weekly, monthly, quarterly)
+ * @param pattern - The recurrence pattern (monthly, quarterly, half-yearly, yearly)
  * @returns The next occurrence date
  */
 export function calculateNextOccurrence(
@@ -19,41 +19,17 @@ export function calculateNextOccurrence(
   const next = new Date(currentDate);
 
   switch (pattern) {
-    case 'daily':
-      return calculateDailyRecurrence(next);
-    case 'weekly':
-      return calculateWeeklyRecurrence(next);
     case 'monthly':
       return calculateMonthlyRecurrence(next);
     case 'quarterly':
       return calculateQuarterlyRecurrence(next);
+    case 'half-yearly':
+      return calculateHalfYearlyRecurrence(next);
+    case 'yearly':
+      return calculateYearlyRecurrence(next);
     default:
       throw new Error(`Invalid recurrence pattern: ${pattern}`);
   }
-}
-
-/**
- * Calculate next occurrence for daily recurrence
- * Adds 1 day to the current date
- * @param currentDate - The current occurrence date
- * @returns The next occurrence date (1 day later)
- */
-export function calculateDailyRecurrence(currentDate: Date): Date {
-  const next = new Date(currentDate);
-  next.setDate(next.getDate() + 1);
-  return next;
-}
-
-/**
- * Calculate next occurrence for weekly recurrence
- * Adds 7 days to the current date
- * @param currentDate - The current occurrence date
- * @returns The next occurrence date (7 days later)
- */
-export function calculateWeeklyRecurrence(currentDate: Date): Date {
-  const next = new Date(currentDate);
-  next.setDate(next.getDate() + 7);
-  return next;
 }
 
 /**
@@ -101,6 +77,49 @@ export function calculateQuarterlyRecurrence(currentDate: Date): Date {
 }
 
 /**
+ * Calculate next occurrence for half-yearly recurrence
+ * Adds 6 months to the current date, handling edge cases for month-end dates
+ * @param currentDate - The current occurrence date
+ * @returns The next occurrence date (6 months later)
+ */
+export function calculateHalfYearlyRecurrence(currentDate: Date): Date {
+  const next = new Date(currentDate);
+  const currentDay = next.getDate();
+  
+  // Add six months
+  next.setMonth(next.getMonth() + 6);
+  
+  // Handle edge case: if the day changed
+  // Set to the last day of the target month
+  if (next.getDate() !== currentDay) {
+    next.setDate(0); // Sets to last day of previous month (which is our target month)
+  }
+  
+  return next;
+}
+
+/**
+ * Calculate next occurrence for yearly recurrence
+ * Adds 1 year to the current date, handling edge cases for leap years
+ * @param currentDate - The current occurrence date
+ * @returns The next occurrence date (1 year later)
+ */
+export function calculateYearlyRecurrence(currentDate: Date): Date {
+  const next = new Date(currentDate);
+  const currentDay = next.getDate();
+  
+  // Add one year
+  next.setFullYear(next.getFullYear() + 1);
+  
+  // Handle edge case: Feb 29 on leap year -> Feb 28 on non-leap year
+  if (next.getDate() !== currentDay) {
+    next.setDate(0); // Sets to last day of previous month (Feb 28)
+  }
+  
+  return next;
+}
+
+/**
  * Calculate all occurrences between start and end dates
  * @param startDate - The start date
  * @param endDate - The end date
@@ -139,10 +158,6 @@ export function calculateOccurrenceCount(
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
   switch (pattern) {
-    case 'daily':
-      return diffDays + 1; // Include both start and end dates
-    case 'weekly':
-      return Math.floor(diffDays / 7) + 1;
     case 'monthly':
       // Calculate month difference
       const monthDiff = 
@@ -156,6 +171,17 @@ export function calculateOccurrenceCount(
         (endDate.getMonth() - startDate.getMonth())) / 3
       );
       return quarterDiff + 1;
+    case 'half-yearly':
+      // Calculate half-year difference
+      const halfYearDiff = Math.floor(
+        ((endDate.getFullYear() - startDate.getFullYear()) * 12 +
+        (endDate.getMonth() - startDate.getMonth())) / 6
+      );
+      return halfYearDiff + 1;
+    case 'yearly':
+      // Calculate year difference
+      const yearDiff = endDate.getFullYear() - startDate.getFullYear();
+      return yearDiff + 1;
     default:
       return 0;
   }
@@ -177,10 +203,6 @@ export function isOccurrenceDate(
   const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
   switch (pattern) {
-    case 'daily':
-      return diffDays >= 0;
-    case 'weekly':
-      return diffDays >= 0 && diffDays % 7 === 0;
     case 'monthly':
       // Check if same day of month
       return date.getDate() === startDate.getDate() && diffDays >= 0;
@@ -192,6 +214,19 @@ export function isOccurrenceDate(
       return date.getDate() === startDate.getDate() && 
              monthDiff >= 0 && 
              monthDiff % 3 === 0;
+    case 'half-yearly':
+      // Check if same day and month is 6 months apart
+      const halfYearMonthDiff = 
+        (date.getFullYear() - startDate.getFullYear()) * 12 +
+        (date.getMonth() - startDate.getMonth());
+      return date.getDate() === startDate.getDate() && 
+             halfYearMonthDiff >= 0 && 
+             halfYearMonthDiff % 6 === 0;
+    case 'yearly':
+      // Check if same day and month, and year is different
+      return date.getDate() === startDate.getDate() && 
+             date.getMonth() === startDate.getMonth() &&
+             diffDays >= 0;
     default:
       return false;
   }
@@ -204,10 +239,10 @@ export function isOccurrenceDate(
  */
 export function getRecurrenceDescription(pattern: RecurrencePattern): string {
   const descriptions = {
-    daily: 'Every day',
-    weekly: 'Every week',
     monthly: 'Every month',
-    quarterly: 'Every 3 months'
+    quarterly: 'Every 3 months',
+    'half-yearly': 'Every 6 months',
+    yearly: 'Every year'
   };
   
   return descriptions[pattern] || 'Unknown pattern';

@@ -5,7 +5,6 @@ import {
   UsersIcon,
   UserIcon,
   ClockIcon,
-  UserMinusIcon,
   BuildingOfficeIcon
 } from '@heroicons/react/24/outline';
 
@@ -79,10 +78,6 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
   const onLeaveEmployees = employees.filter(
     employee => employee.status === 'on-leave'
   ).length;
-  
-  const terminatedEmployees = employees.filter(
-    employee => employee.status === 'terminated'
-  ).length;
 
   // Calculate role distribution
   const roleDistribution: Record<string, number> = {};
@@ -105,7 +100,7 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
           <p className="text-xs text-gray-600 mt-0.5">Summary of all employee statuses</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
           {/* Total Employees */}
           <StatItem
             icon={<UsersIcon className="w-5 h-5" />}
@@ -131,15 +126,6 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
             value={onLeaveEmployees}
             color="text-yellow-600"
             bgColor="bg-yellow-100"
-          />
-
-          {/* Terminated Employees */}
-          <StatItem
-            icon={<UserMinusIcon className="w-5 h-5" />}
-            label="Terminated"
-            value={terminatedEmployees}
-            color="text-red-600"
-            bgColor="bg-red-100"
           />
         </div>
 

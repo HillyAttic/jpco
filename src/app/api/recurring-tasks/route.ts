@@ -7,10 +7,7 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 const createRecurringTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(1000).optional(),
-  dueDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid date format',
-  }),
-  recurrencePattern: z.enum(['daily', 'weekly', 'monthly', 'quarterly']),
+  recurrencePattern: z.enum(['monthly', 'quarterly', 'half-yearly', 'yearly']),
   startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
     message: 'Invalid start date format',
   }),
@@ -22,8 +19,9 @@ const createRecurringTaskSchema = z.object({
   }).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   status: z.enum(['pending', 'in-progress', 'completed']).default('pending'),
-  assignedTo: z.array(z.string()).default([]),
-  category: z.string().optional(),
+  contactIds: z.array(z.string()).default([]),
+  categoryId: z.string().optional(),
+  teamId: z.string().optional(),
 }).refine(
   (data) => !data.endDate || new Date(data.endDate) > new Date(data.startDate),
   { message: 'End date must be after start date', path: ['endDate'] }
@@ -91,7 +89,6 @@ export async function POST(request: NextRequest) {
     const taskToCreate = {
       ...taskData,
       description: taskData.description || '',
-      dueDate: new Date(taskData.dueDate),
       startDate: new Date(taskData.startDate),
       endDate: taskData.endDate ? new Date(taskData.endDate) : undefined,
       nextOccurrence: new Date(taskData.nextOccurrence || taskData.startDate),

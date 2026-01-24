@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { teamService } from '@/services/team.service';
+import { employeeService } from '@/services/employee.service';
 import { teamSchema } from '@/lib/validation';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
@@ -70,8 +71,40 @@ export async function PUT(
       return ErrorResponses.notFound('Team');
     }
 
+    // Prepare update data
+    const updateData: any = { ...validatedData };
+
+    // Get leader name if leaderId is being updated
+    if (validatedData.leaderId !== undefined) {
+      if (validatedData.leaderId) {
+        const leader = await employeeService.getById(validatedData.leaderId);
+        updateData.leaderName = leader ? leader.name : '';
+      } else {
+        updateData.leaderName = '';
+      }
+    }
+
+    // Get member details if memberIds are being updated
+    if (validatedData.memberIds !== undefined) {
+      const members = [];
+      if (validatedData.memberIds.length > 0) {
+        for (const memberId of validatedData.memberIds) {
+          const employee = await employeeService.getById(memberId);
+          if (employee) {
+            members.push({
+              id: employee.id!,
+              name: employee.name,
+              avatar: undefined,
+              role: employee.role,
+            });
+          }
+        }
+      }
+      updateData.members = members;
+    }
+
     // Update the team
-    const updatedTeam = await teamService.update(id, validatedData);
+    const updatedTeam = await teamService.update(id, updateData);
 
     return NextResponse.json({
       success: true,

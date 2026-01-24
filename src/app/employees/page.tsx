@@ -8,6 +8,7 @@ import { EmployeeCard } from '@/components/employees/EmployeeCard';
 import { EmployeeModal } from '@/components/employees/EmployeeModal';
 import { EmployeeStatsCard } from '@/components/employees/EmployeeStatsCard';
 import { EmployeeFilter, EmployeeFilterState } from '@/components/employees/EmployeeFilter';
+import { EmployeeBulkImportModal } from '@/components/employees/EmployeeBulkImportModal';
 import { BulkActionToolbar } from '@/components/ui/BulkActionToolbar';
 import { BulkDeleteDialog } from '@/components/ui/BulkDeleteDialog';
 import { Button } from '@/components/ui/button';
@@ -15,7 +16,7 @@ import { NoResultsEmptyState, NoDataEmptyState } from '@/components/ui/empty-sta
 import { CardGridSkeleton, StatsGridSkeleton } from '@/components/ui/loading-skeletons';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
-import { PlusIcon } from '@heroicons/react/24/outline';
+import { PlusIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { z } from 'zod';
 
 // Form schema for employee data
@@ -28,7 +29,7 @@ const employeeFormSchema = z.object({
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
   avatar: z.instanceof(File).optional(),
-  status: z.enum(['active', 'on-leave', 'terminated']),
+  status: z.enum(['active', 'on-leave']),
 });
 
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;
@@ -61,6 +62,7 @@ export default function EmployeesPage() {
   });
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // 'grid' or 'list' view mode
 
   // Filter employees based on current filters
@@ -217,6 +219,24 @@ export default function EmployeesPage() {
     }
   };
 
+  /**
+   * Handle bulk import
+   * Imports employees from CSV file
+   */
+  const handleBulkImport = async (employees: any[]) => {
+    for (const emp of employees) {
+      const employeeData = {
+        employeeId: emp.employeeId,
+        name: emp.name,
+        email: emp.email,
+        phone: emp.phone,
+        role: emp.role,
+        status: emp.status,
+      };
+      await createEmployee(employeeData, emp.password);
+    }
+  };
+
   if (error) {
     return (
       <ErrorBoundary>
@@ -247,10 +267,20 @@ export default function EmployeesPage() {
               Manage employee records and information
             </p>
           </div>
-          <Button onClick={handleCreateEmployee} className="flex items-center gap-2 text-white">
-            <PlusIcon className="w-4 h-4" />
-            Add New Employee
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              onClick={() => setIsBulkImportModalOpen(true)} 
+              variant="outline"
+              className="flex items-center gap-2"
+            >
+              <ArrowUpTrayIcon className="w-4 h-4" />
+              Bulk Import
+            </Button>
+            <Button onClick={handleCreateEmployee} className="flex items-center gap-2 text-white">
+              <PlusIcon className="w-4 h-4" />
+              Add New Employee
+            </Button>
+          </div>
         </div>
 
         {/* Employee Statistics */}
@@ -456,6 +486,13 @@ export default function EmployeesPage() {
           onSubmit={handleSubmitEmployee}
           employee={editingEmployee}
           isLoading={isSubmitting}
+        />
+
+        {/* Bulk Import Modal */}
+        <EmployeeBulkImportModal
+          isOpen={isBulkImportModalOpen}
+          onClose={() => setIsBulkImportModalOpen(false)}
+          onImport={handleBulkImport}
         />
       </div>
     </ErrorBoundary>

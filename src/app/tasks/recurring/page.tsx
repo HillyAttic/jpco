@@ -75,20 +75,21 @@ export default function RecurringTasksPage() {
   const handleSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
-      // Convert assignedTo string to array
-      const assignedToArray = data.assignedTo
-        .split(',')
-        .map((name: string) => name.trim())
-        .filter((name: string) => name.length > 0);
+      // Convert contactIds string to array
+      const contactIdsArray = data.contactIds
+        ? data.contactIds
+            .split(',')
+            .map((id: string) => id.trim())
+            .filter((id: string) => id.length > 0)
+        : [];
 
       const taskData = {
         title: data.title,
         description: data.description,
-        dueDate: new Date(data.dueDate),
         priority: data.priority,
         status: data.status,
-        assignedTo: assignedToArray,
-        category: data.category || undefined,
+        contactIds: contactIdsArray,
+        categoryId: data.categoryId || undefined,
         recurrencePattern: data.recurrencePattern,
         startDate: new Date(data.startDate),
         endDate: data.endDate ? new Date(data.endDate) : undefined,
