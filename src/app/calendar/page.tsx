@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Task } from '@/types/task.types';
+import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
 import { calculateAllOccurrences } from '@/utils/recurrence-scheduler';
@@ -105,12 +105,12 @@ export default function CalendarPage() {
             title: recurringTask.title,
             description: recurringTask.description,
             dueDate: occurrenceDate,
-            priority: recurringTask.priority,
-            status: wasCompleted ? 'completed' : recurringTask.status,
+            priority: recurringTask.priority as TaskPriority,
+            status: wasCompleted ? TaskStatus.COMPLETED : recurringTask.status as TaskStatus,
             assignedTo: recurringTask.contactIds || [],
             category: recurringTask.categoryId,
-            createdAt: recurringTask.createdAt,
-            updatedAt: recurringTask.updatedAt,
+            createdAt: recurringTask.createdAt || new Date(),
+            updatedAt: recurringTask.updatedAt || new Date(),
             isRecurring: true,
             recurringTaskId: recurringTask.id,
             recurrencePattern: recurringTask.recurrencePattern,

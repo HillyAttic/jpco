@@ -7,7 +7,7 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 const createRecurringTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(1000).optional(),
-  recurrencePattern: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'half-yearly', 'yearly']),
+  recurrencePattern: z.enum(['monthly', 'quarterly', 'half-yearly', 'yearly']),
   startDate: z.union([
     z.string().refine((date) => !isNaN(Date.parse(date)), {
       message: 'Invalid start date format',

@@ -9,7 +9,7 @@ import {
   ExclamationTriangleIcon,
   ClipboardDocumentListIcon
 } from '@heroicons/react/24/outline';
-import { Task } from '@/types/task.types';
+import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -51,12 +51,12 @@ export default function DashboardPage() {
         title: task.title,
         description: task.description,
         dueDate: task.nextOccurrence,
-        priority: task.priority,
-        status: task.status,
+        priority: task.priority as TaskPriority,
+        status: task.status as TaskStatus,
         assignedTo: task.contactIds || [],
         category: task.categoryId,
-        createdAt: task.createdAt,
-        updatedAt: task.updatedAt,
+        createdAt: task.createdAt || new Date(),
+        updatedAt: task.updatedAt || new Date(),
         isRecurring: true,
         recurrencePattern: task.recurrencePattern,
       }));
