@@ -237,14 +237,14 @@ export function GeolocationAttendanceTracker() {
               errorMessage = 'Location information is unavailable. This may be due to using an insecure connection (HTTP). Please use HTTPS.';
               break;
             case error.TIMEOUT:
-              errorMessage = 'Location request timed out. Please check your connection and try again.';
+              errorMessage = 'Location request timed out. Please check your GPS signal and try again. Make sure you are in an area with good satellite visibility.';
               break;
           }
           reject(new Error(errorMessage));
         },
         {
           enableHighAccuracy: true,
-          timeout: 10000,
+          timeout: 30000, // Increased from 10 seconds to 30 seconds
           maximumAge: 60000
         }
       );

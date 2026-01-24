@@ -7,23 +7,38 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 const updateRecurringTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200).optional(),
   description: z.string().max(1000).optional(),
-  dueDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid date format',
-  }).optional(),
+  dueDate: z.union([
+    z.string().refine((date) => !isNaN(Date.parse(date)), {
+      message: 'Invalid date format',
+    }),
+    z.date()
+  ]).optional(),
   recurrencePattern: z.enum(['daily', 'weekly', 'monthly', 'quarterly']).optional(),
-  startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid start date format',
-  }).optional(),
-  endDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid end date format',
-  }).optional(),
-  nextOccurrence: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid next occurrence date format',
-  }).optional(),
+  startDate: z.union([
+    z.string().refine((date) => !isNaN(Date.parse(date)), {
+      message: 'Invalid start date format',
+    }),
+    z.date()
+  ]).optional(),
+  endDate: z.union([
+    z.string().refine((date) => !isNaN(Date.parse(date)), {
+      message: 'Invalid end date format',
+    }),
+    z.date()
+  ]).optional(),
+  nextOccurrence: z.union([
+    z.string().refine((date) => !isNaN(Date.parse(date)), {
+      message: 'Invalid next occurrence date format',
+    }),
+    z.date()
+  ]).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).optional(),
   status: z.enum(['pending', 'in-progress', 'completed']).optional(),
   assignedTo: z.array(z.string()).optional(),
+  contactIds: z.array(z.string()).optional(),
   category: z.string().optional(),
+  categoryId: z.string().optional(),
+  teamId: z.string().optional(),
   isPaused: z.boolean().optional(),
 });
 
@@ -83,16 +98,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Convert date strings to Date objects if present
     const taskToUpdate: any = { ...taskData };
     if (taskData.dueDate) {
-      taskToUpdate.dueDate = new Date(taskData.dueDate);
+      taskToUpdate.dueDate = taskData.dueDate instanceof Date ? taskData.dueDate : new Date(taskData.dueDate);
     }
     if (taskData.startDate) {
-      taskToUpdate.startDate = new Date(taskData.startDate);
+      taskToUpdate.startDate = taskData.startDate instanceof Date ? taskData.startDate : new Date(taskData.startDate);
     }
     if (taskData.endDate) {
-      taskToUpdate.endDate = new Date(taskData.endDate);
+      taskToUpdate.endDate = taskData.endDate instanceof Date ? taskData.endDate : new Date(taskData.endDate);
     }
     if (taskData.nextOccurrence) {
-      taskToUpdate.nextOccurrence = new Date(taskData.nextOccurrence);
+      taskToUpdate.nextOccurrence = taskData.nextOccurrence instanceof Date ? taskData.nextOccurrence : new Date(taskData.nextOccurrence);
     }
 
     // Validate end date is after start date if both are provided

@@ -7,23 +7,37 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 const createRecurringTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
   description: z.string().max(1000).optional(),
-  recurrencePattern: z.enum(['monthly', 'quarterly', 'half-yearly', 'yearly']),
-  startDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid start date format',
-  }),
-  endDate: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid end date format',
-  }).optional(),
-  nextOccurrence: z.string().refine((date) => !isNaN(Date.parse(date)), {
-    message: 'Invalid next occurrence date format',
-  }).optional(),
+  recurrencePattern: z.enum(['daily', 'weekly', 'monthly', 'quarterly', 'half-yearly', 'yearly']),
+  startDate: z.union([
+    z.string().refine((date) => !isNaN(Date.parse(date)), {
+      message: 'Invalid start date format',
+    }),
+    z.date()
+  ]),
+  endDate: z.union([
+    z.string().refine((date) => !isNaN(Date.parse(date)), {
+      message: 'Invalid end date format',
+    }),
+    z.date()
+  ]).optional(),
+  nextOccurrence: z.union([
+    z.string().refine((date) => !isNaN(Date.parse(date)), {
+      message: 'Invalid next occurrence date format',
+    }),
+    z.date()
+  ]).optional(),
   priority: z.enum(['low', 'medium', 'high', 'urgent']).default('medium'),
   status: z.enum(['pending', 'in-progress', 'completed']).default('pending'),
   contactIds: z.array(z.string()).default([]),
   categoryId: z.string().optional(),
   teamId: z.string().optional(),
 }).refine(
-  (data) => !data.endDate || new Date(data.endDate) > new Date(data.startDate),
+  (data) => {
+    if (!data.endDate) return true;
+    const endDate = data.endDate instanceof Date ? data.endDate : new Date(data.endDate);
+    const startDate = data.startDate instanceof Date ? data.startDate : new Date(data.startDate);
+    return endDate > startDate;
+  },
   { message: 'End date must be after start date', path: ['endDate'] }
 );
 
@@ -89,9 +103,11 @@ export async function POST(request: NextRequest) {
     const taskToCreate = {
       ...taskData,
       description: taskData.description || '',
-      startDate: new Date(taskData.startDate),
-      endDate: taskData.endDate ? new Date(taskData.endDate) : undefined,
-      nextOccurrence: new Date(taskData.nextOccurrence || taskData.startDate),
+      startDate: taskData.startDate instanceof Date ? taskData.startDate : new Date(taskData.startDate),
+      endDate: taskData.endDate ? (taskData.endDate instanceof Date ? taskData.endDate : new Date(taskData.endDate)) : undefined,
+      nextOccurrence: taskData.nextOccurrence 
+        ? (taskData.nextOccurrence instanceof Date ? taskData.nextOccurrence : new Date(taskData.nextOccurrence))
+        : (taskData.startDate instanceof Date ? taskData.startDate : new Date(taskData.startDate)),
     };
     
     const newTask = await recurringTaskService.create(taskToCreate);
