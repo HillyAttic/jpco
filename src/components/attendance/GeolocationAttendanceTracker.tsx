@@ -49,6 +49,7 @@ export function GeolocationAttendanceTracker() {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
   
   // Check if we're running in a secure context (HTTPS)
   const isSecureContext = typeof window !== 'undefined' ? window.isSecureContext : true;
@@ -59,6 +60,8 @@ export function GeolocationAttendanceTracker() {
       // Clean up any duplicate records first (only on initial mount)
       cleanupDuplicateRecordsForUser(auth.user.uid);
       loadStatus();
+      // Check location permission status
+      checkLocationPermission();
     }
   }, [auth.user]);
 
@@ -164,6 +167,34 @@ export function GeolocationAttendanceTracker() {
     console.log('Clearing cached attendance data');
   };
 
+  // Check location permission status
+  const checkLocationPermission = async () => {
+    if (!navigator.permissions) {
+      console.log('Permissions API not supported');
+      setPermissionStatus('unknown');
+      return;
+    }
+
+    try {
+      const result = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+      console.log('Location permission status:', result.state);
+      setPermissionStatus(result.state as 'granted' | 'denied' | 'prompt');
+      
+      // Listen for permission changes
+      result.addEventListener('change', () => {
+        console.log('Permission status changed to:', result.state);
+        setPermissionStatus(result.state as 'granted' | 'denied' | 'prompt');
+        // Clear error when permission is granted
+        if (result.state === 'granted') {
+          setError('');
+        }
+      });
+    } catch (err) {
+      console.error('Error checking location permission:', err);
+      setPermissionStatus('unknown');
+    }
+  };
+
   const getCurrentLocation = (): Promise<LocationData> => {
     return new Promise((resolve, reject) => {
       // Check if we're in a secure context
@@ -191,13 +222,16 @@ export function GeolocationAttendanceTracker() {
             locationData.accuracy = position.coords.accuracy;
           }
           
+          // Update permission status on success
+          setPermissionStatus('granted');
           resolve(locationData);
         },
         (error) => {
           let errorMessage = 'Unable to get location';
           switch (error.code) {
             case error.PERMISSION_DENIED:
-              errorMessage = 'Location access denied. Please enable location services and ensure you are accessing this application via HTTPS.';
+              setPermissionStatus('denied');
+              errorMessage = 'Location access denied. Please enable location permissions in your browser settings and refresh the page.';
               break;
             case error.POSITION_UNAVAILABLE:
               errorMessage = 'Location information is unavailable. This may be due to using an insecure connection (HTTP). Please use HTTPS.';
@@ -487,23 +521,55 @@ export function GeolocationAttendanceTracker() {
           {error && (
             <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-sm text-red-700">{error}</p>
+              
+              {/* Show permission instructions if location was denied */}
+              {permissionStatus === 'denied' && (
+                <div className="mt-3 text-left space-y-2">
+                  <p className="text-xs font-semibold text-red-800">To enable location access:</p>
+                  <ol className="text-xs text-red-700 space-y-1 list-decimal pl-4">
+                    <li>Open your browser and navigate to https://jpcopanel.vercel.app/
+. Then, click the tune (settings) icon in the address bar.</li>
+                    <li>Find "Location" in the permissions list</li>
+                    <li>Change it from "Block" to "Allow"</li>
+                    <li>Click the "Retry" button below</li>
+                  </ol>
+                  
+                  {/* Visual reference images */}
+                  <div className="mt-3 p-2 bg-white rounded border border-red-300">
+                    <p className="text-xs text-red-800 font-medium mb-2">Visual Guide:</p>
+                    <div className="space-y-2">
+                      <img 
+                        src="/images/icons/tune_icon_chrome.webp" 
+                        alt="Step 1: Click the lock icon in browser address bar"
+                        className="w-full rounded border border-gray-200"
+                      />
+                      <img 
+                        src="/images/icons/location_allow.jpg" 
+                        alt="Step 2: Allow location access"
+                        className="w-full rounded border border-gray-200"
+                      />
+                    </div>
+                  </div>
+                  
+                  <Button
+                    onClick={() => {
+                      setError('');
+                      checkLocationPermission();
+                    }}
+                    variant="outline"
+                    size="sm"
+                    className="w-full mt-2"
+                  >
+                    <RotateCcw className="mr-2 h-3 w-3" />
+                    Retry Location Access
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
 
-        {/* Location Info */}
-        {location.lat && (
-          <div className="p-3 bg-blue-50 rounded-md border border-blue-200">
-            <div className="flex items-center gap-2 mb-1">
-              <MapPin className="h-4 w-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-800">Location Recorded</span>
-            </div>
-            <p className="text-xs text-blue-700">
-              {location.lat?.toFixed(6)}, {location.lng?.toFixed(6)}
-              {location.accuracy && ` (±${location.accuracy.toFixed(0)}m)`}
-            </p>
-          </div>
-        )}
+        {/* Location Info - Hidden as per user request */}
 
         {/* Action Buttons */}
         <div className="space-y-3">
