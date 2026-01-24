@@ -13,7 +13,7 @@ const updateRecurringTaskSchema = z.object({
     }),
     z.date()
   ]).optional(),
-  recurrencePattern: z.enum(['daily', 'weekly', 'monthly', 'quarterly']).optional(),
+  recurrencePattern: z.enum(['monthly', 'quarterly', 'half-yearly', 'yearly']).optional(),
   startDate: z.union([
     z.string().refine((date) => !isNaN(Date.parse(date)), {
       message: 'Invalid start date format',

@@ -60,14 +60,15 @@ export default function CalendarPage() {
   const generateRecurringTaskOccurrences = (recurringTasks: RecurringTask[]): CalendarTask[] => {
     const calendarTasks: CalendarTask[] = [];
     
-    // Get date range for calendar (current month - 6 months to + 12 months)
-    const startDate = new Date();
-    startDate.setMonth(startDate.getMonth() - 6);
-    startDate.setDate(1);
+    // Get date range for calendar (current month - 6 months to + 5 years for better visibility)
+    const calendarStartDate = new Date();
+    calendarStartDate.setMonth(calendarStartDate.getMonth() - 6);
+    calendarStartDate.setDate(1);
     
-    const endDate = new Date();
-    endDate.setMonth(endDate.getMonth() + 12);
-    endDate.setDate(0); // Last day of month
+    const calendarEndDate = new Date();
+    calendarEndDate.setFullYear(calendarEndDate.getFullYear() + 5); // Extended to 5 years
+    calendarEndDate.setMonth(11); // December
+    calendarEndDate.setDate(31); // Last day of year
     
     recurringTasks.forEach(recurringTask => {
       // Skip paused tasks
@@ -75,11 +76,13 @@ export default function CalendarPage() {
       
       // Calculate task start and end dates
       const taskStartDate = new Date(recurringTask.startDate);
-      const taskEndDate = recurringTask.endDate ? new Date(recurringTask.endDate) : endDate;
+      // If no end date is specified, use the calendar's extended end date (5 years)
+      // This allows unlimited recurring tasks to show for a reasonable future period
+      const taskEndDate = recurringTask.endDate ? new Date(recurringTask.endDate) : calendarEndDate;
       
       // Calculate occurrences within the date range
-      const occurrenceStartDate = taskStartDate > startDate ? taskStartDate : startDate;
-      const occurrenceEndDate = taskEndDate < endDate ? taskEndDate : endDate;
+      const occurrenceStartDate = taskStartDate > calendarStartDate ? taskStartDate : calendarStartDate;
+      const occurrenceEndDate = taskEndDate < calendarEndDate ? taskEndDate : calendarEndDate;
       
       try {
         const occurrences = calculateAllOccurrences(
