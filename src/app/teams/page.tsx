@@ -13,7 +13,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { NoResultsEmptyState, NoDataEmptyState } from '@/components/ui/empty-state';
 import { CardGridSkeleton } from '@/components/ui/loading-skeletons';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import {
   PlusIcon,
   UserGroupIcon,
@@ -190,9 +189,6 @@ export default function TeamsPage() {
   return (
     <ErrorBoundary>
       <div className="space-y-6">
-        {/* Breadcrumbs - Requirement 4.1 */}
-        <Breadcrumb pageName="Teams" />
-
         {/* Page Header - Requirement 4.1 */}
         <div className="flex items-center justify-between">
           <div>

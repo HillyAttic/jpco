@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { NoResultsEmptyState, NoDataEmptyState } from '@/components/ui/empty-state';
 import { CardGridSkeleton, StatsGridSkeleton } from '@/components/ui/loading-skeletons';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import { PlusIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import { z } from 'zod';
 
@@ -241,7 +240,6 @@ export default function EmployeesPage() {
     return (
       <ErrorBoundary>
         <div className="space-y-6">
-          <Breadcrumb pageName="Employees" />
           <div className="bg-red-50 border border-red-200 rounded-lg p-4">
             <p className="text-red-800">Error loading employees: {error.message}</p>
             <Button onClick={refreshEmployees} className="mt-2">
@@ -256,9 +254,6 @@ export default function EmployeesPage() {
   return (
     <ErrorBoundary>
       <div className="space-y-6">
-        {/* Page Header with Breadcrumbs */}
-        <Breadcrumb pageName="Employees" />
-
         {/* Page Title and Add Button */}
         <div className="flex items-center justify-between">
           <div>

@@ -5,11 +5,18 @@ import { Task } from '@/types/task.types';
 import { 
   ChevronLeftIcon,
   ChevronRightIcon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
+  ArrowPathIcon
 } from '@heroicons/react/24/outline';
 
+interface CalendarTask extends Task {
+  isRecurring?: boolean;
+  recurringTaskId?: string;
+  recurrencePattern?: string;
+}
+
 interface CalendarViewProps {
-  tasks: Task[];
+  tasks: CalendarTask[];
 }
 
 export function CalendarView({ tasks }: CalendarViewProps) {
@@ -37,7 +44,7 @@ export function CalendarView({ tasks }: CalendarViewProps) {
     return days;
   };
 
-  const getTasksForDate = (date: Date) => {
+  const getTasksForDate = (date: Date): CalendarTask[] => {
     return tasks.filter(task => {
       if (!task.dueDate) return false;
       const taskDate = task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate);
@@ -47,6 +54,17 @@ export function CalendarView({ tasks }: CalendarViewProps) {
         taskDate.getFullYear() === date.getFullYear()
       );
     });
+  };
+
+  const getRecurrenceLabel = (pattern?: string) => {
+    if (!pattern) return '';
+    const labels: Record<string, string> = {
+      'monthly': 'M',
+      'quarterly': 'Q',
+      'half-yearly': 'H',
+      'yearly': 'Y'
+    };
+    return labels[pattern] || '';
   };
 
   const navigateMonth = (direction: 'prev' | 'next') => {
@@ -99,6 +117,20 @@ export function CalendarView({ tasks }: CalendarViewProps) {
           </div>
         </div>
 
+        {/* Legend */}
+        <div className="mb-4 flex items-center gap-4 text-xs text-gray-600">
+          <div className="flex items-center gap-1">
+            <ArrowPathIcon className="w-4 h-4" />
+            <span>Recurring Task</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-semibold">M</span> = Monthly
+            <span className="font-semibold">Q</span> = Quarterly
+            <span className="font-semibold">H</span> = Half-Yearly
+            <span className="font-semibold">Y</span> = Yearly
+          </div>
+        </div>
+
         {/* Weekday Headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {weekdays.map(day => (
@@ -142,13 +174,20 @@ export function CalendarView({ tasks }: CalendarViewProps) {
                       {dayTasks.slice(0, 3).map(task => (
                         <div
                           key={task.id}
-                          className={`text-xs p-1 rounded truncate ${
-                            task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                          className={`text-xs p-1 rounded truncate flex items-center gap-1 ${
+                            task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                            task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
                             task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-green-100 text-green-800'
                           }`}
+                          title={`${task.title}${task.isRecurring ? ` (${task.recurrencePattern})` : ''}`}
                         >
-                          {task.title}
+                          {task.isRecurring && (
+                            <span className="font-bold text-[10px]">
+                              {getRecurrenceLabel(task.recurrencePattern)}
+                            </span>
+                          )}
+                          <span className="truncate">{task.title}</span>
                         </div>
                       ))}
                       {dayTasks.length > 3 && (
@@ -175,13 +214,21 @@ export function CalendarView({ tasks }: CalendarViewProps) {
                 {getTasksForDate(selectedDate).map(task => (
                   <div key={task.id} className="p-3 bg-white rounded border">
                     <div className="flex justify-between items-start">
-                      <div>
-                        <h4 className="font-medium">{task.title}</h4>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium">{task.title}</h4>
+                          {task.isRecurring && (
+                            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800">
+                              <ArrowPathIcon className="w-3 h-3" />
+                              {task.recurrencePattern?.replace('-', ' ')}
+                            </span>
+                          )}
+                        </div>
                         {task.description && (
                           <p className="text-sm text-gray-600 mt-1">{task.description}</p>
                         )}
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
+                      <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ml-2 ${
                         task.status === 'completed' ? 'bg-green-100 text-green-800' :
                         task.status === 'in-progress' ? 'bg-orange-100 text-orange-800' :
                         'bg-yellow-100 text-yellow-800'

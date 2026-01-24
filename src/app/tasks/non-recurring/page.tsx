@@ -214,9 +214,6 @@ export default function NonRecurringTasksPage() {
   return (
     <ErrorBoundary>
       <div className="space-y-6">
-        {/* Breadcrumb - Requirement 2.1 */}
-        <Breadcrumb pageName="Non-Recurring Tasks" />
-
         {/* Page Header with Action Button - Requirement 2.1 */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>

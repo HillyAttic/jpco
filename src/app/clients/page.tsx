@@ -7,7 +7,6 @@ import { ClientList } from '@/components/clients/ClientList';
 import { ClientModal } from '@/components/clients/ClientModal';
 import { ClientBulkImportModal } from '@/components/clients/ClientBulkImportModal';
 import { ClientFilter, ClientFilterState } from '@/components/clients/ClientFilter';
-import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { PlusIcon, CloudArrowUpIcon } from '@heroicons/react/24/outline';
 
@@ -205,9 +204,6 @@ export default function ClientsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Breadcrumb */}
-      <Breadcrumb pageName="Client Master" />
-
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>

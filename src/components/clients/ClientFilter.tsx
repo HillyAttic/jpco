@@ -66,7 +66,6 @@ export function ClientFilter({
             className="mt-1"
           >
             <option value="all">All Rows</option>
-            <option value="name">Name</option>
             <option value="businessName">Business Name</option>
             <option value="gstin">GSTIN</option>
             <option value="tan">T.A.N.</option>

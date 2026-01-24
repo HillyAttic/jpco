@@ -3,13 +3,22 @@
 import React, { useState, useEffect } from 'react';
 import { Task } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
+import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
+import { calculateAllOccurrences } from '@/utils/recurrence-scheduler';
 import { CalendarView } from '@/components/calendar-view';
 import { Button } from '@/components/ui/button';
 import { PlusCircleIcon } from '@heroicons/react/24/outline';
 import { TaskCreationModal } from '@/components/task-creation-modal';
 
+// Extended task type to include recurring task occurrences
+interface CalendarTask extends Task {
+  isRecurring?: boolean;
+  recurringTaskId?: string;
+  recurrencePattern?: string;
+}
+
 export default function CalendarPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<CalendarTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
@@ -20,8 +29,23 @@ export default function CalendarPage() {
   const loadTasks = async () => {
     try {
       setLoading(true);
-      const tasksData = await taskApi.getTasks();
-      setTasks(tasksData);
+      
+      // Fetch non-recurring tasks
+      const nonRecurringTasks = await taskApi.getTasks();
+      
+      // Fetch recurring tasks
+      const recurringTasks = await recurringTaskService.getAll();
+      
+      // Convert recurring tasks to calendar tasks with all occurrences
+      const recurringCalendarTasks = generateRecurringTaskOccurrences(recurringTasks);
+      
+      // Combine both types of tasks
+      const allTasks = [
+        ...nonRecurringTasks.map(task => ({ ...task, isRecurring: false })),
+        ...recurringCalendarTasks
+      ];
+      
+      setTasks(allTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -29,8 +53,79 @@ export default function CalendarPage() {
     }
   };
 
+  /**
+   * Generate calendar task occurrences from recurring tasks
+   * Creates individual task entries for each occurrence based on recurrence pattern
+   */
+  const generateRecurringTaskOccurrences = (recurringTasks: RecurringTask[]): CalendarTask[] => {
+    const calendarTasks: CalendarTask[] = [];
+    
+    // Get date range for calendar (current month - 6 months to + 12 months)
+    const startDate = new Date();
+    startDate.setMonth(startDate.getMonth() - 6);
+    startDate.setDate(1);
+    
+    const endDate = new Date();
+    endDate.setMonth(endDate.getMonth() + 12);
+    endDate.setDate(0); // Last day of month
+    
+    recurringTasks.forEach(recurringTask => {
+      // Skip paused tasks
+      if (recurringTask.isPaused) return;
+      
+      // Calculate task start and end dates
+      const taskStartDate = new Date(recurringTask.startDate);
+      const taskEndDate = recurringTask.endDate ? new Date(recurringTask.endDate) : endDate;
+      
+      // Calculate occurrences within the date range
+      const occurrenceStartDate = taskStartDate > startDate ? taskStartDate : startDate;
+      const occurrenceEndDate = taskEndDate < endDate ? taskEndDate : endDate;
+      
+      try {
+        const occurrences = calculateAllOccurrences(
+          occurrenceStartDate,
+          occurrenceEndDate,
+          recurringTask.recurrencePattern
+        );
+        
+        // Create a calendar task for each occurrence
+        occurrences.forEach(occurrenceDate => {
+          // Check if this occurrence was completed
+          const wasCompleted = recurringTask.completionHistory.some(completion => {
+            const completionDate = new Date(completion.date);
+            return (
+              completionDate.getDate() === occurrenceDate.getDate() &&
+              completionDate.getMonth() === occurrenceDate.getMonth() &&
+              completionDate.getFullYear() === occurrenceDate.getFullYear()
+            );
+          });
+          
+          calendarTasks.push({
+            id: `${recurringTask.id}-${occurrenceDate.getTime()}`,
+            title: recurringTask.title,
+            description: recurringTask.description,
+            dueDate: occurrenceDate,
+            priority: recurringTask.priority,
+            status: wasCompleted ? 'completed' : recurringTask.status,
+            assignedTo: recurringTask.contactIds || [],
+            category: recurringTask.categoryId,
+            createdAt: recurringTask.createdAt,
+            updatedAt: recurringTask.updatedAt,
+            isRecurring: true,
+            recurringTaskId: recurringTask.id,
+            recurrencePattern: recurringTask.recurrencePattern,
+          });
+        });
+      } catch (error) {
+        console.error(`Error generating occurrences for task ${recurringTask.id}:`, error);
+      }
+    });
+    
+    return calendarTasks;
+  };
+
   const handleTaskCreated = (newTask: Task) => {
-    setTasks(prev => [...prev, newTask]);
+    setTasks(prev => [...prev, { ...newTask, isRecurring: false }]);
   };
 
   if (loading) {

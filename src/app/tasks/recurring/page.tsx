@@ -12,7 +12,6 @@ import { BulkDeleteDialog } from '@/components/ui/BulkDeleteDialog';
 import { NoDataEmptyState } from '@/components/ui/empty-state';
 import { CardGridSkeleton } from '@/components/ui/loading-skeletons';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from '@heroicons/react/24/outline';
 
@@ -197,9 +196,6 @@ export default function RecurringTasksPage() {
   return (
     <ErrorBoundary>
       <div className="space-y-6">
-        {/* Breadcrumb - Requirement 3.1 */}
-        <Breadcrumb pageName="Recurring Tasks" />
-
         {/* Page Header with Add Button */}
         <div className="flex items-center justify-between">
           <div>

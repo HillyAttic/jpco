@@ -27,7 +27,7 @@ const recurringTaskFormSchema = z.object({
   description: z.string().max(1000, 'Description must be less than 1000 characters'),
   priority: z.enum(['low', 'medium', 'high', 'urgent'], { message: 'Invalid priority value' }),
   status: z.enum(['pending', 'in-progress', 'completed']),
-  contactIds: z.string().min(1, 'At least one contact is required'),
+  contactIds: z.string().optional(),
   categoryId: z.string().optional(),
   recurrencePattern: z.enum(['monthly', 'quarterly', 'half-yearly', 'yearly'], { 
     message: 'Invalid recurrence pattern' 
@@ -75,6 +75,7 @@ export function RecurringTaskModal({
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClients, setSelectedClients] = useState<Client[]>([]);
   const [clientFilter, setClientFilter] = useState<'all' | 'gstin' | 'tan' | 'pan'>('all');
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
@@ -166,22 +167,37 @@ export function RecurringTaskModal({
 
   // Get filtered clients based on selected filter
   const getFilteredClients = () => {
-    if (clientFilter === 'all') {
-      return clients;
+    let filteredClients = clients;
+    
+    // Apply field filter (GSTIN, TAN, PAN)
+    if (clientFilter !== 'all') {
+      filteredClients = filteredClients.filter(client => {
+        switch (clientFilter) {
+          case 'gstin':
+            return client.gstin && client.gstin.trim() !== '';
+          case 'tan':
+            return client.tan && client.tan.trim() !== '';
+          case 'pan':
+            return client.pan && client.pan.trim() !== '';
+          default:
+            return true;
+        }
+      });
     }
     
-    return clients.filter(client => {
-      switch (clientFilter) {
-        case 'gstin':
-          return client.gstin && client.gstin.trim() !== '';
-        case 'tan':
-          return client.tan && client.tan.trim() !== '';
-        case 'pan':
-          return client.pan && client.pan.trim() !== '';
-        default:
-          return true;
-      }
-    });
+    // Apply search query
+    if (clientSearchQuery.trim() !== '') {
+      const query = clientSearchQuery.toLowerCase();
+      filteredClients = filteredClients.filter(client => 
+        client.name.toLowerCase().includes(query) ||
+        (client.businessName && client.businessName.toLowerCase().includes(query)) ||
+        (client.gstin && client.gstin.toLowerCase().includes(query)) ||
+        (client.tan && client.tan.toLowerCase().includes(query)) ||
+        (client.pan && client.pan.toLowerCase().includes(query))
+      );
+    }
+    
+    return filteredClients;
   };
 
   // Get available clients (not already selected)
@@ -275,6 +291,7 @@ export function RecurringTaskModal({
     reset();
     setSelectedClients([]);
     setClientFilter('all');
+    setClientSearchQuery('');
     onClose();
   };
 
@@ -397,7 +414,7 @@ export function RecurringTaskModal({
 
           {/* Assign Contacts */}
           <div>
-            <Label htmlFor="contactIds">Assign Contacts</Label>
+            <Label htmlFor="contactIds">Assign Contacts (Optional)</Label>
             
             {/* Client Filter */}
             <div className="mt-2 mb-3">
@@ -414,6 +431,20 @@ export function RecurringTaskModal({
                 <option value="tan">Only with T.A.N.</option>
                 <option value="pan">Only with P.A.N.</option>
               </Select>
+            </div>
+
+            {/* Search Input */}
+            <div className="mb-3">
+              <Label htmlFor="client-search" className="text-xs">Search Clients</Label>
+              <Input
+                id="client-search"
+                type="text"
+                placeholder="Search by name, business name, GSTIN, TAN, or PAN..."
+                value={clientSearchQuery}
+                onChange={(e) => setClientSearchQuery(e.target.value)}
+                disabled={isLoading || loadingClients}
+                className="mt-1"
+              />
             </div>
 
             {/* Select All Button */}
@@ -444,10 +475,12 @@ export function RecurringTaskModal({
                   <div className="p-4 text-center text-gray-500">Loading clients...</div>
                 ) : getAvailableClients().length === 0 ? (
                   <div className="p-4 text-center text-gray-500">
-                    {clientFilter !== 'all' 
-                      ? `No clients with ${clientFilter.toUpperCase()} available to add` 
-                      : selectedClients.length > 0 
-                        ? 'All clients have been selected'
+                    {clientSearchQuery.trim() !== '' 
+                      ? 'No clients match your search'
+                      : clientFilter !== 'all' 
+                        ? `No clients with ${clientFilter.toUpperCase()} available to add` 
+                        : selectedClients.length > 0 
+                          ? 'All clients have been selected'
                         : 'No clients available'}
                   </div>
                 ) : (
@@ -526,7 +559,7 @@ export function RecurringTaskModal({
             )}
             
             <p className="text-xs text-gray-500 mt-1">
-              Use the filter to show specific clients, then click "Select All" or click individual clients to add them.
+              Optional: Use search and filters to find specific clients, then click "Select All" or click individual clients to add them.
             </p>
             
             {errors.contactIds && (

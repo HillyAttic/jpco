@@ -11,6 +11,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Task } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
+import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { TaskOverview } from '@/components/dashboard/TaskOverview';
 import { UpcomingDeadlines } from '@/components/dashboard/UpcomingDeadlines';
@@ -20,8 +21,14 @@ import { TaskDistributionChart } from '@/components/Charts/TaskDistributionChart
 import { WeeklyProgressChart } from '@/components/Charts/WeeklyProgressChart';
 import { TeamPerformanceChart } from '@/components/Charts/TeamPerformanceChart';
 
+// Extended task type to include recurring tasks
+interface DashboardTask extends Task {
+  isRecurring?: boolean;
+  recurrencePattern?: string;
+}
+
 export default function DashboardPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<DashboardTask[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,8 +38,36 @@ export default function DashboardPage() {
   const loadDashboardData = async () => {
     try {
       setLoading(true);
-      const tasksData = await taskApi.getTasks();
-      setTasks(tasksData);
+      
+      // Fetch non-recurring tasks
+      const nonRecurringTasks = await taskApi.getTasks();
+      
+      // Fetch recurring tasks
+      const recurringTasks = await recurringTaskService.getAll();
+      
+      // Convert recurring tasks to dashboard tasks format
+      const recurringDashboardTasks: DashboardTask[] = recurringTasks.map(task => ({
+        id: task.id!,
+        title: task.title,
+        description: task.description,
+        dueDate: task.nextOccurrence,
+        priority: task.priority,
+        status: task.status,
+        assignedTo: task.contactIds || [],
+        category: task.categoryId,
+        createdAt: task.createdAt,
+        updatedAt: task.updatedAt,
+        isRecurring: true,
+        recurrencePattern: task.recurrencePattern,
+      }));
+      
+      // Combine both types of tasks
+      const allTasks = [
+        ...nonRecurringTasks.map(task => ({ ...task, isRecurring: false })),
+        ...recurringDashboardTasks
+      ];
+      
+      setTasks(allTasks);
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
