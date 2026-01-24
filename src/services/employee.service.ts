@@ -1,16 +1,18 @@
 /**
  * Employee Service
  * Handles all employee-related Firebase operations
+ * Now uses the 'users' collection instead of separate 'employees' collection
  */
 
-import { createFirebaseService, QueryOptions } from './firebase.service';
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, deleteDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { userManagementService } from './user-management.service';
 import { UserRole } from '@/types/auth.types';
 
 export interface Employee {
-  id?: string;
+  id?: string; // This is the Firebase Auth UID
   employeeId: string;
-  name: string;
+  name: string; // Maps to displayName in users collection
   email: string;
   phone: string;
   role: 'Manager' | 'Admin' | 'Employee';
@@ -20,11 +22,8 @@ export interface Employee {
   updatedAt?: Date;
 }
 
-// Create the Firebase service instance for employees
-const employeeFirebaseService = createFirebaseService<Employee>('employees');
-
 /**
- * Employee Service API
+ * Employee Service API - Now using users collection
  */
 export const employeeService = {
   /**
@@ -36,85 +35,138 @@ export const employeeService = {
     limit?: number;
   }): Promise<Employee[]> {
     try {
-      const options: QueryOptions = {
-        filters: [],
-      };
+      const usersRef = collection(db, 'users');
+      let q = query(usersRef);
 
-      // Add status filter
+      // Add status filter if provided
       if (filters?.status) {
-        options.filters!.push({
-          field: 'status',
-          operator: '==',
-          value: filters.status,
+        q = query(usersRef, where('status', '==', filters.status));
+      }
+
+      const querySnapshot = await getDocs(q);
+      let employees: Employee[] = [];
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        employees.push({
+          id: doc.id, // Firebase Auth UID
+          employeeId: data.employeeId || data.uid || doc.id,
+          name: data.displayName || data.name || '',
+          email: data.email || '',
+          phone: data.phoneNumber || data.phone || '',
+          role: this.mapUserRoleToEmployeeRole(data.role),
+          status: data.isActive === false ? 'on-leave' : 'active',
+          createdAt: data.createdAt?.toDate?.() || new Date(),
+          updatedAt: data.updatedAt?.toDate?.() || new Date(),
         });
-      }
-
-      // Add pagination
-      if (filters?.limit) {
-        options.pagination = {
-          pageSize: filters.limit,
-        };
-      }
-
-      // Add default ordering
-      options.orderByField = 'createdAt';
-      options.orderDirection = 'desc';
-
-      let employees = await employeeFirebaseService.getAll(options);
+      });
 
       // Apply search filter (client-side)
       if (filters?.search) {
-        employees = await employeeFirebaseService.searchMultipleFields(
-          ['name', 'email', 'role', 'employeeId'],
-          filters.search,
-          options
+        const searchLower = filters.search.toLowerCase();
+        employees = employees.filter(emp =>
+          emp.name.toLowerCase().includes(searchLower) ||
+          emp.email.toLowerCase().includes(searchLower) ||
+          emp.employeeId.toLowerCase().includes(searchLower) ||
+          emp.role.toLowerCase().includes(searchLower)
         );
+      }
+
+      // Apply limit
+      if (filters?.limit) {
+        employees = employees.slice(0, filters.limit);
       }
 
       return employees;
     } catch (error) {
-      // Log detailed error information for debugging
-      console.error('Error in employeeService.getAll:', {
-        error,
-        errorType: typeof error,
-        errorKeys: error && typeof error === 'object' ? Object.keys(error) : [],
-        errorMessage: error instanceof Error ? error.message : 'Unknown error',
-        errorCode: (error as any)?.code,
-        filters,
-      });
-      
-      // Return empty array if there's an error fetching employees
-      // This allows the UI to continue functioning even if the fetch fails
+      console.error('Error in employeeService.getAll:', error);
       return [];
     }
   },
 
   /**
-   * Get an employee by ID
+   * Map user role to employee role
+   */
+  mapUserRoleToEmployeeRole(userRole?: string): 'Manager' | 'Admin' | 'Employee' {
+    if (userRole === 'admin') return 'Admin';
+    if (userRole === 'manager') return 'Manager';
+    return 'Employee';
+  },
+
+  /**
+   * Map employee role to user role
+   */
+  mapEmployeeRoleToUserRole(employeeRole: 'Manager' | 'Admin' | 'Employee'): UserRole {
+    if (employeeRole === 'Admin') return 'admin';
+    if (employeeRole === 'Manager') return 'manager';
+    return 'employee';
+  },
+
+  /**
+   * Get an employee by ID (Firebase Auth UID)
    */
   async getById(id: string): Promise<Employee | null> {
-    return employeeFirebaseService.getById(id);
+    try {
+      const userRef = doc(db, 'users', id);
+      const userDoc = await getDoc(userRef);
+
+      if (!userDoc.exists()) {
+        return null;
+      }
+
+      const data = userDoc.data();
+      return {
+        id: userDoc.id,
+        employeeId: data.employeeId || data.uid || userDoc.id,
+        name: data.displayName || data.name || '',
+        email: data.email || '',
+        phone: data.phoneNumber || data.phone || '',
+        role: this.mapUserRoleToEmployeeRole(data.role),
+        status: data.isActive === false ? 'on-leave' : 'active',
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        updatedAt: data.updatedAt?.toDate?.() || new Date(),
+      };
+    } catch (error) {
+      console.error('Error getting employee by ID:', error);
+      return null;
+    }
   },
 
   /**
    * Get an employee by employee ID
    */
   async getByEmployeeId(employeeId: string): Promise<Employee | null> {
-    const employees = await employeeFirebaseService.getAll({
-      filters: [
-        {
-          field: 'employeeId',
-          operator: '==',
-          value: employeeId,
-        },
-      ],
-    });
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef, where('employeeId', '==', employeeId));
+      const querySnapshot = await getDocs(q);
 
-    return employees.length > 0 ? employees[0] : null;
+      if (querySnapshot.empty) {
+        return null;
+      }
+
+      const doc = querySnapshot.docs[0];
+      const data = doc.data();
+
+      return {
+        id: doc.id,
+        employeeId: data.employeeId || data.uid || doc.id,
+        name: data.displayName || data.name || '',
+        email: data.email || '',
+        phone: data.phoneNumber || data.phone || '',
+        role: this.mapUserRoleToEmployeeRole(data.role),
+        status: data.isActive === false ? 'on-leave' : 'active',
+        createdAt: data.createdAt?.toDate?.() || new Date(),
+        updatedAt: data.updatedAt?.toDate?.() || new Date(),
+      };
+    } catch (error) {
+      console.error('Error getting employee by employeeId:', error);
+      return null;
+    }
   },
 
   /**
-   * Create a new employee
+   * Create a new employee (creates user in users collection and Firebase Auth)
    */
   async create(
     data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt' | 'passwordHash'>,
@@ -126,110 +178,164 @@ export const employeeService = {
       throw new Error('Employee ID already exists');
     }
 
-    // Simple password hashing (in production, use bcrypt or similar)
-    const passwordHash = password ? btoa(password) : undefined;
+    // Check if email already exists
+    const usersRef = collection(db, 'users');
+    const emailQuery = query(usersRef, where('email', '==', data.email));
+    const emailSnapshot = await getDocs(emailQuery);
+    if (!emailSnapshot.empty) {
+      throw new Error('Email already exists');
+    }
 
-    // Create employee in Firestore with password hash
-    const employeeData = {
-      ...data,
-      ...(passwordHash && { passwordHash }),
-    };
-    
-    const createdEmployee = await employeeFirebaseService.create(employeeData);
-    
-    // If password is provided, create Firebase Auth account
+    // Create user in Firebase Auth if password provided
     if (password) {
       try {
-        // Map employee role to UserRole
-        const userRole = data.role === 'Admin' ? 'admin' : data.role === 'Manager' ? 'manager' : 'employee';
+        const userRole = this.mapEmployeeRoleToUserRole(data.role);
         
-        // Create user in Firebase Auth
-        await userManagementService.createUser(
+        // Create user in Firebase Auth and users collection
+        const createdUser = await userManagementService.createUser(
           {
             email: data.email,
             password,
             displayName: data.name,
-            role: userRole as UserRole,
+            role: userRole,
             phoneNumber: data.phone,
           },
-          'system' // createdBy system for employee accounts
+          'system'
         );
+
+        // Update with employee-specific fields
+        const userRef = doc(db, 'users', createdUser.uid);
+        await updateDoc(userRef, {
+          employeeId: data.employeeId,
+          status: data.status,
+          isActive: data.status === 'active',
+        });
+
+        return {
+          id: createdUser.uid,
+          employeeId: data.employeeId,
+          name: data.name,
+          email: data.email,
+          phone: data.phone,
+          role: data.role,
+          status: data.status,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        };
       } catch (error) {
-        // If Firebase Auth creation fails, log the error
-        console.error('Error creating Firebase Auth account for employee:', error);
-        // Optionally re-throw the error to prevent partial creation
-        // throw error;
+        console.error('Error creating employee with auth:', error);
+        throw error;
       }
+    } else {
+      throw new Error('Password is required to create an employee');
     }
-    
-    return createdEmployee;
   },
 
   /**
-   * Update an employee
+   * Update an employee (updates user in users collection)
    */
   async update(
     id: string,
     data: Partial<Omit<Employee, 'id'>>,
     password?: string
   ): Promise<Employee> {
-    // If password is provided, hash it and include in update
-    if (password) {
-      const passwordHash = btoa(password); // Simple hashing (use bcrypt in production)
-      return employeeFirebaseService.update(id, { ...data, passwordHash });
+    console.log('=== EMPLOYEE UPDATE (USERS COLLECTION) ===');
+    console.log('User ID:', id);
+    console.log('Update data:', data);
+    
+    try {
+      const userRef = doc(db, 'users', id);
+      const userDoc = await getDoc(userRef);
+
+      if (!userDoc.exists()) {
+        throw new Error('Employee not found');
+      }
+
+      // Prepare update payload
+      const updatePayload: any = {
+        updatedAt: serverTimestamp(),
+      };
+
+      if (data.name) {
+        updatePayload.displayName = data.name;
+      }
+      if (data.email) {
+        updatePayload.email = data.email;
+      }
+      if (data.phone) {
+        updatePayload.phoneNumber = data.phone;
+      }
+      if (data.role) {
+        updatePayload.role = this.mapEmployeeRoleToUserRole(data.role);
+      }
+      if (data.status) {
+        updatePayload.isActive = data.status === 'active';
+        updatePayload.status = data.status;
+      }
+      if (data.employeeId) {
+        updatePayload.employeeId = data.employeeId;
+      }
+
+      // Update password if provided
+      if (password) {
+        // Note: Updating password in Firebase Auth requires admin SDK
+        // For now, we'll just log it
+        console.log('Password update requested - requires Firebase Admin SDK');
+      }
+
+      console.log('Update payload:', updatePayload);
+
+      // Update user document
+      await updateDoc(userRef, updatePayload);
+
+      console.log('✅ User updated successfully in users collection');
+
+      // Return updated employee
+      return await this.getById(id) as Employee;
+    } catch (error) {
+      console.error('❌ Error updating employee:', error);
+      throw error;
     }
-    return employeeFirebaseService.update(id, data);
   },
 
   /**
-   * Delete an employee
+   * Delete an employee (deletes from users collection)
    */
   async delete(id: string): Promise<void> {
-    return employeeFirebaseService.delete(id);
+    try {
+      const userRef = doc(db, 'users', id);
+      await deleteDoc(userRef);
+      console.log('Employee deleted from users collection:', id);
+    } catch (error) {
+      console.error('Error deleting employee:', error);
+      throw error;
+    }
   },
 
   /**
    * Deactivate an employee (set to on-leave)
    */
   async deactivate(id: string): Promise<Employee> {
-    return employeeFirebaseService.update(id, { status: 'on-leave' });
+    const userRef = doc(db, 'users', id);
+    await updateDoc(userRef, {
+      isActive: false,
+      status: 'on-leave',
+      updatedAt: serverTimestamp(),
+    });
+    return await this.getById(id) as Employee;
   },
 
   /**
    * Reactivate an employee
    */
   async reactivate(id: string): Promise<Employee> {
-    return employeeFirebaseService.update(id, { status: 'active' });
-  },
-
-  /**
-   * Get employees by department
-   */
-  async getByDepartment(department: string): Promise<Employee[]> {
-    // Department field no longer exists in Employee interface
-    // This method is deprecated
-    console.warn('getByDepartment is deprecated - department field removed from Employee');
-    return [];
-  },
-
-  /**
-   * Get employees by manager
-   */
-  async getByManager(managerId: string): Promise<Employee[]> {
-    // Manager field no longer exists in Employee interface
-    // This method is deprecated
-    console.warn('getByManager is deprecated - managerId field removed from Employee');
-    return [];
-  },
-
-  /**
-   * Get employees by team
-   */
-  async getByTeam(teamId: string): Promise<Employee[]> {
-    // Team field no longer exists in Employee interface
-    // This method is deprecated
-    console.warn('getByTeam is deprecated - teamIds field removed from Employee');
-    return [];
+    const userRef = doc(db, 'users', id);
+    await updateDoc(userRef, {
+      isActive: true,
+      status: 'active',
+      updatedAt: serverTimestamp(),
+    });
+    return await this.getById(id) as Employee;
   },
 
   /**
@@ -240,22 +346,12 @@ export const employeeService = {
     active: number;
     onLeave: number;
   }> {
-    const allEmployees = await employeeFirebaseService.getAll();
+    const allEmployees = await this.getAll();
 
     return {
       total: allEmployees.length,
       active: allEmployees.filter((e) => e.status === 'active').length,
       onLeave: allEmployees.filter((e) => e.status === 'on-leave').length,
     };
-  },
-
-  /**
-   * Search employees
-   */
-  async search(query: string): Promise<Employee[]> {
-    return employeeFirebaseService.searchMultipleFields(
-      ['name', 'email', 'role', 'employeeId'],
-      query
-    );
   },
 };

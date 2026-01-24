@@ -92,6 +92,15 @@ export const EnhancedAuthProvider: React.FC<EnhancedAuthProviderProps> = ({ chil
   }, []);
 
   /**
+   * Refresh user data manually
+   */
+  const refreshUserData = useCallback(async () => {
+    if (user) {
+      await loadUserData(user);
+    }
+  }, [user, loadUserData]);
+
+  /**
    * Refresh user claims
    */
   const refreshClaims = useCallback(async () => {
@@ -306,6 +315,7 @@ export const EnhancedAuthProvider: React.FC<EnhancedAuthProviderProps> = ({ chil
     signUp,
     signOut,
     refreshClaims,
+    refreshUserData,
     resetPassword,
     hasPermission,
     hasRole,

@@ -71,6 +71,7 @@ export interface AuthContextType {
   signUp: (userData: SignUpData) => Promise<AuthResult>;
   signOut: () => Promise<void>;
   refreshClaims: () => Promise<void>;
+  refreshUserData: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ success: boolean; error?: string }>;
   hasPermission: (permission: string) => boolean;
   hasRole: (role: UserRole | UserRole[]) => boolean;

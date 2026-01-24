@@ -50,8 +50,9 @@ export function PWAInstallButton() {
       return isMobileDevice;
     };
 
-    // Detect iOS
+    // Detect iOS and Android
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /android/i.test(navigator.userAgent);
     setIsIOS(iOS);
 
     // Check if app is already installed
@@ -70,11 +71,15 @@ export function PWAInstallButton() {
         isStandalone,
         isFullscreen,
         isIOSStandalone,
-        installed
+        installed,
+        isAndroid,
+        iOS
       });
+      
+      return installed;
     };
 
-    checkIfInstalled();
+    const installed = checkIfInstalled();
 
     // Listen for beforeinstallprompt event (Android/Chrome)
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -92,9 +97,11 @@ export function PWAInstallButton() {
       setDeferredPrompt(null);
     };
 
-    // For iOS or if mobile detected, show install button if not installed
-    if ((iOS || detectMobile()) && !isInstalled) {
-      console.log('Setting installable to true for mobile/iOS device');
+    // For mobile devices (iOS or Android), show install button if not installed
+    // Even if beforeinstallprompt hasn't fired yet, we'll show the button
+    // and provide manual instructions as fallback
+    if ((iOS || isAndroid || detectMobile()) && !installed) {
+      console.log('Setting installable to true for mobile device');
       setIsInstallable(true);
     }
 
@@ -105,9 +112,11 @@ export function PWAInstallButton() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, []);
+  }, [device.type]);
 
   const handleInstallClick = async () => {
+    console.log('Install button clicked', { isIOS, hasDeferredPrompt: !!deferredPrompt });
+    
     if (isIOS) {
       // For iOS, show instructions since we can't trigger install programmatically
       alert(
@@ -119,14 +128,29 @@ export function PWAInstallButton() {
       return;
     }
 
-    if (!deferredPrompt) return;
+    // For Android/Chrome
+    if (!deferredPrompt) {
+      // If no deferred prompt, show manual installation instructions
+      console.log('No deferred prompt available, showing manual instructions');
+      alert(
+        'To install this app:\n\n' +
+        '1. Tap the menu button (⋮) in your browser\n' +
+        '2. Select "Add to Home screen" or "Install app"\n' +
+        '3. Follow the prompts to install\n\n' +
+        'Note: Make sure you\'re using Chrome or a compatible browser.'
+      );
+      return;
+    }
 
     try {
+      console.log('Showing install prompt...');
       // Show the install prompt (Android/Chrome)
       await deferredPrompt.prompt();
       
       // Wait for the user to respond to the prompt
       const { outcome } = await deferredPrompt.userChoice;
+      
+      console.log('User choice:', outcome);
       
       if (outcome === 'accepted') {
         console.log('User accepted the install prompt');
@@ -139,6 +163,14 @@ export function PWAInstallButton() {
       setIsInstallable(false);
     } catch (error) {
       console.error('Error during PWA installation:', error);
+      // Fallback to manual instructions if prompt fails
+      alert(
+        'Unable to show install prompt automatically.\n\n' +
+        'To install manually:\n' +
+        '1. Tap the menu button (⋮) in your browser\n' +
+        '2. Select "Add to Home screen" or "Install app"\n' +
+        '3. Follow the prompts to install'
+      );
     }
   };
 

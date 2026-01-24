@@ -58,11 +58,6 @@ export default function AttendanceHistoryPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [recordToDelete, setRecordToDelete] = useState<AttendanceRecord | null>(null);
   const [deletingRecordId, setDeletingRecordId] = useState<string | null>(null);
-  
-  // State for bulk selection
-  const [selectedRecords, setSelectedRecords] = useState<string[]>([]);
-  const [showBulkDeleteModal, setShowBulkDeleteModal] = useState(false);
-  const [deletingBulkRecords, setDeletingBulkRecords] = useState(false);
 
   // State for location map modal
   const [showMapModal, setShowMapModal] = useState(false);
@@ -111,74 +106,6 @@ export default function AttendanceHistoryPage() {
       console.error('Error deleting record:', error);
     } finally {
       setDeletingRecordId(null);
-    }
-  };
-
-  // Bulk selection functions
-  const toggleSelectRecord = (id: string) => {
-    setSelectedRecords(prev => 
-      prev.includes(id) 
-        ? prev.filter(recordId => recordId !== id)
-        : [...prev, id]
-    );
-  };
-
-  const selectAllRecords = () => {
-    if (selectedRecords.length === attendances.length) {
-      setSelectedRecords([]);
-    } else {
-      setSelectedRecords(attendances.map(record => record.id));
-    }
-  };
-
-  const confirmBulkDelete = () => {
-    setShowBulkDeleteModal(true);
-  };
-
-  const cancelBulkDelete = () => {
-    setShowBulkDeleteModal(false);
-  };
-
-  const bulkDeleteRecords = async () => {
-    if (selectedRecords.length === 0) return;
-
-    try {
-      setDeletingBulkRecords(true);
-      
-      // Delete each selected record
-      const deletePromises = selectedRecords.map(id =>
-        fetch(`/api/attendance/${id}?t=${Date.now()}`, { 
-          method: 'DELETE',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        })
-      );
-      
-      const responses = await Promise.all(deletePromises);
-      const successfulDeletes = responses.filter(response => response.ok);
-      
-      if (successfulDeletes.length > 0) {
-        // Remove deleted records from local state
-        setAttendances(attendances.filter(record => 
-          !selectedRecords.includes(record.id)
-        ));
-        
-        // Clear selections
-        setSelectedRecords([]);
-        setShowBulkDeleteModal(false);
-        
-        // Refresh the data after a brief moment to ensure indexes are updated
-        setTimeout(() => {
-          if (user?.uid) {
-            fetchAttendanceHistory(currentPage);
-          }
-        }, 500);
-      }
-    } catch (error) {
-      console.error('Error bulk deleting records:', error);
-    } finally {
-      setDeletingBulkRecords(false);
     }
   };
 
@@ -394,53 +321,36 @@ export default function AttendanceHistoryPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Attendance History</h1>
-          <p className="text-gray-600 mt-2">View your historical attendance records</p>
-        </div>
-        <div className="flex items-center gap-3">
-          {selectedRecords.length > 0 && (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">
-                {selectedRecords.length} selected
-              </span>
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={confirmBulkDelete}
-                className="flex items-center gap-1"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete Selected
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSelectedRecords([])}
-              >
-                Clear
-              </Button>
-            </div>
-          )}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => fetchAttendanceHistory(currentPage)}
-            className="flex items-center gap-1"
-          >
-            <Loader2 className="h-4 w-4" />
-            Refresh
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => window.history.back()}
-            className="flex items-center gap-2"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Back
-          </Button>
+    <div className="container mx-auto py-4 sm:py-8 px-4">
+      {/* Header Section - Mobile Responsive */}
+      <div className="mb-6 sm:mb-8">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Attendance History</h1>
+            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">View your historical attendance records</p>
+          </div>
+          
+          {/* Action Buttons - Mobile Responsive */}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => fetchAttendanceHistory(currentPage)}
+              className="flex items-center gap-1"
+            >
+              <Loader2 className="h-4 w-4" />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+            <Button 
+              variant="outline"
+              size="sm"
+              onClick={() => window.history.back()}
+              className="flex items-center gap-1"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span className="hidden sm:inline">Back</span>
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -455,69 +365,52 @@ export default function AttendanceHistoryPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-6">
-          {/* Header with Select All checkbox */}
-          {attendances.length > 0 && (
-            <div className="flex items-center gap-3 pl-6 pr-4 py-3 bg-gray-50 rounded-lg border">
-              <input
-                type="checkbox"
-                checked={selectedRecords.length === attendances.length && attendances.length > 0}
-                onChange={selectAllRecords}
-                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm font-medium text-gray-700">
-                {selectedRecords.length} of {attendances.length} selected
-              </span>
-            </div>
-          )}
-          
+        <div className="space-y-4 sm:space-y-6">
           {attendances.map((record) => (
             <Card key={record.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex items-start gap-3">
-                    <input
-                      type="checkbox"
-                      checked={selectedRecords.includes(record.id)}
-                      onChange={() => toggleSelectRecord(record.id)}
-                      className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <div>
-                      <CardTitle className="flex items-center gap-2 text-xl">
-                        <Calendar className="h-5 w-5 text-gray-500" />
-                        {formatDate(record.clockIn)}
-                      </CardTitle>
-                      <p className="text-sm text-gray-500 mt-1">
-                        {record.employeeName}
-                      </p>
-                    </div>
+              <CardHeader className="pb-3 px-3 sm:px-6 py-3 sm:py-4">
+                <div className="flex justify-between items-start gap-2 sm:gap-3">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className="flex items-start sm:items-center gap-1.5 sm:gap-2 text-sm sm:text-xl leading-tight sm:leading-normal">
+                      <Calendar className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0 mt-0.5 sm:mt-0" />
+                      <span className="break-words">{formatDate(record.clockIn)}</span>
+                    </CardTitle>
+                    <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate ml-5 sm:ml-7">
+                      {record.employeeName}
+                    </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {getStatusBadge(record)}
+                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                    <div className="hidden sm:block">
+                      {getStatusBadge(record)}
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => confirmDelete(record)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1 sm:p-2 h-7 w-7 sm:h-auto sm:w-auto"
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     </Button>
                   </div>
                 </div>
+                {/* Status badge for mobile - below title */}
+                <div className="sm:hidden mt-2 ml-5">
+                  {getStatusBadge(record)}
+                </div>
               </CardHeader>
               
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
                   {/* Clock In Section */}
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-1">
-                      <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-green-600" />
+                  <div className="flex items-start space-x-2 sm:space-x-3">
+                    <div className="flex-shrink-0 mt-0.5 sm:mt-1">
+                      <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-green-100 flex items-center justify-center">
+                        <Clock className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-green-600" />
                       </div>
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-gray-500 mb-1">Clock In</h4>
-                      <p className="text-lg font-semibold text-gray-900">{formatTime(record.clockIn)}</p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1">Clock In</h4>
+                      <p className="text-sm sm:text-lg font-semibold text-gray-900">{formatTime(record.clockIn)}</p>
                       {record.location?.clockIn && (
                         <button
                           onClick={() => handleLocationClick(
@@ -527,8 +420,8 @@ export default function AttendanceHistoryPage() {
                           )}
                           className="flex items-center gap-1 mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                         >
-                          <MapPin className="h-3 w-3" />
-                          <span className="text-xs">
+                          <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
+                          <span className="text-[10px] sm:text-xs truncate">
                             {record.location.clockIn.latitude.toFixed(4)}, {record.location.clockIn.longitude.toFixed(4)}
                           </span>
                         </button>
@@ -537,15 +430,15 @@ export default function AttendanceHistoryPage() {
                   </div>
                   
                   {/* Clock Out Section */}
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0 mt-1">
-                      <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                        <Clock className="w-5 h-5 text-red-600 rotate-180" />
+                  <div className="flex items-start space-x-2 sm:space-x-3">
+                    <div className="flex-shrink-0 mt-0.5 sm:mt-1">
+                      <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-red-100 flex items-center justify-center">
+                        <Clock className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-red-600 rotate-180" />
                       </div>
                     </div>
-                    <div className="flex-1">
-                      <h4 className="text-sm font-medium text-gray-500 mb-1">Clock Out</h4>
-                      <p className="text-lg font-semibold text-gray-900">{formatTime(record.clockOut)}</p>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1">Clock Out</h4>
+                      <p className="text-sm sm:text-lg font-semibold text-gray-900">{formatTime(record.clockOut)}</p>
                       {record.location?.clockOut && (
                         <button
                           onClick={() => handleLocationClick(
@@ -555,8 +448,8 @@ export default function AttendanceHistoryPage() {
                           )}
                           className="flex items-center gap-1 mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                         >
-                          <MapPin className="h-3 w-3" />
-                          <span className="text-xs">
+                          <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
+                          <span className="text-[10px] sm:text-xs truncate">
                             {record.location.clockOut.latitude.toFixed(4)}, {record.location.clockOut.longitude.toFixed(4)}
                           </span>
                         </button>
@@ -565,18 +458,18 @@ export default function AttendanceHistoryPage() {
                   </div>
                 </div>
                 
-                {/* Duration and Stats */}
-                <div className="mt-6 pt-4 border-t border-gray-100">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div className="flex items-center gap-6">
+                {/* Duration and Stats - Mobile Responsive */}
+                <div className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
+                    <div className="flex items-center gap-3 sm:gap-6">
                       <div>
-                        <span className="text-sm text-gray-500">Duration:</span>
-                        <span className="ml-2 text-sm font-medium text-gray-900">
+                        <span className="text-xs sm:text-sm text-gray-500">Duration:</span>
+                        <span className="ml-2 text-xs sm:text-sm font-medium text-gray-900">
                           {calculateDuration(record.clockIn, record.clockOut)}
                         </span>
                       </div>
                     </div>
-                    <div className="text-xs text-gray-400">
+                    <div className="text-[10px] sm:text-xs text-gray-400">
                       Updated: {formatDateTime(record.updatedAt)}
                     </div>
                   </div>
@@ -585,8 +478,8 @@ export default function AttendanceHistoryPage() {
             </Card>
           ))}
           
-          {/* Pagination Controls */}
-          <div className="flex items-center justify-between mt-8">
+          {/* Pagination Controls - Mobile Responsive */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 sm:gap-0 mt-6 sm:mt-8">
             <Button 
               onClick={() => {
                 const prevPage = Math.max(1, currentPage - 1);
@@ -595,12 +488,13 @@ export default function AttendanceHistoryPage() {
               }}
               disabled={currentPage <= 1 || loading}
               variant="outline"
+              className="w-full sm:w-auto"
             >
               <ChevronLeft className="h-4 w-4 mr-2" />
               Previous
             </Button>
           
-            <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center gap-2">
               <span className="text-sm text-gray-600">
                 Page {currentPage} {hasMoreData ? 'of many' : ''}
               </span>
@@ -614,6 +508,7 @@ export default function AttendanceHistoryPage() {
               }}
               disabled={!hasMoreData || loading}
               variant="outline"
+              className="w-full sm:w-auto"
             >
               Next
               <ChevronRight className="h-4 w-4 ml-2" />
@@ -631,31 +526,31 @@ export default function AttendanceHistoryPage() {
         </div>
       )}
     
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - Mobile Responsive */}
       {showDeleteModal && recordToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
+          <div className="bg-white rounded-lg max-w-md w-full p-4 sm:p-6 mx-4">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Confirm Deletion</h3>
             </div>
             
-            <p className="text-gray-600 mb-2">
+            <p className="text-sm sm:text-base text-gray-600 mb-2">
               Are you sure you want to delete this attendance record?
             </p>
             
-            <p className="text-sm text-gray-500 mb-6">
+            <p className="text-xs sm:text-sm text-gray-500 mb-6">
               Date: {formatDate(recordToDelete.clockIn)}
             </p>
             
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 variant="outline"
                 onClick={cancelDelete}
                 disabled={!!deletingRecordId}
-                className="flex-1"
+                className="flex-1 w-full"
               >
                 <X className="h-4 w-4 mr-2" />
                 Cancel
@@ -665,7 +560,7 @@ export default function AttendanceHistoryPage() {
                 variant="destructive"
                 onClick={deleteRecord}
                 disabled={!!deletingRecordId}
-                className="flex-1"
+                className="flex-1 w-full"
               >
                 {deletingRecordId ? (
                   <>
@@ -676,59 +571,6 @@ export default function AttendanceHistoryPage() {
                   <>
                     <Trash2 className="h-4 w-4 mr-2" />
                     Delete
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Bulk Delete Confirmation Modal */}
-      {showBulkDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
-                <AlertTriangle className="w-5 h-5 text-red-600" />
-              </div>
-              <h3 className="text-lg font-semibold text-gray-900">Confirm Bulk Deletion</h3>
-            </div>
-            
-            <p className="text-gray-600 mb-2">
-              Are you sure you want to delete these attendance records?
-            </p>
-            
-            <p className="text-sm text-gray-500 mb-6">
-              Number of records to delete: {selectedRecords.length}
-            </p>
-            
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                onClick={cancelBulkDelete}
-                disabled={deletingBulkRecords}
-                className="flex-1"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Cancel
-              </Button>
-              
-              <Button
-                variant="destructive"
-                onClick={bulkDeleteRecords}
-                disabled={deletingBulkRecords}
-                className="flex-1"
-              >
-                {deletingBulkRecords ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Deleting...
-                  </>
-                ) : (
-                  <>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete All
                   </>
                 )}
               </Button>
