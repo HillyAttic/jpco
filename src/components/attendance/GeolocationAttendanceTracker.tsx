@@ -210,6 +210,18 @@ export function GeolocationAttendanceTracker() {
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
+          console.log('=== GEOLOCATION DATA ===');
+          console.log('Raw position object:', position);
+          console.log('Latitude:', position.coords.latitude);
+          console.log('Longitude:', position.coords.longitude);
+          console.log('Accuracy:', position.coords.accuracy, 'meters');
+          console.log('Altitude:', position.coords.altitude);
+          console.log('Altitude Accuracy:', position.coords.altitudeAccuracy);
+          console.log('Heading:', position.coords.heading);
+          console.log('Speed:', position.coords.speed);
+          console.log('Timestamp:', new Date(position.timestamp).toISOString());
+          console.log('========================');
+          
           const locationData: LocationData = {
             lat: position.coords.latitude,
             lng: position.coords.longitude,
@@ -222,11 +234,22 @@ export function GeolocationAttendanceTracker() {
             locationData.accuracy = position.coords.accuracy;
           }
           
+          // Warn if accuracy is poor (more than 50 meters)
+          if (position.coords.accuracy && position.coords.accuracy > 50) {
+            console.warn('⚠️ Location accuracy is poor:', position.coords.accuracy, 'meters');
+            console.warn('Consider waiting for better GPS signal');
+          }
+          
           // Update permission status on success
           setPermissionStatus('granted');
           resolve(locationData);
         },
         (error) => {
+          console.error('=== GEOLOCATION ERROR ===');
+          console.error('Error code:', error.code);
+          console.error('Error message:', error.message);
+          console.error('========================');
+          
           let errorMessage = 'Unable to get location';
           switch (error.code) {
             case error.PERMISSION_DENIED:
@@ -243,9 +266,9 @@ export function GeolocationAttendanceTracker() {
           reject(new Error(errorMessage));
         },
         {
-          enableHighAccuracy: true,
-          timeout: 30000, // Increased from 10 seconds to 30 seconds
-          maximumAge: 60000
+          enableHighAccuracy: true, // Force GPS instead of WiFi/cell tower
+          timeout: 30000, // 30 seconds timeout
+          maximumAge: 0 // Don't use cached location - always get fresh coordinates
         }
       );
     });
@@ -262,11 +285,19 @@ export function GeolocationAttendanceTracker() {
       const loc = await getCurrentLocation();
       console.log('Location obtained - Raw:', loc);
       console.log('Location lat:', loc.lat, 'lng:', loc.lng);
+      console.log('Location accuracy:', loc.accuracy, 'meters');
       setLocation(loc);
       
       // Validate location before sending
       if (!loc.lat || !loc.lng || isNaN(loc.lat) || isNaN(loc.lng)) {
         throw new Error('Invalid location data captured. Please try again.');
+      }
+      
+      // Warn if accuracy is poor but still allow clock in
+      if (loc.accuracy && loc.accuracy > 100) {
+        console.warn('⚠️ Poor GPS accuracy detected:', loc.accuracy, 'meters');
+        setError(`Warning: GPS accuracy is ${Math.round(loc.accuracy)}m. For better accuracy, move to an open area with clear sky view.`);
+        // Don't throw error, just warn
       }
       
       const locationData = {
@@ -276,6 +307,9 @@ export function GeolocationAttendanceTracker() {
       };
       
       console.log('Sending location data to service:', locationData);
+      console.log('Expected location: Lat 28.637959, Lng 77.285334');
+      console.log('Captured location: Lat', loc.lat, ', Lng', loc.lng);
+      console.log('Difference: Lat', Math.abs(28.637959 - loc.lat).toFixed(6), ', Lng', Math.abs(77.285334 - loc.lng).toFixed(6));
       
       const record = await attendanceService.clockIn({
         employeeId: auth.user.uid,
