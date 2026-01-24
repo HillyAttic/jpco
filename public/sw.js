@@ -1,10 +1,10 @@
 // Service Worker for JPCO Dashboard
 // Provides offline functionality, caching, and responsive asset management
 
-const CACHE_NAME = 'jpco-dashboard-v1';
-const STATIC_CACHE = 'jpco-static-v1';
-const DYNAMIC_CACHE = 'jpco-dynamic-v1';
-const IMAGE_CACHE = 'jpco-images-v1';
+const CACHE_NAME = 'jpco-dashboard-v2'; // Incremented version to force cache refresh
+const STATIC_CACHE = 'jpco-static-v2';
+const DYNAMIC_CACHE = 'jpco-dynamic-v2';
+const IMAGE_CACHE = 'jpco-images-v2';
 
 // Assets to cache immediately
 const STATIC_ASSETS = [
@@ -194,43 +194,31 @@ async function networkFirst(request, cacheName) {
 }
 
 async function handleImageRequest(request) {
+  // For images in /images/icons/ directory, always fetch fresh (no cache)
+  // These are critical UI images that should not be cached
   const url = new URL(request.url);
-  const deviceType = getDeviceType();
-  
-  // Try to serve device-appropriate image if available
-  const optimizedUrl = getOptimizedImageUrl(url, deviceType);
-  if (optimizedUrl !== url.href) {
-    const optimizedRequest = new Request(optimizedUrl);
+  if (url.pathname.includes('/images/icons/')) {
     try {
-      return await cacheFirst(optimizedRequest, IMAGE_CACHE);
+      const networkResponse = await fetch(request);
+      return networkResponse;
     } catch (error) {
-      // Fallback to original image
+      // If network fails, try cache as fallback
+      const cachedResponse = await caches.match(request);
+      if (cachedResponse) {
+        return cachedResponse;
+      }
+      throw error;
     }
   }
   
+  // For other images, use cache-first strategy
   return await cacheFirst(request, IMAGE_CACHE);
 }
 
 function getOptimizedImageUrl(url, deviceType) {
-  // Only apply responsive optimization to actual image files
-  if (!IMAGE_EXTENSIONS.some(ext => url.pathname.includes(ext))) {
-    return url.href;
-  }
-  
-  // Simple responsive image optimization
-  // In a real implementation, you might have different image sizes
-  const pathname = url.pathname;
-  const extension = pathname.substring(pathname.lastIndexOf('.'));
-  const basePath = pathname.substring(0, pathname.lastIndexOf('.'));
-  
-  switch (deviceType) {
-    case 'mobile':
-      return url.origin + basePath + '-mobile' + extension;
-    case 'tablet':
-      return url.origin + basePath + '-tablet' + extension;
-    default:
-      return url.href;
-  }
+  // Disabled responsive image optimization to prevent 404 errors
+  // Images are served as-is from their original paths
+  return url.href;
 }
 
 async function handleAPIRequest(request) {
