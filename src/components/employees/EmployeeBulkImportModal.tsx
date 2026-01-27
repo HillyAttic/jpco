@@ -147,26 +147,37 @@ export function EmployeeBulkImportModal({
         validEmployees.push(emp);
       }
 
-      // Import valid employees
+      // Import valid employees with delay to avoid rate limiting
       let successCount = 0;
       const importErrors = [...errors];
 
       for (let i = 0; i < validEmployees.length; i++) {
         try {
-          console.log('Importing employee:', validEmployees[i]); // Debug log
+          console.log(`Importing employee ${i + 1}/${validEmployees.length}:`, validEmployees[i]);
           await onImport([validEmployees[i]]);
           successCount++;
+          
+          // Add delay between requests to avoid Firebase rate limiting
+          // Wait 2 seconds between each employee creation
+          if (i < validEmployees.length - 1) {
+            console.log('Waiting 2 seconds before next import...');
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
         } catch (error) {
           const rowNum = employees.indexOf(validEmployees[i]) + 2;
           let errorMessage = 'Unknown error';
           
-          console.error('Import error for employee:', validEmployees[i], error); // Debug log
+          console.error('Import error for employee:', validEmployees[i], error);
           
           if (error instanceof Error) {
             errorMessage = error.message;
             // Check for specific error types
             if (errorMessage.includes('already exists') || errorMessage.includes('409')) {
               errorMessage = `Employee ID '${validEmployees[i].employeeId}' already exists`;
+            } else if (errorMessage.includes('too-many-requests') || errorMessage.includes('429')) {
+              errorMessage = 'Rate limit exceeded. Please wait a few minutes and try again.';
+            } else if (errorMessage.includes('Email already exists')) {
+              errorMessage = `Email '${validEmployees[i].email}' already exists`;
             }
           }
           
@@ -175,6 +186,12 @@ export function EmployeeBulkImportModal({
             error: errorMessage,
             data: validEmployees[i],
           });
+          
+          // If rate limited, stop importing
+          if (errorMessage.includes('Rate limit')) {
+            alert('Firebase rate limit reached. Please wait a few minutes before importing more employees.');
+            break;
+          }
         }
       }
 
