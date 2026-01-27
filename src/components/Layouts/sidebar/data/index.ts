@@ -23,6 +23,12 @@ export const NAV_DATA = [
         icon: Icons.Table,
         items: [],
       },
+      {
+        title: "Kanban",
+        url: "/kanban",
+        icon: Icons.Table,
+        items: [],
+      },
     ],
   },
   {

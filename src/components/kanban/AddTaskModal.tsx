@@ -1,0 +1,218 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { KanbanTask, KanbanStatus } from '@/types/kanban.types';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+
+interface AddTaskModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (task: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'>) => void;
+}
+
+const AVATAR_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
+
+export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    status: 'todo' as KanbanStatus,
+    dueDate: new Date().toISOString().split('T')[0],
+    priority: 'medium' as 'low' | 'medium' | 'high',
+    assigneeName: '',
+    assigneeRole: '',
+    tags: '',
+  });
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!formData.title.trim()) {
+      alert('Please enter a task title');
+      return;
+    }
+
+    const newTask: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'> = {
+      title: formData.title,
+      description: formData.description || undefined,
+      status: formData.status,
+      dueDate: new Date(formData.dueDate),
+      priority: formData.priority,
+      commentsCount: 0,
+      attachmentsCount: 0,
+      assignee: {
+        name: formData.assigneeName || 'Unassigned',
+        role: formData.assigneeRole || 'Team Member',
+        avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
+      },
+      tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+    };
+
+    onSave(newTask);
+    handleClose();
+  };
+
+  const handleClose = () => {
+    setFormData({
+      title: '',
+      description: '',
+      status: 'todo',
+      dueDate: new Date().toISOString().split('T')[0],
+      priority: 'medium',
+      assigneeName: '',
+      assigneeRole: '',
+      tags: '',
+    });
+    onClose();
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={handleClose}>
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="text-2xl font-bold">Add New Task</DialogTitle>
+        </DialogHeader>
+
+        <form onSubmit={handleSubmit} className="space-y-4 mt-4">
+          {/* Title */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Title <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter task title"
+              required
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description
+            </label>
+            <textarea
+              value={formData.description}
+              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter task description"
+              rows={3}
+            />
+          </div>
+
+          {/* Status and Priority */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value as KanbanStatus })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="todo">To Do</option>
+                <option value="in-progress">In Progress</option>
+                <option value="completed">Completed</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Priority
+              </label>
+              <select
+                value={formData.priority}
+                onChange={(e) => setFormData({ ...formData, priority: e.target.value as any })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Due Date */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Due Date
+            </label>
+            <input
+              type="date"
+              value={formData.dueDate}
+              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+
+          {/* Assignee */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Assignee Name
+              </label>
+              <input
+                type="text"
+                value={formData.assigneeName}
+                onChange={(e) => setFormData({ ...formData, assigneeName: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="John Doe"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Assignee Role
+              </label>
+              <input
+                type="text"
+                value={formData.assigneeRole}
+                onChange={(e) => setFormData({ ...formData, assigneeRole: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Developer"
+              />
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Tags (comma-separated)
+            </label>
+            <input
+              type="text"
+              value={formData.tags}
+              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="frontend, urgent, bug"
+            />
+          </div>
+
+          {/* Actions */}
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleClose}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              Add Task
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
