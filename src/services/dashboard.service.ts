@@ -190,7 +190,9 @@ class DashboardService {
       const now = new Date();
       const overdueTasks = allUserTasks.filter(t => {
         if (t.status === 'completed') return false;
-        const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+        // Check if task has dueDate property (non-recurring tasks) or nextOccurrence (recurring tasks)
+        const dueDate = ('dueDate' in t && t.dueDate) ? new Date(t.dueDate) : 
+                       ('nextOccurrence' in t && t.nextOccurrence) ? new Date(t.nextOccurrence) : null;
         return dueDate && dueDate < now;
       }).length;
 
@@ -236,7 +238,9 @@ class DashboardService {
       const now = new Date();
       const overdueTasks = allTasks.filter(t => {
         if (t.status === 'completed') return false;
-        const dueDate = t.dueDate ? new Date(t.dueDate) : null;
+        // Check if task has dueDate property (non-recurring tasks) or nextOccurrence (recurring tasks)
+        const dueDate = ('dueDate' in t && t.dueDate) ? new Date(t.dueDate) : 
+                       ('nextOccurrence' in t && t.nextOccurrence) ? new Date(t.nextOccurrence) : null;
         return dueDate && dueDate < now;
       }).length;
 

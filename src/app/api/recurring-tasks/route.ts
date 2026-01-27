@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
     // Get auth token from header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return ErrorResponses.unauthorized('No authentication token provided');
+      return ErrorResponses.unauthorized();
     }
 
     const token = authHeader.split('Bearer ')[1];
@@ -65,17 +65,17 @@ export async function GET(request: NextRequest) {
       userId = payload.user_id || payload.sub;
       
       if (!userId) {
-        return ErrorResponses.unauthorized('Invalid token payload');
+        return ErrorResponses.unauthorized();
       }
     } catch (error) {
-      return ErrorResponses.unauthorized('Invalid token format');
+      return ErrorResponses.unauthorized();
     }
 
     // Get user profile to check role
     const { roleManagementService } = await import('@/services/role-management.service');
     const userProfile = await roleManagementService.getUserProfile(userId);
     if (!userProfile) {
-      return ErrorResponses.unauthorized('User profile not found');
+      return ErrorResponses.unauthorized();
     }
 
     const isAdminOrManager = userProfile.role === 'admin' || userProfile.role === 'manager';

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     // Get auth token from header
     const authHeader = request.headers.get('authorization');
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return ErrorResponses.unauthorized('No authentication token provided');
+      return ErrorResponses.unauthorized();
     }
 
     // Fetch all employees

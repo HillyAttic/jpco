@@ -118,7 +118,7 @@ export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd }: Enhanced
     console.log('Task clicked:', task);
   };
 
-  const handleAddTask = (taskData: Omit<KanbanTask, 'id' | 'createdAt'>) => {
+  const handleAddTask = (taskData: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'>) => {
     onTaskAdd(taskData);
   };
 

@@ -846,13 +846,13 @@ export default function DashboardPage() {
                   const isOverdue = dueDate && dueDate < now && task.status !== 'completed';
                   const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
                   
-                  const statusColors = {
+                  const statusColors: Record<string, string> = {
                     'pending': 'border-yellow-200 bg-yellow-50',
                     'in-progress': 'border-orange-200 bg-orange-50',
                     'completed': 'border-green-200 bg-green-50'
                   };
                   
-                  const statusBadgeColors = {
+                  const statusBadgeColors: Record<string, string> = {
                     'pending': 'bg-yellow-100 text-yellow-700',
                     'in-progress': 'bg-orange-100 text-orange-700',
                     'completed': 'bg-green-100 text-green-700'
