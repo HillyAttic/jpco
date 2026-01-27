@@ -71,14 +71,14 @@ export function BusinessManager({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Business Tabs */}
-      <div className="flex items-center gap-3 overflow-x-auto pb-2">
+      <div className="flex items-center gap-2 sm:gap-3 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
         {businesses.map((business) => (
-          <div key={business.id} className="flex items-center gap-2 flex-shrink-0">
+          <div key={business.id} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             <button
               onClick={() => onSelectBusiness(business.id)}
-              className={`px-4 py-2 rounded-lg font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg text-sm sm:text-base font-medium transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 whitespace-nowrap ${
                 selectedBusinessId === business.id
                   ? 'text-white shadow-md'
                   : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -91,13 +91,14 @@ export function BusinessManager({
             </button>
             
             {selectedBusinessId === business.id && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 sm:gap-1">
                 <button
                   onClick={() => handleEdit(business)}
-                  className="p-1.5 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
+                  className="p-1 sm:p-1.5 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900 transition-colors"
                   title="Edit business"
+                  aria-label="Edit business"
                 >
-                  <PencilIcon className="w-4 h-4" />
+                  <PencilIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                 </button>
                 
                 {businesses.length > 1 && (
@@ -107,10 +108,11 @@ export function BusinessManager({
                         onDeleteBusiness(business.id);
                       }
                     }}
-                    className="p-1.5 rounded hover:bg-red-100 text-gray-600 hover:text-red-600 transition-colors"
+                    className="p-1 sm:p-1.5 rounded hover:bg-red-100 text-gray-600 hover:text-red-600 transition-colors"
                     title="Delete business"
+                    aria-label="Delete business"
                   >
-                    <TrashIcon className="w-4 h-4" />
+                    <TrashIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </button>
                 )}
               </div>
@@ -121,22 +123,23 @@ export function BusinessManager({
         <Button
           onClick={() => setShowAddModal(true)}
           variant="outline"
-          className="flex items-center gap-2 flex-shrink-0"
+          className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0 text-sm sm:text-base px-3 py-1.5 sm:px-4 sm:py-2 whitespace-nowrap"
         >
-          <PlusIcon className="w-4 h-4" />
-          Add Business
+          <PlusIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span className="hidden sm:inline">Add Business</span>
+          <span className="sm:hidden">Add</span>
         </Button>
       </div>
 
       {/* Add/Edit Business Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={handleCancel}>
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full p-4 sm:p-6 max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 mb-3 sm:mb-4">
               {editingBusiness ? 'Edit Business' : 'Add New Business'}
             </h3>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Business Name *
@@ -145,7 +148,7 @@ export function BusinessManager({
                   type="text"
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="e.g., Tech Startup, Consulting Firm"
                   required
                 />
@@ -158,7 +161,7 @@ export function BusinessManager({
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="Brief description of this business"
                   rows={3}
                 />
@@ -174,29 +177,30 @@ export function BusinessManager({
                       key={color}
                       type="button"
                       onClick={() => setFormData({ ...formData, color })}
-                      className={`w-10 h-10 rounded-lg transition-all ${
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg transition-all ${
                         formData.color === color
                           ? 'ring-2 ring-offset-2 ring-gray-400 scale-110'
                           : 'hover:scale-105'
                       }`}
                       style={{ backgroundColor: color }}
+                      aria-label={`Select color ${color}`}
                     />
                   ))}
                 </div>
               </div>
 
-              <div className="flex gap-3 pt-4">
+              <div className="flex gap-2 sm:gap-3 pt-2 sm:pt-4">
                 <Button
                   type="button"
                   onClick={handleCancel}
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 text-sm sm:text-base"
                 >
                   Cancel
                 </Button>
                 <Button
                   type="submit"
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm sm:text-base"
                 >
                   {editingBusiness ? 'Update' : 'Add'} Business
                 </Button>

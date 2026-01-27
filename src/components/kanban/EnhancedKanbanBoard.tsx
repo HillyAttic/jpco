@@ -128,38 +128,40 @@ export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd }: Enhanced
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div>
-          <h2 className="text-2xl font-bold text-gray-900">Task Board</h2>
-          <p className="text-sm text-gray-600 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Task Board</h2>
+          <p className="text-xs sm:text-sm text-gray-600 mt-1">
             {filteredAndSortedTasks.length} task{filteredAndSortedTasks.length !== 1 ? 's' : ''}
           </p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Button
             onClick={() => setShowFilterModal(true)}
             variant="outline"
-            className="flex items-center gap-2 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500"
+            className="flex items-center gap-1.5 sm:gap-2 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 text-sm sm:text-base px-3 py-1.5 sm:px-4 sm:py-2"
           >
-            <FunnelIcon className="w-4 h-4" />
-            Filter & Sort
+            <FunnelIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Filter & Sort</span>
+            <span className="sm:hidden">Filter</span>
           </Button>
           
           <Button
             onClick={() => setShowAddModal(true)}
-            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white focus:ring-2 focus:ring-blue-500"
+            className="flex items-center gap-1.5 sm:gap-2 bg-blue-600 hover:bg-blue-700 text-white focus:ring-2 focus:ring-blue-500 text-sm sm:text-base px-3 py-1.5 sm:px-4 sm:py-2"
           >
-            <PlusIcon className="w-4 h-4" />
-            Add New Task
+            <PlusIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Add New Task</span>
+            <span className="sm:hidden">Add Task</span>
           </Button>
         </div>
       </div>
 
       {/* Kanban Columns */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {COLUMNS.map((column) => {
           const columnTasks = filteredAndSortedTasks.filter(
             (task) => task.status === column.id

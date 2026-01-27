@@ -4,252 +4,191 @@ import { useState, useEffect, useMemo } from 'react';
 import { KanbanTask, Business } from '@/types/kanban.types';
 import { EnhancedKanbanBoard } from '@/components/kanban/EnhancedKanbanBoard';
 import { BusinessManager } from '@/components/kanban/BusinessManager';
-
-// Initial sample business
-const INITIAL_BUSINESS: Business = {
-  id: 'business-1',
-  name: 'My First Business',
-  description: 'Default business workspace',
-  color: '#3B82F6',
-  createdAt: new Date(),
-};
-
-// Sample tasks for the first business
-const getSampleTasks = (businessId: string): KanbanTask[] => [
-  {
-    id: '1',
-    businessId,
-    title: 'Design new landing page',
-    description: 'Create mockups for the new product landing page with modern UI',
-    status: 'todo',
-    dueDate: new Date(2026, 0, 30),
-    priority: 'high',
-    commentsCount: 3,
-    attachmentsCount: 2,
-    assignee: {
-      name: 'Sarah Johnson',
-      role: 'UI Designer',
-      avatarColor: '#3B82F6',
-    },
-    tags: ['design', 'frontend'],
-    createdAt: new Date(2026, 0, 25),
-  },
-  {
-    id: '2',
-    businessId,
-    title: 'Implement authentication',
-    description: 'Add JWT-based authentication with refresh tokens',
-    status: 'in-progress',
-    dueDate: new Date(2026, 0, 28),
-    priority: 'high',
-    commentsCount: 5,
-    attachmentsCount: 1,
-    assignee: {
-      name: 'Mike Chen',
-      role: 'Backend Developer',
-      avatarColor: '#10B981',
-    },
-    tags: ['backend', 'security'],
-    createdAt: new Date(2026, 0, 20),
-  },
-  {
-    id: '3',
-    businessId,
-    title: 'Fix mobile responsive issues',
-    description: 'Address layout problems on mobile devices',
-    status: 'in-progress',
-    dueDate: new Date(2026, 0, 27),
-    priority: 'medium',
-    commentsCount: 2,
-    assignee: {
-      name: 'Emma Davis',
-      role: 'Frontend Developer',
-      avatarColor: '#F59E0B',
-    },
-    tags: ['frontend', 'bug'],
-    createdAt: new Date(2026, 0, 22),
-  },
-  {
-    id: '4',
-    businessId,
-    title: 'Update documentation',
-    description: 'Update API documentation with new endpoints',
-    status: 'completed',
-    dueDate: new Date(2026, 0, 26),
-    priority: 'low',
-    commentsCount: 1,
-    attachmentsCount: 3,
-    assignee: {
-      name: 'John Smith',
-      role: 'Technical Writer',
-      avatarColor: '#EF4444',
-    },
-    tags: ['documentation'],
-    createdAt: new Date(2026, 0, 18),
-  },
-  {
-    id: '5',
-    businessId,
-    title: 'Database optimization',
-    description: 'Optimize slow queries and add indexes',
-    status: 'todo',
-    dueDate: new Date(2026, 1, 2),
-    priority: 'medium',
-    commentsCount: 0,
-    assignee: {
-      name: 'Alex Kumar',
-      role: 'Database Admin',
-      avatarColor: '#8B5CF6',
-    },
-    tags: ['backend', 'performance'],
-    createdAt: new Date(2026, 0, 24),
-  },
-  {
-    id: '6',
-    businessId,
-    title: 'Setup CI/CD pipeline',
-    description: 'Configure automated testing and deployment',
-    status: 'completed',
-    dueDate: new Date(2026, 0, 25),
-    priority: 'high',
-    commentsCount: 4,
-    attachmentsCount: 1,
-    assignee: {
-      name: 'Lisa Wong',
-      role: 'DevOps Engineer',
-      avatarColor: '#EC4899',
-    },
-    tags: ['devops', 'automation'],
-    createdAt: new Date(2026, 0, 15),
-  },
-];
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
+import { kanbanService } from '@/services/kanban.service';
+import { useRouter } from 'next/navigation';
 
 export default function KanbanPage() {
-  const [businesses, setBusinesses] = useState<Business[]>([INITIAL_BUSINESS]);
-  const [selectedBusinessId, setSelectedBusinessId] = useState<string>(INITIAL_BUSINESS.id);
+  const { user, loading: authLoading } = useEnhancedAuth();
+  const router = useRouter();
+  const [businesses, setBusinesses] = useState<Business[]>([]);
+  const [selectedBusinessId, setSelectedBusinessId] = useState<string | null>(null);
   const [allTasks, setAllTasks] = useState<KanbanTask[]>([]);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Load data from localStorage on mount
+  // Redirect if not authenticated
   useEffect(() => {
-    const savedBusinesses = localStorage.getItem('kanban-businesses');
-    const savedTasks = localStorage.getItem('kanban-tasks');
-    const savedSelectedId = localStorage.getItem('kanban-selected-business');
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
-    if (savedBusinesses) {
-      const parsedBusinesses = JSON.parse(savedBusinesses, (key, value) => {
-        if (key === 'createdAt') return new Date(value);
-        return value;
-      });
-      setBusinesses(parsedBusinesses);
-      
-      if (savedSelectedId && parsedBusinesses.some((b: Business) => b.id === savedSelectedId)) {
-        setSelectedBusinessId(savedSelectedId);
-      } else {
-        setSelectedBusinessId(parsedBusinesses[0]?.id || INITIAL_BUSINESS.id);
+  // Load user's businesses and tasks from Firestore
+  useEffect(() => {
+    if (!user) return;
+
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        // Load businesses
+        const userBusinesses = await kanbanService.getUserBusinesses(user.uid);
+        
+        // If no businesses exist, create a default one
+        if (userBusinesses.length === 0) {
+          const defaultBusiness = await kanbanService.createBusiness(user.uid, {
+            name: 'My First Business',
+            description: 'Default business workspace',
+            color: '#3B82F6',
+          });
+          setBusinesses([defaultBusiness]);
+          setSelectedBusinessId(defaultBusiness.id);
+        } else {
+          setBusinesses(userBusinesses);
+          setSelectedBusinessId(userBusinesses[0].id);
+        }
+
+        // Load all tasks
+        const userTasks = await kanbanService.getAllUserTasks(user.uid);
+        setAllTasks(userTasks);
+      } catch (err) {
+        console.error('Error loading Kanban data:', err);
+        setError('Failed to load your data. Please refresh the page.');
+      } finally {
+        setIsLoading(false);
       }
-    }
+    };
 
-    if (savedTasks) {
-      const parsedTasks = JSON.parse(savedTasks, (key, value) => {
-        if (key === 'dueDate' || key === 'createdAt') return new Date(value);
-        return value;
-      });
-      setAllTasks(parsedTasks);
-    } else {
-      // Initialize with sample tasks for the first business
-      setAllTasks(getSampleTasks(INITIAL_BUSINESS.id));
-    }
-
-    setIsLoaded(true);
-  }, []);
-
-  // Save to localStorage whenever data changes
-  useEffect(() => {
-    if (isLoaded) {
-      localStorage.setItem('kanban-businesses', JSON.stringify(businesses));
-      localStorage.setItem('kanban-tasks', JSON.stringify(allTasks));
-      localStorage.setItem('kanban-selected-business', selectedBusinessId);
-    }
-  }, [businesses, allTasks, selectedBusinessId, isLoaded]);
+    loadData();
+  }, [user]);
 
   // Filter tasks for selected business
   const currentTasks = useMemo(() => {
+    if (!selectedBusinessId) return [];
     return allTasks.filter(task => task.businessId === selectedBusinessId);
   }, [allTasks, selectedBusinessId]);
 
-  const handleTaskUpdate = (updatedTask: KanbanTask) => {
-    setAllTasks(prevTasks =>
-      prevTasks.map(task =>
-        task.id === updatedTask.id ? updatedTask : task
-      )
-    );
+  const handleTaskUpdate = async (updatedTask: KanbanTask) => {
+    try {
+      await kanbanService.updateTask(updatedTask.id, updatedTask);
+      setAllTasks(prevTasks =>
+        prevTasks.map(task =>
+          task.id === updatedTask.id ? updatedTask : task
+        )
+      );
+    } catch (err) {
+      console.error('Error updating task:', err);
+      alert('Failed to update task. Please try again.');
+    }
   };
 
-  const handleTaskAdd = (taskData: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'>) => {
-    const newTask: KanbanTask = {
-      ...taskData,
-      id: `task-${Date.now()}`,
-      businessId: selectedBusinessId,
-      createdAt: new Date(),
-    };
-    
-    setAllTasks(prevTasks => [newTask, ...prevTasks]);
+  const handleTaskAdd = async (taskData: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'>) => {
+    if (!selectedBusinessId) return;
+
+    try {
+      const newTask = await kanbanService.createTask({
+        ...taskData,
+        businessId: selectedBusinessId,
+      });
+      
+      setAllTasks(prevTasks => [newTask, ...prevTasks]);
+    } catch (err) {
+      console.error('Error creating task:', err);
+      alert('Failed to create task. Please try again.');
+    }
   };
 
-  const handleAddBusiness = (businessData: Omit<Business, 'id' | 'createdAt'>) => {
-    const newBusiness: Business = {
-      ...businessData,
-      id: `business-${Date.now()}`,
-      createdAt: new Date(),
-    };
-    
-    setBusinesses(prev => [...prev, newBusiness]);
-    setSelectedBusinessId(newBusiness.id);
+  const handleAddBusiness = async (businessData: Omit<Business, 'id' | 'createdAt'>) => {
+    if (!user) return;
+
+    try {
+      const newBusiness = await kanbanService.createBusiness(user.uid, businessData);
+      setBusinesses(prev => [...prev, newBusiness]);
+      setSelectedBusinessId(newBusiness.id);
+    } catch (err) {
+      console.error('Error creating business:', err);
+      alert('Failed to create business. Please try again.');
+    }
   };
 
-  const handleUpdateBusiness = (updatedBusiness: Business) => {
-    setBusinesses(prev =>
-      prev.map(business =>
-        business.id === updatedBusiness.id ? updatedBusiness : business
-      )
-    );
+  const handleUpdateBusiness = async (updatedBusiness: Business) => {
+    try {
+      await kanbanService.updateBusiness(updatedBusiness.id, updatedBusiness);
+      setBusinesses(prev =>
+        prev.map(business =>
+          business.id === updatedBusiness.id ? updatedBusiness : business
+        )
+      );
+    } catch (err) {
+      console.error('Error updating business:', err);
+      alert('Failed to update business. Please try again.');
+    }
   };
 
-  const handleDeleteBusiness = (businessId: string) => {
-    // Remove business
-    const updatedBusinesses = businesses.filter(b => b.id !== businessId);
-    setBusinesses(updatedBusinesses);
-    
-    // Remove all tasks for this business
-    setAllTasks(prev => prev.filter(task => task.businessId !== businessId));
-    
-    // Select another business
-    if (selectedBusinessId === businessId && updatedBusinesses.length > 0) {
-      setSelectedBusinessId(updatedBusinesses[0].id);
+  const handleDeleteBusiness = async (businessId: string) => {
+    try {
+      await kanbanService.deleteBusiness(businessId);
+      
+      // Remove business and its tasks from state
+      const updatedBusinesses = businesses.filter(b => b.id !== businessId);
+      setBusinesses(updatedBusinesses);
+      setAllTasks(prev => prev.filter(task => task.businessId !== businessId));
+      
+      // Select another business
+      if (selectedBusinessId === businessId && updatedBusinesses.length > 0) {
+        setSelectedBusinessId(updatedBusinesses[0].id);
+      }
+    } catch (err) {
+      console.error('Error deleting business:', err);
+      alert('Failed to delete business. Please try again.');
     }
   };
 
   const selectedBusiness = businesses.find(b => b.id === selectedBusinessId);
 
-  if (!isLoaded) {
+  if (authLoading || isLoading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-gray-500">Loading...</div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your Kanban board...</p>
+        </div>
       </div>
     );
   }
 
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <p className="text-red-600 mb-4">{error}</p>
+          <button
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return null;
+  }
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6 px-2 sm:px-4 md:px-0">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Kanban Board</h1>
-        <p className="text-gray-600 mt-2">Manage tasks across multiple businesses</p>
+      <div className="px-2 sm:px-0">
+        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Kanban Board</h1>
+        <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Manage tasks across multiple businesses</p>
       </div>
 
       {/* Business Manager */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6">
         <BusinessManager
           businesses={businesses}
           selectedBusinessId={selectedBusinessId}
@@ -262,19 +201,22 @@ export default function KanbanPage() {
 
       {/* Current Business Info */}
       {selectedBusiness && (
-        <div className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-4 border-l-4" style={{ borderLeftColor: selectedBusiness.color }}>
-          <h2 className="text-xl font-bold text-gray-900">{selectedBusiness.name}</h2>
+        <div 
+          className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-3 sm:p-4 border-l-4" 
+          style={{ borderLeftColor: selectedBusiness.color }}
+        >
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">{selectedBusiness.name}</h2>
           {selectedBusiness.description && (
-            <p className="text-gray-600 mt-1">{selectedBusiness.description}</p>
+            <p className="text-sm sm:text-base text-gray-600 mt-1">{selectedBusiness.description}</p>
           )}
-          <p className="text-sm text-gray-500 mt-2">
+          <p className="text-xs sm:text-sm text-gray-500 mt-2">
             {currentTasks.length} task{currentTasks.length !== 1 ? 's' : ''} in this business
           </p>
         </div>
       )}
 
       {/* Kanban Board */}
-      <div className="bg-white rounded-lg shadow-sm p-6">
+      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6">
         <EnhancedKanbanBoard
           tasks={currentTasks}
           onTaskUpdate={handleTaskUpdate}
