@@ -12,6 +12,7 @@ interface StatCardProps {
     value: number;
     isPositive: boolean;
   };
+  onClick?: () => void;
 }
 
 export function StatCard({
@@ -21,10 +22,14 @@ export function StatCard({
   icon,
   iconBgColor,
   iconColor,
-  trend
+  trend,
+  onClick
 }: StatCardProps) {
   return (
-    <Card className="hover:shadow-lg transition-shadow duration-200">
+    <Card 
+      className={`hover:shadow-lg transition-shadow duration-200 ${onClick ? 'cursor-pointer hover:border-blue-300' : ''}`}
+      onClick={onClick}
+    >
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-gray-500">{title}</CardTitle>
         <div className={`p-2 ${iconBgColor} rounded-lg`}>

@@ -14,7 +14,6 @@ interface QuickActionsProps {
   onCreateTask?: () => void;
   onViewTeam?: () => void;
   onViewAnalytics?: () => void;
-  onViewReports?: () => void;
   onManageProjects?: () => void;
 }
 
@@ -22,7 +21,6 @@ export function QuickActions({
   onCreateTask,
   onViewTeam,
   onViewAnalytics,
-  onViewReports,
   onManageProjects,
 }: QuickActionsProps) {
   const actions = [
@@ -43,12 +41,6 @@ export function QuickActions({
       icon: <ChartBarIcon className="w-5 h-5" />,
       onClick: onViewAnalytics,
       color: 'bg-purple-600 hover:bg-purple-700'
-    },
-    {
-      label: 'Reports',
-      icon: <DocumentTextIcon className="w-5 h-5" />,
-      onClick: onViewReports,
-      color: 'bg-orange-600 hover:bg-orange-700'
     },
     {
       label: 'Projects',

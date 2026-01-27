@@ -9,10 +9,17 @@ import { Notification } from "./notification";
 import { PWAInstallButton } from "./pwa-install-button";
 import { ThemeToggleSwitch } from "./theme-toggle";
 import { UserInfo } from "./user-info";
+import { useModal } from "@/contexts/modal-context";
 
 export function Header() {
   const { toggleSidebar, isMobile, isTablet } = useSidebarContext();
   const { device, isTouchDevice } = useResponsive();
+  const { isModalOpen } = useModal();
+
+  // Hide header when modal is open
+  if (isModalOpen) {
+    return null;
+  }
 
   return (
     <header className="sticky top-0 z-30 flex items-center justify-between border-b border-stroke bg-white px-4 py-4 shadow-1 dark:border-stroke-dark dark:bg-gray-dark md:px-5 md:py-5 2xl:px-10">

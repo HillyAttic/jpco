@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NonRecurringTask } from '@/services/nonrecurring-task.service';
+import { activityService } from '@/services/activity.service';
+import { auth } from '@/lib/firebase';
 
 interface UseTasksOptions {
   initialFetch?: boolean;
@@ -138,6 +140,20 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         setTasks((prev) =>
           prev.map((task) => (task.id === tempId ? newTask : task))
         );
+        
+        // Log activity
+        const user = auth.currentUser;
+        if (user) {
+          await activityService.logActivity({
+            type: 'created',
+            entityType: 'task',
+            entityId: newTask.id,
+            entityTitle: newTask.title,
+            userId: user.uid,
+            userName: user.displayName || user.email || 'Unknown User',
+            userEmail: user.email || '',
+          });
+        }
       } catch (err) {
         // Rollback optimistic update on error (Validates Requirements: 9.5)
         setTasks((prev) => prev.filter((task) => task.id !== tempId));
@@ -190,6 +206,20 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         setTasks((prev) =>
           prev.map((task) => (task.id === id ? updatedTask : task))
         );
+        
+        // Log activity
+        const user = auth.currentUser;
+        if (user) {
+          await activityService.logActivity({
+            type: 'updated',
+            entityType: 'task',
+            entityId: updatedTask.id,
+            entityTitle: updatedTask.title,
+            userId: user.uid,
+            userName: user.displayName || user.email || 'Unknown User',
+            userEmail: user.email || '',
+          });
+        }
       } catch (err) {
         // Rollback optimistic update on error (Validates Requirements: 9.5)
         setTasks((prev) =>
@@ -227,6 +257,20 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         if (!response.ok) {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to delete task');
+        }
+        
+        // Log activity
+        const user = auth.currentUser;
+        if (user) {
+          await activityService.logActivity({
+            type: 'deleted',
+            entityType: 'task',
+            entityId: originalTask.id!,
+            entityTitle: originalTask.title,
+            userId: user.uid,
+            userName: user.displayName || user.email || 'Unknown User',
+            userEmail: user.email || '',
+          });
         }
       } catch (err) {
         // Rollback optimistic update on error (Validates Requirements: 9.5)
@@ -278,6 +322,22 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         setTasks((prev) =>
           prev.map((task) => (task.id === id ? updatedTask : task))
         );
+        
+        // Log activity if task was completed
+        if (newStatus === 'completed') {
+          const user = auth.currentUser;
+          if (user) {
+            await activityService.logActivity({
+              type: 'completed',
+              entityType: 'task',
+              entityId: updatedTask.id,
+              entityTitle: updatedTask.title,
+              userId: user.uid,
+              userName: user.displayName || user.email || 'Unknown User',
+              userEmail: user.email || '',
+            });
+          }
+        }
       } catch (err) {
         // Rollback optimistic update on error (Validates Requirements: 9.5)
         setTasks((prev) =>

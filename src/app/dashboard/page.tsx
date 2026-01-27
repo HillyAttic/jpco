@@ -13,7 +13,10 @@ import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
 import { dashboardService } from '@/services/dashboard.service';
+import { activityService } from '@/services/activity.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
+import { useModal } from '@/contexts/modal-context';
+import { auth } from '@/lib/firebase';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { TaskOverview } from '@/components/dashboard/TaskOverview';
 import { UpcomingDeadlines } from '@/components/dashboard/UpcomingDeadlines';
@@ -33,9 +36,17 @@ interface DashboardTask extends Task {
 export default function DashboardPage() {
   const { user, loading: authLoading, userProfile, isAdmin, isManager } = useEnhancedAuth();
   const router = useRouter();
+  const { openModal, closeModal } = useModal();
   const [tasks, setTasks] = useState<DashboardTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [teamPerformance, setTeamPerformance] = useState<any[]>([]);
+  const [showTaskTypeDialog, setShowTaskTypeDialog] = useState(false);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [showOverdueModal, setShowOverdueModal] = useState(false);
+  const [showTodoModal, setShowTodoModal] = useState(false);
+  const [showAllTasksModal, setShowAllTasksModal] = useState(false);
+  const [showCompletedModal, setShowCompletedModal] = useState(false);
+  const [showInProgressModal, setShowInProgressModal] = useState(false);
 
   // Check if user is admin or manager
   const canViewAllTasks = isAdmin || isManager;
@@ -47,17 +58,179 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router]);
 
-  useEffect(() => {
-    if (user) {
-      loadDashboardData();
+  // Handle task type selection
+  const handleCreateTask = () => {
+    setShowTaskTypeDialog(true);
+    openModal();
+  };
+
+  const handleTaskTypeSelect = (type: 'recurring' | 'non-recurring') => {
+    setShowTaskTypeDialog(false);
+    closeModal();
+    if (type === 'recurring') {
+      router.push('/tasks/recurring');
+    } else {
+      router.push('/tasks/non-recurring');
     }
-  }, [user]);
+  };
+
+  const handleCancelDialog = () => {
+    setShowTaskTypeDialog(false);
+    closeModal();
+  };
+
+  const handleShowOverdue = () => {
+    setShowOverdueModal(true);
+    openModal();
+  };
+
+  const handleCloseOverdue = () => {
+    setShowOverdueModal(false);
+    closeModal();
+  };
+
+  const handleShowTodo = () => {
+    setShowTodoModal(true);
+    openModal();
+  };
+
+  const handleCloseTodo = () => {
+    setShowTodoModal(false);
+    closeModal();
+  };
+
+  const handleShowAllTasks = () => {
+    setShowAllTasksModal(true);
+    openModal();
+  };
+
+  const handleCloseAllTasks = () => {
+    setShowAllTasksModal(false);
+    closeModal();
+  };
+
+  const handleShowCompleted = () => {
+    setShowCompletedModal(true);
+    openModal();
+  };
+
+  const handleCloseCompleted = () => {
+    setShowCompletedModal(false);
+    closeModal();
+  };
+
+  const handleShowInProgress = () => {
+    setShowInProgressModal(true);
+    openModal();
+  };
+
+  const handleCloseInProgress = () => {
+    setShowInProgressModal(false);
+    closeModal();
+  };
+
+  // Get overdue tasks
+  const overdueTasks = useMemo(() => {
+    const now = new Date();
+    return tasks.filter(task => 
+      task.dueDate && 
+      new Date(task.dueDate) < now && 
+      task.status !== 'completed'
+    ).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
+  }, [tasks]);
+
+  // Get todo tasks
+  const todoTasks = useMemo(() => {
+    return tasks.filter(task => task.status === 'pending')
+      .sort((a, b) => {
+        // Sort by due date if available, otherwise by created date
+        if (a.dueDate && b.dueDate) {
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        }
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
+  }, [tasks]);
+
+  // Get completed tasks
+  const completedTasks = useMemo(() => {
+    return tasks.filter(task => task.status === 'completed')
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+  }, [tasks]);
+
+  // Get in-progress tasks
+  const inProgressTasks = useMemo(() => {
+    return tasks.filter(task => task.status === 'in-progress')
+      .sort((a, b) => {
+        if (a.dueDate && b.dueDate) {
+          return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        }
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+      });
+  }, [tasks]);
+
+  // Get all tasks sorted
+  const allTasksSorted = useMemo(() => {
+    return [...tasks].sort((a, b) => {
+      // Sort by status priority: in-progress > pending > completed
+      const statusPriority: Record<string, number> = {
+        'in-progress': 1,
+        'pending': 2,
+        'completed': 3
+      };
+      const aPriority = statusPriority[a.status] || 4;
+      const bPriority = statusPriority[b.status] || 4;
+      
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // Within same status, sort by due date
+      if (a.dueDate && b.dueDate) {
+        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      }
+      if (a.dueDate) return -1;
+      if (b.dueDate) return 1;
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+  }, [tasks]);
+
+  useEffect(() => {
+    if (user && !authLoading) {
+      // Small delay to ensure Firebase auth is fully initialized
+      const timer = setTimeout(() => {
+        loadDashboardData();
+      }, 100);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [user, authLoading]);
 
   const loadDashboardData = async () => {
     if (!user) return;
     
     try {
       setLoading(true);
+      
+      // Wait for Firebase auth to be ready and ensure we have a valid token
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.log('User not authenticated yet, waiting...');
+        return;
+      }
+      
+      // Force token refresh to ensure we have a valid token
+      try {
+        await currentUser.getIdToken(true);
+      } catch (tokenError) {
+        console.error('Error refreshing token:', tokenError);
+        // Retry after a short delay
+        setTimeout(() => loadDashboardData(), 500);
+        return;
+      }
       
       // Fetch non-recurring tasks
       const nonRecurringTasks = await taskApi.getTasks();
@@ -103,6 +276,16 @@ export default function DashboardPage() {
         // Only set team members who actually have tasks
         const filteredPerformance = performance.filter(p => p.totalTasks > 0);
         setTeamPerformance(filteredPerformance);
+        
+        // Fetch real activities
+        const recentActivities = await activityService.getRecentActivities(10);
+        setActivities(recentActivities.map(activity => ({
+          id: activity.id,
+          type: activity.type,
+          taskTitle: activity.entityTitle,
+          user: activity.userName,
+          timestamp: activity.timestamp
+        })));
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -172,39 +355,10 @@ export default function DashboardPage() {
     }));
   }, [teamPerformance]);
 
-  // Recent activities - now using real data
-  const activities = useMemo(() => {
-    // Get recent tasks sorted by update time
-    const recentTasks = [...tasks]
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 5);
-    
-    return recentTasks.map((task) => {
-      // Determine activity type based on task status and timing
-      let type: 'completed' | 'created' | 'updated' | 'deleted' | 'assigned' = 'updated';
-      
-      if (task.status === 'completed') {
-        type = 'completed';
-      } else {
-        const createdTime = new Date(task.createdAt).getTime();
-        const updatedTime = new Date(task.updatedAt).getTime();
-        const timeDiff = updatedTime - createdTime;
-        
-        // If updated within 1 minute of creation, consider it as "created"
-        if (timeDiff < 60000) {
-          type = 'created';
-        }
-      }
-      
-      return {
-        id: task.id,
-        type,
-        taskTitle: task.title,
-        user: 'Current User',
-        timestamp: task.updatedAt
-      };
-    });
-  }, [tasks]);
+  // Recent activities - now using real data from activity service
+  const displayActivities = useMemo(() => {
+    return activities;
+  }, [activities]);
 
   if (authLoading || loading) {
     return (
@@ -231,7 +385,7 @@ export default function DashboardPage() {
           </p>
         </div>
         {canViewAllTasks && (
-          <Button className="text-white w-full sm:w-auto">
+          <Button onClick={handleCreateTask} className="text-white w-full sm:w-auto">
             <PlusCircleIcon className="w-5 h-5 mr-2" />
             Create Task
           </Button>
@@ -247,6 +401,7 @@ export default function DashboardPage() {
           icon={<ClipboardDocumentListIcon className="w-5 h-5" />}
           iconBgColor="bg-blue-100"
           iconColor="text-blue-600"
+          onClick={stats.total > 0 ? handleShowAllTasks : undefined}
         />
         <StatCard
           title="Completed"
@@ -256,6 +411,7 @@ export default function DashboardPage() {
           iconBgColor="bg-green-100"
           iconColor="text-green-600"
           trend={{ value: 12, isPositive: true }}
+          onClick={stats.completed > 0 ? handleShowCompleted : undefined}
         />
         <StatCard
           title="In Progress"
@@ -264,6 +420,7 @@ export default function DashboardPage() {
           icon={<ExclamationTriangleIcon className="w-5 h-5" />}
           iconBgColor="bg-orange-100"
           iconColor="text-orange-600"
+          onClick={stats.inProgress > 0 ? handleShowInProgress : undefined}
         />
         <StatCard
           title="To Do"
@@ -272,6 +429,7 @@ export default function DashboardPage() {
           icon={<ClockIcon className="w-5 h-5" />}
           iconBgColor="bg-yellow-100"
           iconColor="text-yellow-600"
+          onClick={stats.todo > 0 ? handleShowTodo : undefined}
         />
         <StatCard
           title="Overdue"
@@ -281,6 +439,7 @@ export default function DashboardPage() {
           iconBgColor="bg-red-100"
           iconColor="text-red-600"
           trend={{ value: 5, isPositive: false }}
+          onClick={stats.overdue > 0 ? handleShowOverdue : undefined}
         />
       </div>
 
@@ -302,13 +461,20 @@ export default function DashboardPage() {
             todo={stats.todo}
             total={stats.total}
           />
-          {canViewAllTasks && <QuickActions />}
+          {canViewAllTasks && (
+            <QuickActions
+              onCreateTask={handleCreateTask}
+              onViewTeam={() => router.push('/employees')}
+              onViewAnalytics={() => router.push('/dashboard')}
+              onManageProjects={() => router.push('/kanban')}
+            />
+          )}
         </div>
 
         {/* Right Column - Activity (Admin/Manager Only) */}
         {canViewAllTasks && (
           <div className="space-y-4 md:space-y-6">
-            <ActivityFeed activities={activities} />
+            <ActivityFeed activities={displayActivities} />
           </div>
         )}
         
@@ -350,6 +516,673 @@ export default function DashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           <WeeklyProgressChart data={weeklyData} />
           <TeamPerformanceChart teamMembers={teamData} />
+        </div>
+      )}
+
+      {/* Task Type Selection Dialog */}
+      {showTaskTypeDialog && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCancelDialog}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4">
+              Choose Task Type
+            </h3>
+            <p className="text-gray-600 mb-6">
+              Select the type of task you want to create:
+            </p>
+            
+            <div className="space-y-3">
+              <button
+                onClick={() => handleTaskTypeSelect('non-recurring')}
+                className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                    <ClipboardDocumentListIcon className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">Non-Recurring Task</h4>
+                    <p className="text-sm text-gray-600">
+                      One-time task with a single due date
+                    </p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => handleTaskTypeSelect('recurring')}
+                className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all text-left group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
+                    <ClockIcon className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 mb-1">Recurring Task</h4>
+                    <p className="text-sm text-gray-600">
+                      Task that repeats on a schedule (daily, weekly, monthly)
+                    </p>
+                  </div>
+                </div>
+              </button>
+            </div>
+
+            <div className="mt-6">
+              <Button
+                onClick={handleCancelDialog}
+                variant="outline"
+                className="w-full"
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overdue Tasks Modal */}
+      {showOverdueModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseOverdue}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Overdue Tasks
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} past due date
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseOverdue}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
+              <div className="space-y-3">
+                {overdueTasks.map((task) => {
+                  const daysOverdue = Math.ceil((new Date().getTime() - new Date(task.dueDate!).getTime()) / (1000 * 60 * 60 * 24));
+                  
+                  return (
+                    <div
+                      key={task.id}
+                      className="p-4 border-2 border-red-100 bg-red-50 rounded-lg hover:border-red-300 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 mb-1">{task.title}</h4>
+                          {task.description && (
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <ClockIcon className="w-3.5 h-3.5" />
+                              Due: {new Date(task.dueDate!).toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: 'numeric'
+                              })}
+                            </span>
+                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                              Priority: {task.priority}
+                            </span>
+                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                              Status: {task.status}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <div className="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
+                            {daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <Button
+                onClick={handleCloseOverdue}
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* To Do Tasks Modal */}
+      {showTodoModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseTodo}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <ClockIcon className="w-6 h-6 text-yellow-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      To Do Tasks
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {todoTasks.length} pending task{todoTasks.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseTodo}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
+              <div className="space-y-3">
+                {todoTasks.map((task) => {
+                  const now = new Date();
+                  const hasDueDate = task.dueDate;
+                  const dueDate = hasDueDate ? new Date(task.dueDate!) : null;
+                  const isOverdue = dueDate && dueDate < now;
+                  const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                  
+                  return (
+                    <div
+                      key={task.id}
+                      className={`p-4 border-2 rounded-lg hover:border-yellow-400 transition-colors ${
+                        isOverdue ? 'border-red-100 bg-red-50' : 'border-yellow-100 bg-yellow-50'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 mb-1">{task.title}</h4>
+                          {task.description && (
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                            {hasDueDate && (
+                              <span className="flex items-center gap-1">
+                                <ClockIcon className="w-3.5 h-3.5" />
+                                Due: {dueDate!.toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  year: dueDate!.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                                })}
+                              </span>
+                            )}
+                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                              Priority: {task.priority}
+                            </span>
+                            {task.isRecurring && (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                                Recurring
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {hasDueDate && daysUntilDue !== null && (
+                            <div className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
+                              isOverdue 
+                                ? 'bg-red-600 text-white' 
+                                : daysUntilDue <= 3 
+                                  ? 'bg-orange-600 text-white'
+                                  : 'bg-yellow-600 text-white'
+                            }`}>
+                              {isOverdue 
+                                ? `${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''} overdue`
+                                : daysUntilDue === 0 
+                                  ? 'Due today'
+                                  : daysUntilDue === 1
+                                    ? 'Due tomorrow'
+                                    : `${daysUntilDue} days left`
+                              }
+                            </div>
+                          )}
+                          {!hasDueDate && (
+                            <div className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded-full text-xs font-semibold whitespace-nowrap">
+                              No due date
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <Button
+                onClick={handleCloseTodo}
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* All Tasks Modal */}
+      {showAllTasksModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseAllTasks}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <ClipboardDocumentListIcon className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      All Tasks
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {stats.total} total task{stats.total !== 1 ? 's' : ''} • {stats.completed} completed • {stats.inProgress} in progress • {stats.todo} pending
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseAllTasks}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
+              <div className="space-y-3">
+                {allTasksSorted.map((task) => {
+                  const now = new Date();
+                  const hasDueDate = task.dueDate;
+                  const dueDate = hasDueDate ? new Date(task.dueDate!) : null;
+                  const isOverdue = dueDate && dueDate < now && task.status !== 'completed';
+                  const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                  
+                  const statusColors = {
+                    'pending': 'border-yellow-200 bg-yellow-50',
+                    'in-progress': 'border-orange-200 bg-orange-50',
+                    'completed': 'border-green-200 bg-green-50'
+                  };
+                  
+                  const statusBadgeColors = {
+                    'pending': 'bg-yellow-100 text-yellow-700',
+                    'in-progress': 'bg-orange-100 text-orange-700',
+                    'completed': 'bg-green-100 text-green-700'
+                  };
+                  
+                  return (
+                    <div
+                      key={task.id}
+                      className={`p-4 border-2 rounded-lg transition-colors ${
+                        isOverdue 
+                          ? 'border-red-200 bg-red-50 hover:border-red-300' 
+                          : `${statusColors[task.status] || 'border-gray-200 bg-gray-50'} hover:border-blue-300`
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                            {task.status === 'completed' && (
+                              <CheckCircleIcon className="w-4 h-4 text-green-600 flex-shrink-0" />
+                            )}
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-2 text-xs">
+                            <span className={`px-2 py-0.5 rounded-full font-medium ${statusBadgeColors[task.status] || 'bg-gray-100 text-gray-700'}`}>
+                              {task.status === 'in-progress' ? 'In Progress' : task.status.charAt(0).toUpperCase() + task.status.slice(1)}
+                            </span>
+                            <span className="px-2 py-0.5 bg-white rounded-full font-medium text-gray-600">
+                              {task.priority}
+                            </span>
+                            {hasDueDate && (
+                              <span className="flex items-center gap-1 text-gray-500">
+                                <ClockIcon className="w-3.5 h-3.5" />
+                                {dueDate!.toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  year: dueDate!.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                                })}
+                              </span>
+                            )}
+                            {task.isRecurring && (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                                Recurring
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {isOverdue && (
+                            <div className="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
+                              {Math.abs(daysUntilDue!)} day{Math.abs(daysUntilDue!) !== 1 ? 's' : ''} overdue
+                            </div>
+                          )}
+                          {!isOverdue && hasDueDate && task.status !== 'completed' && daysUntilDue !== null && (
+                            <div className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
+                              daysUntilDue <= 1 
+                                ? 'bg-red-600 text-white' 
+                                : daysUntilDue <= 3 
+                                  ? 'bg-orange-600 text-white'
+                                  : 'bg-blue-600 text-white'
+                            }`}>
+                              {daysUntilDue === 0 
+                                ? 'Due today'
+                                : daysUntilDue === 1
+                                  ? 'Due tomorrow'
+                                  : `${daysUntilDue} days`
+                              }
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <Button
+                onClick={handleCloseAllTasks}
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Completed Tasks Modal */}
+      {showCompletedModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseCompleted}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-green-100 rounded-lg">
+                    <CheckCircleIcon className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      Completed Tasks
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {completedTasks.length} task{completedTasks.length !== 1 ? 's' : ''} completed
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseCompleted}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
+              <div className="space-y-3">
+                {completedTasks.map((task) => {
+                  const completedDate = new Date(task.updatedAt);
+                  const now = new Date();
+                  
+                  return (
+                    <div
+                      key={task.id}
+                      className="p-4 border-2 border-green-100 bg-green-50 rounded-lg hover:border-green-300 transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
+                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <ClockIcon className="w-3.5 h-3.5" />
+                              Completed: {completedDate.toLocaleDateString('en-US', { 
+                                month: 'short', 
+                                day: 'numeric',
+                                year: completedDate.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                              })}
+                            </span>
+                            {task.dueDate && (
+                              <span className="text-gray-400">
+                                Due: {new Date(task.dueDate).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric'
+                                })}
+                              </span>
+                            )}
+                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                              {task.priority}
+                            </span>
+                            {task.isRecurring && (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                                Recurring
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <div className="px-3 py-1.5 bg-green-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
+                            ✓ Done
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <Button
+                onClick={handleCloseCompleted}
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In Progress Tasks Modal */}
+      {showInProgressModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseInProgress}
+        >
+          <div 
+            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-100 rounded-lg">
+                    <ExclamationTriangleIcon className="w-6 h-6 text-orange-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-gray-900">
+                      In Progress Tasks
+                    </h3>
+                    <p className="text-sm text-gray-600">
+                      {inProgressTasks.length} task{inProgressTasks.length !== 1 ? 's' : ''} currently active
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={handleCloseInProgress}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-140px)]">
+              <div className="space-y-3">
+                {inProgressTasks.map((task) => {
+                  const now = new Date();
+                  const hasDueDate = task.dueDate;
+                  const dueDate = hasDueDate ? new Date(task.dueDate!) : null;
+                  const isOverdue = dueDate && dueDate < now;
+                  const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                  
+                  return (
+                    <div
+                      key={task.id}
+                      className={`p-4 border-2 rounded-lg transition-colors ${
+                        isOverdue 
+                          ? 'border-red-200 bg-red-50 hover:border-red-300' 
+                          : 'border-orange-200 bg-orange-50 hover:border-orange-300'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <div className="w-5 h-5 flex-shrink-0">
+                              <svg className="w-5 h-5 text-orange-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <circle cx="12" cy="12" r="10" strokeWidth="2" strokeDasharray="4 4" />
+                              </svg>
+                            </div>
+                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                          </div>
+                          {task.description && (
+                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                            {hasDueDate && (
+                              <span className="flex items-center gap-1">
+                                <ClockIcon className="w-3.5 h-3.5" />
+                                Due: {dueDate!.toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric',
+                                  year: dueDate!.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
+                                })}
+                              </span>
+                            )}
+                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                              {task.priority}
+                            </span>
+                            {task.isRecurring && (
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                                Recurring
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex-shrink-0">
+                          {isOverdue && daysUntilDue !== null && (
+                            <div className="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
+                              {Math.abs(daysUntilDue)} day{Math.abs(daysUntilDue) !== 1 ? 's' : ''} overdue
+                            </div>
+                          )}
+                          {!isOverdue && hasDueDate && daysUntilDue !== null && (
+                            <div className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
+                              daysUntilDue <= 1 
+                                ? 'bg-red-600 text-white' 
+                                : daysUntilDue <= 3 
+                                  ? 'bg-orange-600 text-white'
+                                  : 'bg-orange-500 text-white'
+                            }`}>
+                              {daysUntilDue === 0 
+                                ? 'Due today'
+                                : daysUntilDue === 1
+                                  ? 'Due tomorrow'
+                                  : `${daysUntilDue} days left`
+                              }
+                            </div>
+                          )}
+                          {!hasDueDate && (
+                            <div className="px-3 py-1.5 bg-orange-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
+                              ⟳ Active
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-gray-200 bg-gray-50">
+              <Button
+                onClick={handleCloseInProgress}
+                className="w-full"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
         </div>
       )}
     </div>

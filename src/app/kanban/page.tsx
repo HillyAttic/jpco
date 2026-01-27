@@ -36,11 +36,24 @@ export default function KanbanPage() {
         // Load businesses
         const userBusinesses = await kanbanService.getUserBusinesses(user.uid);
         
+        // Automatic migration: Rename "My First Business" to "Personal"
+        const businessToRename = userBusinesses.find(b => b.name === 'My First Business');
+        if (businessToRename) {
+          console.log('Migrating "My First Business" to "Personal"...');
+          await kanbanService.updateBusiness(businessToRename.id, {
+            name: 'Personal',
+            description: 'Personal workspace'
+          });
+          // Update the local copy
+          businessToRename.name = 'Personal';
+          businessToRename.description = 'Personal workspace';
+        }
+        
         // If no businesses exist, create a default one
         if (userBusinesses.length === 0) {
           const defaultBusiness = await kanbanService.createBusiness(user.uid, {
-            name: 'My First Business',
-            description: 'Default business workspace',
+            name: 'Personal',
+            description: 'Personal workspace',
             color: '#3B82F6',
           });
           setBusinesses([defaultBusiness]);

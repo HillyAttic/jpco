@@ -63,7 +63,8 @@ export default function NonRecurringTasksPage() {
     priority: 'all',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
@@ -113,21 +114,22 @@ export default function NonRecurringTasksPage() {
   };
 
   // Handle delete with confirmation
-  const handleDelete = async (id: string) => {
-    if (showDeleteConfirm === id) {
-      try {
-        await deleteTask(id);
-        setShowDeleteConfirm(null);
-      } catch (error) {
-        console.error('Error deleting task:', error);
-        alert('Failed to delete task. Please try again.');
-      }
-    } else {
-      setShowDeleteConfirm(id);
-      // Auto-hide confirmation after 3 seconds
-      setTimeout(() => {
-        setShowDeleteConfirm(null);
-      }, 3000);
+  const handleDelete = (id: string) => {
+    setTaskToDelete(id);
+    setShowDeleteDialog(true);
+  };
+
+  // Confirm delete
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return;
+    
+    try {
+      await deleteTask(taskToDelete);
+      setShowDeleteDialog(false);
+      setTaskToDelete(null);
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task. Please try again.');
     }
   };
 
@@ -351,33 +353,15 @@ export default function NonRecurringTasksPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {tasks.map((task) => (
-                <div key={task.id} className="relative">
-                  <TaskCard
-                    task={convertToTaskType(task)}
-                    onEdit={() => handleEdit(task)}
-                    onDelete={handleDelete}
-                    onToggleComplete={handleToggleComplete}
-                    selected={isSelected(task.id!)}
-                    onSelect={toggleSelection}
-                  />
-                  
-                  {/* Delete Confirmation Overlay */}
-                  {showDeleteConfirm === task.id && (
-                    <div className="absolute inset-0 bg-red-500 bg-opacity-90 rounded-lg flex items-center justify-center z-10">
-                      <div className="text-center text-white p-4">
-                        <p className="font-semibold mb-2">Delete this task?</p>
-                        <p className="text-sm mb-4">Click delete again to confirm</p>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => setShowDeleteConfirm(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <TaskCard
+                  key={task.id}
+                  task={convertToTaskType(task)}
+                  onEdit={() => handleEdit(task)}
+                  onDelete={handleDelete}
+                  onToggleComplete={handleToggleComplete}
+                  selected={isSelected(task.id!)}
+                  onSelect={toggleSelection}
+                />
               ))}
             </div>
           )
@@ -419,6 +403,16 @@ export default function NonRecurringTasksPage() {
           itemType="task"
           onConfirm={handleConfirmBulkDelete}
           loading={isBulkDeleting}
+        />
+
+        {/* Single Task Delete Confirmation Dialog */}
+        <BulkDeleteDialog
+          open={showDeleteDialog}
+          onOpenChange={setShowDeleteDialog}
+          itemCount={1}
+          itemType="task"
+          onConfirm={handleConfirmDelete}
+          loading={false}
         />
 
         {/* Task Modal - Requirements 2.2, 2.3 (Admin/Manager only) */}

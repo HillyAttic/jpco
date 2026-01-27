@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/auth.context";
 import { EnhancedAuthProvider } from "@/contexts/enhanced-auth.context";
 import { NotificationProvider } from "@/contexts/notification.context";
+import { ModalProvider } from "@/contexts/modal-context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -12,7 +13,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
       <NotificationProvider>
         <AuthProvider>
           <EnhancedAuthProvider>
-            <SidebarProvider>{children}</SidebarProvider>
+            <ModalProvider>
+              <SidebarProvider>{children}</SidebarProvider>
+            </ModalProvider>
           </EnhancedAuthProvider>
         </AuthProvider>
       </NotificationProvider>
