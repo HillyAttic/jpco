@@ -12,6 +12,8 @@ import {
 import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
+import { dashboardService } from '@/services/dashboard.service';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { TaskOverview } from '@/components/dashboard/TaskOverview';
 import { UpcomingDeadlines } from '@/components/dashboard/UpcomingDeadlines';
@@ -20,6 +22,7 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { TaskDistributionChart } from '@/components/Charts/TaskDistributionChart';
 import { WeeklyProgressChart } from '@/components/Charts/WeeklyProgressChart';
 import { TeamPerformanceChart } from '@/components/Charts/TeamPerformanceChart';
+import { useRouter } from 'next/navigation';
 
 // Extended task type to include recurring tasks
 interface DashboardTask extends Task {
@@ -28,14 +31,31 @@ interface DashboardTask extends Task {
 }
 
 export default function DashboardPage() {
+  const { user, loading: authLoading, userProfile, isAdmin, isManager } = useEnhancedAuth();
+  const router = useRouter();
   const [tasks, setTasks] = useState<DashboardTask[]>([]);
   const [loading, setLoading] = useState(true);
+  const [teamPerformance, setTeamPerformance] = useState<any[]>([]);
+
+  // Check if user is admin or manager
+  const canViewAllTasks = isAdmin || isManager;
+
+  // Redirect if not authenticated
+  useEffect(() => {
+    if (!authLoading && !user) {
+      router.push('/login');
+    }
+  }, [user, authLoading, router]);
 
   useEffect(() => {
-    loadDashboardData();
-  }, []);
+    if (user) {
+      loadDashboardData();
+    }
+  }, [user]);
 
   const loadDashboardData = async () => {
+    if (!user) return;
+    
     try {
       setLoading(true);
       
@@ -62,12 +82,28 @@ export default function DashboardPage() {
       }));
       
       // Combine both types of tasks
-      const allTasks = [
+      let allTasks = [
         ...nonRecurringTasks.map(task => ({ ...task, isRecurring: false })),
         ...recurringDashboardTasks
       ];
       
+      // For employees, filter to show only their assigned tasks
+      if (!canViewAllTasks) {
+        allTasks = allTasks.filter(task => 
+          task.assignedTo && task.assignedTo.includes(user.uid)
+        );
+      }
+      
       setTasks(allTasks);
+
+      // Fetch real team performance data (only for admin/manager)
+      if (canViewAllTasks) {
+        const performance = await dashboardService.getTeamPerformance(user.uid);
+        
+        // Only set team members who actually have tasks
+        const filteredPerformance = performance.filter(p => p.totalTasks > 0);
+        setTeamPerformance(filteredPerformance);
+      }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
     } finally {
@@ -88,45 +124,81 @@ export default function DashboardPage() {
     return { total, todo, inProgress, completed, overdue };
   }, [tasks]);
 
-  // Weekly progress data
+  // Weekly progress data - now using real data
   const weeklyData = useMemo(() => {
     const today = new Date();
     const labels = [];
-    const created = [];
-    const completed = [];
+    const created: number[] = [];
+    const completed: number[] = [];
     
     for (let i = 6; i >= 0; i--) {
       const date = new Date(today);
       date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+      
       labels.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
       
-      // Mock data - replace with actual data from your API
-      created.push(Math.floor(Math.random() * 10) + 3);
-      completed.push(Math.floor(Math.random() * 8) + 2);
+      // Count tasks created on this day
+      const createdCount = tasks.filter(task => {
+        const taskDate = new Date(task.createdAt);
+        taskDate.setHours(0, 0, 0, 0);
+        return taskDate.getTime() === date.getTime();
+      }).length;
+      
+      // Count tasks completed on this day
+      const completedCount = tasks.filter(task => {
+        if (task.status !== 'completed') return false;
+        const taskDate = new Date(task.updatedAt);
+        taskDate.setHours(0, 0, 0, 0);
+        return taskDate.getTime() === date.getTime();
+      }).length;
+      
+      created.push(createdCount);
+      completed.push(completedCount);
     }
     
     return { labels, created, completed };
-  }, []);
+  }, [tasks]);
 
-  // Team performance data
+  // Team performance data - now using real data
   const teamData = useMemo(() => {
-    // Mock data - replace with actual team data from your API
-    return [
-      { name: 'John Doe', tasksCompleted: 12, tasksInProgress: 3 },
-      { name: 'Jane Smith', tasksCompleted: 15, tasksInProgress: 5 },
-      { name: 'Mike Johnson', tasksCompleted: 8, tasksInProgress: 2 },
-      { name: 'Sarah Williams', tasksCompleted: 10, tasksInProgress: 4 }
-    ];
-  }, []);
+    return teamPerformance.map(perf => ({
+      name: perf.name,
+      tasksCompleted: perf.tasksCompleted,
+      tasksInProgress: perf.tasksInProgress,
+    }));
+  }, [teamPerformance]);
 
-  // Recent activities
+  // Recent activities - now using real data
   const activities = useMemo(() => {
-    // Mock data - replace with actual activity data from your API
-    return tasks.slice(0, 5).map((task, index) => {
-      const type = task.status === 'completed' ? 'completed' : index % 2 === 0 ? 'created' : 'updated';
+    // Get recent tasks sorted by update time
+    const recentTasks = [...tasks]
+      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+      .slice(0, 5);
+    
+    return recentTasks.map((task) => {
+      // Determine activity type based on task status and timing
+      let type: 'completed' | 'created' | 'updated' | 'deleted' | 'assigned' = 'updated';
+      
+      if (task.status === 'completed') {
+        type = 'completed';
+      } else {
+        const createdTime = new Date(task.createdAt).getTime();
+        const updatedTime = new Date(task.updatedAt).getTime();
+        const timeDiff = updatedTime - createdTime;
+        
+        // If updated within 1 minute of creation, consider it as "created"
+        if (timeDiff < 60000) {
+          type = 'created';
+        }
+      }
+      
       return {
         id: task.id,
-        type: type as 'completed' | 'created' | 'updated' | 'deleted' | 'assigned',
+        type,
         taskTitle: task.title,
         user: 'Current User',
         timestamp: task.updatedAt
@@ -134,12 +206,16 @@ export default function DashboardPage() {
     });
   }, [tasks]);
 
-  if (loading) {
+  if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (
@@ -148,12 +224,18 @@ export default function DashboardPage() {
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Welcome back! Here&apos;s what&apos;s happening today.</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
+            {canViewAllTasks 
+              ? "Welcome back! Here's what's happening with your team today."
+              : "Welcome back! Here's an overview of your tasks."}
+          </p>
         </div>
-        <Button className="text-white w-full sm:w-auto">
-          <PlusCircleIcon className="w-5 h-5 mr-2" />
-          Create Task
-        </Button>
+        {canViewAllTasks && (
+          <Button className="text-white w-full sm:w-auto">
+            <PlusCircleIcon className="w-5 h-5 mr-2" />
+            Create Task
+          </Button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -204,34 +286,72 @@ export default function DashboardPage() {
 
       {/* Main Content Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        {/* Left Column - Task Overview & Upcoming Deadlines */}
-        <div className="space-y-4 md:space-y-6">
-          <TaskOverview tasks={tasks} />
-          <UpcomingDeadlines tasks={tasks} />
-        </div>
+        {/* Left Column - Task Overview & Upcoming Deadlines (Admin/Manager Only) */}
+        {canViewAllTasks && (
+          <div className="space-y-4 md:space-y-6">
+            <TaskOverview tasks={tasks} />
+            <UpcomingDeadlines tasks={tasks} />
+          </div>
+        )}
 
         {/* Middle Column - Charts */}
-        <div className="space-y-4 md:space-y-6">
+        <div className={`space-y-4 md:space-y-6 ${!canViewAllTasks ? 'lg:col-span-2' : ''}`}>
           <TaskDistributionChart
             completed={stats.completed}
             inProgress={stats.inProgress}
             todo={stats.todo}
             total={stats.total}
           />
-          <QuickActions />
+          {canViewAllTasks && <QuickActions />}
         </div>
 
-        {/* Right Column - Activity & Team Performance */}
-        <div className="space-y-4 md:space-y-6">
-          <ActivityFeed activities={activities} />
-        </div>
+        {/* Right Column - Activity (Admin/Manager Only) */}
+        {canViewAllTasks && (
+          <div className="space-y-4 md:space-y-6">
+            <ActivityFeed activities={activities} />
+          </div>
+        )}
+        
+        {/* For Employees - Show personal stats or other relevant info */}
+        {!canViewAllTasks && (
+          <div className="space-y-4 md:space-y-6">
+            <div className="rounded-xl border border-gray-200 bg-white p-6">
+              <h3 className="text-xl font-semibold mb-4">My Tasks</h3>
+              <p className="text-gray-600 mb-4">
+                You have {stats.total} task{stats.total !== 1 ? 's' : ''} assigned to you.
+              </p>
+              <div className="space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">Completed:</span>
+                  <span className="font-medium text-green-600">{stats.completed}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">In Progress:</span>
+                  <span className="font-medium text-orange-600">{stats.inProgress}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-600">To Do:</span>
+                  <span className="font-medium text-blue-600">{stats.todo}</span>
+                </div>
+                {stats.overdue > 0 && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-600">Overdue:</span>
+                    <span className="font-medium text-red-600">{stats.overdue}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Bottom Section - Analytics */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-        <WeeklyProgressChart data={weeklyData} />
-        <TeamPerformanceChart teamMembers={teamData} />
-      </div>
+      {/* Bottom Section - Analytics (Admin/Manager Only) */}
+      {canViewAllTasks && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+          <WeeklyProgressChart data={weeklyData} />
+          <TeamPerformanceChart teamMembers={teamData} />
+        </div>
+      )}
     </div>
   );
 }

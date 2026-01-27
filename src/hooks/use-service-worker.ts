@@ -167,28 +167,11 @@ export function useServiceWorker() {
     });
   }, []); // Remove dependencies to break the loop
 
-  // Cache critical resources
+  // Cache critical resources - DISABLED
   const cacheCriticalResources = useCallback(async () => {
-    if (!state.registration) return;
-
-    const criticalResources = [
-      '/',
-      '/dashboard',
-      '/images/logo/logo.svg',
-      '/images/logo/logo-icon.svg'
-    ];
-
-    // Add device-specific resources
-    // Note: Removed mobile-styles.css as it doesn't exist
-
-    try {
-      const cache = await caches.open('jpco-critical-v1');
-      await cache.addAll(criticalResources);
-      console.log('Critical resources cached');
-    } catch (error) {
-      console.error('Failed to cache critical resources:', error);
-    }
-  }, [state.registration, device.type]);
+    // Caching disabled - no resources will be cached
+    console.log('Resource caching is disabled');
+  }, []);
 
   // Get cache usage information
   const getCacheUsage = useCallback(async () => {
@@ -240,12 +223,11 @@ export function useServiceWorker() {
     };
   }, [registerServiceWorker]); // Remove handleOnlineStatus dependency to break the loop
 
-  // Cache critical resources when service worker is ready
+  // Cache critical resources when service worker is ready - DISABLED
+  // Caching is disabled, so this effect does nothing
   useEffect(() => {
-    if (state.isRegistered) {
-      cacheCriticalResources();
-    }
-  }, [state.isRegistered, cacheCriticalResources]);
+    // No caching
+  }, [state.isRegistered]);
 
   // Process offline queue when online status changes
   useEffect(() => {

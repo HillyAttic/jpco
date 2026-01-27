@@ -1,4 +1,5 @@
 import { Task, Comment, TaskStatus, TaskPriority } from '@/types/task.types';
+import { auth } from '@/lib/firebase';
 
 const API_BASE_URL = '/api/tasks';
 
@@ -7,6 +8,22 @@ interface TaskFilters {
   priority?: TaskPriority;
   search?: string;
   category?: string;
+}
+
+/**
+ * Get authentication headers with Firebase token
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
+  const token = await user.getIdToken();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
 }
 
 export const taskApi = {
@@ -22,7 +39,8 @@ export const taskApi = {
     const queryString = params.toString();
     const url = queryString ? `${API_BASE_URL}?${queryString}` : API_BASE_URL;
 
-    const response = await fetch(url);
+    const headers = await getAuthHeaders();
+    const response = await fetch(url, { headers });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch tasks: ${response.statusText}`);
@@ -33,7 +51,8 @@ export const taskApi = {
 
   // Fetch a single task by ID
   getTaskById: async (id: string): Promise<Task> => {
-    const response = await fetch(`${API_BASE_URL}/${id}`);
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/${id}`, { headers });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch task: ${response.statusText}`);
@@ -44,11 +63,10 @@ export const taskApi = {
 
   // Create a new task
   createTask: async (taskData: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'commentCount'>): Promise<Task> => {
+    const headers = await getAuthHeaders();
     const response = await fetch(API_BASE_URL, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(taskData),
     });
     
@@ -61,11 +79,10 @@ export const taskApi = {
 
   // Update an existing task
   updateTask: async (id: string, taskData: Partial<Task>): Promise<Task> => {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/${id}`, {
       method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(taskData),
     });
     
@@ -78,8 +95,10 @@ export const taskApi = {
 
   // Delete a task
   deleteTask: async (id: string): Promise<void> => {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/${id}`, {
       method: 'DELETE',
+      headers,
     });
     
     if (!response.ok) {
@@ -89,11 +108,10 @@ export const taskApi = {
 
   // Add a comment to a task
   addComment: async (taskId: string, commentData: Omit<Comment, 'id' | 'taskId' | 'createdAt'>): Promise<Comment> => {
+    const headers = await getAuthHeaders();
     const response = await fetch(`${API_BASE_URL}/${taskId}/comments`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(commentData),
     });
     
@@ -106,7 +124,8 @@ export const taskApi = {
 
   // Get comments for a task
   getComments: async (taskId: string): Promise<Comment[]> => {
-    const response = await fetch(`${API_BASE_URL}/${taskId}/comments`);
+    const headers = await getAuthHeaders();
+    const response = await fetch(`${API_BASE_URL}/${taskId}/comments`, { headers });
     
     if (!response.ok) {
       throw new Error(`Failed to fetch comments: ${response.statusText}`);

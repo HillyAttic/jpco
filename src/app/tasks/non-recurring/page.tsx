@@ -7,6 +7,7 @@ import { NonRecurringTask } from '@/services/nonrecurring-task.service';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskListView } from '@/components/tasks/TaskListView';
 import { TaskModal } from '@/components/tasks/TaskModal';
+import { TaskStatusModal } from '@/components/tasks/TaskStatusModal';
 import { TaskFilter, TaskFilterState } from '@/components/tasks/TaskFilter';
 import { TaskStatsCard } from '@/components/tasks/TaskStatsCard';
 import { BulkActionToolbar } from '@/components/ui/BulkActionToolbar';
@@ -18,6 +19,7 @@ import { CardGridSkeleton, StatsGridSkeleton } from '@/components/ui/loading-ske
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Breadcrumb from '@/components/Breadcrumbs/Breadcrumb';
 import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 /**
  * Non-Recurring Tasks Page
@@ -25,6 +27,9 @@ import { PlusIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
  * Validates Requirements: 2.1, 2.2, 2.3, 10.1, 10.2, 10.3, 10.4
  */
 export default function NonRecurringTasksPage() {
+  const { isAdmin, isManager } = useEnhancedAuth();
+  const isAdminOrManager = isAdmin || isManager;
+  
   const {
     tasks,
     loading,
@@ -50,6 +55,7 @@ export default function NonRecurringTasksPage() {
   } = useBulkSelection(tasks);
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<NonRecurringTask | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState<TaskFilterState>({
@@ -97,7 +103,13 @@ export default function NonRecurringTasksPage() {
   // Open modal for editing task
   const handleEdit = (task: NonRecurringTask) => {
     setSelectedTask(task);
-    setIsModalOpen(true);
+    if (isAdminOrManager) {
+      // Admin/Manager: Open full edit modal
+      setIsModalOpen(true);
+    } else {
+      // Employee: Open simple status update modal
+      setIsStatusModalOpen(true);
+    }
   };
 
   // Handle delete with confirmation
@@ -167,6 +179,33 @@ export default function NonRecurringTasksPage() {
     }
   };
 
+  // Handle status update (for employees)
+  const handleStatusUpdate = async (taskId: string, status: 'pending' | 'in-progress' | 'completed') => {
+    setIsSubmitting(true);
+    
+    try {
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) {
+        throw new Error('Task not found');
+      }
+
+      // Update only the status field
+      await updateTask(taskId, {
+        ...task,
+        status,
+      });
+
+      setIsStatusModalOpen(false);
+      setSelectedTask(null);
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      alert('Failed to update task status. Please try again.');
+      throw error;
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   /**
    * Handle bulk delete
    * Validates Requirements: 10.1, 10.2
@@ -209,6 +248,7 @@ export default function NonRecurringTasksPage() {
     category: task.categoryId,
     categoryId: task.categoryId,
     contactId: task.contactId,
+    createdBy: task.createdBy,
   });
 
   return (
@@ -307,8 +347,6 @@ export default function NonRecurringTasksPage() {
               }}
               onDelete={handleDelete}
               onToggleComplete={handleToggleComplete}
-              selected={Array.from(selectedIds)}
-              onSelect={(id) => toggleSelection(id, !selectedIds.has(id))}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -383,7 +421,7 @@ export default function NonRecurringTasksPage() {
           loading={isBulkDeleting}
         />
 
-        {/* Task Modal - Requirements 2.2, 2.3 */}
+        {/* Task Modal - Requirements 2.2, 2.3 (Admin/Manager only) */}
         <TaskModal
           isOpen={isModalOpen}
           onClose={() => {
@@ -392,6 +430,22 @@ export default function NonRecurringTasksPage() {
           }}
           onSubmit={handleSubmit}
           task={selectedTask ? convertToTaskType(selectedTask) : null}
+          isLoading={isSubmitting}
+        />
+
+        {/* Task Status Modal (Employee only) */}
+        <TaskStatusModal
+          isOpen={isStatusModalOpen}
+          onClose={() => {
+            setIsStatusModalOpen(false);
+            setSelectedTask(null);
+          }}
+          onSubmit={handleStatusUpdate}
+          task={selectedTask ? {
+            id: selectedTask.id!,
+            title: selectedTask.title,
+            status: selectedTask.status,
+          } : null}
           isLoading={isSubmitting}
         />
       </div>

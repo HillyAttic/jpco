@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { nonRecurringTaskService } from '@/services/nonrecurring-task.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
+import { roleManagementService } from '@/services/role-management.service';
 
 // Validation schema for task creation
 const createTaskSchema = z.object({
@@ -20,15 +21,40 @@ const createTaskSchema = z.object({
 /**
  * GET /api/tasks
  * List all non-recurring tasks with optional filters
+ * Role-based access: Admin/Manager see all tasks, Employees see only their assigned tasks
  * Validates Requirements: 2.3
  */
 export async function GET(request: NextRequest) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Get auth token from header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return ErrorResponses.unauthorized('No authentication token provided');
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    
+    // Decode JWT token to get user ID (without verification for now)
+    // In production, you should verify the token properly
+    let userId: string;
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      userId = payload.user_id || payload.sub;
+      
+      if (!userId) {
+        return ErrorResponses.unauthorized('Invalid token payload');
+      }
+    } catch (error) {
+      return ErrorResponses.unauthorized('Invalid token format');
+    }
+
+    // Get user profile to check role
+    const userProfile = await roleManagementService.getUserProfile(userId);
+    if (!userProfile) {
+      return ErrorResponses.unauthorized('User profile not found');
+    }
+
+    const isAdminOrManager = userProfile.role === 'admin' || userProfile.role === 'manager';
 
     const { searchParams } = new URL(request.url);
     
@@ -40,7 +66,24 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
     };
 
-    const tasks = await nonRecurringTaskService.getAll(filters);
+    // Fetch all tasks
+    let tasks = await nonRecurringTaskService.getAll(filters);
+    
+    // Filter tasks based on user role
+    if (!isAdminOrManager) {
+      // Employees only see tasks assigned to them
+      tasks = tasks.filter(task => {
+        // Check if task has assignedTo array and if it includes the user's ID
+        if (!task.assignedTo || !Array.isArray(task.assignedTo)) {
+          return false;
+        }
+        return task.assignedTo.includes(userId);
+      });
+      
+      console.log(`Employee ${userId} filtered tasks:`, tasks.length);
+    } else {
+      console.log(`Admin/Manager ${userId} viewing all tasks:`, tasks.length);
+    }
     
     return NextResponse.json(tasks, { status: 200 });
   } catch (error) {
@@ -55,11 +98,26 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Get auth token from header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return ErrorResponses.unauthorized('No authentication token provided');
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    
+    // Decode JWT token to get user ID
+    let userId: string;
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      userId = payload.user_id || payload.sub;
+      
+      if (!userId) {
+        return ErrorResponses.unauthorized('Invalid token payload');
+      }
+    } catch (error) {
+      return ErrorResponses.unauthorized('Invalid token format');
+    }
 
     const body = await request.json();
 
@@ -74,11 +132,12 @@ export async function POST(request: NextRequest) {
 
     const taskData = validationResult.data;
 
-    // Convert dueDate string to Date object
+    // Convert dueDate string to Date object and add createdBy
     const taskToCreate = {
       ...taskData,
       description: taskData.description || '',
       dueDate: new Date(taskData.dueDate),
+      createdBy: userId, // Store the creator's user ID
     };
     
     const newTask = await nonRecurringTaskService.create(taskToCreate);

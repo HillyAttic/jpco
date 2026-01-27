@@ -15,6 +15,7 @@ export interface NonRecurringTask {
   assignedTo: string[]; // Array of employee IDs
   categoryId?: string; // Category ID reference
   contactId?: string; // Client ID reference
+  createdBy?: string; // User ID of the creator
   createdAt?: Date;
   updatedAt?: Date;
 }

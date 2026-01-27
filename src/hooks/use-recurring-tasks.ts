@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { RecurringTask } from '@/services/recurring-task.service';
+import { auth } from '@/lib/firebase';
 
 interface UseRecurringTasksOptions {
   initialFetch?: boolean;
@@ -25,6 +26,22 @@ interface UseRecurringTasksReturn {
   refreshTasks: () => Promise<void>;
   searchTasks: (query: string) => void;
   filterTasks: (filters: RecurringTaskFilters) => void;
+}
+
+/**
+ * Get authentication headers with Firebase token
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
+  const token = await user.getIdToken();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
 }
 
 /**
@@ -55,7 +72,8 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
       if (filters.category) params.append('category', filters.category);
       if (filters.isPaused !== undefined) params.append('isPaused', String(filters.isPaused));
 
-      const response = await fetch(`/api/recurring-tasks?${params.toString()}`);
+      const headers = await getAuthHeaders();
+      const response = await fetch(`/api/recurring-tasks?${params.toString()}`, { headers });
 
       if (!response.ok) {
         throw new Error('Failed to fetch recurring tasks');
@@ -102,11 +120,10 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
       setTasks((prev) => [optimisticTask, ...prev]);
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch('/api/recurring-tasks', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify(data),
         });
 
@@ -154,11 +171,10 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
       );
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(`/api/recurring-tasks/${id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify(data),
         });
 
@@ -214,8 +230,10 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
       }
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(`/api/recurring-tasks/${id}?option=${option}`, {
           method: 'DELETE',
+          headers,
         });
 
         if (!response.ok) {
@@ -267,8 +285,10 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
       );
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(`/api/recurring-tasks/${id}/pause`, {
           method: 'PATCH',
+          headers,
         });
 
         if (!response.ok) {
@@ -318,8 +338,10 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
       );
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(`/api/recurring-tasks/${id}/resume`, {
           method: 'PATCH',
+          headers,
         });
 
         if (!response.ok) {
@@ -378,11 +400,10 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
       );
 
       try {
+        const headers = await getAuthHeaders();
         const response = await fetch(`/api/recurring-tasks/${id}/complete`, {
           method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers,
           body: JSON.stringify({ completedBy }),
         });
 

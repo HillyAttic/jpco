@@ -25,7 +25,10 @@ export function TeamPerformanceChart({ teamMembers }: TeamPerformanceChartProps)
       <CardContent>
         <div className="space-y-4">
           {teamMembers.length === 0 ? (
-            <p className="text-sm text-gray-500 text-center py-4">No team data available</p>
+            <div className="text-center py-8">
+              <p className="text-sm text-gray-500 mb-2">No team members with assigned tasks yet</p>
+              <p className="text-xs text-gray-400">Assign tasks to team members to see their performance here</p>
+            </div>
           ) : (
             teamMembers.map((member, index) => {
               const totalTasks = member.tasksCompleted + member.tasksInProgress;

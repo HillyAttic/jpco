@@ -38,20 +38,40 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
   const [filters, setFilters] = useState<TaskFilters>({});
 
   /**
-   * Fetch tasks from API
+   * Helper function to get authentication token
+   */
+  const getAuthToken = async (): Promise<string> => {
+    const { auth } = await import('@/lib/firebase');
+    const user = auth.currentUser;
+    
+    if (!user) {
+      throw new Error('User not authenticated');
+    }
+
+    return await user.getIdToken();
+  };
+
+  /**
+   * Fetch tasks from API with authentication
    */
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
+      const token = await getAuthToken();
+
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       if (filters.status) params.append('status', filters.status);
       if (filters.priority) params.append('priority', filters.priority);
       if (filters.category) params.append('category', filters.category);
 
-      const response = await fetch(`/api/tasks?${params.toString()}`);
+      const response = await fetch(`/api/tasks?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch tasks');
@@ -78,11 +98,13 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
   }, [initialFetch, fetchTasks]);
 
   /**
-   * Create a new task with optimistic update
+   * Create a new task with optimistic update and authentication
    * Validates Requirements: 9.3
    */
   const createTask = useCallback(
     async (data: Omit<NonRecurringTask, 'id' | 'createdAt' | 'updatedAt'>) => {
+      const token = await getAuthToken();
+
       // Generate temporary ID for optimistic update
       const tempId = `temp-${Date.now()}`;
       const optimisticTask: NonRecurringTask = {
@@ -100,6 +122,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
           },
           body: JSON.stringify(data),
         });
