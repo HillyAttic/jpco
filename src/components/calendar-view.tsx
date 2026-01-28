@@ -300,7 +300,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
             description: selectedTask.description,
             recurrencePattern: selectedTask.recurrencePattern as any,
             priority: selectedTask.priority,
-            status: selectedTask.status,
+            status: selectedTask.status as 'pending' | 'in-progress' | 'completed',
             startDate: selectedTask.dueDate || new Date(),
             nextOccurrence: selectedTask.dueDate || new Date(),
             contactIds: [],

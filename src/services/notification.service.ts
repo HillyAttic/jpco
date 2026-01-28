@@ -244,18 +244,7 @@ class NotificationService {
         tag: notification.type,
         data: {
           url: notification.actionUrl || '/',
-          notificationId: notification.id,
         },
-        actions: notification.actionUrl ? [
-          {
-            action: 'open',
-            title: 'View',
-          },
-          {
-            action: 'close',
-            title: 'Dismiss',
-          },
-        ] : [],
       });
     } catch (error) {
       console.error('Error sending push notification:', error);

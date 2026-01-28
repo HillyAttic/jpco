@@ -101,7 +101,7 @@ export function RecurringTaskClientModal({
   const toggleCompletion = (clientId: string, monthKey: string) => {
     setClientCompletions(prev => {
       const newMap = new Map(prev);
-      const clientMonths = new Set(newMap.get(clientId) || new Set());
+      const clientMonths = new Set<string>(newMap.get(clientId) || new Set<string>());
       
       if (clientMonths.has(monthKey)) {
         clientMonths.delete(monthKey);
