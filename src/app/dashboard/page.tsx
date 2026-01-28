@@ -235,11 +235,21 @@ export default function DashboardPage() {
       // Fetch non-recurring tasks
       const nonRecurringTasks = await taskApi.getTasks();
       
-      // Fetch recurring tasks
-      const recurringTasks = await recurringTaskService.getAll();
+      // Fetch recurring tasks using API (which handles team-based filtering)
+      const token = await currentUser.getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+      
+      const recurringResponse = await fetch('/api/recurring-tasks', { headers });
+      if (!recurringResponse.ok) {
+        throw new Error('Failed to fetch recurring tasks');
+      }
+      const recurringTasks = await recurringResponse.json();
       
       // Convert recurring tasks to dashboard tasks format
-      const recurringDashboardTasks: DashboardTask[] = recurringTasks.map(task => ({
+      const recurringDashboardTasks: DashboardTask[] = recurringTasks.map((task: RecurringTask) => ({
         id: task.id!,
         title: task.title,
         description: task.description,
@@ -255,16 +265,21 @@ export default function DashboardPage() {
       }));
       
       // Combine both types of tasks
+      // Note: Recurring tasks are already filtered by the API based on team membership
       let allTasks = [
         ...nonRecurringTasks.map(task => ({ ...task, isRecurring: false })),
         ...recurringDashboardTasks
       ];
       
-      // For employees, filter to show only their assigned tasks
+      // For employees, filter non-recurring tasks to show only their assigned tasks
+      // Recurring tasks are already filtered by the API
       if (!canViewAllTasks) {
-        allTasks = allTasks.filter(task => 
-          task.assignedTo && task.assignedTo.includes(user.uid)
-        );
+        allTasks = allTasks.filter(task => {
+          // Keep all recurring tasks (already filtered by API)
+          if (task.isRecurring) return true;
+          // Filter non-recurring tasks by assignedTo
+          return task.assignedTo && task.assignedTo.includes(user.uid);
+        });
       }
       
       setTasks(allTasks);

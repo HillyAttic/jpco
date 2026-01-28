@@ -57,12 +57,14 @@ export const NAV_DATA = [
         url: "/teams",
         icon: Icons.User,
         items: [],
+        requiresRole: ['admin', 'manager'], // Only managers and admins can see this
       },
       {
         title: "Employees",
         url: "/employees",
         icon: Icons.User,
         items: [],
+        requiresRole: ['admin', 'manager'], // Only managers and admins can see this
       },
       {
         title: "Attendance",
@@ -75,28 +77,30 @@ export const NAV_DATA = [
           {
             title: "Attendance Tray",
             url: "/attendance/tray",
+            requiresRole: ['admin', 'manager'], // Only managers and admins can see this
           },
         ],
       },
 
-      {
-        title: "Authentication",
-        icon: Icons.Authentication,
-        items: [
-          {
-            title: "Sign In",
-            url: "/auth/sign-in",
-          },
-          {
-            title: "Sign Up",
-            url: "/auth/signup",
-          },
-          {
-            title: "Forgot Password",
-            url: "/auth/forgot-password",
-          },
-        ],
-      },
+      // Authentication menu item hidden - users can access auth pages directly via URL if needed
+      // {
+      //   title: "Authentication",
+      //   icon: Icons.Authentication,
+      //   items: [
+      //     {
+      //       title: "Sign In",
+      //       url: "/auth/sign-in",
+      //     },
+      //     {
+      //       title: "Sign Up",
+      //       url: "/auth/signup",
+      //     },
+      //     {
+      //       title: "Forgot Password",
+      //       url: "/auth/forgot-password",
+      //     },
+      //   ],
+      // },
     ],
   },
 ];

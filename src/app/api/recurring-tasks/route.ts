@@ -94,20 +94,100 @@ export async function GET(request: NextRequest) {
     // Fetch all tasks
     let tasks = await recurringTaskService.getAll(filters);
     
+    console.log(`[Recurring Tasks API] Total tasks fetched: ${tasks.length}`);
+    console.log(`[Recurring Tasks API] User Firebase Auth UID: ${userId}`);
+    console.log(`[Recurring Tasks API] User role: ${userProfile.role}`);
+    console.log(`[Recurring Tasks API] Is Admin/Manager: ${isAdminOrManager}`);
+    
     // Filter tasks based on user role
     if (!isAdminOrManager) {
-      // Employees only see tasks assigned to them
+      // CRITICAL FIX: Team members are stored with OLD employee IDs, not Firebase Auth UIDs
+      // We need to find ALL possible IDs that could represent this user
+      
+      const { teamService } = await import('@/services/team.service');
+      const { collection: firestoreCollection, query: firestoreQuery, where: firestoreWhere, getDocs: firestoreGetDocs } = await import('firebase/firestore');
+      const { db } = await import('@/lib/firebase');
+      
+      // Collect all possible user IDs
+      const userIds = new Set<string>([userId]); // Start with Auth UID
+      
+      console.log(`[Recurring Tasks API] User email: ${userProfile.email}`);
+      
+      // Find all user/employee documents that might represent this user
+      // Check by email match in users collection
+      try {
+        const usersRef = firestoreCollection(db, 'users');
+        const emailQuery = firestoreQuery(usersRef, firestoreWhere('email', '==', userProfile.email));
+        const emailSnapshot = await firestoreGetDocs(emailQuery);
+        
+        emailSnapshot.forEach(doc => {
+          userIds.add(doc.id);
+          console.log(`[Recurring Tasks API] Found user document by email: ${doc.id}`);
+        });
+      } catch (error) {
+        console.error(`[Recurring Tasks API] Error finding user by email:`, error);
+      }
+      
+      // Also check old employees collection if it exists
+      try {
+        const employeesRef = firestoreCollection(db, 'employees');
+        const empEmailQuery = firestoreQuery(employeesRef, firestoreWhere('email', '==', userProfile.email));
+        const empSnapshot = await firestoreGetDocs(empEmailQuery);
+        
+        empSnapshot.forEach(doc => {
+          userIds.add(doc.id);
+          console.log(`[Recurring Tasks API] Found employee document by email: ${doc.id}`);
+        });
+      } catch (error) {
+        // employees collection might not exist, that's okay
+        console.log(`[Recurring Tasks API] No employees collection found (this is normal)`);
+      }
+      
+      console.log(`[Recurring Tasks API] All possible user IDs:`, Array.from(userIds));
+      
+      // Get teams for ALL possible user IDs
+      let userTeams: any[] = [];
+      for (const id of userIds) {
+        const teams = await teamService.getTeamsByMember(id);
+        teams.forEach(team => {
+          if (!userTeams.some(t => t.id === team.id)) {
+            userTeams.push(team);
+          }
+        });
+      }
+      
+      const userTeamIds = userTeams.map(team => team.id);
+      
+      console.log(`[Recurring Tasks API] User teams:`, userTeams.map(t => ({ id: t.id, name: t.name })));
+      console.log(`[Recurring Tasks API] User team IDs:`, userTeamIds);
+      
+      // Employees see tasks that are:
+      // 1. Directly assigned to them (in contactIds), OR
+      // 2. Assigned to a team they are a member of
       tasks = tasks.filter(task => {
-        // Check if task has contactIds array and if it includes the user's ID
-        if (!task.contactIds || !Array.isArray(task.contactIds)) {
-          return false;
-        }
-        return task.contactIds.includes(userId);
+        // Check if task is directly assigned to user (check all possible user IDs)
+        const isDirectlyAssigned = task.contactIds && 
+          Array.isArray(task.contactIds) && 
+          Array.from(userIds).some(id => task.contactIds.includes(id));
+        
+        // Check if task is assigned to a team the user is a member of
+        const isTeamAssigned = task.teamId && userTeamIds.includes(task.teamId);
+        
+        console.log(`[Recurring Tasks API] Task "${task.title}":`, {
+          taskId: task.id,
+          teamId: task.teamId,
+          contactIdsCount: task.contactIds?.length || 0,
+          isDirectlyAssigned,
+          isTeamAssigned,
+          willShow: isDirectlyAssigned || isTeamAssigned
+        });
+        
+        return isDirectlyAssigned || isTeamAssigned;
       });
       
-      console.log(`Employee ${userId} filtered recurring tasks:`, tasks.length);
+      console.log(`[Recurring Tasks API] Employee ${userId} filtered recurring tasks: ${tasks.length}`);
     } else {
-      console.log(`Admin/Manager ${userId} viewing all recurring tasks:`, tasks.length);
+      console.log(`[Recurring Tasks API] Admin/Manager ${userId} viewing all recurring tasks: ${tasks.length}`);
     }
     
     return NextResponse.json(tasks, { status: 200 });

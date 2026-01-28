@@ -16,6 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LocationMapModal } from '@/components/attendance/LocationMapModal';
+import { ManagerGuard } from '@/components/Auth/PermissionGuard';
 import { 
   Clock, 
   MapPin, 
@@ -25,7 +26,8 @@ import {
   ChevronRight,
   Users,
   Filter,
-  Download
+  Download,
+  ShieldAlert
 } from 'lucide-react';
 import { employeeService } from '@/services/employee.service';
 
@@ -307,7 +309,23 @@ export default function AttendanceTrayPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <ManagerGuard
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-full">
+            <ShieldAlert className="w-16 h-16 text-yellow-600 dark:text-yellow-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Access Restricted</h2>
+          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+            You don't have permission to access this page. Only managers and administrators can view the attendance tray.
+          </p>
+          <Button onClick={() => window.history.back()} variant="outline">
+            Go Back
+          </Button>
+        </div>
+      }
+    >
+      <div className="container mx-auto py-8 px-4">
       {/* Header */}
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -562,5 +580,6 @@ export default function AttendanceTrayPage() {
         />
       )}
     </div>
+  </ManagerGuard>
   );
 }

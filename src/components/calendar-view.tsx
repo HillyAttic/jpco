@@ -8,6 +8,9 @@ import {
   CalendarDaysIcon,
   ArrowPathIcon
 } from '@heroicons/react/24/outline';
+import { RecurringTaskClientModal } from '@/components/recurring-tasks/RecurringTaskClientModal';
+import { RecurringTask } from '@/services/recurring-task.service';
+import { useModal } from '@/contexts/modal-context';
 
 interface CalendarTask extends Task {
   isRecurring?: boolean;
@@ -17,11 +20,16 @@ interface CalendarTask extends Task {
 
 interface CalendarViewProps {
   tasks: CalendarTask[];
+  onTaskClick?: (task: CalendarTask) => void;
 }
 
-export function CalendarView({ tasks }: CalendarViewProps) {
+export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
+  const [isClientModalOpen, setIsClientModalOpen] = useState(false);
+  const [clients, setClients] = useState<any[]>([]);
+  const { openModal, closeModal } = useModal();
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -82,6 +90,36 @@ export function CalendarView({ tasks }: CalendarViewProps) {
       month: 'long', 
       day: 'numeric' 
     });
+  };
+
+  const handleTaskClick = async (task: CalendarTask, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // If it's a recurring task, open the client modal
+    if (task.isRecurring && task.recurringTaskId) {
+      setSelectedTask(task);
+      
+      // Fetch clients for this task
+      try {
+        const response = await fetch('/api/clients');
+        const data = await response.json();
+        setClients(data.data || []);
+      } catch (error) {
+        console.error('Error fetching clients:', error);
+        setClients([]);
+      }
+      
+      setIsClientModalOpen(true);
+      openModal(); // Hide header when modal opens
+    } else if (onTaskClick) {
+      onTaskClick(task);
+    }
+  };
+
+  const handleCloseModal = () => {
+    setIsClientModalOpen(false);
+    setSelectedTask(null);
+    closeModal(); // Show header when modal closes
   };
 
   const days = getDaysInMonth(currentDate);
@@ -174,7 +212,8 @@ export function CalendarView({ tasks }: CalendarViewProps) {
                       {dayTasks.slice(0, 3).map(task => (
                         <div
                           key={task.id}
-                          className={`text-xs p-1 rounded truncate flex items-center gap-1 ${
+                          onClick={(e) => handleTaskClick(task, e)}
+                          className={`text-xs p-1 rounded truncate flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${
                             task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
                             task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
                             task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
@@ -212,7 +251,11 @@ export function CalendarView({ tasks }: CalendarViewProps) {
             {getTasksForDate(selectedDate).length > 0 ? (
               <div className="space-y-2">
                 {getTasksForDate(selectedDate).map(task => (
-                  <div key={task.id} className="p-3 bg-white rounded border">
+                  <div 
+                    key={task.id} 
+                    className="p-3 bg-white rounded border cursor-pointer hover:bg-gray-50 transition-colors"
+                    onClick={(e) => handleTaskClick(task, e)}
+                  >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
@@ -245,6 +288,30 @@ export function CalendarView({ tasks }: CalendarViewProps) {
           </div>
         )}
       </div>
+
+      {/* Client Tracking Modal */}
+      {selectedTask && (
+        <RecurringTaskClientModal
+          isOpen={isClientModalOpen}
+          onClose={handleCloseModal}
+          task={{
+            id: selectedTask.recurringTaskId || selectedTask.id,
+            title: selectedTask.title,
+            description: selectedTask.description,
+            recurrencePattern: selectedTask.recurrencePattern as any,
+            priority: selectedTask.priority,
+            status: selectedTask.status,
+            startDate: selectedTask.dueDate || new Date(),
+            nextOccurrence: selectedTask.dueDate || new Date(),
+            contactIds: [],
+            completionHistory: [],
+            isPaused: false,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          }}
+          clients={clients}
+        />
+      )}
     </div>
   );
 }

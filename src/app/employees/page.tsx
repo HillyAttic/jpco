@@ -15,7 +15,8 @@ import { Button } from '@/components/ui/button';
 import { NoResultsEmptyState, NoDataEmptyState } from '@/components/ui/empty-state';
 import { CardGridSkeleton, StatsGridSkeleton } from '@/components/ui/loading-skeletons';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { PlusIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
+import { ManagerGuard } from '@/components/Auth/PermissionGuard';
+import { PlusIcon, ArrowUpTrayIcon, ShieldExclamationIcon } from '@heroicons/react/24/outline';
 import { z } from 'zod';
 
 // Form schema for employee data
@@ -358,8 +359,24 @@ export default function EmployeesPage() {
   }
 
   return (
-    <ErrorBoundary>
-      <div className="space-y-6">
+    <ManagerGuard
+      fallback={
+        <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
+          <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-full">
+            <ShieldExclamationIcon className="w-16 h-16 text-yellow-600 dark:text-yellow-400" />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Access Restricted</h2>
+          <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+            You don't have permission to access this page. Only managers and administrators can view employee management.
+          </p>
+          <Button onClick={() => window.history.back()} variant="outline">
+            Go Back
+          </Button>
+        </div>
+      }
+    >
+      <ErrorBoundary>
+        <div className="space-y-6">
         {/* Page Title and Add Button */}
         <div className="flex items-center justify-between">
           <div>
@@ -620,5 +637,6 @@ export default function EmployeesPage() {
         />
       </div>
     </ErrorBoundary>
+  </ManagerGuard>
   );
 }

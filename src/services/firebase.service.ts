@@ -8,6 +8,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  getDocsFromServer,
   addDoc,
   updateDoc,
   deleteDoc,
@@ -49,6 +50,7 @@ export interface QueryOptions {
   orderByField?: string;
   orderDirection?: 'asc' | 'desc';
   pagination?: PaginationParams;
+  forceServerFetch?: boolean;
 }
 
 /**
@@ -289,13 +291,16 @@ export class FirebaseService<T extends { id?: string }> {
   /**
    * Get all documents with optional filtering, sorting, and pagination
    */
-  async getAll(options?: QueryOptions): Promise<T[]> {
+  async getAll(options?: QueryOptions & { forceServerFetch?: boolean }): Promise<T[]> {
     try {
       const collectionRef = collection(db, this.collectionName);
       const constraints = this.buildQueryConstraints(options);
       const q = query(collectionRef, ...constraints);
 
-      const querySnapshot = await getDocs(q);
+      // Use getDocsFromServer to bypass cache if forceServerFetch is true
+      const querySnapshot = options?.forceServerFetch 
+        ? await getDocsFromServer(q)
+        : await getDocs(q);
       const documents: T[] = [];
 
       querySnapshot.forEach((doc) => {
@@ -330,7 +335,11 @@ export class FirebaseService<T extends { id?: string }> {
       });
       
       const q = query(collectionRef, ...constraints);
-      const querySnapshot = await getDocs(q);
+      
+      // Use getDocsFromServer to bypass cache if forceServerFetch is true
+      const querySnapshot = options?.forceServerFetch 
+        ? await getDocsFromServer(q)
+        : await getDocs(q);
 
       const documents: T[] = [];
       let lastDoc: QueryDocumentSnapshot<DocumentData> | null = null;

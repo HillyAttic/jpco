@@ -33,8 +33,26 @@ export default function CalendarPage() {
       // Fetch non-recurring tasks
       const nonRecurringTasks = await taskApi.getTasks();
       
-      // Fetch recurring tasks
-      const recurringTasks = await recurringTaskService.getAll();
+      // Fetch recurring tasks using API (which handles team-based filtering)
+      const { auth } = await import('@/lib/firebase');
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        console.error('User not authenticated');
+        setLoading(false);
+        return;
+      }
+      
+      const token = await currentUser.getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+      
+      const recurringResponse = await fetch('/api/recurring-tasks', { headers });
+      if (!recurringResponse.ok) {
+        throw new Error('Failed to fetch recurring tasks');
+      }
+      const recurringTasks = await recurringResponse.json();
       
       // Convert recurring tasks to calendar tasks with all occurrences
       const recurringCalendarTasks = generateRecurringTaskOccurrences(recurringTasks);

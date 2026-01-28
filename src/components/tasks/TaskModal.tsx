@@ -19,6 +19,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import Select from '@/components/ui/select';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { isKeyboardAccessible } from '@/lib/accessibility';
 
 // Form-specific schema matching the design requirements
 const taskFormSchema = z.object({

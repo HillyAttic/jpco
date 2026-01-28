@@ -10,12 +10,13 @@ import { NAV_DATA } from "./data";
 import { ArrowLeftIcon, ChevronUp } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
-import { AdminGuard } from "@/components/Auth/PermissionGuard";
+import { useAuthEnhanced } from "@/hooks/use-auth-enhanced";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { setIsOpen, isOpen, isMobile, isTablet, isDesktop, toggleSidebar, variant } = useSidebarContext();
   const { device, isTouchDevice } = useResponsive();
+  const { hasRole } = useAuthEnhanced();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
   const toggleExpanded = (title: string) => {
@@ -166,20 +167,33 @@ export function Sidebar() {
 
                 <nav role="navigation" aria-label={section.label}>
                   <ul className="space-y-2">
-                    {section.items.map((item) => {
-                      // Apply admin-only protection to Authentication menu item
-                      const isAuthenticationItem = item.title === "Authentication";
-                      
-                      const menuItemContent = (
-                        <li key={item.title}>
-                          {item.items.length ? (
-                            <div>
-                              <MenuItem
-                                isActive={item.items.some(
-                                  ({ url }) => url === pathname,
-                                )}
-                                onClick={() => toggleExpanded(item.title)}
-                                className={cn(
+                    {section.items
+                      .filter((item: any) => {
+                        // Filter out items that require specific roles
+                        if (item.requiresRole) {
+                          return hasRole(item.requiresRole);
+                        }
+                        return true;
+                      })
+                      .map((item) => {
+                        // Filter subitems based on role requirements
+                        const filteredSubItems = item.items.filter((subItem: any) => {
+                          if (subItem.requiresRole) {
+                            return hasRole(subItem.requiresRole);
+                          }
+                          return true;
+                        });
+                        
+                        const menuItemContent = (
+                          <li key={item.title}>
+                            {filteredSubItems.length ? (
+                              <div>
+                                <MenuItem
+                                  isActive={filteredSubItems.some(
+                                    ({ url }) => url === pathname,
+                                  )}
+                                  onClick={() => toggleExpanded(item.title)}
+                                  className={cn(
                                   // Touch-optimized sizing
                                   isTouchDevice && "min-h-[44px]",
                                   // Tablet condensed state
@@ -197,7 +211,7 @@ export function Sidebar() {
                                 <span className={cn(
                                   variant === 'tablet' && !isOpen && "hidden"
                                 )}>{item.title}</span>
-                                {(variant !== 'tablet' || isOpen) && item.items.length > 0 && (
+                                {(variant !== 'tablet' || isOpen) && filteredSubItems.length > 0 && (
                                   <ChevronUp
                                     className={cn(
                                       "ml-auto rotate-180 transition-transform duration-200",
@@ -212,7 +226,7 @@ export function Sidebar() {
                               {/* Submenu */}
                               {expandedItems.includes(item.title) && (variant !== 'tablet' || isOpen) && (
                                 <ul className="ml-9 mr-0 space-y-1.5 pb-[15px] pr-0 pt-2" role="menu">
-                                  {item.items.map((subItem) => (
+                                  {filteredSubItems.map((subItem) => (
                                     <li key={subItem.title} role="none">
                                       <MenuItem
                                         as="link"
@@ -264,15 +278,6 @@ export function Sidebar() {
                           )}
                         </li>
                       );
-
-                      // Wrap Authentication menu item with AdminGuard
-                      if (isAuthenticationItem) {
-                        return (
-                          <AdminGuard key={item.title} showFallback={false}>
-                            {menuItemContent}
-                          </AdminGuard>
-                        );
-                      }
 
                       return menuItemContent;
                     })}

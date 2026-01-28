@@ -178,9 +178,32 @@ export const teamService = {
    */
   async getTeamsByMember(memberId: string): Promise<Team[]> {
     const allTeams = await teamFirebaseService.getAll();
-    return allTeams.filter((team) =>
-      team.members.some((m) => m.id === memberId)
-    );
+    console.log(`[Team Service] Getting teams for member: ${memberId}`);
+    console.log(`[Team Service] Total teams in database: ${allTeams.length}`);
+    
+    const memberTeams = allTeams.filter((team) => {
+      // Check if member is in the members array (by id)
+      const isMember = team.members.some((m) => m.id === memberId);
+      // Check if member is the leader
+      const isLeader = team.leaderId === memberId;
+      // Check if member is in memberIds array
+      const isInMemberIds = team.memberIds && team.memberIds.includes(memberId);
+      
+      console.log(`[Team Service] Team "${team.name}" (${team.id}):`, {
+        members: team.members.map(m => ({ id: m.id, name: m.name })),
+        memberIds: team.memberIds,
+        leaderId: team.leaderId,
+        isMember,
+        isLeader,
+        isInMemberIds,
+        willInclude: isMember || isLeader || isInMemberIds
+      });
+      
+      return isMember || isLeader || isInMemberIds;
+    });
+    
+    console.log(`[Team Service] Member ${memberId} is in ${memberTeams.length} teams`);
+    return memberTeams;
   },
 
   /**
