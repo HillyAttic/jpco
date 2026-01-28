@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NonRecurringTask } from '@/services/nonrecurring-task.service';
 import { activityService } from '@/services/activity.service';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 interface UseTasksOptions {
   initialFetch?: boolean;
@@ -24,6 +25,22 @@ interface UseTasksReturn {
   refreshTasks: () => Promise<void>;
   searchTasks: (query: string) => void;
   filterTasks: (filters: TaskFilters) => void;
+}
+
+/**
+ * Helper function to get user name from Firestore
+ */
+async function getUserName(userId: string, fallbackEmail: string): Promise<string> {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      return userData.name || userData.displayName || fallbackEmail;
+    }
+  } catch (error) {
+    console.error('Error fetching user name:', error);
+  }
+  return fallbackEmail;
 }
 
 /**
@@ -144,13 +161,15 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         // Log activity
         const user = auth.currentUser;
         if (user) {
+          const userName = await getUserName(user.uid, user.email || 'Unknown User');
+          
           await activityService.logActivity({
             type: 'created',
             entityType: 'task',
             entityId: newTask.id,
             entityTitle: newTask.title,
             userId: user.uid,
-            userName: user.displayName || user.email || 'Unknown User',
+            userName,
             userEmail: user.email || '',
           });
         }
@@ -210,13 +229,15 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         // Log activity
         const user = auth.currentUser;
         if (user) {
+          const userName = await getUserName(user.uid, user.email || 'Unknown User');
+          
           await activityService.logActivity({
             type: 'updated',
             entityType: 'task',
             entityId: updatedTask.id,
             entityTitle: updatedTask.title,
             userId: user.uid,
-            userName: user.displayName || user.email || 'Unknown User',
+            userName,
             userEmail: user.email || '',
           });
         }
@@ -262,13 +283,15 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         // Log activity
         const user = auth.currentUser;
         if (user) {
+          const userName = await getUserName(user.uid, user.email || 'Unknown User');
+          
           await activityService.logActivity({
             type: 'deleted',
             entityType: 'task',
             entityId: originalTask.id!,
             entityTitle: originalTask.title,
             userId: user.uid,
-            userName: user.displayName || user.email || 'Unknown User',
+            userName,
             userEmail: user.email || '',
           });
         }
@@ -327,13 +350,15 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         if (newStatus === 'completed') {
           const user = auth.currentUser;
           if (user) {
+            const userName = await getUserName(user.uid, user.email || 'Unknown User');
+            
             await activityService.logActivity({
               type: 'completed',
               entityType: 'task',
               entityId: updatedTask.id,
               entityTitle: updatedTask.title,
               userId: user.uid,
-              userName: user.displayName || user.email || 'Unknown User',
+              userName,
               userEmail: user.email || '',
             });
           }

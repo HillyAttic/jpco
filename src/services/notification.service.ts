@@ -104,7 +104,6 @@ class NotificationService {
     const q = query(
       collection(db, this.collectionName),
       where('userId', '==', userId),
-      orderBy('createdAt', 'desc'),
       limit(20)
     );
 
@@ -115,6 +114,9 @@ class NotificationService {
         createdAt: doc.data().createdAt?.toDate() || new Date(),
         readAt: doc.data().readAt?.toDate(),
       })) as Notification[];
+
+      // Sort client-side instead of using orderBy to avoid index requirement
+      notifications.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       callback(notifications);
     });

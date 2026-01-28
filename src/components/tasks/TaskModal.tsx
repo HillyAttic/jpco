@@ -120,7 +120,7 @@ export function TaskModal({
       }
     };
 
-    if (isOpen) {
+    if (isOpen) { 
       loadCategories();
     }
   }, [isOpen]);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { notificationService, Notification } from '@/services/notification.service';
+import { notificationService } from '@/services/notification.service';
+import type { Notification } from '@/services/notification.service';
 import { useAuthEnhanced } from './use-auth-enhanced';
 
 export function useNotifications() {
