@@ -167,18 +167,25 @@ export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd }: Enhanced
             (task) => task.status === column.id
           );
           
+          // Hide "In Progress" and "Completed" columns on mobile
+          const isHiddenOnMobile = column.id === 'in-progress' || column.id === 'completed';
+          
           return (
-            <KanbanColumn
+            <div
               key={column.id}
-              id={column.id}
-              title={column.title}
-              color={column.color}
-              tasks={columnTasks}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDrop={handleDrop}
-              onTaskClick={handleTaskClick}
-            />
+              className={isHiddenOnMobile ? 'hidden md:block' : ''}
+            >
+              <KanbanColumn
+                id={column.id}
+                title={column.title}
+                color={column.color}
+                tasks={columnTasks}
+                onDragStart={handleDragStart}
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                onTaskClick={handleTaskClick}
+              />
+            </div>
           );
         })}
       </div>

@@ -16,12 +16,14 @@ export const NAV_DATA = [
         url: "/calendar",
         icon: Icons.Calendar,
         items: [],
+        hideOnMobile: true, // Hide on mobile view
       },
       {
         title: "Categories",
         url: "/categories",
         icon: Icons.Table,
         items: [],
+        hideOnMobile: true, // Hide on mobile view
       },
       {
         title: "Kanban",
@@ -39,6 +41,7 @@ export const NAV_DATA = [
         url: "/clients",
         icon: Icons.User,
         items: [],
+        hideOnMobile: true, // Hide on mobile view
       },
       {
         title: "Non-Recurring",

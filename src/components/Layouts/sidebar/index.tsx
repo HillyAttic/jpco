@@ -169,6 +169,10 @@ export function Sidebar() {
                   <ul className="space-y-2">
                     {section.items
                       .filter((item: any) => {
+                        // Filter out items hidden on mobile
+                        if (isMobile && item.hideOnMobile) {
+                          return false;
+                        }
                         // Filter out items that require specific roles
                         if (item.requiresRole) {
                           return hasRole(item.requiresRole);

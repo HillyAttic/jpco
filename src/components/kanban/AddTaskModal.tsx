@@ -21,9 +21,6 @@ export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
     status: 'todo' as KanbanStatus,
     dueDate: new Date().toISOString().split('T')[0],
     priority: 'medium' as 'low' | 'medium' | 'high',
-    assigneeName: '',
-    assigneeRole: '',
-    tags: '',
   });
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -43,11 +40,11 @@ export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
       commentsCount: 0,
       attachmentsCount: 0,
       assignee: {
-        name: formData.assigneeName || 'Unassigned',
-        role: formData.assigneeRole || 'Team Member',
+        name: 'Unassigned',
+        role: 'Team Member',
         avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
       },
-      tags: formData.tags ? formData.tags.split(',').map(t => t.trim()).filter(Boolean) : [],
+      tags: [],
     };
 
     onSave(newTask);
@@ -61,9 +58,6 @@ export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
       status: 'todo',
       dueDate: new Date().toISOString().split('T')[0],
       priority: 'medium',
-      assigneeName: '',
-      assigneeRole: '',
-      tags: '',
     });
     onClose();
   };
@@ -148,49 +142,6 @@ export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
               value={formData.dueDate}
               onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Assignee */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Assignee Name
-              </label>
-              <input
-                type="text"
-                value={formData.assigneeName}
-                onChange={(e) => setFormData({ ...formData, assigneeName: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="John Doe"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Assignee Role
-              </label>
-              <input
-                type="text"
-                value={formData.assigneeRole}
-                onChange={(e) => setFormData({ ...formData, assigneeRole: e.target.value })}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="Developer"
-              />
-            </div>
-          </div>
-
-          {/* Tags */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Tags (comma-separated)
-            </label>
-            <input
-              type="text"
-              value={formData.tags}
-              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              placeholder="frontend, urgent, bug"
             />
           </div>
 

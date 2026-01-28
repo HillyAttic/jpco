@@ -246,124 +246,229 @@ export function TaskListView({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-      {/* Table Header */}
-      <div className="grid grid-cols-12 gap-2 px-3 py-3 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-        <div className="col-span-2">Title</div>
-        <div className="col-span-2">Client</div>
-        <div className="col-span-1">Category</div>
-        <div className="col-span-1">Status</div>
-        <div className="col-span-1">Priority</div>
-        <div className="col-span-2">Due Date</div>
-        <div className="col-span-2">
-          {isAdminOrManager ? 'Assigned To' : 'Assigned By'}
+    <>
+      {/* Desktop Table View - Hidden on mobile */}
+      <div className="hidden md:block bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-2 px-3 py-3 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+          <div className="col-span-2">Title</div>
+          <div className="col-span-2">Client</div>
+          <div className="col-span-1">Category</div>
+          <div className="col-span-1">Status</div>
+          <div className="col-span-1">Priority</div>
+          <div className="col-span-2">Due Date</div>
+          <div className="col-span-2">
+            {isAdminOrManager ? 'Assigned To' : 'Assigned By'}
+          </div>
+          <div className="col-span-1">Actions</div>
         </div>
-        <div className="col-span-1">Actions</div>
+
+        {/* Table Body */}
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          {tasks.map((task) => (
+            <div
+              key={task.id}
+              className="grid grid-cols-12 gap-2 px-3 py-3 text-xs transition-colors bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800"
+            >
+              {/* Title */}
+              <div className="col-span-2">
+                <div className="font-medium text-gray-900 dark:text-white truncate" title={task.title}>
+                  {task.title}
+                </div>
+                {task.description && (
+                  <div className="text-gray-500 dark:text-gray-400 text-xs mt-0.5 truncate" title={task.description}>
+                    {task.description}
+                  </div>
+                )}
+              </div>
+
+              {/* Client */}
+              <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
+                <span className="truncate" title={getClientName(task.contactId)}>
+                  {getClientName(task.contactId)}
+                </span>
+              </div>
+
+              {/* Category */}
+              <div className="col-span-1 text-gray-700 dark:text-gray-300 flex items-center">
+                <span className="truncate" title={getCategoryName(task.categoryId || task.category)}>
+                  {getCategoryName(task.categoryId || task.category)}
+                </span>
+              </div>
+
+              {/* Status */}
+              <div className="col-span-1 flex items-center">
+                <Badge className={`${getStatusColor(task.status)} text-xs px-1.5 py-0.5`}>
+                  {task.status === 'in-progress' ? 'progress' : task.status}
+                </Badge>
+              </div>
+
+              {/* Priority */}
+              <div className="col-span-1 flex items-center">
+                <Badge className={`${getPriorityColor(task.priority)} text-xs px-1.5 py-0.5`}>
+                  {task.priority}
+                </Badge>
+              </div>
+
+              {/* Due Date */}
+              <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
+                <span className="truncate" title={formatDate(task.dueDate)}>
+                  {formatDate(task.dueDate)}
+                </span>
+              </div>
+
+              {/* Assigned To / Assigned By */}
+              <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
+                {isAdminOrManager ? (
+                  <span className="truncate" title={getAssignedNames(task.assignedTo)}>
+                    {getAssignedNames(task.assignedTo)}
+                  </span>
+                ) : (
+                  <span className="truncate" title={getCreatorName(task.createdBy)}>
+                    {getCreatorName(task.createdBy)}
+                  </span>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="col-span-1 flex items-center gap-1 justify-end">
+                <button
+                  onClick={() => onToggleComplete(task.id)}
+                  className={`p-1 ${
+                    task.status === 'completed'
+                      ? 'text-green-600 hover:text-green-900 dark:text-green-400'
+                      : 'text-gray-400 hover:text-gray-600 dark:text-gray-500'
+                  }`}
+                  aria-label="Toggle complete"
+                  title="Toggle complete"
+                >
+                  <CheckCircleIcon className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onEdit(task)}
+                  className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1"
+                  aria-label="Edit task"
+                  title="Edit task"
+                >
+                  <PencilIcon className="w-4 h-4" />
+                </button>
+                {isAdminOrManager && (
+                  <button
+                    onClick={() => onDelete(task.id)}
+                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1"
+                    aria-label="Delete task"
+                    title="Delete task"
+                  >
+                    <TrashIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Table Body */}
-      <div className="divide-y divide-gray-200 dark:divide-gray-700">
+      {/* Mobile Card View - Visible only on mobile */}
+      <div className="md:hidden space-y-3">
         {tasks.map((task) => (
           <div
             key={task.id}
-            className="grid grid-cols-12 gap-2 px-3 py-3 text-xs transition-colors bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800"
+            className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3"
           >
-            {/* Title */}
-            <div className="col-span-2">
-              <div className="font-medium text-gray-900 dark:text-white truncate" title={task.title}>
+            {/* Title and Description */}
+            <div>
+              <h3 className="font-semibold text-gray-900 dark:text-white text-base">
                 {task.title}
-              </div>
+              </h3>
               {task.description && (
-                <div className="text-gray-500 dark:text-gray-400 text-xs mt-0.5 truncate" title={task.description}>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                   {task.description}
-                </div>
+                </p>
               )}
             </div>
 
-            {/* Client */}
-            <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
-              <span className="truncate" title={getClientName(task.contactId)}>
-                {getClientName(task.contactId)}
-              </span>
-            </div>
-
-            {/* Category */}
-            <div className="col-span-1 text-gray-700 dark:text-gray-300 flex items-center">
-              <span className="truncate" title={getCategoryName(task.categoryId || task.category)}>
-                {getCategoryName(task.categoryId || task.category)}
-              </span>
-            </div>
-
-            {/* Status */}
-            <div className="col-span-1 flex items-center">
-              <Badge className={`${getStatusColor(task.status)} text-xs px-1.5 py-0.5`}>
-                {task.status === 'in-progress' ? 'progress' : task.status}
+            {/* Status and Priority Badges */}
+            <div className="flex gap-2 flex-wrap">
+              <Badge className={`${getStatusColor(task.status)} text-xs`}>
+                {task.status === 'in-progress' ? 'In Progress' : task.status}
               </Badge>
-            </div>
-
-            {/* Priority */}
-            <div className="col-span-1 flex items-center">
-              <Badge className={`${getPriorityColor(task.priority)} text-xs px-1.5 py-0.5`}>
+              <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
                 {task.priority}
               </Badge>
             </div>
 
-            {/* Due Date */}
-            <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
-              <span className="truncate" title={formatDate(task.dueDate)}>
-                {formatDate(task.dueDate)}
-              </span>
-            </div>
-
-            {/* Assigned To / Assigned By */}
-            <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
-              {isAdminOrManager ? (
-                <span className="truncate" title={getAssignedNames(task.assignedTo)}>
-                  {getAssignedNames(task.assignedTo)}
-                </span>
-              ) : (
-                <span className="truncate" title={getCreatorName(task.createdBy, task.assignedTo)}>
-                  {getCreatorName(task.createdBy, task.assignedTo)}
-                </span>
+            {/* Task Details */}
+            <div className="space-y-2 text-sm">
+              {task.contactId && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Client:</span>
+                  <span className="text-gray-900 dark:text-white font-medium">
+                    {getClientName(task.contactId)}
+                  </span>
+                </div>
               )}
+              {(task.categoryId || task.category) && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Category:</span>
+                  <span className="text-gray-900 dark:text-white font-medium">
+                    {getCategoryName(task.categoryId || task.category)}
+                  </span>
+                </div>
+              )}
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Due Date:</span>
+                <span className="text-gray-900 dark:text-white font-medium">
+                  {formatDate(task.dueDate)}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">
+                  {isAdminOrManager ? 'Assigned To:' : 'Assigned By:'}
+                </span>
+                <span className="text-gray-900 dark:text-white font-medium truncate ml-2">
+                  {isAdminOrManager 
+                    ? getAssignedNames(task.assignedTo)
+                    : getCreatorName(task.createdBy)
+                  }
+                </span>
+              </div>
             </div>
 
-            {/* Actions */}
-            <div className="col-span-1 flex items-center gap-1 justify-end">
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => onToggleComplete(task.id)}
-                className={`p-1 ${
+                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors min-h-[44px] ${
                   task.status === 'completed'
-                    ? 'text-green-600 hover:text-green-900 dark:text-green-400'
-                    : 'text-gray-400 hover:text-gray-600 dark:text-gray-500'
+                    ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
                 aria-label="Toggle complete"
-                title="Toggle complete"
               >
-                <CheckCircleIcon className="w-4 h-4" />
+                <CheckCircleIcon className="w-5 h-5" />
+                <span className="text-sm">{task.status === 'completed' ? 'Completed' : 'Complete'}</span>
               </button>
               <button
                 onClick={() => onEdit(task)}
-                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors min-h-[44px]"
                 aria-label="Edit task"
-                title="Edit task"
               >
-                <PencilIcon className="w-4 h-4" />
+                <PencilIcon className="w-5 h-5" />
+                <span className="text-sm">Edit</span>
               </button>
               {isAdminOrManager && (
                 <button
                   onClick={() => onDelete(task.id)}
-                  className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1"
+                  className="px-4 py-2.5 rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
                   aria-label="Delete task"
-                  title="Delete task"
                 >
-                  <TrashIcon className="w-4 h-4" />
+                  <TrashIcon className="w-5 h-5" />
                 </button>
               )}
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }

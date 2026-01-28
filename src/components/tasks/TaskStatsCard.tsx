@@ -65,7 +65,7 @@ export function TaskStatsCard({ tasks }: TaskStatsCardProps) {
           <p className="text-sm text-gray-600 mt-1">Summary of all task statuses</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {/* Total Tasks */}
           <StatItem
             icon={<ClipboardDocumentListIcon className="w-6 h-6" />}

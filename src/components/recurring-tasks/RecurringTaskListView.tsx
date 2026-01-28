@@ -62,121 +62,219 @@ export function RecurringTaskListView({
   };
 
   return (
-    <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-      {/* Table Header */}
-      <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
-        {onSelect && <div className="col-span-1">Select</div>}
-        <div className={onSelect ? "col-span-3" : "col-span-3"}>Title</div>
-        <div className="col-span-2">Pattern</div>
-        <div className="col-span-1">Status</div>
-        <div className="col-span-1">Priority</div>
-        <div className="col-span-2">Next Occurrence</div>
-        <div className="col-span-2">Actions</div>
+    <>
+      {/* Desktop Table View - Hidden on mobile */}
+      <div className="hidden md:block bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        {/* Table Header */}
+        <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+          {onSelect && <div className="col-span-1">Select</div>}
+          <div className={onSelect ? "col-span-3" : "col-span-3"}>Title</div>
+          <div className="col-span-2">Pattern</div>
+          <div className="col-span-1">Status</div>
+          <div className="col-span-1">Priority</div>
+          <div className="col-span-2">Next Occurrence</div>
+          <div className="col-span-2">Actions</div>
+        </div>
+
+        {/* Table Body */}
+        <div className="divide-y divide-gray-200 dark:divide-gray-700">
+          {tasks.map((task) => (
+            <div
+              key={task.id}
+              className={`grid grid-cols-12 gap-4 px-6 py-4 text-sm transition-colors ${
+                selected.includes(task.id!)
+                  ? 'bg-blue-50 dark:bg-blue-900/30'
+                  : 'bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800'
+              }`}
+            >
+              {/* Select Checkbox */}
+              {onSelect && (
+                <div className="col-span-1 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(task.id!)}
+                    onChange={() => onSelect(task.id!)}
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                  />
+                </div>
+              )}
+
+              {/* Title */}
+              <div className={onSelect ? "col-span-3" : "col-span-3"}>
+                <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                  {task.title}
+                  {task.isPaused && (
+                    <Badge variant="secondary" className="text-xs">
+                      Paused
+                    </Badge>
+                  )}
+                </div>
+                <div className="text-gray-500 dark:text-gray-400 text-xs mt-1 line-clamp-1">
+                  {task.description}
+                </div>
+              </div>
+
+              {/* Recurrence Pattern */}
+              <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
+                {task.recurrencePattern}
+              </div>
+
+              {/* Status */}
+              <div className="col-span-1 flex items-center">
+                <Badge className={getStatusColor(task.status)}>
+                  {task.status.replace('-', ' ')}
+                </Badge>
+              </div>
+
+              {/* Priority */}
+              <div className="col-span-1 flex items-center">
+                <Badge className={getPriorityColor(task.priority)}>
+                  {task.priority}
+                </Badge>
+              </div>
+
+              {/* Next Occurrence */}
+              <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
+                {formatDate(task.nextOccurrence)}
+              </div>
+
+              {/* Actions */}
+              <div className="col-span-2 flex items-center gap-2">
+                {task.isPaused ? (
+                  <button
+                    onClick={() => onResume(task.id!)}
+                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 p-1"
+                    aria-label="Resume task"
+                    title="Resume"
+                  >
+                    <PlayIcon className="w-4 h-4" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onPause(task.id!)}
+                    className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 p-1"
+                    aria-label="Pause task"
+                    title="Pause"
+                  >
+                    <PauseIcon className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  onClick={() => onEdit(task)}
+                  className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1"
+                  aria-label="Edit task"
+                  title="Edit"
+                >
+                  <PencilIcon className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => onDelete(task.id!)}
+                  className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1"
+                  aria-label="Delete task"
+                  title="Delete"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Table Body */}
-      <div className="divide-y divide-gray-200 dark:divide-gray-700">
+      {/* Mobile Card View - Visible only on mobile */}
+      <div className="md:hidden space-y-3">
         {tasks.map((task) => (
           <div
             key={task.id}
-            className={`grid grid-cols-12 gap-4 px-6 py-4 text-sm transition-colors ${
-              selected.includes(task.id!)
-                ? 'bg-blue-50 dark:bg-blue-900/30'
-                : 'bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800'
+            className={`bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3 ${
+              selected.includes(task.id!) ? 'ring-2 ring-primary' : ''
             }`}
           >
-            {/* Select Checkbox */}
-            {onSelect && (
-              <div className="col-span-1 flex items-center">
-                <input
-                  type="checkbox"
-                  checked={selected.includes(task.id!)}
-                  onChange={() => onSelect(task.id!)}
-                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                />
-              </div>
-            )}
-
-            {/* Title */}
-            <div className={onSelect ? "col-span-3" : "col-span-3"}>
-              <div className="font-medium text-gray-900 dark:text-white flex items-center gap-2">
-                {task.title}
-                {task.isPaused && (
-                  <Badge variant="secondary" className="text-xs">
-                    Paused
-                  </Badge>
+            {/* Title and Paused Badge */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex-1">
+                <h3 className="font-semibold text-gray-900 dark:text-white text-base">
+                  {task.title}
+                </h3>
+                {task.description && (
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                    {task.description}
+                  </p>
                 )}
               </div>
-              <div className="text-gray-500 dark:text-gray-400 text-xs mt-1 line-clamp-1">
-                {task.description}
-              </div>
+              {task.isPaused && (
+                <Badge variant="secondary" className="text-xs shrink-0">
+                  Paused
+                </Badge>
+              )}
             </div>
 
-            {/* Recurrence Pattern */}
-            <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
-              {task.recurrencePattern}
-            </div>
-
-            {/* Status */}
-            <div className="col-span-1 flex items-center">
+            {/* Status and Priority Badges */}
+            <div className="flex gap-2 flex-wrap">
               <Badge className={getStatusColor(task.status)}>
                 {task.status.replace('-', ' ')}
               </Badge>
-            </div>
-
-            {/* Priority */}
-            <div className="col-span-1 flex items-center">
               <Badge className={getPriorityColor(task.priority)}>
                 {task.priority}
               </Badge>
             </div>
 
-            {/* Next Occurrence */}
-            <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
-              {formatDate(task.nextOccurrence)}
+            {/* Task Details */}
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Pattern:</span>
+                <span className="text-gray-900 dark:text-white font-medium">
+                  {task.recurrencePattern}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Next Occurrence:</span>
+                <span className="text-gray-900 dark:text-white font-medium">
+                  {formatDate(task.nextOccurrence)}
+                </span>
+              </div>
             </div>
 
-            {/* Actions */}
-            <div className="col-span-2 flex items-center gap-2">
+            {/* Action Buttons */}
+            <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
               {task.isPaused ? (
                 <button
                   onClick={() => onResume(task.id!)}
-                  className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 p-1"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 transition-colors min-h-[44px]"
                   aria-label="Resume task"
-                  title="Resume"
                 >
-                  <PlayIcon className="w-4 h-4" />
+                  <PlayIcon className="w-5 h-5" />
+                  <span className="text-sm">Resume</span>
                 </button>
               ) : (
                 <button
                   onClick={() => onPause(task.id!)}
-                  className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 p-1"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50 transition-colors min-h-[44px]"
                   aria-label="Pause task"
-                  title="Pause"
                 >
-                  <PauseIcon className="w-4 h-4" />
+                  <PauseIcon className="w-5 h-5" />
+                  <span className="text-sm">Pause</span>
                 </button>
               )}
               <button
                 onClick={() => onEdit(task)}
-                className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1"
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors min-h-[44px]"
                 aria-label="Edit task"
-                title="Edit"
               >
-                <PencilIcon className="w-4 h-4" />
+                <PencilIcon className="w-5 h-5" />
+                <span className="text-sm">Edit</span>
               </button>
               <button
                 onClick={() => onDelete(task.id!)}
-                className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1"
+                className="px-4 py-2.5 rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
                 aria-label="Delete task"
-                title="Delete"
               >
-                <TrashIcon className="w-4 h-4" />
+                <TrashIcon className="w-5 h-5" />
               </button>
             </div>
           </div>
         ))}
       </div>
-    </div>
+    </>
   );
 }

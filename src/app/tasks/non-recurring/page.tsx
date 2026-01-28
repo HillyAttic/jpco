@@ -257,19 +257,19 @@ export default function NonRecurringTasksPage() {
     <ErrorBoundary>
       <div className="space-y-6">
         {/* Page Header with Action Button - Requirement 2.1 */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Non-Recurring Tasks</h1>
-            <p className="text-gray-600 mt-2">Manage one-time tasks and track their progress</p>
+            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-white">Non-Recurring Tasks</h1>
+            <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">Manage one-time tasks and track their progress</p>
           </div>
           
           <Button
             onClick={handleCreateNew}
-            className="flex items-center gap-2 text-white"
+            className="flex items-center justify-center gap-2 text-white w-full md:w-auto md:self-end"
             aria-label="Add new task"
           >
             <PlusIcon className="w-5 h-5" />
-            Add New Task
+            <span>Add New Task</span>
           </Button>
         </div>
 
@@ -317,14 +317,14 @@ export default function NonRecurringTasksPage() {
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                className={`px-3 py-2 md:py-1.5 rounded-md text-sm font-medium transition-colors min-h-[44px] md:min-h-0 ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
                 aria-label="Grid view"
               >
                 Grid
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
+                className={`px-3 py-2 md:py-1.5 rounded-md text-sm font-medium transition-colors min-h-[44px] md:min-h-0 ${viewMode === 'list' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}
                 aria-label="List view"
               >
                 List
