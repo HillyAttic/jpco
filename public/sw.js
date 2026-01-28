@@ -39,3 +39,107 @@ self.addEventListener('fetch', (event) => {
 });
 
 console.log('Service Worker: Loaded (caching disabled, network-only mode)');
+
+// Push notification event
+self.addEventListener('push', (event) => {
+  console.log('Push notification received:', event);
+
+  let notificationData = {
+    title: 'New Notification',
+    body: 'You have a new notification',
+    icon: '/images/logo/logo-icon.svg',
+    badge: '/images/logo/logo-icon.svg',
+    data: {
+      url: '/',
+    },
+  };
+
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      notificationData = {
+        title: data.title || notificationData.title,
+        body: data.message || data.body || notificationData.body,
+        icon: data.icon || notificationData.icon,
+        badge: data.badge || notificationData.badge,
+        data: {
+          url: data.actionUrl || data.url || '/',
+          notificationId: data.notificationId,
+        },
+      };
+    } catch (error) {
+      console.error('Error parsing push data:', error);
+    }
+  }
+
+  const promiseChain = self.registration.showNotification(
+    notificationData.title,
+    {
+      body: notificationData.body,
+      icon: notificationData.icon,
+      badge: notificationData.badge,
+      data: notificationData.data,
+      actions: [
+        {
+          action: 'open',
+          title: 'View',
+        },
+        {
+          action: 'close',
+          title: 'Dismiss',
+        },
+      ],
+    }
+  );
+
+  event.waitUntil(promiseChain);
+});
+
+// Notification click event
+self.addEventListener('notificationclick', (event) => {
+  console.log('Notification clicked:', event);
+
+  event.notification.close();
+
+  if (event.action === 'close') {
+    return;
+  }
+
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((windowClients) => {
+        // Check if there's already a window open
+        for (let i = 0; i < windowClients.length; i++) {
+          const client = windowClients[i];
+          if (client.url.includes(urlToOpen) && 'focus' in client) {
+            return client.focus();
+          }
+        }
+        // If no window is open, open a new one
+        if (clients.openWindow) {
+          return clients.openWindow(urlToOpen);
+        }
+      })
+  );
+});
+
+// Background sync event (for offline support)
+self.addEventListener('sync', (event) => {
+  console.log('Background sync:', event);
+  
+  if (event.tag === 'sync-notifications') {
+    event.waitUntil(
+      // Sync notifications when back online
+      fetch('/api/notifications/sync')
+        .then((response) => response.json())
+        .then((data) => {
+          console.log('Notifications synced:', data);
+        })
+        .catch((error) => {
+          console.error('Sync failed:', error);
+        })
+    );
+  }
+});
