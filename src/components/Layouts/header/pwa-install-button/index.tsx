@@ -37,15 +37,26 @@ export function PWAInstallButton() {
       // Combined mobile detection
       const isMobileDevice = isMobileUA || (isMobileScreen && isTouchDevice);
       
-      console.log('Mobile Detection:', {
+      // Check HTTPS requirement
+      const isHTTPS = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+      
+      console.log('🔍 PWA Install Button - Mobile Detection:', {
         userAgent: userAgent.substring(0, 50) + '...',
         isMobileUA,
         isMobileScreen,
         isTouchDevice,
         isMobileDevice,
         screenWidth: window.innerWidth,
-        deviceType: device.type
+        deviceType: device.type,
+        protocol: window.location.protocol,
+        isHTTPS,
+        hostname: window.location.hostname
       });
+      
+      if (!isHTTPS) {
+        console.warn('⚠️ PWA requires HTTPS! Current protocol:', window.location.protocol);
+        console.warn('💡 Tip: Use ngrok or deploy to a hosting service with HTTPS');
+      }
       
       return isMobileDevice;
     };
@@ -83,7 +94,7 @@ export function PWAInstallButton() {
 
     // Listen for beforeinstallprompt event (Android/Chrome)
     const handleBeforeInstallPrompt = (e: Event) => {
-      console.log('beforeinstallprompt event fired');
+      console.log('✅ beforeinstallprompt event fired - PWA is installable!');
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
@@ -101,8 +112,19 @@ export function PWAInstallButton() {
     // Even if beforeinstallprompt hasn't fired yet, we'll show the button
     // and provide manual instructions as fallback
     if ((iOS || isAndroid || detectMobile()) && !installed) {
-      console.log('Setting installable to true for mobile device');
+      console.log('📱 Setting installable to true for mobile device');
+      console.log('📋 Button will show with fallback instructions if beforeinstallprompt doesn\'t fire');
       setIsInstallable(true);
+    }
+
+    // Check if beforeinstallprompt is supported
+    const isHTTPS = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
+    if (!isHTTPS) {
+      console.error('❌ PWA Installation blocked: HTTPS required!');
+      console.log('💡 Solutions:');
+      console.log('  1. Use ngrok: npx ngrok http 3000');
+      console.log('  2. Deploy to Vercel/Netlify');
+      console.log('  3. Test on localhost');
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
