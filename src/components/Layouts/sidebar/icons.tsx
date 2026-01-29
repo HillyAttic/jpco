@@ -279,3 +279,27 @@ export function RecurringIcon(props: PropsType) {
     </svg>
   );
 }
+
+export function ReportsIcon(props: PropsType) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={24}
+      height={24}
+      viewBox="0 0 24 24"
+      fill="none"
+      {...props}
+    >
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M3 1.25a.75.75 0 01.75.75v18.19l2.72-2.72a.75.75 0 011.06 0l2.47 2.47 2.47-2.47a.75.75 0 011.06 0l2.47 2.47 2.47-2.47a.75.75 0 011.06 0l2.72 2.72V2a.75.75 0 011.5 0v20a.75.75 0 01-1.28.53l-3.25-3.25-2.47 2.47a.75.75 0 01-1.06 0L12 19.28l-2.47 2.47a.75.75 0 01-1.06 0L6 19.28l-3.25 3.25A.75.75 0 011.5 22V2A.75.75 0 013 1.25z"
+        fill="currentColor"
+      />
+      <path
+        d="M7.25 6A.75.75 0 018 5.25h8a.75.75 0 010 1.5H8A.75.75 0 017.25 6zM7.25 10a.75.75 0 01.75-.75h8a.75.75 0 010 1.5H8a.75.75 0 01-.75-.75zM7.25 14a.75.75 0 01.75-.75h5a.75.75 0 010 1.5H8a.75.75 0 01-.75-.75z"
+        fill="currentColor"
+      />
+    </svg>
+  );
+}

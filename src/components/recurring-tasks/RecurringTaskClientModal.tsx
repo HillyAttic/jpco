@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon } from '@heroicons/react/24/outline';
 import { RecurringTask } from '@/services/recurring-task.service';
+import { taskCompletionService } from '@/services/task-completion.service';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 interface Client {
   id: string;
@@ -34,6 +36,9 @@ export function RecurringTaskClientModal({
   clients,
 }: RecurringTaskClientModalProps) {
   const [clientCompletions, setClientCompletions] = useState<Map<string, Set<string>>>(new Map());
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const { user } = useEnhancedAuth();
 
   // Generate months from April to March (financial year)
   const generateMonths = () => {
@@ -82,7 +87,16 @@ export function RecurringTaskClientModal({
 
   // Initialize client completions from task data
   useEffect(() => {
-    if (task && isOpen) {
+    if (task && isOpen && task.id) {
+      loadCompletions();
+    }
+  }, [task, clients, isOpen]);
+
+  const loadCompletions = async () => {
+    if (!task || !task.id) return;
+    
+    setLoading(true);
+    try {
       const completions = new Map<string, Set<string>>();
       
       // Initialize all clients with empty sets
@@ -90,13 +104,24 @@ export function RecurringTaskClientModal({
         completions.set(client.id, new Set());
       });
 
-      // Load completion history if available
-      // This would typically come from Firestore
-      // For now, we'll initialize empty
+      // Load completion data from Firestore
+      const taskCompletions = await taskCompletionService.getByTaskId(task.id);
+      
+      taskCompletions.forEach(completion => {
+        if (completion.isCompleted) {
+          const clientMonths = completions.get(completion.clientId) || new Set<string>();
+          clientMonths.add(completion.monthKey);
+          completions.set(completion.clientId, clientMonths);
+        }
+      });
       
       setClientCompletions(completions);
+    } catch (error) {
+      console.error('Error loading completions:', error);
+    } finally {
+      setLoading(false);
     }
-  }, [task, clients, isOpen]);
+  };
 
   const toggleCompletion = (clientId: string, monthKey: string) => {
     setClientCompletions(prev => {
@@ -125,10 +150,34 @@ export function RecurringTaskClientModal({
   };
 
   const handleSave = async () => {
-    // TODO: Save completions to Firestore
-    // This would update the recurring task with client-specific completion data
-    console.log('Saving completions:', Object.fromEntries(clientCompletions));
-    onClose();
+    if (!task || !task.id || !user) return;
+    
+    setSaving(true);
+    try {
+      // Prepare bulk update data
+      const updates: Array<{ clientId: string; monthKey: string; isCompleted: boolean }> = [];
+      
+      visibleMonths.forEach(month => {
+        clients.forEach(client => {
+          const isCompleted = clientCompletions.get(client.id)?.has(month.key) || false;
+          updates.push({
+            clientId: client.id,
+            monthKey: month.key,
+            isCompleted,
+          });
+        });
+      });
+
+      // Save to Firestore
+      await taskCompletionService.bulkUpdate(task.id, updates, user.uid);
+      
+      onClose();
+    } catch (error) {
+      console.error('Error saving completions:', error);
+      alert('Failed to save completions. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (!isOpen || !task) return null;
@@ -164,7 +213,11 @@ export function RecurringTaskClientModal({
           {/* Content */}
           <div className="overflow-auto max-h-[calc(90vh-180px)]">
             <div className="p-6">
-              {clients.length === 0 ? (
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                </div>
+              ) : clients.length === 0 ? (
                 <div className="text-center py-12">
                   <p className="text-gray-500">No clients assigned to this task</p>
                 </div>
@@ -262,9 +315,10 @@ export function RecurringTaskClientModal({
               </button>
               <button
                 onClick={handleSave}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                disabled={saving}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Save Changes
+                {saving ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           </div>

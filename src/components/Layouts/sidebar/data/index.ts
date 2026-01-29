@@ -84,6 +84,27 @@ export const NAV_DATA = [
           },
         ],
       },
+      {
+        title: "Roster",
+        icon: Icons.Calendar,
+        items: [
+          {
+            title: "Update Schedule",
+            url: "/roster/update-schedule",
+          },
+          {
+            title: "View Schedule",
+            url: "/roster/view-schedule",
+          },
+        ],
+      },
+      {
+        title: "Reports",
+        url: "/reports",
+        icon: Icons.ReportsIcon,
+        items: [],
+        requiresRole: ['admin', 'manager'], // Only managers and admins can see this
+      },
 
       // Authentication menu item hidden - users can access auth pages directly via URL if needed
       // {

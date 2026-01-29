@@ -1,0 +1,196 @@
+// Firestore Security Rules for Reports Feature
+// Add these rules to your firestore.rules file
+
+// Task Completions Collection
+// Stores client-specific completion status for recurring tasks
+match /task-completions/{completionId} {
+  // Allow read access to authenticated admin and manager users
+  allow read: if request.auth != null && 
+    (request.auth.token.role == 'admin' || 
+     request.auth.token.role == 'manager');
+  
+  // Allow write access to authenticated admin and manager users
+  allow create: if request.auth != null && 
+    (request.auth.token.role == 'admin' || 
+     request.auth.token.role == 'manager') &&
+    // Validate required fields
+    request.resource.data.keys().hasAll([
+      'recurringTaskId', 
+      'clientId', 
+      'monthKey', 
+      'isCompleted'
+    ]) &&
+    // Validate data types
+    request.resource.data.recurringTaskId is string &&
+    request.resource.data.clientId is string &&
+    request.resource.data.monthKey is string &&
+    request.resource.data.isCompleted is bool &&
+    // Validate monthKey format (YYYY-MM)
+    request.resource.data.monthKey.matches('^[0-9]{4}-[0-9]{2}$');
+  
+  allow update: if request.auth != null && 
+    (request.auth.token.role == 'admin' || 
+     request.auth.token.role == 'manager') &&
+    // Ensure core fields are not changed
+    request.resource.data.recurringTaskId == resource.data.recurringTaskId &&
+    request.resource.data.clientId == resource.data.clientId &&
+    request.resource.data.monthKey == resource.data.monthKey;
+  
+  allow delete: if request.auth != null && 
+    (request.auth.token.role == 'admin' || 
+     request.auth.token.role == 'manager');
+}
+
+// COMPLETE FIRESTORE RULES FILE EXAMPLE
+// Copy this entire section if you want a complete rules file
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check if user is admin
+    function isAdmin() {
+      return isAuthenticated() && request.auth.token.role == 'admin';
+    }
+    
+    // Helper function to check if user is manager or admin
+    function isManager() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'admin' || 
+         request.auth.token.role == 'manager');
+    }
+    
+    // Helper function to check if user is employee, manager, or admin
+    function isEmployee() {
+      return isAuthenticated() && 
+        (request.auth.token.role == 'admin' || 
+         request.auth.token.role == 'manager' || 
+         request.auth.token.role == 'employee');
+    }
+    
+    // Task Completions - Reports Feature
+    match /task-completions/{completionId} {
+      allow read: if isManager();
+      
+      allow create: if isManager() &&
+        request.resource.data.keys().hasAll([
+          'recurringTaskId', 
+          'clientId', 
+          'monthKey', 
+          'isCompleted'
+        ]) &&
+        request.resource.data.recurringTaskId is string &&
+        request.resource.data.clientId is string &&
+        request.resource.data.monthKey is string &&
+        request.resource.data.isCompleted is bool &&
+        request.resource.data.monthKey.matches('^[0-9]{4}-[0-9]{2}$');
+      
+      allow update: if isManager() &&
+        request.resource.data.recurringTaskId == resource.data.recurringTaskId &&
+        request.resource.data.clientId == resource.data.clientId &&
+        request.resource.data.monthKey == resource.data.monthKey;
+      
+      allow delete: if isManager();
+    }
+    
+    // Recurring Tasks
+    match /recurring-tasks/{taskId} {
+      allow read: if isEmployee();
+      allow write: if isManager();
+    }
+    
+    // Clients
+    match /clients/{clientId} {
+      allow read: if isEmployee();
+      allow write: if isManager();
+    }
+    
+    // Users/Employees
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() || request.auth.uid == userId;
+    }
+    
+    // Teams
+    match /teams/{teamId} {
+      allow read: if isEmployee();
+      allow write: if isManager();
+    }
+    
+    // Categories
+    match /categories/{categoryId} {
+      allow read: if isEmployee();
+      allow write: if isManager();
+    }
+    
+    // Default deny all other collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+// DEPLOYMENT INSTRUCTIONS
+// 
+// 1. Save the rules to your firestore.rules file
+// 2. Deploy using Firebase CLI:
+//    firebase deploy --only firestore:rules
+// 
+// 3. Verify deployment in Firebase Console:
+//    - Go to Firestore Database
+//    - Click on "Rules" tab
+//    - Check that rules are updated
+// 
+// 4. Test the rules:
+//    - Try accessing /reports as admin (should work)
+//    - Try accessing /reports as employee (should redirect)
+//    - Try marking completions in calendar (should save)
+//    - Check Firestore console for task-completions collection
+
+// TESTING RULES IN FIREBASE CONSOLE
+// 
+// Go to Firestore Rules Playground and test:
+// 
+// Test 1: Manager can read completions
+// - Auth: Authenticated as manager
+// - Operation: get
+// - Location: /databases/(default)/documents/task-completions/test123
+// - Expected: Allow
+// 
+// Test 2: Employee cannot read completions
+// - Auth: Authenticated as employee
+// - Operation: get
+// - Location: /databases/(default)/documents/task-completions/test123
+// - Expected: Deny
+// 
+// Test 3: Manager can create completion
+// - Auth: Authenticated as manager
+// - Operation: create
+// - Location: /databases/(default)/documents/task-completions/test123
+// - Data: {
+//     recurringTaskId: "task1",
+//     clientId: "client1",
+//     monthKey: "2025-04",
+//     isCompleted: true
+//   }
+// - Expected: Allow
+
+// TROUBLESHOOTING
+// 
+// If you get "Missing or insufficient permissions" error:
+// 
+// 1. Check that user has correct role in Firebase Auth custom claims
+// 2. Verify rules are deployed (check Firebase Console)
+// 3. Check that user is authenticated (request.auth != null)
+// 4. Verify role is set correctly in ID token
+// 5. Try refreshing the ID token (sign out and sign in again)
+// 
+// To check user's custom claims:
+// - Open browser console
+// - Run: firebase.auth().currentUser.getIdTokenResult()
+// - Check the 'claims' object for 'role' property
