@@ -78,13 +78,14 @@ export default function CalendarPage() {
   const generateRecurringTaskOccurrences = (recurringTasks: RecurringTask[]): CalendarTask[] => {
     const calendarTasks: CalendarTask[] = [];
     
-    // Get date range for calendar (current month - 6 months to + 5 years for better visibility)
+    // Get date range for calendar (previous 2 years to future 5 years)
     const calendarStartDate = new Date();
-    calendarStartDate.setMonth(calendarStartDate.getMonth() - 6);
+    calendarStartDate.setFullYear(calendarStartDate.getFullYear() - 2);
+    calendarStartDate.setMonth(0); // January
     calendarStartDate.setDate(1);
     
     const calendarEndDate = new Date();
-    calendarEndDate.setFullYear(calendarEndDate.getFullYear() + 5); // Extended to 5 years
+    calendarEndDate.setFullYear(calendarEndDate.getFullYear() + 5);
     calendarEndDate.setMonth(11); // December
     calendarEndDate.setDate(31); // Last day of year
     

@@ -29,6 +29,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
+  const [fullRecurringTask, setFullRecurringTask] = useState<RecurringTask | null>(null);
   const { openModal, closeModal } = useModal();
 
   const getDaysInMonth = (date: Date) => {
@@ -99,14 +100,35 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
     if (task.isRecurring && task.recurringTaskId) {
       setSelectedTask(task);
       
-      // Fetch clients for this task
+      // Fetch the full recurring task to get contactIds
       try {
-        const response = await fetch('/api/clients');
-        const data = await response.json();
-        setClients(data.data || []);
+        const response = await fetch(`/api/recurring-tasks/${task.recurringTaskId}`);
+        if (!response.ok) {
+          throw new Error('Failed to fetch recurring task');
+        }
+        const recurringTask = await response.json();
+        setFullRecurringTask(recurringTask);
+        
+        const contactIds = recurringTask.contactIds || [];
+        
+        // Fetch only the clients assigned to this task
+        if (contactIds.length > 0) {
+          const clientsResponse = await fetch('/api/clients');
+          const clientsData = await clientsResponse.json();
+          const allClients = clientsData.data || [];
+          
+          // Filter to only show assigned clients
+          const assignedClients = allClients.filter((client: any) => 
+            contactIds.includes(client.id)
+          );
+          setClients(assignedClients);
+        } else {
+          setClients([]);
+        }
       } catch (error) {
-        console.error('Error fetching clients:', error);
+        console.error('Error fetching task clients:', error);
         setClients([]);
+        setFullRecurringTask(null);
       }
       
       setIsClientModalOpen(true);
@@ -119,6 +141,8 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   const handleCloseModal = () => {
     setIsClientModalOpen(false);
     setSelectedTask(null);
+    setFullRecurringTask(null);
+    setClients([]);
     closeModal(); // Show header when modal closes
   };
 
@@ -290,25 +314,11 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
       </div>
 
       {/* Client Tracking Modal */}
-      {selectedTask && (
+      {selectedTask && fullRecurringTask && (
         <RecurringTaskClientModal
           isOpen={isClientModalOpen}
           onClose={handleCloseModal}
-          task={{
-            id: selectedTask.recurringTaskId || selectedTask.id,
-            title: selectedTask.title,
-            description: selectedTask.description,
-            recurrencePattern: selectedTask.recurrencePattern as any,
-            priority: selectedTask.priority,
-            status: selectedTask.status as 'pending' | 'in-progress' | 'completed',
-            startDate: selectedTask.dueDate || new Date(),
-            nextOccurrence: selectedTask.dueDate || new Date(),
-            contactIds: [],
-            completionHistory: [],
-            isPaused: false,
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          }}
+          task={fullRecurringTask}
           clients={clients}
         />
       )}

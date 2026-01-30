@@ -36,6 +36,7 @@ export const taskCompletionService = {
           value: recurringTaskId,
         },
       ],
+      forceServerFetch: true, // Always fetch from server to avoid cache issues
     });
   },
 
@@ -56,6 +57,7 @@ export const taskCompletionService = {
           value: recurringTaskId,
         },
       ],
+      forceServerFetch: true, // Always fetch from server to avoid cache issues
     });
   },
 
@@ -85,6 +87,7 @@ export const taskCompletionService = {
           value: monthKey,
         },
       ],
+      forceServerFetch: true, // Always fetch from server to avoid cache issues
     });
 
     return completions.length > 0 ? completions[0] : null;

@@ -40,23 +40,38 @@ export function RecurringTaskClientModal({
   const [saving, setSaving] = useState(false);
   const { user } = useEnhancedAuth();
 
-  // Generate months from April to March (financial year)
+  // Generate months from current month to 5 years forward
   const generateMonths = () => {
     const months = [];
-    const currentYear = new Date().getFullYear();
-    const startMonth = 3; // April (0-indexed)
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth();
     
-    for (let i = 0; i < 12; i++) {
-      const monthIndex = (startMonth + i) % 12;
-      const year = monthIndex < startMonth ? currentYear + 1 : currentYear;
-      const date = new Date(year, monthIndex, 1);
-      months.push({
-        key: `${year}-${String(monthIndex + 1).padStart(2, '0')}`,
-        label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-        monthName: date.toLocaleDateString('en-US', { month: 'short' }),
-        fullDate: date,
-      });
+    // Start from current month
+    const startYear = currentYear;
+    const startMonth = currentMonth;
+    
+    // End at 5 years forward
+    const endYear = currentYear + 5;
+    const endMonth = 11; // December
+    
+    // Generate all months from current month to end
+    for (let year = startYear; year <= endYear; year++) {
+      const firstMonth = (year === startYear) ? startMonth : 0;
+      const lastMonth = (year === endYear) ? endMonth : 11;
+      
+      for (let month = firstMonth; month <= lastMonth; month++) {
+        const date = new Date(year, month, 1);
+        months.push({
+          key: `${year}-${String(month + 1).padStart(2, '0')}`,
+          label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+          monthName: date.toLocaleDateString('en-US', { month: 'short' }),
+          year: year.toString(),
+          fullDate: date,
+        });
+      }
     }
+    
     return months;
   };
 
@@ -150,7 +165,10 @@ export function RecurringTaskClientModal({
   };
 
   const handleSave = async () => {
-    if (!task || !task.id || !user) return;
+    if (!task || !task.id || !user) {
+      console.error('Cannot save: missing task, task.id, or user', { task: task?.id, user: user?.uid });
+      return;
+    }
     
     setSaving(true);
     try {
@@ -168,8 +186,17 @@ export function RecurringTaskClientModal({
         });
       });
 
+      console.log('Saving completions:', {
+        taskId: task.id,
+        totalUpdates: updates.length,
+        completedCount: updates.filter(u => u.isCompleted).length,
+        userId: user.uid
+      });
+
       // Save to Firestore
       await taskCompletionService.bulkUpdate(task.id, updates, user.uid);
+      
+      console.log('Completions saved successfully');
       
       onClose();
     } catch (error) {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useRouter } from 'next/navigation';
+import { useModal } from '@/contexts/modal-context';
 import { rosterService } from '@/services/roster.service';
 import { RosterEntry, MONTHS, getDaysInMonth, MonthlyRosterView } from '@/types/roster.types';
 import { collection, getDocs } from 'firebase/firestore';
@@ -18,6 +19,7 @@ interface UserProfile {
 export default function ViewSchedulePage() {
   const { user, loading: authLoading, isAdmin, isManager } = useEnhancedAuth();
   const router = useRouter();
+  const { openModal, closeModal } = useModal();
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [entries, setEntries] = useState<RosterEntry[]>([]);
@@ -100,11 +102,13 @@ export default function ViewSchedulePage() {
       userName,
     });
     setShowActivityModal(true);
+    openModal(); // Open modal context to hide header
   };
 
   const handleCloseActivityModal = () => {
     setShowActivityModal(false);
     setSelectedActivity(null);
+    closeModal(); // Close modal context to show header again
   };
 
   const renderUserCalendar = () => {
@@ -222,7 +226,7 @@ export default function ViewSchedulePage() {
                         <td
                           key={day}
                           colSpan={span}
-                          className="border border-gray-300 px-1 py-2 text-center bg-blue-100 text-blue-800 font-medium cursor-pointer hover:bg-blue-200 transition-colors overflow-hidden"
+                          className="border border-gray-300 px-1 py-2 text-center bg-red-100 text-red-800 font-medium cursor-pointer hover:bg-red-200 transition-colors overflow-hidden"
                           style={{ width: `${cellWidth}px`, minWidth: `${cellWidth}px`, maxWidth: `${cellWidth}px` }}
                           title="Click to view details"
                           onClick={() => handleActivityClick(startingActivity, user.name)}
@@ -308,7 +312,7 @@ export default function ViewSchedulePage() {
           <h3 className="text-sm font-semibold text-gray-700 mb-2">Legend</h3>
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
+              <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
               <span>Scheduled Activity (Click to view details)</span>
             </div>
             <div className="flex items-center gap-2">
@@ -412,7 +416,7 @@ export default function ViewSchedulePage() {
             <div className="mt-6">
               <button
                 onClick={handleCloseActivityModal}
-                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
               >
                 Close
               </button>

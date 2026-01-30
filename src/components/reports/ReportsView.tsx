@@ -30,12 +30,19 @@ export function ReportsView() {
   const loadData = async () => {
     try {
       setLoading(true);
+      console.log('Reports: Loading data...');
+      
       const [tasksData, clientsData] = await Promise.all([
         recurringTaskService.getAll(),
         clientService.getAll(),
       ]);
       setTasks(tasksData);
       setClients(clientsData);
+
+      console.log('Reports: Loaded tasks and clients', {
+        tasksCount: tasksData.length,
+        clientsCount: clientsData.length
+      });
 
       // Load completions for all tasks
       const completionsMap = new Map<string, ClientTaskCompletion[]>();
@@ -44,10 +51,16 @@ export function ReportsView() {
           if (task.id) {
             const taskCompletions = await taskCompletionService.getByTaskId(task.id);
             completionsMap.set(task.id, taskCompletions);
+            console.log(`Reports: Loaded completions for task ${task.title}`, {
+              taskId: task.id,
+              completionsCount: taskCompletions.length
+            });
           }
         })
       );
       setCompletions(completionsMap);
+      
+      console.log('Reports: All data loaded successfully');
     } catch (error) {
       console.error('Error loading reports data:', error);
     } finally {
@@ -65,6 +78,8 @@ export function ReportsView() {
     setIsModalOpen(false);
     setSelectedTask(null);
     closeGlobalModal(); // Notify global context to show header
+    // Reload data to reflect any changes made in the modal
+    loadData();
   };
 
   if (loading) {
@@ -82,6 +97,16 @@ export function ReportsView() {
           <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
           <p className="text-gray-600 mt-1">Track task completion status across all clients</p>
         </div>
+        <button
+          onClick={loadData}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
+          {loading ? 'Refreshing...' : 'Refresh'}
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow">
@@ -288,34 +313,47 @@ function TaskReportModal({ task, clients, completions, onClose }: TaskReportModa
 }
 
 function generateMonths(recurrencePattern: string) {
-  const months = [];
-  const currentYear = new Date().getFullYear();
-  const startMonth = 3; // April (0-indexed)
+  const currentDate = new Date();
+  const currentYear = currentDate.getFullYear();
+  const currentMonth = currentDate.getMonth();
   
-  for (let i = 0; i < 12; i++) {
-    const monthIndex = (startMonth + i) % 12;
-    const year = monthIndex < startMonth ? currentYear + 1 : currentYear;
-    const date = new Date(year, monthIndex, 1);
-    months.push({
-      key: `${year}-${String(monthIndex + 1).padStart(2, '0')}`,
-      monthName: date.toLocaleDateString('en-US', { month: 'short' }),
-      year: year.toString(),
-      fullDate: date,
-    });
+  // Start from current month
+  const startYear = currentYear;
+  const startMonth = currentMonth;
+  
+  // End at 5 years forward
+  const endYear = currentYear + 5;
+  const endMonth = 11; // December
+  
+  // Generate all months from current month to end
+  const allMonths = [];
+  for (let year = startYear; year <= endYear; year++) {
+    const firstMonth = (year === startYear) ? startMonth : 0;
+    const lastMonth = (year === endYear) ? endMonth : 11;
+    
+    for (let month = firstMonth; month <= lastMonth; month++) {
+      const date = new Date(year, month, 1);
+      allMonths.push({
+        key: `${year}-${String(month + 1).padStart(2, '0')}`,
+        monthName: date.toLocaleDateString('en-US', { month: 'short' }),
+        year: year.toString(),
+        fullDate: date,
+      });
+    }
   }
 
   // Filter based on recurrence pattern
   switch (recurrencePattern) {
     case 'monthly':
-      return months;
+      return allMonths; // Show all months
     case 'quarterly':
-      return months.filter((_, index) => index % 3 === 0);
+      return allMonths.filter((_, index) => index % 3 === 0);
     case 'half-yearly':
-      return months.filter((_, index) => index % 6 === 0);
+      return allMonths.filter((_, index) => index % 6 === 0);
     case 'yearly':
-      return [months[0]];
+      return allMonths.filter((_, index) => index % 12 === 0);
     default:
-      return months;
+      return allMonths;
   }
 }
 
