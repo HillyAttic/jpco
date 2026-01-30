@@ -184,8 +184,27 @@ export const rosterService = {
    * Get monthly roster view for all employees (Admin/Manager)
    */
   async getMonthlyRosterView(month: number, year: number, userIds?: string[]): Promise<MonthlyRosterView> {
-    // Get all roster entries for the specified month and year
-    let entries = await this.getRosterEntries({ month, year });
+    // Calculate the date range for the month
+    const startOfMonth = new Date(year, month - 1, 1);
+    const endOfMonth = new Date(year, month, 0); // Last day of the month
+    
+    // Get all roster entries that overlap with this month
+    // An entry overlaps if: startDate <= endOfMonth AND endDate >= startOfMonth
+    const allEntries = await rosterFirebaseService.getAll({
+      orderByField: 'startDate',
+      orderDirection: 'asc',
+    });
+    
+    // Convert timestamps
+    let entries = allEntries.map(entry => convertTimestamps(entry));
+    
+    // Filter entries that overlap with the current month
+    entries = entries.filter(entry => {
+      const entryStart = new Date(entry.startDate);
+      const entryEnd = new Date(entry.endDate);
+      // Check if the entry overlaps with the month
+      return entryStart <= endOfMonth && entryEnd >= startOfMonth;
+    });
 
     // Filter by user IDs if provided
     if (userIds && userIds.length > 0) {
@@ -205,13 +224,22 @@ export const rosterService = {
       }
 
       const employee = employeeMap.get(entry.userId)!;
+      
+      // Calculate the start and end day within the current month
+      const entryStart = new Date(entry.startDate);
+      const entryEnd = new Date(entry.endDate);
+      
+      // Clamp the dates to the current month
+      const displayStart = entryStart < startOfMonth ? startOfMonth : entryStart;
+      const displayEnd = entryEnd > endOfMonth ? endOfMonth : entryEnd;
+      
       employee.activities.push({
         id: entry.id!,
         activityName: entry.activityName,
         startDate: entry.startDate,
         endDate: entry.endDate,
-        startDay: entry.startDate.getDate(),
-        endDay: entry.endDate.getDate(),
+        startDay: displayStart.getDate(),
+        endDay: displayEnd.getDate(),
         notes: entry.notes,
       });
     });
@@ -227,7 +255,20 @@ export const rosterService = {
    * Get user's calendar events
    */
   async getUserCalendarEvents(userId: string, month: number, year: number): Promise<RosterEntry[]> {
-    return await this.getRosterEntries({ userId, month, year });
+    // Calculate the date range for the month
+    const startOfMonth = new Date(year, month - 1, 1);
+    const endOfMonth = new Date(year, month, 0); // Last day of the month
+    
+    // Get all entries for this user
+    const allEntries = await this.getRosterEntries({ userId });
+    
+    // Filter entries that overlap with the current month
+    return allEntries.filter(entry => {
+      const entryStart = new Date(entry.startDate);
+      const entryEnd = new Date(entry.endDate);
+      // Check if the entry overlaps with the month
+      return entryStart <= endOfMonth && entryEnd >= startOfMonth;
+    });
   },
 
   /**

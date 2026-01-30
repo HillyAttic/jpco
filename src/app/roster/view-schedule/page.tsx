@@ -24,6 +24,8 @@ export default function ViewSchedulePage() {
   const [monthlyView, setMonthlyView] = useState<MonthlyRosterView | null>(null);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [selectedActivity, setSelectedActivity] = useState<any>(null);
+  const [showActivityModal, setShowActivityModal] = useState(false);
 
   const canViewAllSchedules = isAdmin || isManager;
 
@@ -90,6 +92,19 @@ export default function ViewSchedulePage() {
     } else {
       setCurrentMonth(currentMonth + 1);
     }
+  };
+
+  const handleActivityClick = (activity: any, userName: string) => {
+    setSelectedActivity({
+      ...activity,
+      userName,
+    });
+    setShowActivityModal(true);
+  };
+
+  const handleCloseActivityModal = () => {
+    setShowActivityModal(false);
+    setSelectedActivity(null);
   };
 
   const renderUserCalendar = () => {
@@ -171,11 +186,11 @@ export default function ViewSchedulePage() {
         <table className="min-w-full border-collapse border border-gray-300">
           <thead>
             <tr className="bg-gray-100">
-              <th className="border border-gray-300 px-4 py-2 text-left font-semibold sticky left-0 bg-gray-100 z-10 whitespace-nowrap">
+              <th className="border border-gray-300 px-4 py-2 text-left font-semibold sticky left-0 bg-gray-100 z-10 whitespace-nowrap min-w-[150px]">
                 EMP NAME
               </th>
               {days.map(day => (
-                <th key={day} className="border border-gray-300 px-2 py-2 text-center font-semibold min-w-[40px]">
+                <th key={day} className="border border-gray-300 px-2 py-2 text-center font-semibold w-[50px] min-w-[50px] max-w-[50px]">
                   {day}
                 </th>
               ))}
@@ -188,7 +203,7 @@ export default function ViewSchedulePage() {
 
               return (
                 <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="border border-gray-300 px-4 py-2 font-medium sticky left-0 bg-white z-10 whitespace-nowrap">
+                  <td className="border border-gray-300 px-4 py-2 font-medium sticky left-0 bg-white z-10 whitespace-nowrap min-w-[150px]">
                     {user.name}
                   </td>
                   {days.map(day => {
@@ -202,21 +217,26 @@ export default function ViewSchedulePage() {
 
                     if (startingActivity) {
                       const span = startingActivity.endDay - startingActivity.startDay + 1;
+                      const cellWidth = span * 50; // 50px per cell
                       return (
                         <td
                           key={day}
                           colSpan={span}
-                          className="border border-gray-300 px-2 py-2 text-center bg-blue-100 text-blue-800 font-medium"
-                          title={startingActivity.notes || startingActivity.activityName}
+                          className="border border-gray-300 px-1 py-2 text-center bg-blue-100 text-blue-800 font-medium cursor-pointer hover:bg-blue-200 transition-colors overflow-hidden"
+                          style={{ width: `${cellWidth}px`, minWidth: `${cellWidth}px`, maxWidth: `${cellWidth}px` }}
+                          title="Click to view details"
+                          onClick={() => handleActivityClick(startingActivity, user.name)}
                         >
-                          {startingActivity.activityName}
+                          <div className="truncate text-xs">
+                            {startingActivity.activityName}
+                          </div>
                         </td>
                       );
                     } else if (dayActivities.length > 0) {
                       // This day is part of a spanning activity, skip rendering
                       return null;
                     } else {
-                      return <td key={day} className="border border-gray-300 px-2 py-2"></td>;
+                      return <td key={day} className="border border-gray-300 px-2 py-2 w-[50px] min-w-[50px] max-w-[50px]"></td>;
                     }
                   })}
                 </tr>
@@ -289,11 +309,113 @@ export default function ViewSchedulePage() {
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-blue-100 border border-blue-300 rounded"></div>
-              <span>Scheduled Activity</span>
+              <span>Scheduled Activity (Click to view details)</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-white border border-gray-300 rounded"></div>
               <span>No Activity</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Activity Detail Modal */}
+      {showActivityModal && selectedActivity && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseActivityModal}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-bold text-gray-900">Activity Details</h3>
+              <button
+                onClick={handleCloseActivityModal}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Employee
+                </label>
+                <p className="text-base text-gray-900 font-medium">
+                  {selectedActivity.userName}
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Activity Name
+                </label>
+                <p className="text-base text-gray-900 font-medium">
+                  {selectedActivity.activityName}
+                </p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Start Date
+                  </label>
+                  <p className="text-base text-gray-900">
+                    {new Date(selectedActivity.startDate).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    End Date
+                  </label>
+                  <p className="text-base text-gray-900">
+                    {new Date(selectedActivity.endDate).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-500 mb-1">
+                  Duration
+                </label>
+                <p className="text-base text-gray-900">
+                  {selectedActivity.endDay - selectedActivity.startDay + 1} day(s)
+                </p>
+              </div>
+
+              {selectedActivity.notes && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Notes
+                  </label>
+                  <p className="text-base text-gray-900 whitespace-pre-wrap">
+                    {selectedActivity.notes}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6">
+              <button
+                onClick={handleCloseActivityModal}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
