@@ -31,6 +31,7 @@ const createRecurringTaskSchema = z.object({
   contactIds: z.array(z.string()).default([]),
   categoryId: z.string().optional(),
   teamId: z.string().optional(),
+  requiresArn: z.boolean().optional(),
 }).refine(
   (data) => {
     if (!data.endDate) return true;

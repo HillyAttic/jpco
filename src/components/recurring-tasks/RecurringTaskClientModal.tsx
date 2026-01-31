@@ -15,6 +15,7 @@ interface Client {
 interface ClientCompletion {
   clientId: string;
   completedMonths: string[]; // Array of month keys like "2025-04", "2025-05"
+  arnData?: Map<string, { arnNumber: string; arnName: string }>; // ARN data per month
 }
 
 interface RecurringTaskClientModalProps {
@@ -36,9 +37,15 @@ export function RecurringTaskClientModal({
   clients,
 }: RecurringTaskClientModalProps) {
   const [clientCompletions, setClientCompletions] = useState<Map<string, Set<string>>>(new Map());
+  const [arnData, setArnData] = useState<Map<string, Map<string, { arnNumber: string; arnName: string }>>>(new Map());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const { user } = useEnhancedAuth();
+  const [showArnDialog, setShowArnDialog] = useState(false);
+  const [currentArnRequest, setCurrentArnRequest] = useState<{ clientId: string; monthKey: string } | null>(null);
+  const [arnNumber, setArnNumber] = useState('');
+  const [arnName, setArnName] = useState('');
+  const [arnError, setArnError] = useState('');
+  const { user, userProfile } = useEnhancedAuth();
 
   // Generate months from current month to 5 years forward
   const generateMonths = () => {
@@ -103,6 +110,12 @@ export function RecurringTaskClientModal({
   // Initialize client completions from task data
   useEffect(() => {
     if (task && isOpen && task.id) {
+      console.log('[ARN Debug] Task loaded in modal:', {
+        taskId: task.id,
+        taskTitle: task.title,
+        requiresArn: task.requiresArn,
+        fullTask: task
+      });
       loadCompletions();
     }
   }, [task, clients, isOpen]);
@@ -113,10 +126,12 @@ export function RecurringTaskClientModal({
     setLoading(true);
     try {
       const completions = new Map<string, Set<string>>();
+      const arnDataMap = new Map<string, Map<string, { arnNumber: string; arnName: string }>>();
       
       // Initialize all clients with empty sets
       clients.forEach(client => {
         completions.set(client.id, new Set());
+        arnDataMap.set(client.id, new Map());
       });
 
       // Load completion data from Firestore
@@ -127,10 +142,21 @@ export function RecurringTaskClientModal({
           const clientMonths = completions.get(completion.clientId) || new Set<string>();
           clientMonths.add(completion.monthKey);
           completions.set(completion.clientId, clientMonths);
+          
+          // Store ARN data if available
+          if (completion.arnNumber && completion.arnName) {
+            const clientArnData = arnDataMap.get(completion.clientId) || new Map();
+            clientArnData.set(completion.monthKey, {
+              arnNumber: completion.arnNumber,
+              arnName: completion.arnName,
+            });
+            arnDataMap.set(completion.clientId, clientArnData);
+          }
         }
       });
       
       setClientCompletions(completions);
+      setArnData(arnDataMap);
     } catch (error) {
       console.error('Error loading completions:', error);
     } finally {
@@ -139,12 +165,52 @@ export function RecurringTaskClientModal({
   };
 
   const toggleCompletion = (clientId: string, monthKey: string) => {
+    const isCurrentlyCompleted = clientCompletions.get(clientId)?.has(monthKey) || false;
+    
+    console.log('[ARN Debug] Toggle completion:', {
+      clientId,
+      monthKey,
+      isCurrentlyCompleted,
+      taskRequiresArn: task?.requiresArn,
+      shouldShowDialog: task?.requiresArn && !isCurrentlyCompleted
+    });
+    
+    // If task requires ARN and we're checking (not unchecking), show ARN dialog
+    if (task?.requiresArn && !isCurrentlyCompleted) {
+      console.log('[ARN Debug] Showing ARN dialog');
+      setCurrentArnRequest({ clientId, monthKey });
+      setArnNumber('');
+      // Use displayName from userProfile, fallback to user displayName, then email
+      const userName = userProfile?.displayName || user?.displayName || user?.email || '';
+      console.log('[ARN Debug] User info:', { 
+        profileDisplayName: userProfile?.displayName, 
+        userDisplayName: user?.displayName, 
+        email: user?.email, 
+        userName 
+      });
+      setArnName(userName);
+      setArnError('');
+      setShowArnDialog(true);
+      return;
+    }
+    
+    console.log('[ARN Debug] Toggling without ARN dialog');
+    
+    // Otherwise, toggle normally
     setClientCompletions(prev => {
       const newMap = new Map(prev);
       const clientMonths = new Set<string>(newMap.get(clientId) || new Set<string>());
       
       if (clientMonths.has(monthKey)) {
         clientMonths.delete(monthKey);
+        // Remove ARN data
+        setArnData(prevArn => {
+          const newArnMap = new Map(prevArn);
+          const clientArnData = new Map(newArnMap.get(clientId));
+          clientArnData.delete(monthKey);
+          newArnMap.set(clientId, clientArnData);
+          return newArnMap;
+        });
       } else {
         clientMonths.add(monthKey);
       }
@@ -152,6 +218,56 @@ export function RecurringTaskClientModal({
       newMap.set(clientId, clientMonths);
       return newMap;
     });
+  };
+
+  const handleArnSubmit = () => {
+    // Validate ARN number (15 digits)
+    if (!arnNumber || arnNumber.length !== 15 || !/^\d{15}$/.test(arnNumber)) {
+      setArnError('ARN must be exactly 15 digits');
+      return;
+    }
+    
+    if (!arnName || arnName.trim().length === 0) {
+      setArnError('Name is required');
+      return;
+    }
+    
+    if (!currentArnRequest) return;
+    
+    const { clientId, monthKey } = currentArnRequest;
+    
+    // Add completion
+    setClientCompletions(prev => {
+      const newMap = new Map(prev);
+      const clientMonths = new Set<string>(newMap.get(clientId) || new Set<string>());
+      clientMonths.add(monthKey);
+      newMap.set(clientId, clientMonths);
+      return newMap;
+    });
+    
+    // Store ARN data
+    setArnData(prev => {
+      const newMap = new Map(prev);
+      const clientArnData = new Map(newMap.get(clientId) || new Map());
+      clientArnData.set(monthKey, { arnNumber, arnName: arnName.trim() });
+      newMap.set(clientId, clientArnData);
+      return newMap;
+    });
+    
+    // Close dialog
+    setShowArnDialog(false);
+    setCurrentArnRequest(null);
+    setArnNumber('');
+    setArnName('');
+    setArnError('');
+  };
+
+  const handleArnCancel = () => {
+    setShowArnDialog(false);
+    setCurrentArnRequest(null);
+    setArnNumber('');
+    setArnName('');
+    setArnError('');
   };
 
   const isCompleted = (clientId: string, monthKey: string) => {
@@ -173,15 +289,26 @@ export function RecurringTaskClientModal({
     setSaving(true);
     try {
       // Prepare bulk update data
-      const updates: Array<{ clientId: string; monthKey: string; isCompleted: boolean }> = [];
+      const updates: Array<{ 
+        clientId: string; 
+        monthKey: string; 
+        isCompleted: boolean;
+        arnNumber?: string;
+        arnName?: string;
+      }> = [];
       
       visibleMonths.forEach(month => {
         clients.forEach(client => {
           const isCompleted = clientCompletions.get(client.id)?.has(month.key) || false;
+          const clientArnData = arnData.get(client.id);
+          const monthArnData = clientArnData?.get(month.key);
+          
           updates.push({
             clientId: client.id,
             monthKey: month.key,
             isCompleted,
+            arnNumber: monthArnData?.arnNumber,
+            arnName: monthArnData?.arnName,
           });
         });
       });
@@ -190,6 +317,7 @@ export function RecurringTaskClientModal({
         taskId: task.id,
         totalUpdates: updates.length,
         completedCount: updates.filter(u => u.isCompleted).length,
+        withArnCount: updates.filter(u => u.arnNumber).length,
         userId: user.uid
       });
 
@@ -351,6 +479,96 @@ export function RecurringTaskClientModal({
           </div>
         </div>
       </div>
+
+      {/* ARN Dialog */}
+      {showArnDialog && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            {/* Backdrop */}
+            <div 
+              className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+              onClick={handleArnCancel}
+            />
+
+            {/* Dialog */}
+            <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                ARN Required
+              </h3>
+              
+              <p className="text-sm text-gray-600 mb-4">
+                This task requires an Application Reference Number (ARN) to mark as complete.
+              </p>
+
+              <div className="space-y-4">
+                {/* ARN Number Input */}
+                <div>
+                  <label htmlFor="arn-number" className="block text-sm font-medium text-gray-700 mb-1">
+                    ARN Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="arn-number"
+                    type="text"
+                    value={arnNumber}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\D/g, '').slice(0, 15);
+                      setArnNumber(value);
+                      setArnError('');
+                    }}
+                    placeholder="Enter 15-digit ARN"
+                    maxLength={15}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    {arnNumber.length}/15 digits
+                  </p>
+                </div>
+
+                {/* Name Input - Read Only */}
+                <div>
+                  <label htmlFor="arn-name" className="block text-sm font-medium text-gray-700 mb-1">
+                    Your Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="arn-name"
+                    type="text"
+                    value={arnName}
+                    readOnly
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-700 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Name is automatically filled from your profile
+                  </p>
+                </div>
+
+                {/* Error Message */}
+                {arnError && (
+                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+                    {arnError}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleArnCancel}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleArnSubmit}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

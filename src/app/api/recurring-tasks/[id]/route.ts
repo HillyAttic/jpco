@@ -40,6 +40,7 @@ const updateRecurringTaskSchema = z.object({
   categoryId: z.string().optional(),
   teamId: z.string().optional(),
   isPaused: z.boolean().optional(),
+  requiresArn: z.boolean().optional(),
 });
 
 /**

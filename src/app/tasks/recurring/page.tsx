@@ -94,6 +94,7 @@ export default function RecurringTasksPage() {
         endDate: data.endDate ? new Date(data.endDate) : undefined,
         nextOccurrence: new Date(data.startDate), // Initial next occurrence is start date
         teamId: data.teamId || undefined,
+        requiresArn: data.requiresArn || false, // Include ARN requirement
       };
 
       if (selectedTask?.id) {

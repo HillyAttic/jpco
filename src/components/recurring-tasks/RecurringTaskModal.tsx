@@ -35,6 +35,7 @@ const recurringTaskFormSchema = z.object({
   startDate: z.string().min(1, 'Start date is required'),
   endDate: z.string().optional(),
   teamId: z.string().optional(),
+  requiresArn: z.boolean().optional(),
 }).refine(
   (data) => {
     // Validate end date is after start date
@@ -100,6 +101,7 @@ export function RecurringTaskModal({
       startDate: '',
       endDate: '',
       teamId: '',
+      requiresArn: false,
     },
   });
 
@@ -247,6 +249,7 @@ export function RecurringTaskModal({
         startDate: formattedStartDate,
         endDate: formattedEndDate,
         teamId: task.teamId || '',
+        requiresArn: task.requiresArn || false,
       });
 
       // Set selected clients for display
@@ -272,6 +275,7 @@ export function RecurringTaskModal({
         startDate: formattedToday,
         endDate: '',
         teamId: '',
+        requiresArn: false,
       });
       setSelectedClients([]);
     }
@@ -623,6 +627,25 @@ export function RecurringTaskModal({
             {errors.priority && (
               <p className="text-sm text-red-600 mt-1">{errors.priority.message}</p>
             )}
+          </div>
+
+          {/* Enable ARN Checkbox */}
+          <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+            <input
+              type="checkbox"
+              id="requiresArn"
+              {...register('requiresArn')}
+              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              disabled={isLoading}
+            />
+            <div className="flex-1">
+              <Label htmlFor="requiresArn" className="font-medium text-gray-900 cursor-pointer">
+                Enable ARN (Application Reference Number)
+              </Label>
+              <p className="text-sm text-gray-600 mt-1">
+                When enabled, users must provide a 15-digit ARN number and their name before marking tasks as complete.
+              </p>
+            </div>
           </div>
 
           <DialogFooter>

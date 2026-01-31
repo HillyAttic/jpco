@@ -9,6 +9,8 @@ import { calculateNextOccurrence } from '@/utils/recurrence-scheduler';
 export interface CompletionRecord {
   date: Date;
   completedBy: string;
+  arnNumber?: string; // ARN number if ARN is enabled
+  arnName?: string; // Name of person who provided ARN
 }
 
 export interface RecurringTask {
@@ -26,6 +28,7 @@ export interface RecurringTask {
   completionHistory: CompletionRecord[];
   isPaused: boolean;
   teamId?: string; // Team ID
+  requiresArn?: boolean; // Whether ARN is required for completion
   createdAt?: Date;
   updatedAt?: Date;
 }

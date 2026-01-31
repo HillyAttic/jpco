@@ -13,6 +13,8 @@ export interface ClientTaskCompletion {
   isCompleted: boolean;
   completedAt?: Date;
   completedBy?: string;
+  arnNumber?: string; // 15-digit ARN number
+  arnName?: string; // Name of person who provided ARN
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -100,7 +102,9 @@ export const taskCompletionService = {
     recurringTaskId: string,
     clientId: string,
     monthKey: string,
-    completedBy: string
+    completedBy: string,
+    arnNumber?: string,
+    arnName?: string
   ): Promise<ClientTaskCompletion> {
     // Check if completion already exists
     const existing = await this.getByClientTaskMonth(clientId, recurringTaskId, monthKey);
@@ -111,6 +115,8 @@ export const taskCompletionService = {
         isCompleted: true,
         completedAt: new Date(),
         completedBy,
+        arnNumber,
+        arnName,
       });
     } else {
       // Create new completion
@@ -121,6 +127,8 @@ export const taskCompletionService = {
         isCompleted: true,
         completedAt: new Date(),
         completedBy,
+        arnNumber,
+        arnName,
       });
     }
   },
@@ -147,7 +155,9 @@ export const taskCompletionService = {
     recurringTaskId: string,
     clientId: string,
     monthKey: string,
-    completedBy: string
+    completedBy: string,
+    arnNumber?: string,
+    arnName?: string
   ): Promise<ClientTaskCompletion | null> {
     const existing = await this.getByClientTaskMonth(clientId, recurringTaskId, monthKey);
 
@@ -158,11 +168,11 @@ export const taskCompletionService = {
         return null;
       } else {
         // Mark as completed
-        return this.markCompleted(recurringTaskId, clientId, monthKey, completedBy);
+        return this.markCompleted(recurringTaskId, clientId, monthKey, completedBy, arnNumber, arnName);
       }
     } else {
       // Create new completion
-      return this.markCompleted(recurringTaskId, clientId, monthKey, completedBy);
+      return this.markCompleted(recurringTaskId, clientId, monthKey, completedBy, arnNumber, arnName);
     }
   },
 
@@ -187,12 +197,18 @@ export const taskCompletionService = {
    */
   async bulkUpdate(
     recurringTaskId: string,
-    completions: Array<{ clientId: string; monthKey: string; isCompleted: boolean }>,
+    completions: Array<{ 
+      clientId: string; 
+      monthKey: string; 
+      isCompleted: boolean;
+      arnNumber?: string;
+      arnName?: string;
+    }>,
     completedBy: string
   ): Promise<void> {
-    const promises = completions.map(({ clientId, monthKey, isCompleted }) => {
+    const promises = completions.map(({ clientId, monthKey, isCompleted, arnNumber, arnName }) => {
       if (isCompleted) {
-        return this.markCompleted(recurringTaskId, clientId, monthKey, completedBy);
+        return this.markCompleted(recurringTaskId, clientId, monthKey, completedBy, arnNumber, arnName);
       } else {
         return this.markIncomplete(recurringTaskId, clientId, monthKey);
       }
