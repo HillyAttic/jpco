@@ -186,7 +186,7 @@ export default function UpdateSchedulePage() {
 
       const data = {
         userId: user.uid,
-        userName: userProfile.name || userProfile.email || 'Unknown',
+        userName: userProfile.displayName || userProfile.email || 'Unknown',
         activityName: formData.activityName,
         startDate,
         endDate,

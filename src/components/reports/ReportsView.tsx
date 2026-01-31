@@ -133,7 +133,7 @@ export function ReportsView() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {tasks.map((task) => {
-                const taskClients = clients.filter(c => task.contactIds?.includes(c.id));
+                const taskClients = clients.filter(c => c.id && task.contactIds?.includes(c.id));
                 const taskCompletions = completions.get(task.id || '') || [];
                 const completionRate = calculateCompletionRate(task, taskClients.length, taskCompletions);
                 
@@ -180,7 +180,7 @@ export function ReportsView() {
       {isModalOpen && selectedTask && (
         <TaskReportModal
           task={selectedTask}
-          clients={clients.filter(c => selectedTask.contactIds?.includes(c.id))}
+          clients={clients.filter(c => c.id && selectedTask.contactIds?.includes(c.id))}
           completions={completions.get(selectedTask.id || '') || []}
           onClose={closeModal}
         />
@@ -263,7 +263,7 @@ function TaskReportModal({ task, clients, completions, onClose }: TaskReportModa
                       {client.name}
                     </td>
                     {months.map((month) => {
-                      const status = getCompletionStatus(completionData, client.id, month.key, month.fullDate);
+                      const status = getCompletionStatus(completionData, client.id || '', month.key, month.fullDate);
                       return (
                         <td key={month.key} className="px-4 py-4 whitespace-nowrap text-center">
                           {status === 'completed' && (
@@ -366,7 +366,9 @@ function buildCompletionData(
 
   // Initialize data structure
   clients.forEach((client) => {
-    data.set(client.id, new Map<string, boolean>());
+    if (client.id) {
+      data.set(client.id, new Map<string, boolean>());
+    }
   });
 
   // Populate with completion data
