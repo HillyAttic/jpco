@@ -14,9 +14,11 @@ import { taskApi } from '@/services/task.api';
 import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
 import { dashboardService } from '@/services/dashboard.service';
 import { activityService } from '@/services/activity.service';
+import { clientService } from '@/services/client.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useModal } from '@/contexts/modal-context';
-import { auth } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { StatCard } from '@/components/dashboard/StatCard';
 import { TaskOverview } from '@/components/dashboard/TaskOverview';
 import { UpcomingDeadlines } from '@/components/dashboard/UpcomingDeadlines';
@@ -31,6 +33,46 @@ import { useRouter } from 'next/navigation';
 interface DashboardTask extends Task {
   isRecurring?: boolean;
   recurrencePattern?: string;
+  teamId?: string;
+}
+
+// Helper function to get user name from Firestore
+async function getUserName(userId: string): Promise<string> {
+  try {
+    const userDoc = await getDoc(doc(db, 'users', userId));
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      return userData.name || userData.displayName || userData.email || 'Unknown User';
+    }
+  } catch (error) {
+    console.error('Error fetching user name:', error);
+  }
+  return 'Unknown User';
+}
+
+// Helper function to get client name from Firestore
+async function getClientName(clientId: string): Promise<string> {
+  try {
+    const client = await clientService.getById(clientId);
+    if (client) {
+      return client.name || client.businessName || 'Unknown Client';
+    }
+  } catch (error) {
+    console.error('Error fetching client name:', error);
+  }
+  return 'Unknown Client';
+}
+
+// Helper function to get multiple user names
+async function getUserNames(userIds: string[]): Promise<string[]> {
+  const names = await Promise.all(userIds.map(id => getUserName(id)));
+  return names;
+}
+
+// Helper function to get multiple client names
+async function getClientNames(clientIds: string[]): Promise<string[]> {
+  const names = await Promise.all(clientIds.map(id => getClientName(id)));
+  return names;
 }
 
 export default function DashboardPage() {
@@ -47,9 +89,183 @@ export default function DashboardPage() {
   const [showAllTasksModal, setShowAllTasksModal] = useState(false);
   const [showCompletedModal, setShowCompletedModal] = useState(false);
   const [showInProgressModal, setShowInProgressModal] = useState(false);
+  const [userNamesCache, setUserNamesCache] = useState<Record<string, string>>({});
+  const [clientNamesCache, setClientNamesCache] = useState<Record<string, string>>({});
 
   // Check if user is admin or manager
   const canViewAllTasks = isAdmin || isManager;
+
+  // Helper to get user name from cache or fetch it
+  const getCachedUserName = async (userId: string): Promise<string> => {
+    if (userNamesCache[userId]) {
+      return userNamesCache[userId];
+    }
+    const name = await getUserName(userId);
+    setUserNamesCache(prev => ({ ...prev, [userId]: name }));
+    return name;
+  };
+
+  // Helper to get client name from cache or fetch it
+  const getCachedClientName = async (clientId: string): Promise<string> => {
+    if (clientNamesCache[clientId]) {
+      return clientNamesCache[clientId];
+    }
+    const name = await getClientName(clientId);
+    setClientNamesCache(prev => ({ ...prev, [clientId]: name }));
+    return name;
+  };
+
+  // Component to display task assignment info
+  const TaskAssignmentInfo = ({ task }: { task: DashboardTask }) => {
+    const [assignedByName, setAssignedByName] = useState<string>('');
+    const [assignedToNames, setAssignedToNames] = useState<string[]>([]);
+    const [showClientsModal, setShowClientsModal] = useState(false);
+
+    useEffect(() => {
+      const fetchNames = async () => {
+        // Fetch creator name
+        if (task.createdBy) {
+          const name = await getCachedUserName(task.createdBy);
+          setAssignedByName(name);
+        }
+        
+        // Fetch assigned to names
+        if (task.assignedTo && task.assignedTo.length > 0) {
+          if (task.isRecurring) {
+            // Recurring tasks: assignedTo contains client IDs
+            const names = await Promise.all(
+              task.assignedTo.map(id => getCachedClientName(id))
+            );
+            setAssignedToNames(names);
+          } else {
+            // Non-recurring tasks: assignedTo contains user IDs
+            const names = await Promise.all(
+              task.assignedTo.map(id => getCachedUserName(id))
+            );
+            setAssignedToNames(names);
+          }
+        }
+      };
+      fetchNames();
+    }, [task.createdBy, task.assignedTo, task.isRecurring]);
+
+    const handleShowClients = () => {
+      setShowClientsModal(true);
+      openModal();
+    };
+
+    const handleCloseClients = () => {
+      setShowClientsModal(false);
+      closeModal();
+    };
+
+    return (
+      <>
+        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 mt-2 pt-2 border-t border-gray-200">
+          {assignedByName && (
+            <span className="flex items-center gap-1">
+              <span className="font-medium">Assigned By:</span>
+              <span className="text-gray-900">{assignedByName}</span>
+            </span>
+          )}
+          {assignedToNames.length > 0 && (
+            <>
+              {task.isRecurring ? (
+                // For recurring tasks, show a button to view clients
+                <button
+                  onClick={handleShowClients}
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors font-medium"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                  </svg>
+                  View {assignedToNames.length} Client{assignedToNames.length !== 1 ? 's' : ''}
+                </button>
+              ) : (
+                // For non-recurring tasks, show names inline
+                <span className="flex items-center gap-1">
+                  <span className="font-medium">Assigned To:</span>
+                  <span className="text-gray-900">{assignedToNames.join(', ')}</span>
+                </span>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Clients Modal */}
+        {showClientsModal && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+            onClick={handleCloseClients}
+          >
+            <div 
+              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-blue-600">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Clients for: {task.title}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {assignedToNames.length} client{assignedToNames.length !== 1 ? 's' : ''} assigned
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCloseClients}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[calc(70vh-140px)]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {assignedToNames.map((clientName, index) => (
+                    <div
+                      key={index}
+                      className="p-3 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-blue-600 font-semibold text-sm">
+                            {clientName.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-sm font-medium text-gray-900 truncate">
+                          {clientName}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-200 bg-gray-50">
+                <Button
+                  onClick={handleCloseClients}
+                  className="w-full"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
+  };
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -257,11 +473,13 @@ export default function DashboardPage() {
         priority: task.priority as TaskPriority,
         status: task.status as TaskStatus,
         assignedTo: task.contactIds || [],
+        createdBy: task.createdBy,
         category: task.categoryId,
         createdAt: task.createdAt || new Date(),
         updatedAt: task.updatedAt || new Date(),
         isRecurring: true,
         recurrencePattern: task.recurrencePattern,
+        teamId: task.teamId,
       }));
       
       // Combine both types of tasks
@@ -672,6 +890,7 @@ export default function DashboardPage() {
                               Status: {task.status}
                             </span>
                           </div>
+                          <TaskAssignmentInfo task={task} />
                         </div>
                         <div className="flex-shrink-0">
                           <div className="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
@@ -775,6 +994,7 @@ export default function DashboardPage() {
                               </span>
                             )}
                           </div>
+                          <TaskAssignmentInfo task={task} />
                         </div>
                         <div className="flex-shrink-0">
                           {hasDueDate && daysUntilDue !== null && (
@@ -920,6 +1140,7 @@ export default function DashboardPage() {
                               </span>
                             )}
                           </div>
+                          <TaskAssignmentInfo task={task} />
                         </div>
                         <div className="flex-shrink-0">
                           {isOverdue && (
@@ -1045,6 +1266,7 @@ export default function DashboardPage() {
                               </span>
                             )}
                           </div>
+                          <TaskAssignmentInfo task={task} />
                         </div>
                         <div className="flex-shrink-0">
                           <div className="px-3 py-1.5 bg-green-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
@@ -1157,6 +1379,7 @@ export default function DashboardPage() {
                               </span>
                             )}
                           </div>
+                          <TaskAssignmentInfo task={task} />
                         </div>
                         <div className="flex-shrink-0">
                           {isOverdue && daysUntilDue !== null && (

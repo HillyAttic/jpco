@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRecurringTasks } from '@/hooks/use-recurring-tasks';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
+import { teamService } from '@/services/team.service';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { RecurringTaskCard } from '@/components/recurring-tasks/RecurringTaskCard';
 import { RecurringTaskListView } from '@/components/recurring-tasks/RecurringTaskListView';
@@ -21,6 +23,9 @@ import { PlusIcon } from '@heroicons/react/24/outline';
  * Validates Requirements: 3.1, 3.2, 10.1, 10.2, 10.3, 10.4
  */
 export default function RecurringTasksPage() {
+  const { isAdmin, isManager } = useEnhancedAuth();
+  const canManageTasks = isAdmin || isManager;
+  const [teamNames, setTeamNames] = useState<Record<string, string>>({});
   const {
     tasks,
     loading,
@@ -51,6 +56,26 @@ export default function RecurringTasksPage() {
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+
+  // Load team names for display
+  useEffect(() => {
+    const loadTeamNames = async () => {
+      try {
+        const teams = await teamService.getAll({ status: 'active' });
+        const namesMap: Record<string, string> = {};
+        teams.forEach(team => {
+          if (team.id) {
+            namesMap[team.id] = team.name;
+          }
+        });
+        setTeamNames(namesMap);
+      } catch (error) {
+        console.error('Error loading team names:', error);
+      }
+    };
+
+    loadTeamNames();
+  }, []);
 
   /**
    * Handle opening modal for creating new task
@@ -269,6 +294,8 @@ export default function RecurringTasksPage() {
               onResume={handleResume}
               selected={Array.from(selectedIds)}
               onSelect={(id) => toggleSelection(id, !selectedIds.has(id))}
+              canManageTasks={canManageTasks}
+              teamNames={teamNames}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

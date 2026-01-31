@@ -28,14 +28,20 @@ export default function ViewSchedulePage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [showActivityModal, setShowActivityModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
+  const [showUserCalendarModal, setShowUserCalendarModal] = useState(false);
+  const [userCalendarEntries, setUserCalendarEntries] = useState<RosterEntry[]>([]);
 
   const canViewAllSchedules = isAdmin || isManager;
 
   useEffect(() => {
     if (!authLoading && !user) {
       router.push('/auth/sign-in');
+    } else if (!authLoading && user && !canViewAllSchedules) {
+      // Redirect employees to their own update-schedule page
+      router.push('/roster/update-schedule');
     }
-  }, [user, authLoading, router]);
+  }, [user, authLoading, router, canViewAllSchedules]);
 
   useEffect(() => {
     if (user) {
@@ -111,6 +117,99 @@ export default function ViewSchedulePage() {
     closeModal(); // Close modal context to show header again
   };
 
+  const handleUserNameClick = async (user: UserProfile) => {
+    try {
+      setSelectedUser(user);
+      // Load user's calendar entries for the current month
+      const entries = await rosterService.getUserCalendarEvents(user.id, currentMonth, currentYear);
+      setUserCalendarEntries(entries);
+      setShowUserCalendarModal(true);
+      openModal(); // Open modal context to hide header
+    } catch (error) {
+      console.error('Error loading user calendar:', error);
+    }
+  };
+
+  const handleCloseUserCalendarModal = () => {
+    setShowUserCalendarModal(false);
+    setSelectedUser(null);
+    setUserCalendarEntries([]);
+    closeModal(); // Close modal context to show header again
+  };
+
+  const renderUserCalendarInModal = () => {
+    const daysInMonth = getDaysInMonth(currentMonth, currentYear);
+    const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
+    const days: any[] = [];
+
+    // Previous month days
+    const prevMonth = currentMonth === 1 ? 12 : currentMonth - 1;
+    const prevYear = currentMonth === 1 ? currentYear - 1 : currentYear;
+    const daysInPrevMonth = getDaysInMonth(prevMonth, prevYear);
+
+    for (let i = firstDay - 1; i >= 0; i--) {
+      days.push({
+        day: daysInPrevMonth - i,
+        isCurrentMonth: false,
+        activities: [],
+      });
+    }
+
+    // Current month days
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(currentYear, currentMonth - 1, day);
+      date.setHours(0, 0, 0, 0); // Normalize to midnight
+      
+      const dayActivities = userCalendarEntries.filter(entry => {
+        const entryStart = new Date(entry.startDate);
+        entryStart.setHours(0, 0, 0, 0); // Normalize to midnight
+        const entryEnd = new Date(entry.endDate);
+        entryEnd.setHours(0, 0, 0, 0); // Normalize to midnight
+        return date >= entryStart && date <= entryEnd;
+      });
+
+      days.push({
+        day,
+        isCurrentMonth: true,
+        activities: dayActivities,
+      });
+    }
+
+    return (
+      <div className="grid grid-cols-7 gap-1">
+        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+          <div key={day} className="text-center font-semibold text-sm text-gray-600 py-2">
+            {day}
+          </div>
+        ))}
+        {days.map((calDay, index) => (
+          <div
+            key={index}
+            className={`min-h-[80px] border border-gray-200 p-1 ${
+              !calDay.isCurrentMonth ? 'bg-gray-50' : 'bg-white'
+            }`}
+          >
+            <div className={`text-sm ${!calDay.isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}`}>
+              {calDay.day}
+            </div>
+            <div className="mt-1 space-y-1">
+              {calDay.activities.map((activity: RosterEntry) => (
+                <div
+                  key={activity.id}
+                  className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded truncate cursor-pointer hover:bg-blue-200"
+                  title={activity.activityName}
+                  onClick={() => handleActivityClick(activity, selectedUser?.name || '')}
+                >
+                  {activity.activityName}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
   const renderUserCalendar = () => {
     const daysInMonth = getDaysInMonth(currentMonth, currentYear);
     const firstDay = new Date(currentYear, currentMonth - 1, 1).getDay();
@@ -132,9 +231,13 @@ export default function ViewSchedulePage() {
     // Current month days
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentYear, currentMonth - 1, day);
+      date.setHours(0, 0, 0, 0); // Normalize to midnight
+      
       const dayActivities = entries.filter(entry => {
         const entryStart = new Date(entry.startDate);
+        entryStart.setHours(0, 0, 0, 0); // Normalize to midnight
         const entryEnd = new Date(entry.endDate);
+        entryEnd.setHours(0, 0, 0, 0); // Normalize to midnight
         return date >= entryStart && date <= entryEnd;
       });
 
@@ -207,7 +310,11 @@ export default function ViewSchedulePage() {
 
               return (
                 <tr key={user.id} className="hover:bg-gray-50">
-                  <td className="border border-gray-300 px-4 py-2 font-medium sticky left-0 bg-white z-10 whitespace-nowrap min-w-[150px]">
+                  <td 
+                    className="border border-gray-300 px-4 py-2 font-medium sticky left-0 bg-white z-10 whitespace-nowrap min-w-[150px] cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                    onClick={() => handleUserNameClick(user)}
+                    title="Click to view full calendar"
+                  >
                     {user.name}
                   </td>
                   {days.map(day => {
@@ -260,7 +367,7 @@ export default function ViewSchedulePage() {
     );
   }
 
-  if (!user) return null;
+  if (!user || !canViewAllSchedules) return null;
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -417,6 +524,69 @@ export default function ViewSchedulePage() {
               <button
                 onClick={handleCloseActivityModal}
                 className="w-full px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* User Calendar Modal */}
+      {showUserCalendarModal && selectedUser && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseUserCalendarModal}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">{selectedUser.name}'s Schedule</h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {MONTHS[currentMonth - 1]} {currentYear}
+                  </p>
+                </div>
+                <button
+                  onClick={handleCloseUserCalendarModal}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {renderUserCalendarInModal()}
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h4 className="text-sm font-semibold text-gray-700">Activities Summary</h4>
+                <span className="text-sm text-gray-600">
+                  {userCalendarEntries.length} activity{userCalendarEntries.length !== 1 ? 'ies' : ''} this month
+                </span>
+              </div>
+              {userCalendarEntries.length > 0 && (
+                <div className="space-y-2 max-h-40 overflow-y-auto mb-4">
+                  {userCalendarEntries.map(entry => (
+                    <div key={entry.id} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200 text-sm">
+                      <span className="font-medium text-gray-900">{entry.activityName}</span>
+                      <span className="text-gray-600">
+                        {new Date(entry.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(entry.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={handleCloseUserCalendarModal}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
               >
                 Close
               </button>

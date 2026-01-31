@@ -210,11 +210,26 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Get auth token from header
+    const authHeader = request.headers.get('authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const token = authHeader.split('Bearer ')[1];
+    
+    // Decode JWT token to get user ID
+    let userId: string;
+    try {
+      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+      userId = payload.user_id || payload.sub;
+      
+      if (!userId) {
+        return ErrorResponses.unauthorized();
+      }
+    } catch (error) {
+      return ErrorResponses.unauthorized();
+    }
 
     const body = await request.json();
 
@@ -229,7 +244,7 @@ export async function POST(request: NextRequest) {
 
     const taskData = validationResult.data;
 
-    // Convert date strings to Date objects
+    // Convert date strings to Date objects and add createdBy
     const taskToCreate = {
       ...taskData,
       description: taskData.description || '',
@@ -238,6 +253,7 @@ export async function POST(request: NextRequest) {
       nextOccurrence: taskData.nextOccurrence 
         ? (taskData.nextOccurrence instanceof Date ? taskData.nextOccurrence : new Date(taskData.nextOccurrence))
         : (taskData.startDate instanceof Date ? taskData.startDate : new Date(taskData.startDate)),
+      createdBy: userId, // Store the creator's user ID
     };
     
     const newTask = await recurringTaskService.create(taskToCreate);

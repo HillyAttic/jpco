@@ -82,9 +82,13 @@ export default function UpdateSchedulePage() {
     // Current month days
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentYear, currentMonth - 1, day);
+      date.setHours(0, 0, 0, 0); // Normalize to midnight
+      
       const dayActivities = entries.filter(entry => {
         const entryStart = new Date(entry.startDate);
+        entryStart.setHours(0, 0, 0, 0); // Normalize to midnight
         const entryEnd = new Date(entry.endDate);
+        entryEnd.setHours(0, 0, 0, 0); // Normalize to midnight
         return date >= entryStart && date <= entryEnd;
       });
 

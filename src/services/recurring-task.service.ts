@@ -29,6 +29,7 @@ export interface RecurringTask {
   isPaused: boolean;
   teamId?: string; // Team ID
   requiresArn?: boolean; // Whether ARN is required for completion
+  createdBy?: string; // User ID of the creator
   createdAt?: Date;
   updatedAt?: Date;
 }

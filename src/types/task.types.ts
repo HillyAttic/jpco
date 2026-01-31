@@ -22,6 +22,7 @@ export interface Task {
   createdAt: Date;
   updatedAt: Date;
   assignedTo: string[];
+  createdBy?: string;
   category?: string;
   commentCount?: number;
 }

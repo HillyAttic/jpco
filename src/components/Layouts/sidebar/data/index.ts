@@ -95,6 +95,7 @@ export const NAV_DATA = [
           {
             title: "View Schedule",
             url: "/roster/view-schedule",
+            requiresRole: ['admin', 'manager'], // Only managers and admins can see this
           },
         ],
       },

@@ -11,6 +11,8 @@ interface RecurringTaskListViewProps {
   onResume: (id: string) => void;
   selected?: string[];
   onSelect?: (id: string) => void;
+  canManageTasks?: boolean; // Whether user can edit/delete/pause tasks
+  teamNames?: Record<string, string>; // Map of teamId to team name
 }
 
 /**
@@ -25,6 +27,8 @@ export function RecurringTaskListView({
   onResume,
   selected = [],
   onSelect,
+  canManageTasks = true, // Default to true for backward compatibility
+  teamNames = {}, // Default to empty object
 }: RecurringTaskListViewProps) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -73,7 +77,7 @@ export function RecurringTaskListView({
           <div className="col-span-1">Status</div>
           <div className="col-span-1">Priority</div>
           <div className="col-span-2">Next Occurrence</div>
-          <div className="col-span-2">Actions</div>
+          <div className="col-span-2">{canManageTasks ? 'Actions' : 'Team'}</div>
         </div>
 
         {/* Table Body */}
@@ -134,47 +138,63 @@ export function RecurringTaskListView({
               </div>
 
               {/* Next Occurrence */}
-              <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
-                {formatDate(task.nextOccurrence)}
+              <div className="col-span-2">
+                <div className="text-gray-700 dark:text-gray-300 flex items-center">
+                  {formatDate(task.nextOccurrence)}
+                </div>
               </div>
 
-              {/* Actions */}
+              {/* Actions or Team */}
               <div className="col-span-2 flex items-center gap-2">
-                {task.isPaused ? (
-                  <button
-                    onClick={() => onResume(task.id!)}
-                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 p-1"
-                    aria-label="Resume task"
-                    title="Resume"
-                  >
-                    <PlayIcon className="w-4 h-4" />
-                  </button>
+                {canManageTasks ? (
+                  <>
+                    {task.isPaused ? (
+                      <button
+                        onClick={() => onResume(task.id!)}
+                        className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 p-1"
+                        aria-label="Resume task"
+                        title="Resume"
+                      >
+                        <PlayIcon className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => onPause(task.id!)}
+                        className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 p-1"
+                        aria-label="Pause task"
+                        title="Pause"
+                      >
+                        <PauseIcon className="w-4 h-4" />
+                      </button>
+                    )}
+                    <button
+                      onClick={() => onEdit(task)}
+                      className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1"
+                      aria-label="Edit task"
+                      title="Edit"
+                    >
+                      <PencilIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => onDelete(task.id!)}
+                      className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1"
+                      aria-label="Delete task"
+                      title="Delete"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </>
                 ) : (
-                  <button
-                    onClick={() => onPause(task.id!)}
-                    className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 p-1"
-                    aria-label="Pause task"
-                    title="Pause"
-                  >
-                    <PauseIcon className="w-4 h-4" />
-                  </button>
+                  <div className="text-gray-700 dark:text-gray-300">
+                    {task.teamId && teamNames[task.teamId] ? (
+                      <span className="text-sm font-medium">{teamNames[task.teamId]}</span>
+                    ) : task.teamId ? (
+                      <span className="text-sm text-gray-500 dark:text-gray-400">Team ID: {task.teamId}</span>
+                    ) : (
+                      <span className="text-sm text-gray-400 dark:text-gray-500 italic">No team assigned</span>
+                    )}
+                  </div>
                 )}
-                <button
-                  onClick={() => onEdit(task)}
-                  className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-1"
-                  aria-label="Edit task"
-                  title="Edit"
-                >
-                  <PencilIcon className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => onDelete(task.id!)}
-                  className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-1"
-                  aria-label="Delete task"
-                  title="Delete"
-                >
-                  <TrashIcon className="w-4 h-4" />
-                </button>
               </div>
             </div>
           ))}
@@ -233,45 +253,61 @@ export function RecurringTaskListView({
                   {formatDate(task.nextOccurrence)}
                 </span>
               </div>
+              {!canManageTasks && (
+                <div className="flex justify-between">
+                  <span className="text-gray-500 dark:text-gray-400">Team:</span>
+                  <span className="text-gray-900 dark:text-white font-medium">
+                    {task.teamId && teamNames[task.teamId] ? (
+                      teamNames[task.teamId]
+                    ) : task.teamId ? (
+                      <span className="text-gray-500 dark:text-gray-400">Team ID: {task.teamId}</span>
+                    ) : (
+                      <span className="text-gray-400 dark:text-gray-500 italic">No team assigned</span>
+                    )}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}
-            <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
-              {task.isPaused ? (
+            {canManageTasks && (
+              <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                {task.isPaused ? (
+                  <button
+                    onClick={() => onResume(task.id!)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 transition-colors min-h-[44px]"
+                    aria-label="Resume task"
+                  >
+                    <PlayIcon className="w-5 h-5" />
+                    <span className="text-sm">Resume</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => onPause(task.id!)}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50 transition-colors min-h-[44px]"
+                    aria-label="Pause task"
+                  >
+                    <PauseIcon className="w-5 h-5" />
+                    <span className="text-sm">Pause</span>
+                  </button>
+                )}
                 <button
-                  onClick={() => onResume(task.id!)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 transition-colors min-h-[44px]"
-                  aria-label="Resume task"
+                  onClick={() => onEdit(task)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors min-h-[44px]"
+                  aria-label="Edit task"
                 >
-                  <PlayIcon className="w-5 h-5" />
-                  <span className="text-sm">Resume</span>
+                  <PencilIcon className="w-5 h-5" />
+                  <span className="text-sm">Edit</span>
                 </button>
-              ) : (
                 <button
-                  onClick={() => onPause(task.id!)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50 transition-colors min-h-[44px]"
-                  aria-label="Pause task"
+                  onClick={() => onDelete(task.id!)}
+                  className="px-4 py-2.5 rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
+                  aria-label="Delete task"
                 >
-                  <PauseIcon className="w-5 h-5" />
-                  <span className="text-sm">Pause</span>
+                  <TrashIcon className="w-5 h-5" />
                 </button>
-              )}
-              <button
-                onClick={() => onEdit(task)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors min-h-[44px]"
-                aria-label="Edit task"
-              >
-                <PencilIcon className="w-5 h-5" />
-                <span className="text-sm">Edit</span>
-              </button>
-              <button
-                onClick={() => onDelete(task.id!)}
-                className="px-4 py-2.5 rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
-                aria-label="Delete task"
-              >
-                <TrashIcon className="w-5 h-5" />
-              </button>
-            </div>
+              </div>
+            )}
           </div>
         ))}
       </div>
