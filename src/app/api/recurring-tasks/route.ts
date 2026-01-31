@@ -92,7 +92,7 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
     };
     
-    // Check if this is a calendar view request (show all tasks to all users)
+    // Check if this is a calendar view request
     const isCalendarView = searchParams.get('view') === 'calendar';
 
     // Fetch all tasks
@@ -105,9 +105,9 @@ export async function GET(request: NextRequest) {
     console.log(`[Recurring Tasks API] Is Calendar View: ${isCalendarView}`);
     
     // Filter tasks based on user role
-    // CALENDAR VIEW: Show all tasks to all users (no filtering)
-    // LIST VIEW: Filter based on role and assignments
-    if (!isAdminOrManager && !isCalendarView) {
+    // Admin/Manager see all tasks in both calendar and list views
+    // Team members see only their assigned tasks in both views
+    if (!isAdminOrManager) {
       // CRITICAL FIX: Team members are stored with OLD employee IDs, not Firebase Auth UIDs
       // We need to find ALL possible IDs that could represent this user
       
@@ -192,11 +192,9 @@ export async function GET(request: NextRequest) {
         return isDirectlyAssigned || isTeamAssigned;
       });
       
-      console.log(`[Recurring Tasks API] Employee ${userId} filtered recurring tasks: ${tasks.length}`);
-    } else if (isCalendarView) {
-      console.log(`[Recurring Tasks API] Calendar view - showing all ${tasks.length} recurring tasks to user ${userId}`);
+      console.log(`[Recurring Tasks API] Team member ${userId} filtered recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);
     } else {
-      console.log(`[Recurring Tasks API] Admin/Manager ${userId} viewing all recurring tasks: ${tasks.length}`);
+      console.log(`[Recurring Tasks API] Admin/Manager ${userId} viewing all recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);
     }
     
     return NextResponse.json(tasks, { status: 200 });

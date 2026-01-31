@@ -7,7 +7,10 @@ import {
   ChartBarIcon,
   DocumentTextIcon,
   FolderIcon,
-  Cog6ToothIcon
+  Cog6ToothIcon,
+  CalendarDaysIcon,
+  ClipboardDocumentCheckIcon,
+  ClockIcon
 } from '@heroicons/react/24/outline';
 
 interface QuickActionsProps {
@@ -15,6 +18,10 @@ interface QuickActionsProps {
   onViewTeam?: () => void;
   onViewAnalytics?: () => void;
   onManageProjects?: () => void;
+  onViewRoster?: () => void;
+  onViewReports?: () => void;
+  onViewAttendance?: () => void;
+  isAdminOrManager?: boolean;
 }
 
 export function QuickActions({
@@ -22,8 +29,12 @@ export function QuickActions({
   onViewTeam,
   onViewAnalytics,
   onManageProjects,
+  onViewRoster,
+  onViewReports,
+  onViewAttendance,
+  isAdminOrManager = false,
 }: QuickActionsProps) {
-  const actions = [
+  const baseActions = [
     {
       label: 'Create Task',
       icon: <PlusCircleIcon className="w-5 h-5" />,
@@ -49,6 +60,29 @@ export function QuickActions({
       color: 'bg-indigo-600 hover:bg-indigo-700'
     }
   ];
+
+  const adminActions = [
+    {
+      label: 'Roster',
+      icon: <CalendarDaysIcon className="w-5 h-5" />,
+      onClick: onViewRoster,
+      color: 'bg-teal-600 hover:bg-teal-700'
+    },
+    {
+      label: 'Reports',
+      icon: <ClipboardDocumentCheckIcon className="w-5 h-5" />,
+      onClick: onViewReports,
+      color: 'bg-cyan-600 hover:bg-cyan-700'
+    },
+    {
+      label: 'Attendance',
+      icon: <ClockIcon className="w-5 h-5" />,
+      onClick: onViewAttendance,
+      color: 'bg-pink-600 hover:bg-pink-700'
+    }
+  ];
+
+  const actions = isAdminOrManager ? [...baseActions, ...adminActions] : baseActions;
 
   return (
     <Card>

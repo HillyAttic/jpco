@@ -106,6 +106,16 @@ export function RecurringTaskModal({
   });
 
   const startDate = watch('startDate');
+  const teamId = watch('teamId');
+
+  // Clear selected clients when team changes
+  useEffect(() => {
+    if (task && teamId !== task.teamId) {
+      // Team has changed, clear the selected clients
+      setSelectedClients([]);
+      setValue('contactIds', '');
+    }
+  }, [teamId, task, setValue]);
 
   // Load teams for team selection
   useEffect(() => {

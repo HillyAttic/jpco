@@ -482,6 +482,10 @@ export default function DashboardPage() {
               onViewTeam={() => router.push('/employees')}
               onViewAnalytics={() => router.push('/dashboard')}
               onManageProjects={() => router.push('/kanban')}
+              onViewRoster={() => router.push('/roster/view-schedule')}
+              onViewReports={() => router.push('/reports')}
+              onViewAttendance={() => router.push('/attendance/tray')}
+              isAdminOrManager={canViewAllTasks}
             />
           )}
         </div>
