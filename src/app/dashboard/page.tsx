@@ -120,6 +120,9 @@ export default function DashboardPage() {
     const [assignedByName, setAssignedByName] = useState<string>('');
     const [assignedToNames, setAssignedToNames] = useState<string[]>([]);
     const [showClientsModal, setShowClientsModal] = useState(false);
+    const [showTeamModal, setShowTeamModal] = useState(false);
+    const [teamName, setTeamName] = useState<string>('');
+    const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; role: string }>>([]);
 
     useEffect(() => {
       const fetchNames = async () => {
@@ -127,6 +130,20 @@ export default function DashboardPage() {
         if (task.createdBy) {
           const name = await getCachedUserName(task.createdBy);
           setAssignedByName(name);
+        }
+        
+        // Fetch team info for recurring tasks
+        if (task.isRecurring && task.teamId) {
+          try {
+            const { teamService } = await import('@/services/team.service');
+            const team = await teamService.getById(task.teamId);
+            if (team) {
+              setTeamName(team.name);
+              setTeamMembers(team.members || []);
+            }
+          } catch (error) {
+            console.error('Error fetching team:', error);
+          }
         }
         
         // Fetch assigned to names
@@ -147,7 +164,7 @@ export default function DashboardPage() {
         }
       };
       fetchNames();
-    }, [task.createdBy, task.assignedTo, task.isRecurring]);
+    }, [task.createdBy, task.assignedTo, task.isRecurring, task.teamId]);
 
     const handleShowClients = () => {
       setShowClientsModal(true);
@@ -156,6 +173,16 @@ export default function DashboardPage() {
 
     const handleCloseClients = () => {
       setShowClientsModal(false);
+      closeModal();
+    };
+
+    const handleShowTeam = () => {
+      setShowTeamModal(true);
+      openModal();
+    };
+
+    const handleCloseTeam = () => {
+      setShowTeamModal(false);
       closeModal();
     };
 
@@ -171,16 +198,29 @@ export default function DashboardPage() {
           {assignedToNames.length > 0 && (
             <>
               {task.isRecurring ? (
-                // For recurring tasks, show a button to view clients
-                <button
-                  onClick={handleShowClients}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors font-medium"
-                >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
-                  </svg>
-                  View {assignedToNames.length} Client{assignedToNames.length !== 1 ? 's' : ''}
-                </button>
+                // For recurring tasks, show buttons to view clients and team
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={handleShowClients}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors font-medium"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                    </svg>
+                    View {assignedToNames.length} Client{assignedToNames.length !== 1 ? 's' : ''}
+                  </button>
+                  {teamName && (
+                    <button
+                      onClick={handleShowTeam}
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors font-medium"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                      </svg>
+                      Team: {teamName}
+                    </button>
+                  )}
+                </div>
               ) : (
                 // For non-recurring tasks, show names inline
                 <span className="flex items-center gap-1">
@@ -255,6 +295,83 @@ export default function DashboardPage() {
               <div className="p-6 border-t border-gray-200 bg-gray-50">
                 <Button
                   onClick={handleCloseClients}
+                  className="w-full"
+                >
+                  Close
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Team Members Modal */}
+        {showTeamModal && (
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4"
+            onClick={handleCloseTeam}
+          >
+            <div 
+              className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-green-600">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+                      </svg>
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-bold text-gray-900">
+                        Team: {teamName}
+                      </h3>
+                      <p className="text-sm text-gray-600">
+                        {teamMembers.length} team member{teamMembers.length !== 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleCloseTeam}
+                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 overflow-y-auto max-h-[calc(70vh-140px)]">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {teamMembers.map((member) => (
+                    <div
+                      key={member.id}
+                      className="p-4 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                          <span className="text-green-600 font-semibold">
+                            {member.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {member.name}
+                          </p>
+                          <p className="text-xs text-gray-500 capitalize">
+                            {member.role}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-gray-200 bg-gray-50">
+                <Button
+                  onClick={handleCloseTeam}
                   className="w-full"
                 >
                   Close
