@@ -54,6 +54,12 @@ export function GeolocationAttendanceTracker() {
   // Check if we're running in a secure context (HTTPS)
   const isSecureContext = typeof window !== 'undefined' ? window.isSecureContext : true;
 
+  // Detect if user is on mobile device
+  const isMobileDevice = () => {
+    if (typeof window === 'undefined') return false;
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+  };
+
   useEffect(() => {
     if (auth.user) {
       console.log('User authenticated, triggering cleanup and status load');
@@ -559,31 +565,51 @@ export function GeolocationAttendanceTracker() {
               {/* Show permission instructions if location was denied */}
               {permissionStatus === 'denied' && (
                 <div className="mt-3 text-left space-y-2">
-                  <p className="text-xs font-semibold text-red-800">To enable location access:</p>
-                  <ol className="text-xs text-red-700 space-y-1 list-decimal pl-4">
-                    <li>Open your browser and navigate to https://jpcopanel.vercel.app/
-. Then, click the tune (settings) icon in the address bar.</li>
-                    <li>Find "Location" in the permissions list</li>
-                    <li>Change it from "Block" to "Allow"</li>
-                    <li>Click the "Retry" button below</li>
-                  </ol>
+                  {/* Desktop Instructions */}
+                  {!isMobileDevice() && (
+                    <>
+                      <p className="text-xs font-semibold text-red-800">To enable location access:</p>
+                      <ol className="text-xs text-red-700 space-y-1 list-decimal pl-4">
+                        <li>Open your browser and navigate to https://jpcopanel.vercel.app/. Then, click the tune (settings) icon in the address bar.</li>
+                        <li>Find "Location" in the permissions list</li>
+                        <li>Change it from "Block" to "Allow"</li>
+                        <li>Click the "Retry" button below</li>
+                      </ol>
+                      
+                      {/* Visual reference images */}
+                      <div className="mt-3 p-2 bg-white rounded border border-red-300">
+                        <p className="text-xs text-red-800 font-medium mb-2">Visual Guide:</p>
+                        <div className="space-y-2">
+                          <img 
+                            src="/images/icons/tune_icon_chrome.webp" 
+                            alt="Step 1: Click the lock icon in browser address bar"
+                            className="w-full rounded border border-gray-200"
+                          />
+                          <img 
+                            src="/images/icons/location_allow.jpg" 
+                            alt="Step 2: Allow location access"
+                            className="w-full rounded border border-gray-200"
+                          />
+                        </div>
+                      </div>
+                    </>
+                  )}
                   
-                  {/* Visual reference images */}
-                  <div className="mt-3 p-2 bg-white rounded border border-red-300">
-                    <p className="text-xs text-red-800 font-medium mb-2">Visual Guide:</p>
-                    <div className="space-y-2">
-                      <img 
-                        src="/images/icons/tune_icon_chrome.webp" 
-                        alt="Step 1: Click the lock icon in browser address bar"
-                        className="w-full rounded border border-gray-200"
-                      />
-                      <img 
-                        src="/images/icons/location_allow.jpg" 
-                        alt="Step 2: Allow location access"
-                        className="w-full rounded border border-gray-200"
-                      />
-                    </div>
-                  </div>
+                  {/* Mobile Instructions */}
+                  {isMobileDevice() && (
+                    <>
+                      <p className="text-xs font-semibold text-red-800">To enable access on mobile:</p>
+                      <ol className="text-xs text-red-700 space-y-1 list-decimal pl-4">                      
+                        <li>Enable Location access</li>
+                        <li>Return to this page and click "Retry" below</li>
+                      </ol>
+                      <div className="mt-2 p-2 bg-yellow-50 border border-yellow-300 rounded">
+                        <p className="text-xs text-yellow-800">
+                          <strong>Note:</strong> You may need to close and reopen your app after changing settings.
+                        </p>
+                      </div>
+                    </>
+                  )}
                   
                   <Button
                     onClick={() => {
@@ -595,7 +621,7 @@ export function GeolocationAttendanceTracker() {
                     className="w-full mt-2"
                   >
                     <RotateCcw className="mr-2 h-3 w-3" />
-                    Retry Location Access
+                    Retry
                   </Button>
                 </div>
               )}

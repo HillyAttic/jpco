@@ -446,11 +446,12 @@ export default function DashboardPage() {
 
   const handleShowAllTasks = () => {
     setShowAllTasksModal(true);
-    // Don't hide header for stat card modals
+    openModal(); // Hide header for All Tasks modal
   };
 
   const handleCloseAllTasks = () => {
     setShowAllTasksModal(false);
+    closeModal(); // Show header when modal closes
   };
 
   const handleShowCompleted = () => {
