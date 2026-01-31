@@ -48,7 +48,7 @@ export default function CalendarPage() {
         'Authorization': `Bearer ${token}`,
       };
       
-      const recurringResponse = await fetch('/api/recurring-tasks', { headers });
+      const recurringResponse = await fetch('/api/recurring-tasks?view=calendar', { headers });
       if (!recurringResponse.ok) {
         throw new Error('Failed to fetch recurring tasks');
       }
@@ -99,8 +99,10 @@ export default function CalendarPage() {
       // This allows unlimited recurring tasks to show for a reasonable future period
       const taskEndDate = recurringTask.endDate ? new Date(recurringTask.endDate) : calendarEndDate;
       
-      // Calculate occurrences within the date range
-      const occurrenceStartDate = taskStartDate > calendarStartDate ? taskStartDate : calendarStartDate;
+      // CRITICAL FIX: Always start from the task's actual start date
+      // The occurrences should be calculated from when the task was created,
+      // not from an arbitrary calendar start date
+      const occurrenceStartDate = taskStartDate;
       const occurrenceEndDate = taskEndDate < calendarEndDate ? taskEndDate : calendarEndDate;
       
       try {
@@ -109,6 +111,16 @@ export default function CalendarPage() {
           occurrenceEndDate,
           recurringTask.recurrencePattern
         );
+        
+        console.log(`[Calendar] Task: ${recurringTask.title}`);
+        console.log(`[Calendar] Pattern: ${recurringTask.recurrencePattern}`);
+        console.log(`[Calendar] Start: ${occurrenceStartDate.toISOString()}`);
+        console.log(`[Calendar] End: ${occurrenceEndDate.toISOString()}`);
+        console.log(`[Calendar] Generated ${occurrences.length} occurrences`);
+        if (occurrences.length > 0) {
+          console.log(`[Calendar] First occurrence: ${occurrences[0].toISOString()}`);
+          console.log(`[Calendar] Last occurrence: ${occurrences[occurrences.length - 1].toISOString()}`);
+        }
         
         // Create a calendar task for each occurrence
         occurrences.forEach(occurrenceDate => {
