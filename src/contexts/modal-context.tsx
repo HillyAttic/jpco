@@ -11,13 +11,17 @@ interface ModalContextType {
 const ModalContext = createContext<ModalContextType | undefined>(undefined);
 
 export function ModalProvider({ children }: { children: ReactNode }) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalCount, setModalCount] = useState(0);
 
-  const openModal = () => setIsModalOpen(true);
-  const closeModal = () => setIsModalOpen(false);
+  const openModal = () => setModalCount(prev => prev + 1);
+  const closeModal = () => setModalCount(prev => Math.max(0, prev - 1));
 
   return (
-    <ModalContext.Provider value={{ isModalOpen, openModal, closeModal }}>
+    <ModalContext.Provider value={{ 
+      isModalOpen: modalCount > 0, 
+      openModal, 
+      closeModal 
+    }}>
       {children}
     </ModalContext.Provider>
   );
