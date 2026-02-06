@@ -413,15 +413,15 @@ export default function ViewSchedulePage() {
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
 
     return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full border-collapse border border-gray-300">
+      <div className="w-full overflow-x-auto">
+        <table className="border-collapse border border-gray-300">
           <thead>
             <tr className="bg-gray-100">
-              <th className="border border-gray-300 px-4 py-2 text-left font-semibold sticky left-0 bg-gray-100 z-10 whitespace-nowrap min-w-[150px]">
+              <th className="border border-gray-300 px-2 py-2 text-left font-semibold bg-gray-100 whitespace-nowrap" style={{ width: '150px', minWidth: '150px' }}>
                 EMP NAME
               </th>
               {days.map(day => (
-                <th key={day} className="border border-gray-300 px-2 py-2 text-center font-semibold w-[50px] min-w-[50px] max-w-[50px]">
+                <th key={day} className="border border-gray-300 text-center font-semibold text-xs" style={{ width: '40px', minWidth: '40px', maxWidth: '40px', height: '40px', padding: '0' }}>
                   {day}
                 </th>
               ))}
@@ -433,13 +433,14 @@ export default function ViewSchedulePage() {
               const activities = employeeData?.activities || [];
 
               return (
-                <tr key={user.id} className="hover:bg-gray-50">
+                <tr key={user.id} className="hover:bg-gray-50" style={{ height: '40px' }}>
                   <td 
-                    className="border border-gray-300 px-4 py-2 font-medium sticky left-0 bg-white z-10 whitespace-nowrap min-w-[150px] cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors"
+                    className="border border-gray-300 px-2 font-medium bg-white whitespace-nowrap cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm"
                     onClick={() => handleUserNameClick(user)}
                     title="Click to view full calendar"
+                    style={{ width: '150px', minWidth: '150px', height: '40px' }}
                   >
-                    {user.name}
+                    <div className="truncate">{user.name}</div>
                   </td>
                   {days.map(day => {
                     // Find activities that span this day
@@ -452,7 +453,7 @@ export default function ViewSchedulePage() {
 
                     if (startingActivity) {
                       const span = startingActivity.endDay - startingActivity.startDay + 1;
-                      const cellWidth = span * 50; // 50px per cell
+                      const cellWidth = span * 40;
                       const displayName = startingActivity.activityName 
                         || startingActivity.taskDetail 
                         || 'Task';
@@ -475,14 +476,11 @@ export default function ViewSchedulePage() {
                         <td
                           key={day}
                           colSpan={span}
-                          className={`border border-gray-300 px-1 py-2 text-center font-medium cursor-pointer transition-colors overflow-hidden ${getExcelCellColorClass(taskForColor)}`}
-                          style={{ width: `${cellWidth}px`, minWidth: `${cellWidth}px`, maxWidth: `${cellWidth}px` }}
-                          title="Click to view all tasks for this day"
+                          className={`border border-gray-300 text-center font-medium cursor-pointer transition-colors overflow-hidden ${getExcelCellColorClass(taskForColor)}`}
+                          title={displayName}
                           onClick={() => handleActivityClick(startingActivity, user.name, user.id, day)}
+                          style={{ width: `${cellWidth}px`, minWidth: `${cellWidth}px`, maxWidth: `${cellWidth}px`, height: '40px', padding: '0' }}
                         >
-                          <div className="truncate text-xs">
-                            {displayName}
-                          </div>
                         </td>
                       );
                     } else if (dayActivities.length > 0) {
@@ -493,7 +491,8 @@ export default function ViewSchedulePage() {
                       return (
                         <td 
                           key={day} 
-                          className="border border-gray-300 px-2 py-2 w-[50px] min-w-[50px] max-w-[50px] bg-green-100"
+                          className="border border-gray-300 bg-green-100"
+                          style={{ width: '40px', minWidth: '40px', maxWidth: '40px', height: '40px', padding: '0' }}
                         ></td>
                       );
                     }
