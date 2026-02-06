@@ -598,9 +598,9 @@ export function GeolocationAttendanceTracker() {
                   {/* Mobile Instructions */}
                   {isMobileDevice() && (
                     <>
-                      <p className="text-xs font-semibold text-red-800">To enable access on mobile:</p>
+                      <p className="text-xs font-semibold text-red-800">Steps to fix on mobile devices:</p>
                       <ol className="text-xs text-red-700 space-y-1 list-decimal pl-4">                      
-                        <li>Enable Location access</li>
+                        <li>Enable location access manually on your mobile device</li>
                         <li>Return to this page and click "Retry" below</li>
                       </ol>
                       <div className="mt-2 p-2 bg-yellow-50 border border-yellow-300 rounded">

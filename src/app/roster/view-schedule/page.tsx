@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useRouter } from 'next/navigation';
 import { useModal } from '@/contexts/modal-context';
-import { rosterService } from '@/services/roster.service';
+import { rosterService, getTaskColor } from '@/services/roster.service';
 import { RosterEntry, MONTHS, getDaysInMonth, MonthlyRosterView } from '@/types/roster.types';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -33,6 +33,22 @@ export default function ViewSchedulePage() {
   const [userCalendarEntries, setUserCalendarEntries] = useState<RosterEntry[]>([]);
 
   const canViewAllSchedules = isAdmin || isManager;
+
+  // Helper function to get color classes based on task duration
+  const getTaskColorClass = (task: RosterEntry): string => {
+    const color = getTaskColor(task);
+    if (color === 'green') return 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200';
+    if (color === 'yellow') return 'bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200';
+    return 'bg-orange-100 text-orange-800 border-orange-300 hover:bg-orange-200';
+  };
+
+  // Helper function to get Excel cell color classes
+  const getExcelCellColorClass = (task: RosterEntry): string => {
+    const color = getTaskColor(task);
+    if (color === 'green') return 'bg-green-100 text-green-800 hover:bg-green-200';
+    if (color === 'yellow') return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
+    return 'bg-orange-100 text-orange-800 hover:bg-orange-200';
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -161,11 +177,18 @@ export default function ViewSchedulePage() {
       date.setHours(0, 0, 0, 0); // Normalize to midnight
       
       const dayActivities = userCalendarEntries.filter(entry => {
-        const entryStart = new Date(entry.startDate);
-        entryStart.setHours(0, 0, 0, 0); // Normalize to midnight
-        const entryEnd = new Date(entry.endDate);
-        entryEnd.setHours(0, 0, 0, 0); // Normalize to midnight
-        return date >= entryStart && date <= entryEnd;
+        if (entry.taskType === 'multi' && entry.startDate && entry.endDate) {
+          const entryStart = new Date(entry.startDate);
+          entryStart.setHours(0, 0, 0, 0);
+          const entryEnd = new Date(entry.endDate);
+          entryEnd.setHours(0, 0, 0, 0);
+          return date >= entryStart && date <= entryEnd;
+        } else if (entry.taskType === 'single' && entry.timeStart) {
+          const taskStart = new Date(entry.timeStart);
+          taskStart.setHours(0, 0, 0, 0);
+          return date.getTime() === taskStart.getTime();
+        }
+        return false;
       });
 
       days.push({
@@ -193,16 +216,19 @@ export default function ViewSchedulePage() {
               {calDay.day}
             </div>
             <div className="mt-1 space-y-1">
-              {calDay.activities.map((activity: RosterEntry) => (
-                <div
-                  key={activity.id}
-                  className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded truncate cursor-pointer hover:bg-blue-200"
-                  title={activity.activityName}
-                  onClick={() => handleActivityClick(activity, selectedUser?.name || '')}
-                >
-                  {activity.activityName}
-                </div>
-              ))}
+              {calDay.activities.map((activity: RosterEntry) => {
+                const displayName = activity.taskType === 'multi' ? activity.activityName : activity.clientName;
+                return (
+                  <div
+                    key={activity.id}
+                    className={`text-xs px-1 py-0.5 rounded truncate cursor-pointer border transition-colors ${getTaskColorClass(activity)}`}
+                    title={displayName}
+                    onClick={() => handleActivityClick(activity, selectedUser?.name || '')}
+                  >
+                    {displayName}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -234,11 +260,18 @@ export default function ViewSchedulePage() {
       date.setHours(0, 0, 0, 0); // Normalize to midnight
       
       const dayActivities = entries.filter(entry => {
-        const entryStart = new Date(entry.startDate);
-        entryStart.setHours(0, 0, 0, 0); // Normalize to midnight
-        const entryEnd = new Date(entry.endDate);
-        entryEnd.setHours(0, 0, 0, 0); // Normalize to midnight
-        return date >= entryStart && date <= entryEnd;
+        if (entry.taskType === 'multi' && entry.startDate && entry.endDate) {
+          const entryStart = new Date(entry.startDate);
+          entryStart.setHours(0, 0, 0, 0);
+          const entryEnd = new Date(entry.endDate);
+          entryEnd.setHours(0, 0, 0, 0);
+          return date >= entryStart && date <= entryEnd;
+        } else if (entry.taskType === 'single' && entry.timeStart) {
+          const taskStart = new Date(entry.timeStart);
+          taskStart.setHours(0, 0, 0, 0);
+          return date.getTime() === taskStart.getTime();
+        }
+        return false;
       });
 
       days.push({
@@ -266,15 +299,18 @@ export default function ViewSchedulePage() {
               {calDay.day}
             </div>
             <div className="mt-1 space-y-1">
-              {calDay.activities.map((activity: RosterEntry) => (
-                <div
-                  key={activity.id}
-                  className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded truncate"
-                  title={activity.activityName}
-                >
-                  {activity.activityName}
-                </div>
-              ))}
+              {calDay.activities.map((activity: RosterEntry) => {
+                const displayName = activity.taskType === 'multi' ? activity.activityName : activity.clientName;
+                return (
+                  <div
+                    key={activity.id}
+                    className={`text-xs px-1 py-0.5 rounded truncate border ${getTaskColorClass(activity)}`}
+                    title={displayName}
+                  >
+                    {displayName}
+                  </div>
+                );
+              })}
             </div>
           </div>
         ))}
@@ -329,17 +365,33 @@ export default function ViewSchedulePage() {
                     if (startingActivity) {
                       const span = startingActivity.endDay - startingActivity.startDay + 1;
                       const cellWidth = span * 50; // 50px per cell
+                      const displayName = startingActivity.activityName || startingActivity.clientName || 'Task';
+                      
+                      // Create a temporary RosterEntry object for color calculation
+                      const taskForColor: RosterEntry = {
+                        taskType: startingActivity.taskType || 'multi',
+                        userId: user.id,
+                        userName: user.name,
+                        startDate: startingActivity.startDate,
+                        endDate: startingActivity.endDate,
+                        activityName: startingActivity.activityName,
+                        clientName: startingActivity.clientName,
+                        taskDetail: startingActivity.taskDetail,
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                      };
+                      
                       return (
                         <td
                           key={day}
                           colSpan={span}
-                          className="border border-gray-300 px-1 py-2 text-center bg-red-100 text-red-800 font-medium cursor-pointer hover:bg-red-200 transition-colors overflow-hidden"
+                          className={`border border-gray-300 px-1 py-2 text-center font-medium cursor-pointer transition-colors overflow-hidden ${getExcelCellColorClass(taskForColor)}`}
                           style={{ width: `${cellWidth}px`, minWidth: `${cellWidth}px`, maxWidth: `${cellWidth}px` }}
                           title="Click to view details"
                           onClick={() => handleActivityClick(startingActivity, user.name)}
                         >
                           <div className="truncate text-xs">
-                            {startingActivity.activityName}
+                            {displayName}
                           </div>
                         </td>
                       );
@@ -347,7 +399,13 @@ export default function ViewSchedulePage() {
                       // This day is part of a spanning activity, skip rendering
                       return null;
                     } else {
-                      return <td key={day} className="border border-gray-300 px-2 py-2 w-[50px] min-w-[50px] max-w-[50px]"></td>;
+                      // Empty day - show green background to indicate no task assigned
+                      return (
+                        <td 
+                          key={day} 
+                          className="border border-gray-300 px-2 py-2 w-[50px] min-w-[50px] max-w-[50px] bg-green-100"
+                        ></td>
+                      );
                     }
                   })}
                 </tr>
@@ -416,15 +474,19 @@ export default function ViewSchedulePage() {
       {/* Legend for Excel View */}
       {canViewAllSchedules && (
         <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Legend</h3>
+          <h3 className="text-sm font-semibold text-gray-700 mb-2">Task Duration Legend</h3>
           <div className="flex flex-wrap gap-4 text-sm text-gray-600">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-red-100 border border-red-300 rounded"></div>
-              <span>Scheduled Activity (Click to view details)</span>
+              <div className="w-4 h-4 bg-green-100 border border-gray-300 rounded"></div>
+              <span>No task assigned</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-white border border-gray-300 rounded"></div>
-              <span>No Activity</span>
+              <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></div>
+              <span>Task: Less than 8 hours</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
+              <span>Task: 8 hours or more</span>
             </div>
           </div>
         </div>
@@ -464,49 +526,82 @@ export default function ViewSchedulePage() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Activity Name
+                  {selectedActivity.taskType === 'multi' ? 'Activity Name' : 'Client Name'}
                 </label>
                 <p className="text-base text-gray-900 font-medium">
-                  {selectedActivity.activityName}
+                  {selectedActivity.taskType === 'multi' ? selectedActivity.activityName : selectedActivity.clientName}
                 </p>
               </div>
+
+              {selectedActivity.taskType === 'single' && selectedActivity.taskDetail && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Task Detail
+                  </label>
+                  <p className="text-base text-gray-900">
+                    {selectedActivity.taskDetail}
+                  </p>
+                </div>
+              )}
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                    Start Date
+                    {selectedActivity.taskType === 'multi' ? 'Start Date' : 'Start Time'}
                   </label>
                   <p className="text-base text-gray-900">
-                    {new Date(selectedActivity.startDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
+                    {selectedActivity.taskType === 'multi' && selectedActivity.startDate
+                      ? new Date(selectedActivity.startDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })
+                      : selectedActivity.timeStart
+                      ? new Date(selectedActivity.timeStart).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'N/A'}
                   </p>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-500 mb-1">
-                    End Date
+                    {selectedActivity.taskType === 'multi' ? 'End Date' : 'End Time'}
                   </label>
                   <p className="text-base text-gray-900">
-                    {new Date(selectedActivity.endDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
+                    {selectedActivity.taskType === 'multi' && selectedActivity.endDate
+                      ? new Date(selectedActivity.endDate).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric'
+                        })
+                      : selectedActivity.timeEnd
+                      ? new Date(selectedActivity.timeEnd).toLocaleString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'N/A'}
                   </p>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
-                  Duration
-                </label>
-                <p className="text-base text-gray-900">
-                  {selectedActivity.endDay - selectedActivity.startDay + 1} day(s)
-                </p>
-              </div>
+              {selectedActivity.startDay && selectedActivity.endDay && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                    Duration
+                  </label>
+                  <p className="text-base text-gray-900">
+                    {selectedActivity.endDay - selectedActivity.startDay + 1} day(s)
+                  </p>
+                </div>
+              )}
 
               {selectedActivity.notes && (
                 <div>
@@ -574,14 +669,22 @@ export default function ViewSchedulePage() {
               </div>
               {userCalendarEntries.length > 0 && (
                 <div className="space-y-2 max-h-40 overflow-y-auto mb-4">
-                  {userCalendarEntries.map(entry => (
-                    <div key={entry.id} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200 text-sm">
-                      <span className="font-medium text-gray-900">{entry.activityName}</span>
-                      <span className="text-gray-600">
-                        {new Date(entry.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(entry.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
-                  ))}
+                  {userCalendarEntries.map(entry => {
+                    const displayName = entry.taskType === 'multi' ? entry.activityName : entry.clientName;
+                    const startDate = entry.startDate || entry.timeStart;
+                    const endDate = entry.endDate || entry.timeEnd;
+                    
+                    return (
+                      <div key={entry.id} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200 text-sm">
+                        <span className="font-medium text-gray-900">{displayName}</span>
+                        {startDate && endDate && (
+                          <span className="text-gray-600">
+                            {new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
               <button

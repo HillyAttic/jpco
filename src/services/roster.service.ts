@@ -21,20 +21,45 @@ const rosterFirebaseService = createFirebaseService<RosterEntry>('rosters');
  * Convert Firestore timestamp to Date
  */
 function convertTimestamps(entry: any): RosterEntry {
-  const safeToDate = (value: any): Date => {
-    if (!value) return new Date();
+  const safeToDate = (value: any): Date | undefined => {
+    if (!value) return undefined;
     if (value.toDate) return value.toDate();
     const date = new Date(value);
-    return isNaN(date.getTime()) ? new Date() : date;
+    return isNaN(date.getTime()) ? undefined : date;
   };
 
   return {
     ...entry,
-    startDate: safeToDate(entry.startDate),
-    endDate: safeToDate(entry.endDate),
-    createdAt: safeToDate(entry.createdAt),
-    updatedAt: safeToDate(entry.updatedAt),
+    startDate: entry.startDate ? safeToDate(entry.startDate) : undefined,
+    endDate: entry.endDate ? safeToDate(entry.endDate) : undefined,
+    timeStart: entry.timeStart ? safeToDate(entry.timeStart) : undefined,
+    timeEnd: entry.timeEnd ? safeToDate(entry.timeEnd) : undefined,
+    createdAt: safeToDate(entry.createdAt) || new Date(),
+    updatedAt: safeToDate(entry.updatedAt) || new Date(),
   };
+}
+
+/**
+ * Calculate task duration in hours
+ */
+function calculateDuration(start?: Date, end?: Date): number | undefined {
+  if (!start || !end) return undefined;
+  const ms = end.getTime() - start.getTime();
+  return ms / (1000 * 60 * 60);
+}
+
+/**
+ * Get task color based on duration
+ */
+export function getTaskColor(task: RosterEntry): string {
+  const duration = task.durationHours || calculateDuration(
+    task.timeStart || task.startDate,
+    task.timeEnd || task.endDate
+  );
+  
+  if (!duration) return 'green'; // Not assigned
+  if (duration < 8) return 'yellow'; // Short task
+  return 'orange'; // Long task
 }
 
 /**
@@ -45,15 +70,29 @@ export const rosterService = {
    * Create a new roster entry
    */
   async createRosterEntry(data: Omit<RosterEntry, 'id' | 'createdAt' | 'updatedAt'>): Promise<RosterEntry> {
-    // Validate dates
-    if (data.startDate > data.endDate) {
-      throw new Error('Start date must be before end date');
-    }
-
-    // Check for overlapping entries for the same user
-    const overlapping = await this.checkOverlap(data.userId, data.startDate, data.endDate);
-    if (overlapping) {
-      throw new Error('This schedule overlaps with an existing entry');
+    // Validate based on task type
+    if (data.taskType === 'multi') {
+      if (!data.startDate || !data.endDate) {
+        throw new Error('Start date and end date are required for multi tasks');
+      }
+      if (data.startDate > data.endDate) {
+        throw new Error('Start date must be before end date');
+      }
+      // Check for overlapping entries for the same user
+      const overlapping = await this.checkOverlap(data.userId, data.startDate, data.endDate);
+      if (overlapping) {
+        throw new Error('This schedule overlaps with an existing entry');
+      }
+    } else if (data.taskType === 'single') {
+      if (!data.timeStart || !data.timeEnd) {
+        throw new Error('Time start and time end are required for single tasks');
+      }
+      if (data.timeStart > data.timeEnd) {
+        throw new Error('Start time must be before end time');
+      }
+      // Calculate duration and task date
+      data.durationHours = calculateDuration(data.timeStart, data.timeEnd);
+      data.taskDate = data.timeStart.toISOString().split('T')[0];
     }
 
     const entry: Omit<RosterEntry, 'id'> = {
@@ -69,30 +108,46 @@ export const rosterService = {
    * Update a roster entry
    */
   async updateRosterEntry(id: string, data: Partial<RosterEntry>): Promise<RosterEntry> {
-    // If dates are being updated, validate them
-    if (data.startDate || data.endDate) {
-      const existing = await rosterFirebaseService.getById(id);
-      if (!existing) {
-        throw new Error('Roster entry not found');
+    const existing = await rosterFirebaseService.getById(id);
+    if (!existing) {
+      throw new Error('Roster entry not found');
+    }
+
+    const convertedExisting = convertTimestamps(existing);
+    
+    // Validate based on task type
+    if (convertedExisting.taskType === 'multi') {
+      if (data.startDate || data.endDate) {
+        const startDate = data.startDate || convertedExisting.startDate!;
+        const endDate = data.endDate || convertedExisting.endDate!;
+
+        if (startDate > endDate) {
+          throw new Error('Start date must be before end date');
+        }
+
+        // Check for overlapping entries (excluding current entry)
+        const overlapping = await this.checkOverlap(
+          convertedExisting.userId,
+          startDate,
+          endDate,
+          id
+        );
+        if (overlapping) {
+          throw new Error('This schedule overlaps with an existing entry');
+        }
       }
+    } else if (convertedExisting.taskType === 'single') {
+      if (data.timeStart || data.timeEnd) {
+        const timeStart = data.timeStart || convertedExisting.timeStart!;
+        const timeEnd = data.timeEnd || convertedExisting.timeEnd!;
 
-      const convertedExisting = convertTimestamps(existing);
-      const startDate = data.startDate || convertedExisting.startDate;
-      const endDate = data.endDate || convertedExisting.endDate;
+        if (timeStart > timeEnd) {
+          throw new Error('Start time must be before end time');
+        }
 
-      if (startDate > endDate) {
-        throw new Error('Start date must be before end date');
-      }
-
-      // Check for overlapping entries (excluding current entry)
-      const overlapping = await this.checkOverlap(
-        convertedExisting.userId,
-        startDate,
-        endDate,
-        id
-      );
-      if (overlapping) {
-        throw new Error('This schedule overlaps with an existing entry');
+        // Recalculate duration and task date
+        data.durationHours = calculateDuration(timeStart, timeEnd);
+        data.taskDate = timeStart.toISOString().split('T')[0];
       }
     }
 
@@ -128,46 +183,52 @@ export const rosterService = {
       });
     }
 
-    // Add month filter
-    if (filters.month !== undefined) {
-      options.filters!.push({
-        field: 'month',
-        operator: '==',
-        value: filters.month,
-      });
-    }
+    // Note: We can't filter by month/year in Firestore for single tasks
+    // because they don't have these fields. We'll filter client-side instead.
 
-    // Add year filter
-    if (filters.year !== undefined) {
-      options.filters!.push({
-        field: 'year',
-        operator: '==',
-        value: filters.year,
-      });
-    }
-
-    // Add date range filters
-    if (filters.startDate) {
-      options.filters!.push({
-        field: 'startDate',
-        operator: '>=',
-        value: Timestamp.fromDate(filters.startDate),
-      });
-    }
-
-    // Add default ordering
-    options.orderByField = 'startDate';
-    options.orderDirection = 'asc';
-
+    // Get all entries for the user
     let entries = await rosterFirebaseService.getAll(options);
 
     // Convert timestamps
     entries = entries.map(entry => convertTimestamps(entry));
 
-    // Apply end date filter client-side if provided
-    if (filters.endDate) {
-      entries = entries.filter(entry => entry.endDate <= filters.endDate!);
+    // Apply month/year filter client-side
+    if (filters.month !== undefined && filters.year !== undefined) {
+      entries = entries.filter(entry => {
+        if (entry.taskType === 'multi') {
+          // For multi tasks, check month and year fields
+          return entry.month === filters.month && entry.year === filters.year;
+        } else if (entry.taskType === 'single' && entry.timeStart) {
+          // For single tasks, check if timeStart is in the specified month/year
+          const taskDate = new Date(entry.timeStart);
+          return taskDate.getMonth() + 1 === filters.month && taskDate.getFullYear() === filters.year;
+        }
+        return false;
+      });
     }
+
+    // Apply date range filters client-side
+    if (filters.startDate) {
+      entries = entries.filter(entry => {
+        const startDate = entry.startDate || entry.timeStart;
+        return startDate && startDate >= filters.startDate!;
+      });
+    }
+
+    if (filters.endDate) {
+      entries = entries.filter(entry => {
+        const endDate = entry.endDate || entry.timeEnd;
+        return endDate && endDate <= filters.endDate!;
+      });
+    }
+
+    // Sort by start date/time
+    entries.sort((a, b) => {
+      const aStart = a.startDate || a.timeStart;
+      const bStart = b.startDate || b.timeStart;
+      if (!aStart || !bStart) return 0;
+      return aStart.getTime() - bStart.getTime();
+    });
 
     return entries;
   },
@@ -188,22 +249,24 @@ export const rosterService = {
     const startOfMonth = new Date(year, month - 1, 1);
     const endOfMonth = new Date(year, month, 0); // Last day of the month
     
-    // Get all roster entries that overlap with this month
-    // An entry overlaps if: startDate <= endOfMonth AND endDate >= startOfMonth
-    const allEntries = await rosterFirebaseService.getAll({
-      orderByField: 'startDate',
-      orderDirection: 'asc',
-    });
+    // Get all roster entries without ordering (since single tasks use timeStart, not startDate)
+    // We'll sort client-side after fetching
+    const allEntries = await rosterFirebaseService.getAll({});
     
     // Convert timestamps
     let entries = allEntries.map(entry => convertTimestamps(entry));
     
     // Filter entries that overlap with the current month
     entries = entries.filter(entry => {
-      const entryStart = new Date(entry.startDate);
-      const entryEnd = new Date(entry.endDate);
-      // Check if the entry overlaps with the month
-      return entryStart <= endOfMonth && entryEnd >= startOfMonth;
+      if (entry.taskType === 'multi' && entry.startDate && entry.endDate) {
+        const entryStart = new Date(entry.startDate);
+        const entryEnd = new Date(entry.endDate);
+        return entryStart <= endOfMonth && entryEnd >= startOfMonth;
+      } else if (entry.taskType === 'single' && entry.timeStart) {
+        const taskStart = new Date(entry.timeStart);
+        return taskStart >= startOfMonth && taskStart <= endOfMonth;
+      }
+      return false;
     });
 
     // Filter by user IDs if provided
@@ -225,23 +288,40 @@ export const rosterService = {
 
       const employee = employeeMap.get(entry.userId)!;
       
-      // Calculate the start and end day within the current month
-      const entryStart = new Date(entry.startDate);
-      const entryEnd = new Date(entry.endDate);
-      
-      // Clamp the dates to the current month
-      const displayStart = entryStart < startOfMonth ? startOfMonth : entryStart;
-      const displayEnd = entryEnd > endOfMonth ? endOfMonth : entryEnd;
-      
-      employee.activities.push({
-        id: entry.id!,
-        activityName: entry.activityName,
-        startDate: entry.startDate,
-        endDate: entry.endDate,
-        startDay: displayStart.getDate(),
-        endDay: displayEnd.getDate(),
-        notes: entry.notes,
-      });
+      if (entry.taskType === 'multi' && entry.startDate && entry.endDate) {
+        // Calculate the start and end day within the current month
+        const entryStart = new Date(entry.startDate);
+        const entryEnd = new Date(entry.endDate);
+        
+        // Clamp the dates to the current month
+        const displayStart = entryStart < startOfMonth ? startOfMonth : entryStart;
+        const displayEnd = entryEnd > endOfMonth ? endOfMonth : entryEnd;
+        
+        employee.activities.push({
+          id: entry.id!,
+          taskType: entry.taskType,
+          activityName: entry.activityName,
+          startDate: entry.startDate,
+          endDate: entry.endDate,
+          startDay: displayStart.getDate(),
+          endDay: displayEnd.getDate(),
+          notes: entry.notes,
+        });
+      } else if (entry.taskType === 'single' && entry.timeStart && entry.timeEnd) {
+        const taskStart = new Date(entry.timeStart);
+        const taskEnd = new Date(entry.timeEnd);
+        
+        employee.activities.push({
+          id: entry.id!,
+          taskType: entry.taskType,
+          clientName: entry.clientName,
+          taskDetail: entry.taskDetail,
+          startDate: entry.timeStart,
+          endDate: entry.timeEnd,
+          startDay: taskStart.getDate(),
+          endDay: taskEnd.getDate(),
+        });
+      }
     });
 
     return {
@@ -264,10 +344,40 @@ export const rosterService = {
     
     // Filter entries that overlap with the current month
     return allEntries.filter(entry => {
-      const entryStart = new Date(entry.startDate);
-      const entryEnd = new Date(entry.endDate);
-      // Check if the entry overlaps with the month
-      return entryStart <= endOfMonth && entryEnd >= startOfMonth;
+      if (entry.taskType === 'multi') {
+        const entryStart = entry.startDate!;
+        const entryEnd = entry.endDate!;
+        return entryStart <= endOfMonth && entryEnd >= startOfMonth;
+      } else {
+        // Single tasks - check if timeStart is in the month
+        const taskStart = entry.timeStart!;
+        return taskStart >= startOfMonth && taskStart <= endOfMonth;
+      }
+    });
+  },
+
+  /**
+   * Get tasks for a specific date
+   */
+  async getTasksForDate(userId: string, date: Date): Promise<RosterEntry[]> {
+    const allEntries = await this.getRosterEntries({ userId });
+    
+    return allEntries.filter(entry => {
+      if (entry.taskType === 'multi') {
+        const entryStart = new Date(entry.startDate!);
+        entryStart.setHours(0, 0, 0, 0);
+        const entryEnd = new Date(entry.endDate!);
+        entryEnd.setHours(0, 0, 0, 0);
+        const checkDate = new Date(date);
+        checkDate.setHours(0, 0, 0, 0);
+        return checkDate >= entryStart && checkDate <= entryEnd;
+      } else {
+        const taskStart = new Date(entry.timeStart!);
+        taskStart.setHours(0, 0, 0, 0);
+        const checkDate = new Date(date);
+        checkDate.setHours(0, 0, 0, 0);
+        return taskStart.getTime() === checkDate.getTime();
+      }
     });
   },
 
@@ -288,12 +398,16 @@ export const rosterService = {
         return false;
       }
 
-      // Check for overlap
-      return (
-        (startDate >= entry.startDate && startDate <= entry.endDate) ||
-        (endDate >= entry.startDate && endDate <= entry.endDate) ||
-        (startDate <= entry.startDate && endDate >= entry.endDate)
-      );
+      // Only check overlap for multi tasks with date ranges
+      if (entry.taskType === 'multi' && entry.startDate && entry.endDate) {
+        return (
+          (startDate >= entry.startDate && startDate <= entry.endDate) ||
+          (endDate >= entry.startDate && endDate <= entry.endDate) ||
+          (startDate <= entry.startDate && endDate >= entry.endDate)
+        );
+      }
+      
+      return false;
     });
   },
 

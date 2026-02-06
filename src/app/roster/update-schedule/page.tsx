@@ -4,16 +4,17 @@ import { useState, useEffect } from 'react';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useRouter } from 'next/navigation';
 import { useModal } from '@/contexts/modal-context';
-import { rosterService } from '@/services/roster.service';
-import { RosterEntry, MONTHS, getDaysInMonth } from '@/types/roster.types';
+import { rosterService, getTaskColor } from '@/services/roster.service';
+import { clientService, Client } from '@/services/client.service';
+import { RosterEntry, MONTHS, getDaysInMonth, TaskType } from '@/types/roster.types';
 import { Button } from '@/components/ui/button';
-import { PlusCircleIcon, TrashIcon, PencilIcon } from '@heroicons/react/24/outline';
+import { PlusCircleIcon, TrashIcon, PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 interface CalendarDay {
   date: Date;
   day: number;
   isCurrentMonth: boolean;
-  activities: RosterEntry[];
+  tasks: RosterEntry[];
 }
 
 export default function UpdateSchedulePage() {
@@ -23,14 +24,25 @@ export default function UpdateSchedulePage() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [entries, setEntries] = useState<RosterEntry[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showTaskTable, setShowTaskTable] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDateTasks, setSelectedDateTasks] = useState<RosterEntry[]>([]);
   const [editingEntry, setEditingEntry] = useState<RosterEntry | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<number | null>(null);
+  const [taskType, setTaskType] = useState<TaskType>('multi');
   const [formData, setFormData] = useState({
     activityName: '',
     startDate: '',
     endDate: '',
     notes: '',
+    clientId: '',
+    clientName: '',
+    taskDetail: '',
+    timeStart: '',
+    timeEnd: '',
   });
 
   useEffect(() => {
@@ -42,6 +54,7 @@ export default function UpdateSchedulePage() {
   useEffect(() => {
     if (user) {
       loadRosterEntries();
+      loadClients();
     }
   }, [user, currentMonth, currentYear]);
 
@@ -56,6 +69,15 @@ export default function UpdateSchedulePage() {
       console.error('Error loading roster entries:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadClients = async () => {
+    try {
+      const data = await clientService.getAll({ status: 'active' });
+      setClients(data);
+    } catch (error) {
+      console.error('Error loading clients:', error);
     }
   };
 
@@ -75,33 +97,39 @@ export default function UpdateSchedulePage() {
         date: new Date(prevYear, prevMonth - 1, day),
         day,
         isCurrentMonth: false,
-        activities: [],
+        tasks: [],
       });
     }
 
     // Current month days
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentYear, currentMonth - 1, day);
-      date.setHours(0, 0, 0, 0); // Normalize to midnight
+      date.setHours(0, 0, 0, 0);
       
-      const dayActivities = entries.filter(entry => {
-        const entryStart = new Date(entry.startDate);
-        entryStart.setHours(0, 0, 0, 0); // Normalize to midnight
-        const entryEnd = new Date(entry.endDate);
-        entryEnd.setHours(0, 0, 0, 0); // Normalize to midnight
-        return date >= entryStart && date <= entryEnd;
+      const dayTasks = entries.filter(entry => {
+        if (entry.taskType === 'multi') {
+          const entryStart = new Date(entry.startDate!);
+          entryStart.setHours(0, 0, 0, 0);
+          const entryEnd = new Date(entry.endDate!);
+          entryEnd.setHours(0, 0, 0, 0);
+          return date >= entryStart && date <= entryEnd;
+        } else {
+          const taskStart = new Date(entry.timeStart!);
+          taskStart.setHours(0, 0, 0, 0);
+          return date.getTime() === taskStart.getTime();
+        }
       });
 
       days.push({
         date,
         day,
         isCurrentMonth: true,
-        activities: dayActivities,
+        tasks: dayTasks,
       });
     }
 
     // Next month days
-    const remainingDays = 42 - days.length; // 6 rows * 7 days
+    const remainingDays = 42 - days.length;
     for (let day = 1; day <= remainingDays; day++) {
       const nextMonth = currentMonth === 12 ? 1 : currentMonth + 1;
       const nextYear = currentMonth === 12 ? currentYear + 1 : currentYear;
@@ -109,7 +137,7 @@ export default function UpdateSchedulePage() {
         date: new Date(nextYear, nextMonth - 1, day),
         day,
         isCurrentMonth: false,
-        activities: [],
+        tasks: [],
       });
     }
 
@@ -134,39 +162,68 @@ export default function UpdateSchedulePage() {
     }
   };
 
-  const handleAddActivity = () => {
+  const handleAddTask = (date: Date, type: TaskType) => {
     setEditingEntry(null);
+    setTaskType(type);
+    const dateStr = date.toISOString().split('T')[0];
     setFormData({
       activityName: '',
-      startDate: '',
-      endDate: '',
+      startDate: dateStr,
+      endDate: dateStr,
       notes: '',
+      clientId: '',
+      clientName: '',
+      taskDetail: '',
+      timeStart: `${dateStr}T09:00`,
+      timeEnd: `${dateStr}T17:00`,
     });
     setShowModal(true);
-    openModal(); // Open modal context to hide header
+    openModal();
   };
 
-  const handleEditActivity = (entry: RosterEntry) => {
+  const handleEditTask = (entry: RosterEntry) => {
     setEditingEntry(entry);
-    setFormData({
-      activityName: entry.activityName,
-      startDate: new Date(entry.startDate).toISOString().split('T')[0],
-      endDate: new Date(entry.endDate).toISOString().split('T')[0],
-      notes: entry.notes || '',
-    });
+    setTaskType(entry.taskType);
+    
+    if (entry.taskType === 'multi') {
+      setFormData({
+        activityName: entry.activityName || '',
+        startDate: entry.startDate ? new Date(entry.startDate).toISOString().split('T')[0] : '',
+        endDate: entry.endDate ? new Date(entry.endDate).toISOString().split('T')[0] : '',
+        notes: entry.notes || '',
+        clientId: '',
+        clientName: '',
+        taskDetail: '',
+        timeStart: '',
+        timeEnd: '',
+      });
+    } else {
+      setFormData({
+        activityName: '',
+        startDate: '',
+        endDate: '',
+        notes: '',
+        clientId: entry.clientId || '',
+        clientName: entry.clientName || '',
+        taskDetail: entry.taskDetail || '',
+        timeStart: entry.timeStart ? new Date(entry.timeStart).toISOString().slice(0, 16) : '',
+        timeEnd: entry.timeEnd ? new Date(entry.timeEnd).toISOString().slice(0, 16) : '',
+      });
+    }
+    
     setShowModal(true);
-    openModal(); // Open modal context to hide header
+    openModal();
   };
 
-  const handleDeleteActivity = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this activity?')) return;
+  const handleDeleteTask = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
 
     try {
       await rosterService.deleteRosterEntry(id);
       await loadRosterEntries();
     } catch (error) {
-      console.error('Error deleting activity:', error);
-      alert('Failed to delete activity');
+      console.error('Error deleting task:', error);
+      alert('Failed to delete task');
     }
   };
 
@@ -176,44 +233,105 @@ export default function UpdateSchedulePage() {
     if (!user || !userProfile) return;
 
     try {
-      const startDate = new Date(formData.startDate);
-      const endDate = new Date(formData.endDate);
+      if (taskType === 'multi') {
+        const startDate = new Date(formData.startDate);
+        const endDate = new Date(formData.endDate);
 
-      if (startDate > endDate) {
-        alert('Start date must be before end date');
-        return;
-      }
+        if (startDate > endDate) {
+          alert('Start date must be before end date');
+          return;
+        }
 
-      const data = {
-        userId: user.uid,
-        userName: userProfile.displayName || userProfile.email || 'Unknown',
-        activityName: formData.activityName,
-        startDate,
-        endDate,
-        month: startDate.getMonth() + 1,
-        year: startDate.getFullYear(),
-        notes: formData.notes,
-        createdBy: user.uid,
-      };
+        const data: Omit<RosterEntry, 'id' | 'createdAt' | 'updatedAt'> = {
+          taskType: 'multi',
+          userId: user.uid,
+          userName: userProfile.displayName || userProfile.email || 'Unknown',
+          activityName: formData.activityName,
+          startDate,
+          endDate,
+          month: startDate.getMonth() + 1,
+          year: startDate.getFullYear(),
+          notes: formData.notes,
+          createdBy: user.uid,
+        };
 
-      if (editingEntry) {
-        await rosterService.updateRosterEntry(editingEntry.id!, data);
+        if (editingEntry) {
+          await rosterService.updateRosterEntry(editingEntry.id!, data);
+        } else {
+          await rosterService.createRosterEntry(data);
+        }
       } else {
-        await rosterService.createRosterEntry(data);
+        const timeStart = new Date(formData.timeStart);
+        const timeEnd = new Date(formData.timeEnd);
+
+        if (timeStart > timeEnd) {
+          alert('Start time must be before end time');
+          return;
+        }
+
+        if (!formData.clientId) {
+          alert('Please select a client');
+          return;
+        }
+
+        const selectedClient = clients.find(c => c.id === formData.clientId);
+
+        const data: Omit<RosterEntry, 'id' | 'createdAt' | 'updatedAt'> = {
+          taskType: 'single',
+          userId: user.uid,
+          userName: userProfile.displayName || userProfile.email || 'Unknown',
+          clientId: formData.clientId,
+          clientName: selectedClient?.name || formData.clientName,
+          taskDetail: formData.taskDetail,
+          timeStart,
+          timeEnd,
+        };
+
+        if (editingEntry) {
+          await rosterService.updateRosterEntry(editingEntry.id!, data);
+        } else {
+          await rosterService.createRosterEntry(data);
+        }
       }
 
       setShowModal(false);
-      closeModal(); // Close modal context to show header again
+      closeModal();
       await loadRosterEntries();
     } catch (error: any) {
-      console.error('Error saving activity:', error);
-      alert(error.message || 'Failed to save activity');
+      console.error('Error saving task:', error);
+      alert(error.message || 'Failed to save task');
     }
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
-    closeModal(); // Close modal context to show header again
+    closeModal();
+  };
+
+  const handleDateClick = async (date: Date) => {
+    if (!user) return;
+    
+    try {
+      const tasks = await rosterService.getTasksForDate(user.uid, date);
+      setSelectedDate(date);
+      setSelectedDateTasks(tasks);
+      setShowTaskTable(true);
+      openModal();
+    } catch (error) {
+      console.error('Error loading tasks for date:', error);
+    }
+  };
+
+  const handleCloseTaskTable = () => {
+    setShowTaskTable(false);
+    closeModal();
+  };
+
+  const getTaskColorClass = (task: RosterEntry): string => {
+    const color = getTaskColor(task);
+    if (color === 'green') return 'bg-green-100 text-green-800 border-green-300';
+    if (color === 'yellow') return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    return 'bg-orange-100 text-orange-800 border-orange-300';
   };
 
   if (authLoading || loading) {
@@ -238,10 +356,25 @@ export default function UpdateSchedulePage() {
             Manage your personal schedule and activities
           </p>
         </div>
-        <Button onClick={handleAddActivity} className="text-white w-full sm:w-auto">
-          <PlusCircleIcon className="w-5 h-5 mr-2" />
-          Add Activity
-        </Button>
+      </div>
+
+      {/* Color Legend */}
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="text-sm font-semibold mb-2">Task Duration Legend:</h3>
+        <div className="flex flex-wrap gap-4 text-sm">
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
+            <span>Not assigned / Draft</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></div>
+            <span>Less than 8 hours</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
+            <span>8 hours or more</span>
+          </div>
+        </div>
       </div>
 
       {/* Calendar */}
@@ -282,130 +415,222 @@ export default function UpdateSchedulePage() {
           {calendarDays.map((calDay, index) => (
             <div
               key={index}
-              className={`min-h-[80px] border border-gray-200 p-1 ${
+              className={`relative min-h-[100px] border border-gray-200 p-2 ${
                 !calDay.isCurrentMonth ? 'bg-gray-50' : 'bg-white'
-              }`}
+              } ${calDay.isCurrentMonth ? 'hover:bg-blue-50 cursor-pointer' : ''} transition-colors group`}
+              onMouseEnter={() => calDay.isCurrentMonth && setHoveredDay(index)}
+              onMouseLeave={() => setHoveredDay(null)}
+              onClick={() => calDay.isCurrentMonth && handleDateClick(calDay.date)}
             >
-              <div className={`text-sm ${!calDay.isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}`}>
+              <div className={`text-sm font-medium ${!calDay.isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}`}>
                 {calDay.day}
               </div>
-              <div className="mt-1 space-y-1">
-                {calDay.activities.map(activity => (
-                  <div
-                    key={activity.id}
-                    className="text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded truncate cursor-pointer hover:bg-blue-200"
-                    onClick={() => handleEditActivity(activity)}
-                    title={activity.activityName}
+
+              {/* Hover Actions */}
+              {hoveredDay === index && calDay.isCurrentMonth && (
+                <div className="absolute top-1 right-1 flex gap-1 z-10" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => handleAddTask(calDay.date, 'single')}
+                    className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    title="Add Client Task"
                   >
-                    {activity.activityName}
+                    <PlusCircleIcon className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleAddTask(calDay.date, 'multi')}
+                    className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                    title="Add Activity"
+                  >
+                    <PlusCircleIcon className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
+              {/* Tasks */}
+              <div className="mt-1 space-y-1">
+                {calDay.tasks.slice(0, 3).map(task => (
+                  <div
+                    key={task.id}
+                    className={`text-xs px-1 py-0.5 rounded truncate border ${getTaskColorClass(task)}`}
+                    title={task.taskType === 'multi' ? task.activityName : task.clientName}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEditTask(task);
+                    }}
+                  >
+                    {task.taskType === 'multi' ? task.activityName : task.clientName}
                   </div>
                 ))}
+                {calDay.tasks.length > 3 && (
+                  <div className="text-xs text-gray-500 px-1">
+                    +{calDay.tasks.length - 3} more
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Activity List */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
-        <h3 className="text-lg font-semibold mb-4">Your Activities</h3>
-        {entries.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">No activities scheduled for this month</p>
-        ) : (
-          <div className="space-y-3">
-            {entries.map(entry => (
-              <div key={entry.id} className="flex items-center justify-between p-4 border border-gray-200 rounded-lg">
-                <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900">{entry.activityName}</h4>
-                  <p className="text-sm text-gray-600">
-                    {new Date(entry.startDate).toLocaleDateString()} - {new Date(entry.endDate).toLocaleDateString()}
-                  </p>
-                  {entry.notes && <p className="text-sm text-gray-500 mt-1">{entry.notes}</p>}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEditActivity(entry)}
-                    className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                  >
-                    <PencilIcon className="w-5 h-5" />
-                  </button>
-                  <button
-                    onClick={() => handleDeleteActivity(entry.id!)}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Modal */}
+      {/* Task Form Modal */}
       {showModal && (
         <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={handleCloseModal}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-xl font-bold text-gray-900 mb-4">
-              {editingEntry ? 'Edit Activity' : 'Add Activity'}
+              {editingEntry ? 'Edit Task' : 'Add Task'}
             </h3>
+
+            {/* Task Type Selector (only for new tasks) */}
+            {!editingEntry && (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Task Type</label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setTaskType('single')}
+                    className={`flex-1 py-2 px-4 rounded-lg border ${
+                      taskType === 'single'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Client Task
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTaskType('multi')}
+                    className={`flex-1 py-2 px-4 rounded-lg border ${
+                      taskType === 'multi'
+                        ? 'bg-green-600 text-white border-green-600'
+                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    Activity
+                  </button>
+                </div>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Activity Name *
-                </label>
-                <input
-                  type="text"
-                  value={formData.activityName}
-                  onChange={(e) => setFormData({ ...formData, activityName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                  placeholder="e.g., Audit, Monthly Visit, ROC Filing"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Start Date *
-                </label>
-                <input
-                  type="date"
-                  value={formData.startDate}
-                  onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  End Date *
-                </label>
-                <input
-                  type="date"
-                  value={formData.endDate}
-                  onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Notes (Optional)
-                </label>
-                <textarea
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows={3}
-                  placeholder="Additional details..."
-                />
-              </div>
-              <div className="flex gap-3">
+              {taskType === 'multi' ? (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Activity Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.activityName}
+                      onChange={(e) => setFormData({ ...formData, activityName: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                      placeholder="e.g., Audit, Monthly Visit, ROC Filing"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.startDate}
+                      onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Date *
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.endDate}
+                      onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Notes (Optional)
+                    </label>
+                    <textarea
+                      value={formData.notes}
+                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      rows={3}
+                      placeholder="Additional details..."
+                    />
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Client *
+                    </label>
+                    <select
+                      value={formData.clientId}
+                      onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    >
+                      <option value="">Select a client</option>
+                      {clients.map(client => (
+                        <option key={client.id} value={client.id}>
+                          {client.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Task Detail *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.taskDetail}
+                      onChange={(e) => setFormData({ ...formData, taskDetail: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                      placeholder="e.g., GST filing and reconciliation"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Start Time *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.timeStart}
+                      onChange={(e) => setFormData({ ...formData, timeStart: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      End Time *
+                    </label>
+                    <input
+                      type="datetime-local"
+                      value={formData.timeEnd}
+                      onChange={(e) => setFormData({ ...formData, timeEnd: e.target.value })}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      required
+                    />
+                  </div>
+                </>
+              )}
+
+              <div className="flex gap-3 pt-2">
                 <Button type="submit" className="flex-1 text-white">
                   {editingEntry ? 'Update' : 'Create'}
                 </Button>
@@ -419,6 +644,114 @@ export default function UpdateSchedulePage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Task Table Modal */}
+      {showTaskTable && selectedDate && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseTaskTable}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900">
+                Tasks for {selectedDate.toLocaleDateString('en-US', { 
+                  weekday: 'long', 
+                  year: 'numeric', 
+                  month: 'long', 
+                  day: 'numeric' 
+                })}
+              </h3>
+              <button
+                onClick={handleCloseTaskTable}
+                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+
+            {selectedDateTasks.length === 0 ? (
+              <p className="text-gray-500 text-center py-8">No tasks assigned for this day</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-200">
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Date</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Client Name</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Task Name</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Start Time</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">End Time</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedDateTasks
+                      .sort((a, b) => {
+                        const aStart = a.timeStart || a.startDate;
+                        const bStart = b.timeStart || b.startDate;
+                        return (aStart?.getTime() || 0) - (bStart?.getTime() || 0);
+                      })
+                      .map((task) => {
+                        const start = task.timeStart || task.startDate;
+                        const end = task.timeEnd || task.endDate;
+                        
+                        return (
+                          <tr key={task.id} className="border-b border-gray-200 hover:bg-gray-50">
+                            <td className="py-3 px-4 text-sm text-gray-900">
+                              {start?.toLocaleDateString()}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-900">
+                              {task.clientName || '—'}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-900">
+                              {task.taskDetail || task.activityName}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-900">
+                              {start ? start.toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              }) : '—'}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-900">
+                              {end ? end.toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                              }) : '—'}
+                            </td>
+                            <td className="py-3 px-4">
+                              <div className="flex gap-2">
+                                <button
+                                  onClick={() => {
+                                    handleCloseTaskTable();
+                                    handleEditTask(task);
+                                  }}
+                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="Edit"
+                                >
+                                  <PencilIcon className="w-4 h-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteTask(task.id!)}
+                                  className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="Delete"
+                                >
+                                  <TrashIcon className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         </div>
       )}

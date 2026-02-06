@@ -3,19 +3,35 @@
  * Type definitions for roster management system
  */
 
+export type TaskType = 'single' | 'multi';
+
 export interface RosterEntry {
   id?: string;
+  taskType: TaskType;
+  
+  // Common fields
   userId: string;
   userName: string;
-  activityName: string;
-  startDate: Date;
-  endDate: Date;
-  month: number; // 1-12
-  year: number;
-  notes?: string;
   createdAt: Date;
   updatedAt: Date;
-  createdBy: string;
+  
+  // Multi-task fields (activity-based)
+  activityName?: string;
+  notes?: string;
+  startDate?: Date;
+  endDate?: Date;
+  month?: number; // 1-12
+  year?: number;
+  createdBy?: string;
+  
+  // Single-task fields (client-based)
+  clientId?: string;
+  clientName?: string;
+  taskDetail?: string;
+  timeStart?: Date;
+  timeEnd?: Date;
+  taskDate?: string; // YYYY-MM-DD for fast querying
+  durationHours?: number; // Pre-calculated for performance
 }
 
 export interface RosterFilters {
@@ -40,7 +56,10 @@ export interface EmployeeRosterData {
 
 export interface RosterActivity {
   id: string;
-  activityName: string;
+  taskType?: TaskType;
+  activityName?: string;
+  clientName?: string;
+  taskDetail?: string;
   startDate: Date;
   endDate: Date;
   startDay: number; // Day of month (1-31)

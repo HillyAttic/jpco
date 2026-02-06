@@ -54,25 +54,56 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
 
     // Validate required fields
-    if (!body.userId || !body.userName || !body.activityName || !body.startDate || !body.endDate) {
+    if (!body.userId || !body.userName) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
+    // Determine task type and validate accordingly
+    const taskType = body.taskType || 'multi'; // Default to multi for backward compatibility
+
+    if (taskType === 'multi') {
+      if (!body.activityName || !body.startDate || !body.endDate) {
+        return NextResponse.json(
+          { error: 'Missing required fields for multi task' },
+          { status: 400 }
+        );
+      }
+    } else if (taskType === 'single') {
+      if (!body.clientId || !body.taskDetail || !body.timeStart || !body.timeEnd) {
+        return NextResponse.json(
+          { error: 'Missing required fields for single task' },
+          { status: 400 }
+        );
+      }
+    }
+
     // Create roster entry
-    const entry = await rosterService.createRosterEntry({
+    const entryData: any = {
+      taskType,
       userId: body.userId,
       userName: body.userName,
-      activityName: body.activityName,
-      startDate: new Date(body.startDate),
-      endDate: new Date(body.endDate),
-      month: body.month,
-      year: body.year,
-      notes: body.notes,
-      createdBy: body.userId,
-    });
+    };
+
+    if (taskType === 'multi') {
+      entryData.activityName = body.activityName;
+      entryData.startDate = new Date(body.startDate);
+      entryData.endDate = new Date(body.endDate);
+      entryData.month = body.month;
+      entryData.year = body.year;
+      entryData.notes = body.notes;
+      entryData.createdBy = body.userId;
+    } else {
+      entryData.clientId = body.clientId;
+      entryData.clientName = body.clientName;
+      entryData.taskDetail = body.taskDetail;
+      entryData.timeStart = new Date(body.timeStart);
+      entryData.timeEnd = new Date(body.timeEnd);
+    }
+
+    const entry = await rosterService.createRosterEntry(entryData);
 
     return NextResponse.json(entry, { status: 201 });
   } catch (error: any) {
