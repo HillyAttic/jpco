@@ -11,6 +11,8 @@ import {
 import { RecurringTaskClientModal } from '@/components/recurring-tasks/RecurringTaskClientModal';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { useModal } from '@/contexts/modal-context';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
+import { auth } from '@/lib/firebase';
 
 interface CalendarTask extends Task {
   isRecurring?: boolean;
@@ -23,6 +25,13 @@ interface CalendarViewProps {
   onTaskClick?: (task: CalendarTask) => void;
 }
 
+interface DailyStats {
+  orange: number;
+  yellow: number;
+  green: number;
+  total: number;
+}
+
 export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
@@ -31,6 +40,48 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   const [clients, setClients] = useState<any[]>([]);
   const [fullRecurringTask, setFullRecurringTask] = useState<RecurringTask | null>(null);
   const { openModal, closeModal } = useModal();
+  const { isAdmin, isManager } = useEnhancedAuth();
+  const [rosterStats, setRosterStats] = useState<Record<number, DailyStats>>({});
+  const [loadingStats, setLoadingStats] = useState(false);
+
+  const canViewRosterStats = isAdmin || isManager;
+
+  // Fetch roster stats when month changes
+  useEffect(() => {
+    const fetchRosterStats = async () => {
+      if (!canViewRosterStats) return;
+      
+      try {
+        setLoadingStats(true);
+        const user = auth.currentUser;
+        if (!user) return;
+
+        const token = await user.getIdToken();
+        const month = currentDate.getMonth() + 1;
+        const year = currentDate.getFullYear();
+
+        const response = await fetch(
+          `/api/roster/daily-stats?month=${month}&year=${year}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setRosterStats(data.stats || {});
+        }
+      } catch (error) {
+        console.error('Error fetching roster stats:', error);
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchRosterStats();
+  }, [currentDate.getMonth(), currentDate.getFullYear(), canViewRosterStats]);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -149,6 +200,47 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   const days = getDaysInMonth(currentDate);
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
+  // Render roster stats bar for a specific day
+  const renderRosterStatsBar = (day: Date) => {
+    const dayNumber = day.getDate();
+    const stats = rosterStats[dayNumber];
+    
+    if (!stats || stats.total === 0) return null;
+
+    const { orange, yellow, green, total } = stats;
+    const orangePercent = (orange / total) * 100;
+    const yellowPercent = (yellow / total) * 100;
+    const greenPercent = (green / total) * 100;
+
+    return (
+      <div 
+        className="mt-auto pt-1"
+        title={`${orange} employees with 8+ hour tasks, ${yellow} with <8 hour tasks, ${green} with no tasks`}
+      >
+        <div className="flex h-2 rounded-full overflow-hidden bg-gray-200">
+          {orange > 0 && (
+            <div
+              className="bg-orange-500 hover:bg-orange-600 transition-colors"
+              style={{ width: `${orangePercent}%` }}
+            />
+          )}
+          {yellow > 0 && (
+            <div
+              className="bg-yellow-500 hover:bg-yellow-600 transition-colors"
+              style={{ width: `${yellowPercent}%` }}
+            />
+          )}
+          {green > 0 && (
+            <div
+              className="bg-green-500 hover:bg-green-600 transition-colors"
+              style={{ width: `${greenPercent}%` }}
+            />
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="bg-white rounded-lg shadow">
       <div className="p-6">
@@ -191,6 +283,26 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
             <span className="font-semibold">H</span> = Half-Yearly
             <span className="font-semibold">Y</span> = Yearly
           </div>
+          {canViewRosterStats && (
+            <>
+              <div className="border-l border-gray-300 h-4 mx-2"></div>
+              <div className="flex items-center gap-2">
+                <span className="font-semibold">Employee Status:</span>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-orange-500 rounded"></div>
+                  <span>8+ hrs</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-yellow-500 rounded"></div>
+                  <span>&lt;8 hrs</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <div className="w-3 h-3 bg-green-500 rounded"></div>
+                  <span>No tasks</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Weekday Headers */}
@@ -218,7 +330,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
             return (
               <div
                 key={index}
-                className={`min-h-24 p-1 border rounded ${
+                className={`min-h-24 p-1 border rounded flex flex-col ${
                   day ? 'border-gray-200 hover:bg-gray-50 cursor-pointer' : 'border-transparent'
                 } ${isToday ? 'bg-blue-50 border-blue-300' : ''} ${
                   isSelected ? 'bg-blue-100 border-blue-400' : ''
@@ -232,7 +344,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                     }`}>
                       {day.getDate()}
                     </div>
-                    <div className="mt-1 space-y-1 max-h-20 overflow-y-auto">
+                    <div className="mt-1 space-y-1 max-h-20 overflow-y-auto flex-1">
                       {dayTasks.slice(0, 3).map(task => (
                         <div
                           key={task.id}
@@ -259,6 +371,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                         </div>
                       )}
                     </div>
+                    {canViewRosterStats && renderRosterStatsBar(day)}
                   </>
                 ) : null}
               </div>
