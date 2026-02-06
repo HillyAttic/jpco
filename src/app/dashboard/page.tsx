@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { 
@@ -116,8 +116,8 @@ export default function DashboardPage() {
     return name;
   };
 
-  // Component to display task assignment info
-  const TaskAssignmentInfo = ({ task }: { task: DashboardTask }) => {
+  // Component to display task assignment info - optimized with memoization
+  const TaskAssignmentInfo = React.memo(({ task }: { task: DashboardTask }) => {
     const [assignedByName, setAssignedByName] = useState<string>('');
     const [assignedToNames, setAssignedToNames] = useState<string[]>([]);
     const [showClientsModal, setShowClientsModal] = useState(false);
@@ -125,52 +125,80 @@ export default function DashboardPage() {
     const [teamName, setTeamName] = useState<string>('');
     const [teamMembers, setTeamMembers] = useState<Array<{ id: string; name: string; role: string }>>([]);
     const [mounted, setMounted] = useState(false);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
       setMounted(true);
     }, []);
 
     useEffect(() => {
+      let isMounted = true;
+      
       const fetchNames = async () => {
-        // Fetch creator name
-        if (task.createdBy) {
-          const name = await getCachedUserName(task.createdBy);
-          setAssignedByName(name);
-        }
-        
-        // Fetch team info for recurring tasks
-        if (task.isRecurring && task.teamId) {
-          try {
-            const { teamService } = await import('@/services/team.service');
-            const team = await teamService.getById(task.teamId);
-            if (team) {
-              setTeamName(team.name);
-              setTeamMembers(team.members || []);
-            }
-          } catch (error) {
-            console.error('Error fetching team:', error);
-          }
-        }
-        
-        // Fetch assigned to names
-        if (task.assignedTo && task.assignedTo.length > 0) {
-          if (task.isRecurring) {
-            // Recurring tasks: assignedTo contains client IDs
-            const names = await Promise.all(
-              task.assignedTo.map(id => getCachedClientName(id))
+        setLoading(true);
+        try {
+          const promises: Promise<void>[] = [];
+          
+          // Fetch creator name
+          if (task.createdBy) {
+            promises.push(
+              getCachedUserName(task.createdBy).then(name => {
+                if (isMounted) setAssignedByName(name);
+              })
             );
-            setAssignedToNames(names);
-          } else {
-            // Non-recurring tasks: assignedTo contains user IDs
-            const names = await Promise.all(
-              task.assignedTo.map(id => getCachedUserName(id))
-            );
-            setAssignedToNames(names);
           }
+          
+          // Fetch team info for recurring tasks
+          if (task.isRecurring && task.teamId) {
+            promises.push(
+              (async () => {
+                try {
+                  const { teamService } = await import('@/services/team.service');
+                  const team = await teamService.getById(task.teamId!);
+                  if (team && isMounted) {
+                    setTeamName(team.name);
+                    setTeamMembers(team.members || []);
+                  }
+                } catch (error) {
+                  console.error('Error fetching team:', error);
+                }
+              })()
+            );
+          }
+          
+          // Fetch assigned to names
+          if (task.assignedTo && task.assignedTo.length > 0) {
+            promises.push(
+              (async () => {
+                if (task.isRecurring) {
+                  // Recurring tasks: assignedTo contains client IDs
+                  const names = await Promise.all(
+                    task.assignedTo!.map(id => getCachedClientName(id))
+                  );
+                  if (isMounted) setAssignedToNames(names);
+                } else {
+                  // Non-recurring tasks: assignedTo contains user IDs
+                  const names = await Promise.all(
+                    task.assignedTo!.map(id => getCachedUserName(id))
+                  );
+                  if (isMounted) setAssignedToNames(names);
+                }
+              })()
+            );
+          }
+          
+          await Promise.all(promises);
+        } finally {
+          if (isMounted) setLoading(false);
         }
       };
+      
       fetchNames();
-    }, [task.createdBy, task.assignedTo, task.isRecurring, task.teamId]);
+      
+      return () => {
+        isMounted = false;
+      };
+    }, [task.createdBy, task.assignedTo?.join(','), task.isRecurring, task.teamId]);
 
     const handleShowClients = (e: React.MouseEvent) => {
       e.stopPropagation();
@@ -396,7 +424,7 @@ export default function DashboardPage() {
         {teamModalContent}
       </>
     );
-  };
+  });
 
   // Redirect if not authenticated
   useEffect(() => {
@@ -566,8 +594,9 @@ export default function DashboardPage() {
       }
       
       // Force token refresh to ensure we have a valid token
+      let token: string;
       try {
-        await currentUser.getIdToken(true);
+        token = await currentUser.getIdToken(true);
       } catch (tokenError) {
         console.error('Error refreshing token:', tokenError);
         // Retry after a short delay
@@ -575,24 +604,30 @@ export default function DashboardPage() {
         return;
       }
       
-      // Fetch non-recurring tasks
-      const nonRecurringTasks = await taskApi.getTasks();
-      
-      // Fetch recurring tasks using API (which handles team-based filtering)
-      const token = await currentUser.getIdToken();
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       };
       
-      const recurringResponse = await fetch('/api/recurring-tasks', { headers });
-      if (!recurringResponse.ok) {
-        throw new Error('Failed to fetch recurring tasks');
+      // Fetch all data in parallel for better performance
+      const fetchPromises: Promise<any>[] = [
+        taskApi.getTasks(), // Non-recurring tasks
+        fetch('/api/recurring-tasks', { headers }).then(res => res.ok ? res.json() : []), // Recurring tasks
+      ];
+      
+      // Only fetch team data for admin/manager
+      if (canViewAllTasks) {
+        fetchPromises.push(
+          dashboardService.getTeamPerformance(user.uid),
+          activityService.getRecentActivities(10)
+        );
       }
-      const recurringTasks = await recurringResponse.json();
+      
+      const results = await Promise.all(fetchPromises);
+      const [nonRecurringTasks, recurringTasks, performance, recentActivities] = results;
       
       // Convert recurring tasks to dashboard tasks format
-      const recurringDashboardTasks: DashboardTask[] = recurringTasks.map((task: RecurringTask) => ({
+      const recurringDashboardTasks: DashboardTask[] = (recurringTasks || []).map((task: RecurringTask) => ({
         id: task.id!,
         title: task.title,
         description: task.description,
@@ -610,42 +645,35 @@ export default function DashboardPage() {
       }));
       
       // Combine both types of tasks
-      // Note: Recurring tasks are already filtered by the API based on team membership
       let allTasks = [
-        ...nonRecurringTasks.map(task => ({ ...task, isRecurring: false })),
+        ...nonRecurringTasks.map((task: Task) => ({ ...task, isRecurring: false })),
         ...recurringDashboardTasks
       ];
       
       // For employees, filter non-recurring tasks to show only their assigned tasks
-      // Recurring tasks are already filtered by the API
       if (!canViewAllTasks) {
         allTasks = allTasks.filter(task => {
-          // Keep all recurring tasks (already filtered by API)
           if (task.isRecurring) return true;
-          // Filter non-recurring tasks by assignedTo
           return task.assignedTo && task.assignedTo.includes(user.uid);
         });
       }
       
       setTasks(allTasks);
 
-      // Fetch real team performance data (only for admin/manager)
-      if (canViewAllTasks) {
-        const performance = await dashboardService.getTeamPerformance(user.uid);
-        
-        // Only set team members who actually have tasks
-        const filteredPerformance = performance.filter(p => p.totalTasks > 0);
+      // Set team performance and activities (only for admin/manager)
+      if (canViewAllTasks && performance) {
+        const filteredPerformance = performance.filter((p: any) => p.totalTasks > 0);
         setTeamPerformance(filteredPerformance);
         
-        // Fetch real activities
-        const recentActivities = await activityService.getRecentActivities(10);
-        setActivities(recentActivities.map(activity => ({
-          id: activity.id,
-          type: activity.type,
-          taskTitle: activity.entityTitle,
-          user: activity.userName,
-          timestamp: activity.timestamp
-        })));
+        if (recentActivities) {
+          setActivities(recentActivities.map((activity: any) => ({
+            id: activity.id,
+            type: activity.type,
+            taskTitle: activity.entityTitle,
+            user: activity.userName,
+            timestamp: activity.timestamp
+          })));
+        }
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);

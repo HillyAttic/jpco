@@ -47,62 +47,25 @@ export function RecurringTaskClientModal({
   const [arnError, setArnError] = useState('');
   const { user, userProfile } = useEnhancedAuth();
 
-  // Generate months from current month to 5 years forward
+  // Generate only the current month
   const generateMonths = () => {
-    const months = [];
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
     const currentMonth = currentDate.getMonth();
     
-    // Start from current month
-    const startYear = currentYear;
-    const startMonth = currentMonth;
-    
-    // End at 5 years forward
-    const endYear = currentYear + 5;
-    const endMonth = 11; // December
-    
-    // Generate all months from current month to end
-    for (let year = startYear; year <= endYear; year++) {
-      const firstMonth = (year === startYear) ? startMonth : 0;
-      const lastMonth = (year === endYear) ? endMonth : 11;
-      
-      for (let month = firstMonth; month <= lastMonth; month++) {
-        const date = new Date(year, month, 1);
-        months.push({
-          key: `${year}-${String(month + 1).padStart(2, '0')}`,
-          label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-          monthName: date.toLocaleDateString('en-US', { month: 'short' }),
-          year: year.toString(),
-          fullDate: date,
-        });
-      }
-    }
-    
-    return months;
+    const date = new Date(currentYear, currentMonth, 1);
+    return [{
+      key: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`,
+      label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+      monthName: date.toLocaleDateString('en-US', { month: 'short' }),
+      year: currentYear.toString(),
+      fullDate: date,
+    }];
   };
 
-  // Filter months based on recurrence pattern
+  // Filter months based on recurrence pattern - always show only current month
   const getVisibleMonths = () => {
-    const allMonths = generateMonths();
-    
-    if (!task) return allMonths;
-
-    switch (task.recurrencePattern) {
-      case 'monthly':
-        return allMonths; // Show all 12 months
-      case 'quarterly':
-        // Show every 3rd month starting from April
-        return allMonths.filter((_, index) => index % 3 === 0);
-      case 'half-yearly':
-        // Show every 6th month
-        return allMonths.filter((_, index) => index % 6 === 0);
-      case 'yearly':
-        // Show only April
-        return [allMonths[0]];
-      default:
-        return allMonths;
-    }
+    return generateMonths(); // Always return current month only
   };
 
   const visibleMonths = getVisibleMonths();
@@ -353,7 +316,7 @@ export function RecurringTaskClientModal({
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{task.title}</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Track completion for {clients.length} client{clients.length !== 1 ? 's' : ''} • {task.recurrencePattern} recurrence
+                Track completion for {clients.length} client{clients.length !== 1 ? 's' : ''} • Current month only
               </p>
             </div>
             <button

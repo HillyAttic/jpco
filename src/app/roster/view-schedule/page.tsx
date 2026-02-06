@@ -50,9 +50,9 @@ export default function ViewSchedulePage() {
   // Helper function to get Excel cell color classes
   const getExcelCellColorClass = (task: RosterEntry): string => {
     const color = getTaskColor(task);
-    if (color === 'green') return 'bg-green-100 text-green-800 hover:bg-green-200';
-    if (color === 'yellow') return 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200';
-    return 'bg-orange-100 text-orange-800 hover:bg-orange-200';
+    if (color === 'green') return 'bg-green-100 hover:bg-green-200';
+    if (color === 'yellow') return 'bg-yellow-500 hover:bg-yellow-600';
+    return 'bg-orange-500 hover:bg-orange-600';
   };
 
   useEffect(() => {
@@ -570,11 +570,11 @@ export default function ViewSchedulePage() {
               <span>No task assigned</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></div>
+              <div className="w-4 h-4 bg-yellow-500 border border-yellow-600 rounded"></div>
               <span>Task: Less than 8 hours</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
+              <div className="w-4 h-4 bg-orange-500 border border-orange-600 rounded"></div>
               <span>Task: 8 hours or more</span>
             </div>
           </div>
