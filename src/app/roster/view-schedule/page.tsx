@@ -31,6 +31,11 @@ export default function ViewSchedulePage() {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [showUserCalendarModal, setShowUserCalendarModal] = useState(false);
   const [userCalendarEntries, setUserCalendarEntries] = useState<RosterEntry[]>([]);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDateTasks, setSelectedDateTasks] = useState<RosterEntry[]>([]);
+  const [showDayTasksModal, setShowDayTasksModal] = useState(false);
+  const [selectedDayInUserCalendar, setSelectedDayInUserCalendar] = useState<number | null>(null);
+  const [tasksForSelectedDay, setTasksForSelectedDay] = useState<RosterEntry[]>([]);
 
   const canViewAllSchedules = isAdmin || isManager;
 
@@ -118,13 +123,50 @@ export default function ViewSchedulePage() {
     }
   };
 
-  const handleActivityClick = (activity: any, userName: string) => {
-    setSelectedActivity({
-      ...activity,
-      userName,
-    });
-    setShowActivityModal(true);
-    openModal(); // Open modal context to hide header
+  const handleActivityClick = async (activity: any, userName: string, userId: string, day: number) => {
+    try {
+      // Create the date for the clicked day
+      const clickedDate = new Date(currentYear, currentMonth - 1, day);
+      
+      // Fetch all tasks for this user on this specific day
+      const allUserTasks = await rosterService.getUserCalendarEvents(userId, currentMonth, currentYear);
+      
+      // Filter tasks that occur on the clicked day
+      const tasksForDay = allUserTasks.filter(task => {
+        if (task.taskType === 'multi' && task.startDate && task.endDate) {
+          const taskStart = new Date(task.startDate);
+          taskStart.setHours(0, 0, 0, 0);
+          const taskEnd = new Date(task.endDate);
+          taskEnd.setHours(0, 0, 0, 0);
+          const checkDate = new Date(clickedDate);
+          checkDate.setHours(0, 0, 0, 0);
+          return checkDate >= taskStart && checkDate <= taskEnd;
+        } else if (task.taskType === 'single' && task.timeStart) {
+          const taskStart = new Date(task.timeStart);
+          taskStart.setHours(0, 0, 0, 0);
+          const checkDate = new Date(clickedDate);
+          checkDate.setHours(0, 0, 0, 0);
+          return taskStart.getTime() === checkDate.getTime();
+        }
+        return false;
+      });
+
+      setSelectedDate(clickedDate);
+      setSelectedDateTasks(tasksForDay);
+      setSelectedUser({ id: userId, name: userName, email: '', role: '' });
+      setShowDayTasksModal(true);
+      openModal();
+    } catch (error) {
+      console.error('Error loading tasks for day:', error);
+    }
+  };
+
+  const handleCloseDayTasksModal = () => {
+    setShowDayTasksModal(false);
+    setSelectedDate(null);
+    setSelectedDateTasks([]);
+    setSelectedUser(null);
+    closeModal();
   };
 
   const handleCloseActivityModal = () => {
@@ -150,7 +192,46 @@ export default function ViewSchedulePage() {
     setShowUserCalendarModal(false);
     setSelectedUser(null);
     setUserCalendarEntries([]);
+    setSelectedDayInUserCalendar(null);
+    setTasksForSelectedDay([]);
     closeModal(); // Close modal context to show header again
+  };
+
+  // Helper function to check if two dates are the same day
+  const isSameDay = (date1: Date, date2: Date): boolean => {
+    return (
+      date1.getFullYear() === date2.getFullYear() &&
+      date1.getMonth() === date2.getMonth() &&
+      date1.getDate() === date2.getDate()
+    );
+  };
+
+  // Handle clicking on a task in the user calendar modal
+  const handleTaskClickInUserCalendar = (day: number) => {
+    const clickedDate = new Date(currentYear, currentMonth - 1, day);
+    
+    // Filter tasks that occur on the clicked day
+    const tasksForDay = userCalendarEntries.filter(task => {
+      if (task.taskType === 'multi' && task.startDate && task.endDate) {
+        const taskStart = new Date(task.startDate);
+        taskStart.setHours(0, 0, 0, 0);
+        const taskEnd = new Date(task.endDate);
+        taskEnd.setHours(0, 0, 0, 0);
+        const checkDate = new Date(clickedDate);
+        checkDate.setHours(0, 0, 0, 0);
+        return checkDate >= taskStart && checkDate <= taskEnd;
+      } else if (task.taskType === 'single' && task.timeStart) {
+        const taskStart = new Date(task.timeStart);
+        taskStart.setHours(0, 0, 0, 0);
+        const checkDate = new Date(clickedDate);
+        checkDate.setHours(0, 0, 0, 0);
+        return taskStart.getTime() === checkDate.getTime();
+      }
+      return false;
+    });
+
+    setSelectedDayInUserCalendar(day);
+    setTasksForSelectedDay(tasksForDay);
   };
 
   const renderUserCalendarInModal = () => {
@@ -217,13 +298,18 @@ export default function ViewSchedulePage() {
             </div>
             <div className="mt-1 space-y-1">
               {calDay.activities.map((activity: RosterEntry) => {
-                const displayName = activity.taskType === 'multi' ? activity.activityName : activity.clientName;
+                const displayName = activity.taskType === 'multi' 
+                  ? activity.activityName 
+                  : activity.taskDetail;
                 return (
                   <div
                     key={activity.id}
                     className={`text-xs px-1 py-0.5 rounded truncate cursor-pointer border transition-colors ${getTaskColorClass(activity)}`}
                     title={displayName}
-                    onClick={() => handleActivityClick(activity, selectedUser?.name || '')}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleTaskClickInUserCalendar(calDay.day);
+                    }}
                   >
                     {displayName}
                   </div>
@@ -300,7 +386,9 @@ export default function ViewSchedulePage() {
             </div>
             <div className="mt-1 space-y-1">
               {calDay.activities.map((activity: RosterEntry) => {
-                const displayName = activity.taskType === 'multi' ? activity.activityName : activity.clientName;
+                const displayName = activity.taskType === 'multi' 
+                  ? activity.activityName 
+                  : activity.taskDetail;
                 return (
                   <div
                     key={activity.id}
@@ -365,7 +453,9 @@ export default function ViewSchedulePage() {
                     if (startingActivity) {
                       const span = startingActivity.endDay - startingActivity.startDay + 1;
                       const cellWidth = span * 50; // 50px per cell
-                      const displayName = startingActivity.activityName || startingActivity.clientName || 'Task';
+                      const displayName = startingActivity.activityName 
+                        || startingActivity.taskDetail 
+                        || 'Task';
                       
                       // Create a temporary RosterEntry object for color calculation
                       const taskForColor: RosterEntry = {
@@ -387,8 +477,8 @@ export default function ViewSchedulePage() {
                           colSpan={span}
                           className={`border border-gray-300 px-1 py-2 text-center font-medium cursor-pointer transition-colors overflow-hidden ${getExcelCellColorClass(taskForColor)}`}
                           style={{ width: `${cellWidth}px`, minWidth: `${cellWidth}px`, maxWidth: `${cellWidth}px` }}
-                          title="Click to view details"
-                          onClick={() => handleActivityClick(startingActivity, user.name)}
+                          title="Click to view all tasks for this day"
+                          onClick={() => handleActivityClick(startingActivity, user.name, user.id, day)}
                         >
                           <div className="truncate text-xs">
                             {displayName}
@@ -487,6 +577,130 @@ export default function ViewSchedulePage() {
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
               <span>Task: 8 hours or more</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Day Tasks Table Modal */}
+      {showDayTasksModal && selectedDate && selectedUser && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseDayTasksModal}
+        >
+          <div
+            className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {selectedUser.name}'s Tasks
+                  </h3>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedDate.toLocaleDateString('en-US', { 
+                      weekday: 'long', 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </p>
+                </div>
+                <button
+                  onClick={handleCloseDayTasksModal}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            <div className="p-6">
+              {selectedDateTasks.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 text-lg">No tasks assigned for this day</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse border border-gray-300">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                          Date
+                        </th>
+                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                          Client Name
+                        </th>
+                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                          Task Name
+                        </th>
+                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                          Start Time
+                        </th>
+                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                          End Time
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {selectedDateTasks
+                        .sort((a, b) => {
+                          const aStart = a.timeStart || a.startDate;
+                          const bStart = b.timeStart || b.startDate;
+                          return (aStart?.getTime() || 0) - (bStart?.getTime() || 0);
+                        })
+                        .map((task, index) => {
+                          const start = task.timeStart || task.startDate;
+                          const end = task.timeEnd || task.endDate;
+                          
+                          return (
+                            <tr key={task.id || index} className="hover:bg-gray-50">
+                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                {start ? start.toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric'
+                                }) : '—'}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                {task.clientName || '—'}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                {task.taskDetail || task.activityName || '—'}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                {start ? start.toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : '—'}
+                              </td>
+                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                {end ? end.toLocaleTimeString('en-US', {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  hour12: true
+                                }) : '—'}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-6">
+              <button
+                onClick={handleCloseDayTasksModal}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
@@ -658,35 +872,96 @@ export default function ViewSchedulePage() {
 
             <div className="p-6">
               {renderUserCalendarInModal()}
-            </div>
-
-            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="text-sm font-semibold text-gray-700">Activities Summary</h4>
-                <span className="text-sm text-gray-600">
-                  {userCalendarEntries.length} activity{userCalendarEntries.length !== 1 ? 'ies' : ''} this month
-                </span>
-              </div>
-              {userCalendarEntries.length > 0 && (
-                <div className="space-y-2 max-h-40 overflow-y-auto mb-4">
-                  {userCalendarEntries.map(entry => {
-                    const displayName = entry.taskType === 'multi' ? entry.activityName : entry.clientName;
-                    const startDate = entry.startDate || entry.timeStart;
-                    const endDate = entry.endDate || entry.timeEnd;
-                    
-                    return (
-                      <div key={entry.id} className="flex items-center justify-between p-2 bg-white rounded border border-gray-200 text-sm">
-                        <span className="font-medium text-gray-900">{displayName}</span>
-                        {startDate && endDate && (
-                          <span className="text-gray-600">
-                            {new Date(startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} - {new Date(endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  })}
+              
+              {/* Task Details Table - Shows below calendar when a day is selected */}
+              {selectedDayInUserCalendar !== null && tasksForSelectedDay.length > 0 && (
+                <div className="mt-6 border-t border-gray-200 pt-6">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-lg font-semibold text-gray-900">
+                      Tasks for {MONTHS[currentMonth - 1]} {selectedDayInUserCalendar}, {currentYear}
+                    </h4>
+                    <button
+                      onClick={() => {
+                        setSelectedDayInUserCalendar(null);
+                        setTasksForSelectedDay([]);
+                      }}
+                      className="text-sm text-gray-600 hover:text-gray-900"
+                    >
+                      Clear selection
+                    </button>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse border border-gray-300">
+                      <thead>
+                        <tr className="bg-gray-100">
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                            Date
+                          </th>
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                            Client Name
+                          </th>
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                            Task Name
+                          </th>
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                            Start Time
+                          </th>
+                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                            End Time
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {tasksForSelectedDay
+                          .sort((a, b) => {
+                            const aStart = a.timeStart || a.startDate;
+                            const bStart = b.timeStart || b.startDate;
+                            return (aStart?.getTime() || 0) - (bStart?.getTime() || 0);
+                          })
+                          .map((task, index) => {
+                            const start = task.timeStart || task.startDate;
+                            const end = task.timeEnd || task.endDate;
+                            
+                            return (
+                              <tr key={task.id || index} className="hover:bg-gray-50">
+                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                  {start ? start.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  }) : '—'}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                  {task.clientName || '—'}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                  {task.taskDetail || task.activityName || '—'}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                  {start ? start.toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  }) : '—'}
+                                </td>
+                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                                  {end ? end.toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit',
+                                    hour12: true
+                                  }) : '—'}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               )}
+            </div>
+
+            <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
               <button
                 onClick={handleCloseUserCalendarModal}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"

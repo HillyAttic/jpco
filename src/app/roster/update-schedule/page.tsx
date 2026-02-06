@@ -41,8 +41,9 @@ export default function UpdateSchedulePage() {
     clientId: '',
     clientName: '',
     taskDetail: '',
-    timeStart: '',
-    timeEnd: '',
+    taskDate: '', // Store the date separately
+    timeStart: '', // Now stores only time (HH:MM)
+    timeEnd: '', // Now stores only time (HH:MM)
   });
 
   useEffect(() => {
@@ -79,6 +80,24 @@ export default function UpdateSchedulePage() {
     } catch (error) {
       console.error('Error loading clients:', error);
     }
+  };
+
+  // Helper function to format date for datetime-local input (avoids timezone issues)
+  const formatDateForInput = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Helper function to format datetime for datetime-local input (avoids timezone issues)
+  const formatDateTimeForInput = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
   };
 
   const generateCalendarDays = (): CalendarDay[] => {
@@ -165,7 +184,8 @@ export default function UpdateSchedulePage() {
   const handleAddTask = (date: Date, type: TaskType) => {
     setEditingEntry(null);
     setTaskType(type);
-    const dateStr = date.toISOString().split('T')[0];
+    const dateStr = formatDateForInput(date);
+    
     setFormData({
       activityName: '',
       startDate: dateStr,
@@ -174,8 +194,9 @@ export default function UpdateSchedulePage() {
       clientId: '',
       clientName: '',
       taskDetail: '',
-      timeStart: `${dateStr}T09:00`,
-      timeEnd: `${dateStr}T17:00`,
+      taskDate: dateStr, // Store the selected date
+      timeStart: '09:00', // Only time
+      timeEnd: '17:00', // Only time
     });
     setShowModal(true);
     openModal();
@@ -188,16 +209,20 @@ export default function UpdateSchedulePage() {
     if (entry.taskType === 'multi') {
       setFormData({
         activityName: entry.activityName || '',
-        startDate: entry.startDate ? new Date(entry.startDate).toISOString().split('T')[0] : '',
-        endDate: entry.endDate ? new Date(entry.endDate).toISOString().split('T')[0] : '',
+        startDate: entry.startDate ? formatDateForInput(new Date(entry.startDate)) : '',
+        endDate: entry.endDate ? formatDateForInput(new Date(entry.endDate)) : '',
         notes: entry.notes || '',
         clientId: '',
         clientName: '',
         taskDetail: '',
+        taskDate: '',
         timeStart: '',
         timeEnd: '',
       });
     } else {
+      const startDateTime = entry.timeStart ? new Date(entry.timeStart) : null;
+      const endDateTime = entry.timeEnd ? new Date(entry.timeEnd) : null;
+      
       setFormData({
         activityName: '',
         startDate: '',
@@ -206,8 +231,9 @@ export default function UpdateSchedulePage() {
         clientId: entry.clientId || '',
         clientName: entry.clientName || '',
         taskDetail: entry.taskDetail || '',
-        timeStart: entry.timeStart ? new Date(entry.timeStart).toISOString().slice(0, 16) : '',
-        timeEnd: entry.timeEnd ? new Date(entry.timeEnd).toISOString().slice(0, 16) : '',
+        taskDate: startDateTime ? formatDateForInput(startDateTime) : '',
+        timeStart: startDateTime ? `${String(startDateTime.getHours()).padStart(2, '0')}:${String(startDateTime.getMinutes()).padStart(2, '0')}` : '',
+        timeEnd: endDateTime ? `${String(endDateTime.getHours()).padStart(2, '0')}:${String(endDateTime.getMinutes()).padStart(2, '0')}` : '',
       });
     }
     
@@ -261,16 +287,18 @@ export default function UpdateSchedulePage() {
           await rosterService.createRosterEntry(data);
         }
       } else {
-        const timeStart = new Date(formData.timeStart);
-        const timeEnd = new Date(formData.timeEnd);
+        // Combine date with time for single tasks
+        const [startHours, startMinutes] = formData.timeStart.split(':').map(Number);
+        const [endHours, endMinutes] = formData.timeEnd.split(':').map(Number);
+        
+        const timeStart = new Date(formData.taskDate);
+        timeStart.setHours(startHours, startMinutes, 0, 0);
+        
+        const timeEnd = new Date(formData.taskDate);
+        timeEnd.setHours(endHours, endMinutes, 0, 0);
 
         if (timeStart > timeEnd) {
           alert('Start time must be before end time');
-          return;
-        }
-
-        if (!formData.clientId) {
-          alert('Please select a client');
           return;
         }
 
@@ -280,8 +308,8 @@ export default function UpdateSchedulePage() {
           taskType: 'single',
           userId: user.uid,
           userName: userProfile.displayName || userProfile.email || 'Unknown',
-          clientId: formData.clientId,
-          clientName: selectedClient?.name || formData.clientName,
+          clientId: formData.clientId || undefined,
+          clientName: selectedClient?.name || formData.clientName || undefined,
           taskDetail: formData.taskDetail,
           timeStart,
           timeEnd,
@@ -363,10 +391,6 @@ export default function UpdateSchedulePage() {
         <h3 className="text-sm font-semibold mb-2">Task Duration Legend:</h3>
         <div className="flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-100 border border-green-300 rounded"></div>
-            <span>Not assigned / Draft</span>
-          </div>
-          <div className="flex items-center gap-2">
             <div className="w-4 h-4 bg-yellow-100 border border-yellow-300 rounded"></div>
             <span>Less than 8 hours</span>
           </div>
@@ -436,13 +460,6 @@ export default function UpdateSchedulePage() {
                   >
                     <PlusCircleIcon className="w-4 h-4" />
                   </button>
-                  <button
-                    onClick={() => handleAddTask(calDay.date, 'multi')}
-                    className="p-1 bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-                    title="Add Activity"
-                  >
-                    <PlusCircleIcon className="w-4 h-4" />
-                  </button>
                 </div>
               )}
 
@@ -452,13 +469,13 @@ export default function UpdateSchedulePage() {
                   <div
                     key={task.id}
                     className={`text-xs px-1 py-0.5 rounded truncate border ${getTaskColorClass(task)}`}
-                    title={task.taskType === 'multi' ? task.activityName : task.clientName}
+                    title={task.taskType === 'multi' ? task.activityName : task.taskDetail}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEditTask(task);
                     }}
                   >
-                    {task.taskType === 'multi' ? task.activityName : task.clientName}
+                    {task.taskType === 'multi' ? task.activityName : task.taskDetail}
                   </div>
                 ))}
                 {calDay.tasks.length > 3 && (
@@ -504,14 +521,11 @@ export default function UpdateSchedulePage() {
                   </button>
                   <button
                     type="button"
-                    onClick={() => setTaskType('multi')}
-                    className={`flex-1 py-2 px-4 rounded-lg border ${
-                      taskType === 'multi'
-                        ? 'bg-green-600 text-white border-green-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
-                    }`}
+                    disabled
+                    className="flex-1 py-2 px-4 rounded-lg border bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed opacity-60"
+                    title="Activity tasks are currently disabled"
                   >
-                    Activity
+                    Activity (Coming Soon)
                   </button>
                 </div>
               </div>
@@ -574,13 +588,12 @@ export default function UpdateSchedulePage() {
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Client *
+                      Client (Optional)
                     </label>
                     <select
                       value={formData.clientId}
                       onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      required
                     >
                       <option value="">Select a client</option>
                       {clients.map(client => (
@@ -605,10 +618,23 @@ export default function UpdateSchedulePage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date
+                    </label>
+                    <input
+                      type="date"
+                      value={formData.taskDate}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                      disabled
+                      readOnly
+                    />
+                    <p className="text-xs text-gray-500 mt-1">Date is automatically set from the calendar</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
                       Start Time *
                     </label>
                     <input
-                      type="datetime-local"
+                      type="time"
                       value={formData.timeStart}
                       onChange={(e) => setFormData({ ...formData, timeStart: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -620,7 +646,7 @@ export default function UpdateSchedulePage() {
                       End Time *
                     </label>
                     <input
-                      type="datetime-local"
+                      type="time"
                       value={formData.timeEnd}
                       onChange={(e) => setFormData({ ...formData, timeEnd: e.target.value })}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
