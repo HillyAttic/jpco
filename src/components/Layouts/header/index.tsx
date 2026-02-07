@@ -86,8 +86,8 @@ export function Header() {
           <ThemeToggleSwitch />
         </div>
 
-        {/* Notifications */}
-        <div className={isTouchDevice ? 'min-h-[44px] flex items-center' : ''}>
+        {/* Notifications - Hidden on mobile, shown on tablet and desktop */}
+        <div className={`${isTouchDevice ? 'min-h-[44px] flex items-center' : ''} md:flex hidden`}>
           <Notification />
         </div>
 

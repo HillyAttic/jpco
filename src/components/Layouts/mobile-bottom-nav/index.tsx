@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, ClipboardCheck, Settings, Bell } from "lucide-react";
+import { Calendar, LayoutDashboard, Settings, Bell, ClipboardCheck } from "lucide-react";
 
 interface NavItem {
   href: string;
@@ -14,20 +14,25 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    href: "/roster/update-schedule",
-    icon: Calendar,
-    label: "Schedule",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    label: "Dashboard",
   },
   {
-    href: "/attendance",
-    icon: ClipboardCheck,
-    label: "Attendance",
+    href: "/roster/update-schedule",
+    icon: Calendar,
+    label: "Roster",
   },
   {
     href: "/notifications",
     icon: Bell,
     label: "Notifications",
     badge: 0, // Will be dynamic in the future
+  },
+  {
+    href: "/attendance",
+    icon: ClipboardCheck,
+    label: "Attendance",
   },
   {
     href: "/settings",
@@ -41,13 +46,13 @@ export function MobileBottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 dark:bg-gray-dark dark:border-gray-800 md:hidden"
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200 dark:bg-gray-dark dark:border-gray-800 md:hidden shadow-lg"
       role="navigation"
       aria-label="Mobile bottom navigation"
     >
       <div className="flex items-center justify-around h-16 px-2">
         {NAV_ITEMS.map((item) => {
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+          const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
           const Icon = item.icon;
 
           return (
