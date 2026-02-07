@@ -236,8 +236,8 @@ export default function DashboardPage() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-100 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-blue-600">
+                <div className="p-2 bg-blue-600 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-white">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                   </svg>
                 </div>
@@ -269,8 +269,8 @@ export default function DashboardPage() {
                   className="p-3 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-blue-600 font-semibold text-sm">
+                    <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-semibold text-sm">
                         {clientName.charAt(0).toUpperCase()}
                       </span>
                     </div>
@@ -286,6 +286,7 @@ export default function DashboardPage() {
           <div className="p-6 border-t border-gray-200 bg-gray-50">
             <Button
               onClick={handleCloseClients}
+              variant="primary"
               className="w-full"
             >
               Close
@@ -308,8 +309,8 @@ export default function DashboardPage() {
           <div className="p-6 border-b border-gray-200">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-100 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-green-600">
+                <div className="p-2 bg-green-600 rounded-lg">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-white">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                   </svg>
                 </div>
@@ -341,8 +342,8 @@ export default function DashboardPage() {
                   className="p-4 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-                      <span className="text-green-600 font-semibold">
+                    <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-white font-semibold">
                         {member.name.charAt(0).toUpperCase()}
                       </span>
                     </div>
@@ -363,6 +364,7 @@ export default function DashboardPage() {
           <div className="p-6 border-t border-gray-200 bg-gray-50">
             <Button
               onClick={handleCloseTeam}
+              variant="primary"
               className="w-full"
             >
               Close
@@ -389,7 +391,7 @@ export default function DashboardPage() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={handleShowClients}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-md transition-colors font-medium"
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-medium"
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
@@ -399,7 +401,7 @@ export default function DashboardPage() {
                   {teamName && (
                     <button
                       onClick={handleShowTeam}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-md transition-colors font-medium"
+                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors font-medium"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
@@ -777,7 +779,7 @@ export default function DashboardPage() {
           </p>
         </div>
         {canViewAllTasks && (
-          <Button onClick={handleCreateTask} className="text-white w-full sm:w-auto">
+          <Button onClick={handleCreateTask} variant="primary" className="w-full sm:w-auto">
             <PlusCircleIcon className="w-5 h-5 mr-2" />
             Create Task
           </Button>
@@ -791,8 +793,8 @@ export default function DashboardPage() {
           value={stats.total}
           subtitle="All tasks"
           icon={<ClipboardDocumentListIcon className="w-5 h-5" />}
-          iconBgColor="bg-blue-100"
-          iconColor="text-blue-600"
+          iconBgColor="bg-blue-600"
+          iconColor="text-white"
           onClick={stats.total > 0 ? handleShowAllTasks : undefined}
         />
         <StatCard
@@ -800,8 +802,8 @@ export default function DashboardPage() {
           value={stats.completed}
           subtitle="Tasks done"
           icon={<CheckCircleIcon className="w-5 h-5" />}
-          iconBgColor="bg-green-100"
-          iconColor="text-green-600"
+          iconBgColor="bg-green-600"
+          iconColor="text-white"
           trend={{ value: 12, isPositive: true }}
           onClick={stats.completed > 0 ? handleShowCompleted : undefined}
         />
@@ -938,8 +940,8 @@ export default function DashboardPage() {
                 className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
-                    <ClipboardDocumentListIcon className="w-6 h-6 text-blue-600" />
+                  <div className="p-2 bg-blue-600 rounded-lg group-hover:bg-blue-700 transition-colors">
+                    <ClipboardDocumentListIcon className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-1">Non-Recurring Task</h4>
@@ -955,8 +957,8 @@ export default function DashboardPage() {
                 className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all text-left group"
               >
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg group-hover:bg-green-200 transition-colors">
-                    <ClockIcon className="w-6 h-6 text-green-600" />
+                  <div className="p-2 bg-green-600 rounded-lg group-hover:bg-green-700 transition-colors">
+                    <ClockIcon className="w-6 h-6 text-white" />
                   </div>
                   <div>
                     <h4 className="font-semibold text-gray-900 mb-1">Recurring Task</h4>
@@ -1141,7 +1143,7 @@ export default function DashboardPage() {
                               Priority: {task.priority}
                             </span>
                             {task.isRecurring && (
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                              <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
                                 Recurring
                               </span>
                             )}
@@ -1196,8 +1198,8 @@ export default function DashboardPage() {
             <div className="px-6 py-4 border-b border-gray-200">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
-                    <ClipboardDocumentListIcon className="w-6 h-6 text-blue-600" />
+                  <div className="p-2 bg-blue-600 rounded-lg flex-shrink-0">
+                    <ClipboardDocumentListIcon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-xl font-bold text-gray-900">
@@ -1238,7 +1240,7 @@ export default function DashboardPage() {
                   const statusBadgeColors: Record<string, string> = {
                     'pending': 'bg-yellow-100 text-yellow-700',
                     'in-progress': 'bg-orange-100 text-orange-700',
-                    'completed': 'bg-green-100 text-green-700'
+                    'completed': 'bg-green-600 text-white'
                   };
                   
                   return (
@@ -1279,7 +1281,7 @@ export default function DashboardPage() {
                               </span>
                             )}
                             {task.isRecurring && (
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                              <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
                                 Recurring
                               </span>
                             )}
@@ -1332,8 +1334,8 @@ export default function DashboardPage() {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
-                    <CheckCircleIcon className="w-6 h-6 text-green-600" />
+                  <div className="p-2 bg-green-600 rounded-lg flex-shrink-0">
+                    <CheckCircleIcon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-xl font-bold text-gray-900">
@@ -1397,7 +1399,7 @@ export default function DashboardPage() {
                               {task.priority}
                             </span>
                             {task.isRecurring && (
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                              <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
                                 Recurring
                               </span>
                             )}
@@ -1502,7 +1504,7 @@ export default function DashboardPage() {
                               {task.priority}
                             </span>
                             {task.isRecurring && (
-                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
+                              <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
                                 Recurring
                               </span>
                             )}

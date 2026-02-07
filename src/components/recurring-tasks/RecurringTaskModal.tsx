@@ -640,7 +640,7 @@ export function RecurringTaskModal({
           </div>
 
           {/* Enable ARN Checkbox */}
-          <div className="flex items-start space-x-3 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start space-x-3 p-4 bg-blue-600 border border-blue-700 rounded-lg">
             <input
               type="checkbox"
               id="requiresArn"
@@ -649,10 +649,10 @@ export function RecurringTaskModal({
               disabled={isLoading}
             />
             <div className="flex-1">
-              <Label htmlFor="requiresArn" className="font-medium text-gray-900 cursor-pointer">
+              <Label htmlFor="requiresArn" className="font-medium text-white cursor-pointer">
                 Enable ARN (Application Reference Number)
               </Label>
-              <p className="text-sm text-gray-600 mt-1">
+              <p className="text-sm text-white/90 mt-1">
                 When enabled, users must provide a 15-digit ARN number and their name before marking tasks as complete.
               </p>
             </div>

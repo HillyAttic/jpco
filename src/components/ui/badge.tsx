@@ -18,7 +18,7 @@ const badgeVariants = cva(
         danger:
           'border-transparent bg-red-100 text-red-800 hover:bg-red-200',
         info:
-          'border-transparent bg-blue-100 text-blue-800 hover:bg-blue-200',
+          'border-transparent bg-blue-600 text-white hover:bg-blue-700',
         outline: 'text-foreground',
       },
     },

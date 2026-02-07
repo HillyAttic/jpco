@@ -10,7 +10,7 @@ interface TaskCardProps {
 const getStatusColor = (status: TaskStatus) => {
   switch (status) {
     case TaskStatus.TODO:
-      return 'bg-blue-100 text-blue-800';
+      return 'bg-blue-600 text-white';
     case TaskStatus.IN_PROGRESS:
       return 'bg-yellow-100 text-yellow-800';
     case TaskStatus.COMPLETED:

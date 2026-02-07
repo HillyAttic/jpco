@@ -124,7 +124,7 @@ export function EmployeeFilter({
             )}
             
             {filters.status !== 'all' && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-full">
                 Status: {filters.status === 'on-leave' ? 'On Leave' : filters.status.charAt(0).toUpperCase() + filters.status.slice(1)}
                 <button
                   onClick={() => onFilterChange({ ...filters, status: 'all' })}

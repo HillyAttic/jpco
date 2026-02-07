@@ -72,7 +72,7 @@ export function KanbanTaskCard({ task, onDragStart, onClick }: KanbanTaskCardPro
           {task.tags.map((tag, idx) => (
             <span
               key={idx}
-              className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full"
+              className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full"
             >
               {tag}
             </span>

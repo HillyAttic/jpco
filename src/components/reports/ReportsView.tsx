@@ -143,7 +143,7 @@ export function ReportsView() {
                       <div className="text-sm font-medium text-gray-900">{task.title}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-600 text-white">
                         {task.recurrencePattern}
                       </span>
                     </td>

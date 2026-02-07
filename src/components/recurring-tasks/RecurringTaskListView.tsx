@@ -48,7 +48,7 @@ export function RecurringTaskListView({
       case 'completed':
         return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
       case 'in-progress':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+        return 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white';
       case 'pending':
         return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
       default:
@@ -87,7 +87,7 @@ export function RecurringTaskListView({
               key={task.id}
               className={`grid grid-cols-12 gap-4 px-6 py-4 text-sm transition-colors ${
                 selected.includes(task.id!)
-                  ? 'bg-blue-50 dark:bg-blue-900/30'
+                  ? 'bg-blue-600/10 dark:bg-blue-600/20'
                   : 'bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800'
               }`}
             >
@@ -293,7 +293,7 @@ export function RecurringTaskListView({
                 )}
                 <button
                   onClick={() => onEdit(task)}
-                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:hover:bg-blue-900/50 transition-colors min-h-[44px]"
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 transition-colors min-h-[44px]"
                   aria-label="Edit task"
                 >
                   <PencilIcon className="w-5 h-5" />

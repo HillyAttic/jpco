@@ -258,7 +258,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
             </button>
             <button
               onClick={() => setCurrentDate(new Date())}
-              className="px-3 py-1 text-sm rounded-md bg-blue-100 text-blue-700 hover:bg-blue-200"
+              className="px-3 py-1 text-sm rounded-md bg-blue-600 text-white hover:bg-blue-700"
             >
               Today
             </button>

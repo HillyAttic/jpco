@@ -129,7 +129,7 @@ export function TaskList({ tasks, onTaskClick, showStatus = true }: TaskListProp
               
               {task.commentCount !== undefined && task.commentCount > 0 && (
                 <div className="ml-4 flex-shrink-0">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-600 text-white">
                     {task.commentCount} comments
                   </span>
                 </div>

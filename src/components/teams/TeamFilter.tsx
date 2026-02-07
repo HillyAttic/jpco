@@ -123,7 +123,7 @@ export function TeamFilter({
         <div className="mt-4 pt-4 border-t border-gray-200">
           <div className="flex flex-wrap gap-2">
             {filters.status !== 'all' && (
-              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded-full">
+              <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-600 text-white text-xs font-medium rounded-full">
                 Status: {filters.status.charAt(0).toUpperCase() + filters.status.slice(1)}
                 <button
                   onClick={() => onFilterChange({ ...filters, status: 'all' })}

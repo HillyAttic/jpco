@@ -71,8 +71,8 @@ export function TaskStatsCard({ tasks }: TaskStatsCardProps) {
             icon={<ClipboardDocumentListIcon className="w-6 h-6" />}
             label="Total Tasks"
             value={totalTasks}
-            color="text-blue-600"
-            bgColor="bg-blue-100"
+            color="text-white"
+            bgColor="bg-blue-600"
           />
 
           {/* Pending Tasks */}
