@@ -83,7 +83,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
     fetchRosterStats();
   }, [currentDate.getMonth(), currentDate.getFullYear(), canViewRosterStats]);
 
-  const getDaysInMonth = (date: Date) => {
+  const getDaysInMonth = React.useCallback((date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -102,9 +102,9 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
     }
     
     return days;
-  };
+  }, []);
 
-  const getTasksForDate = (date: Date): CalendarTask[] => {
+  const getTasksForDate = React.useCallback((date: Date): CalendarTask[] => {
     return tasks.filter(task => {
       if (!task.dueDate) return false;
       const taskDate = task.dueDate instanceof Date ? task.dueDate : new Date(task.dueDate);
@@ -114,7 +114,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
         taskDate.getFullYear() === date.getFullYear()
       );
     });
-  };
+  }, [tasks]);
 
   const getRecurrenceLabel = (pattern?: string) => {
     if (!pattern) return '';
@@ -144,7 +144,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
     });
   };
 
-  const handleTaskClick = async (task: CalendarTask, e: React.MouseEvent) => {
+  const handleTaskClick = async (task: CalendarTask, e: React.MouseEvent, taskDate?: Date) => {
     e.stopPropagation();
     
     // If it's a recurring task, open the client modal
@@ -197,7 +197,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
     closeModal(); // Show header when modal closes
   };
 
-  const days = getDaysInMonth(currentDate);
+  const days = React.useMemo(() => getDaysInMonth(currentDate), [currentDate, getDaysInMonth]);
   const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   // Render roster stats bar for a specific day
@@ -348,7 +348,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                       {dayTasks.slice(0, 3).map(task => (
                         <div
                           key={task.id}
-                          onClick={(e) => handleTaskClick(task, e)}
+                          onClick={(e) => handleTaskClick(task, e, day)}
                           className={`text-xs p-1 rounded truncate flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${
                             task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
                             task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
@@ -391,7 +391,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                   <div 
                     key={task.id} 
                     className="p-3 bg-white rounded border cursor-pointer hover:bg-gray-50 transition-colors"
-                    onClick={(e) => handleTaskClick(task, e)}
+                    onClick={(e) => handleTaskClick(task, e, selectedDate)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex-1">
@@ -433,6 +433,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           onClose={handleCloseModal}
           task={fullRecurringTask}
           clients={clients}
+          viewingMonth={currentDate}
         />
       )}
     </div>

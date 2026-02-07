@@ -23,6 +23,7 @@ interface RecurringTaskClientModalProps {
   onClose: () => void;
   task: RecurringTask | null;
   clients: Client[];
+  viewingMonth?: Date; // The month being viewed in the calendar
 }
 
 /**
@@ -35,6 +36,7 @@ export function RecurringTaskClientModal({
   onClose,
   task,
   clients,
+  viewingMonth,
 }: RecurringTaskClientModalProps) {
   const [clientCompletions, setClientCompletions] = useState<Map<string, Set<string>>>(new Map());
   const [arnData, setArnData] = useState<Map<string, Map<string, { arnNumber: string; arnName: string }>>>(new Map());
@@ -47,25 +49,25 @@ export function RecurringTaskClientModal({
   const [arnError, setArnError] = useState('');
   const { user, userProfile } = useEnhancedAuth();
 
-  // Generate only the current month
+  // Generate only the viewing month (or current month if not specified)
   const generateMonths = () => {
-    const currentDate = new Date();
-    const currentYear = currentDate.getFullYear();
-    const currentMonth = currentDate.getMonth();
+    const targetDate = viewingMonth || new Date();
+    const targetYear = targetDate.getFullYear();
+    const targetMonth = targetDate.getMonth();
     
-    const date = new Date(currentYear, currentMonth, 1);
+    const date = new Date(targetYear, targetMonth, 1);
     return [{
-      key: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`,
+      key: `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}`,
       label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
       monthName: date.toLocaleDateString('en-US', { month: 'short' }),
-      year: currentYear.toString(),
+      year: targetYear.toString(),
       fullDate: date,
     }];
   };
 
-  // Filter months based on recurrence pattern - always show only current month
+  // Filter months based on recurrence pattern - always show only viewing month
   const getVisibleMonths = () => {
-    return generateMonths(); // Always return current month only
+    return generateMonths(); // Always return viewing month only
   };
 
   const visibleMonths = getVisibleMonths();
@@ -81,7 +83,7 @@ export function RecurringTaskClientModal({
       });
       loadCompletions();
     }
-  }, [task, clients, isOpen]);
+  }, [task, clients, isOpen, viewingMonth]);
 
   const loadCompletions = async () => {
     if (!task || !task.id) return;
@@ -316,7 +318,7 @@ export function RecurringTaskClientModal({
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{task.title}</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Track completion for {clients.length} client{clients.length !== 1 ? 's' : ''} • Current month only
+                Track completion for {clients.length} client{clients.length !== 1 ? 's' : ''} • {visibleMonths[0]?.label || 'Current month'} only
               </p>
             </div>
             <button

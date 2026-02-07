@@ -456,20 +456,22 @@ export default function DashboardPage() {
 
   const handleShowOverdue = () => {
     setShowOverdueModal(true);
-    // Don't hide header for stat card modals
+    openModal(); // Hide header for overdue modal
   };
 
   const handleCloseOverdue = () => {
     setShowOverdueModal(false);
+    closeModal(); // Show header when modal closes
   };
 
   const handleShowTodo = () => {
     setShowTodoModal(true);
-    // Don't hide header for stat card modals
+    openModal(); // Hide header for todo modal
   };
 
   const handleCloseTodo = () => {
     setShowTodoModal(false);
+    closeModal(); // Show header when modal closes
   };
 
   const handleShowAllTasks = () => {
@@ -484,20 +486,22 @@ export default function DashboardPage() {
 
   const handleShowCompleted = () => {
     setShowCompletedModal(true);
-    // Don't hide header for stat card modals
+    openModal(); // Hide header for completed modal
   };
 
   const handleCloseCompleted = () => {
     setShowCompletedModal(false);
+    closeModal(); // Show header when modal closes
   };
 
   const handleShowInProgress = () => {
     setShowInProgressModal(true);
-    // Don't hide header for stat card modals
+    openModal(); // Hide header for in progress modal
   };
 
   const handleCloseInProgress = () => {
     setShowInProgressModal(false);
+    closeModal(); // Show header when modal closes
   };
 
   // Get overdue tasks
@@ -988,12 +992,12 @@ export default function DashboardPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-red-100 rounded-lg">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
                     <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="text-xl font-bold text-gray-900">
                       Overdue Tasks
                     </h3>
@@ -1004,9 +1008,10 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={handleCloseOverdue}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1058,15 +1063,6 @@ export default function DashboardPage() {
                 })}
               </div>
             </div>
-
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <Button
-                onClick={handleCloseOverdue}
-                className="w-full"
-              >
-                Close
-              </Button>
-            </div>
           </div>
         </div>
       )}
@@ -1082,12 +1078,12 @@ export default function DashboardPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-yellow-100 rounded-lg">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="p-2 bg-yellow-100 rounded-lg flex-shrink-0">
                     <ClockIcon className="w-6 h-6 text-yellow-600" />
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="text-xl font-bold text-gray-900">
                       To Do Tasks
                     </h3>
@@ -1098,9 +1094,10 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={handleCloseTodo}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1182,15 +1179,6 @@ export default function DashboardPage() {
                 })}
               </div>
             </div>
-
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <Button
-                onClick={handleCloseTodo}
-                className="w-full"
-              >
-                Close
-              </Button>
-            </div>
           </div>
         </div>
       )}
@@ -1205,13 +1193,13 @@ export default function DashboardPage() {
             className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-blue-100 rounded-lg">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="p-2 bg-blue-100 rounded-lg flex-shrink-0">
                     <ClipboardDocumentListIcon className="w-6 h-6 text-blue-600" />
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="text-xl font-bold text-gray-900">
                       All Tasks
                     </h3>
@@ -1222,9 +1210,10 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={handleCloseAllTasks}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1326,15 +1315,6 @@ export default function DashboardPage() {
                 })}
               </div>
             </div>
-
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <Button
-                onClick={handleCloseAllTasks}
-                className="w-full"
-              >
-                Close
-              </Button>
-            </div>
           </div>
         </div>
       )}
@@ -1350,12 +1330,12 @@ export default function DashboardPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-green-100 rounded-lg">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="p-2 bg-green-100 rounded-lg flex-shrink-0">
                     <CheckCircleIcon className="w-6 h-6 text-green-600" />
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="text-xl font-bold text-gray-900">
                       Completed Tasks
                     </h3>
@@ -1366,9 +1346,10 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={handleCloseCompleted}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1434,15 +1415,6 @@ export default function DashboardPage() {
                 })}
               </div>
             </div>
-
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <Button
-                onClick={handleCloseCompleted}
-                className="w-full"
-              >
-                Close
-              </Button>
-            </div>
           </div>
         </div>
       )}
@@ -1458,12 +1430,12 @@ export default function DashboardPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-orange-100 rounded-lg">
+              <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
                     <ExclamationTriangleIcon className="w-6 h-6 text-orange-600" />
                   </div>
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <h3 className="text-xl font-bold text-gray-900">
                       In Progress Tasks
                     </h3>
@@ -1474,9 +1446,10 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={handleCloseInProgress}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1569,15 +1542,6 @@ export default function DashboardPage() {
                   );
                 })}
               </div>
-            </div>
-
-            <div className="p-6 border-t border-gray-200 bg-gray-50">
-              <Button
-                onClick={handleCloseInProgress}
-                className="w-full"
-              >
-                Close
-              </Button>
             </div>
           </div>
         </div>

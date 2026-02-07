@@ -21,73 +21,31 @@ export default function CalendarPage() {
   const [tasks, setTasks] = useState<CalendarTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
+  const [nonRecurringTasks, setNonRecurringTasks] = useState<Task[]>([]);
 
   useEffect(() => {
     loadTasks();
   }, []);
 
-  const loadTasks = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch non-recurring tasks
-      const nonRecurringTasks = await taskApi.getTasks();
-      
-      // Fetch recurring tasks using API (which handles team-based filtering)
-      const { auth } = await import('@/lib/firebase');
-      const currentUser = auth.currentUser;
-      if (!currentUser) {
-        console.error('User not authenticated');
-        setLoading(false);
-        return;
-      }
-      
-      const token = await currentUser.getIdToken();
-      const headers = {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`,
-      };
-      
-      const recurringResponse = await fetch('/api/recurring-tasks?view=calendar', { headers });
-      if (!recurringResponse.ok) {
-        throw new Error('Failed to fetch recurring tasks');
-      }
-      const recurringTasks = await recurringResponse.json();
-      
-      // Convert recurring tasks to calendar tasks with all occurrences
-      const recurringCalendarTasks = generateRecurringTaskOccurrences(recurringTasks);
-      
-      // Combine both types of tasks
-      const allTasks = [
-        ...nonRecurringTasks.map(task => ({ ...task, isRecurring: false })),
-        ...recurringCalendarTasks
-      ];
-      
-      setTasks(allTasks);
-    } catch (error) {
-      console.error('Error loading tasks:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   /**
    * Generate calendar task occurrences from recurring tasks
    * Creates individual task entries for each occurrence based on recurrence pattern
+   * Optimized to only generate occurrences for the visible calendar range
    */
-  const generateRecurringTaskOccurrences = (recurringTasks: RecurringTask[]): CalendarTask[] => {
+  const generateRecurringTaskOccurrences = React.useCallback((recurringTasks: RecurringTask[]): CalendarTask[] => {
     const calendarTasks: CalendarTask[] = [];
     
-    // Get date range for calendar (previous 2 years to future 5 years)
+    // Optimize: Only generate occurrences for current year ± 1 year (3 years total instead of 7)
     const calendarStartDate = new Date();
-    calendarStartDate.setFullYear(calendarStartDate.getFullYear() - 2);
+    calendarStartDate.setFullYear(calendarStartDate.getFullYear() - 1);
     calendarStartDate.setMonth(0); // January
     calendarStartDate.setDate(1);
     
     const calendarEndDate = new Date();
-    calendarEndDate.setFullYear(calendarEndDate.getFullYear() + 5);
+    calendarEndDate.setFullYear(calendarEndDate.getFullYear() + 1);
     calendarEndDate.setMonth(11); // December
-    calendarEndDate.setDate(31); // Last day of year
+    calendarEndDate.setDate(31);
     
     recurringTasks.forEach(recurringTask => {
       // Skip paused tasks
@@ -95,15 +53,16 @@ export default function CalendarPage() {
       
       // Calculate task start and end dates
       const taskStartDate = new Date(recurringTask.startDate);
-      // If no end date is specified, use the calendar's extended end date (5 years)
-      // This allows unlimited recurring tasks to show for a reasonable future period
       const taskEndDate = recurringTask.endDate ? new Date(recurringTask.endDate) : calendarEndDate;
       
-      // CRITICAL FIX: Always start from the task's actual start date
-      // The occurrences should be calculated from when the task was created,
-      // not from an arbitrary calendar start date
-      const occurrenceStartDate = taskStartDate;
+      // Only generate occurrences within the calendar range
+      const occurrenceStartDate = taskStartDate > calendarStartDate ? taskStartDate : calendarStartDate;
       const occurrenceEndDate = taskEndDate < calendarEndDate ? taskEndDate : calendarEndDate;
+      
+      // Skip if task is completely outside the calendar range
+      if (occurrenceStartDate > calendarEndDate || occurrenceEndDate < calendarStartDate) {
+        return;
+      }
       
       try {
         const occurrences = calculateAllOccurrences(
@@ -111,16 +70,6 @@ export default function CalendarPage() {
           occurrenceEndDate,
           recurringTask.recurrencePattern
         );
-        
-        console.log(`[Calendar] Task: ${recurringTask.title}`);
-        console.log(`[Calendar] Pattern: ${recurringTask.recurrencePattern}`);
-        console.log(`[Calendar] Start: ${occurrenceStartDate.toISOString()}`);
-        console.log(`[Calendar] End: ${occurrenceEndDate.toISOString()}`);
-        console.log(`[Calendar] Generated ${occurrences.length} occurrences`);
-        if (occurrences.length > 0) {
-          console.log(`[Calendar] First occurrence: ${occurrences[0].toISOString()}`);
-          console.log(`[Calendar] Last occurrence: ${occurrences[occurrences.length - 1].toISOString()}`);
-        }
         
         // Create a calendar task for each occurrence
         occurrences.forEach(occurrenceDate => {
@@ -156,6 +105,63 @@ export default function CalendarPage() {
     });
     
     return calendarTasks;
+  }, []);
+
+  // Memoize the generation of recurring task occurrences to avoid recalculation
+  const recurringCalendarTasks = React.useMemo(() => {
+    return generateRecurringTaskOccurrences(recurringTasks);
+  }, [recurringTasks, generateRecurringTaskOccurrences]);
+
+  // Memoize the combined tasks array
+  const allTasks = React.useMemo(() => {
+    return [
+      ...nonRecurringTasks.map(task => ({ ...task, isRecurring: false })),
+      ...recurringCalendarTasks
+    ];
+  }, [nonRecurringTasks, recurringCalendarTasks]);
+
+  // Update tasks when allTasks changes
+  useEffect(() => {
+    setTasks(allTasks);
+  }, [allTasks]);
+
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      
+      // Fetch both task types in parallel for better performance
+      const [nonRecurringTasksData, recurringTasksData] = await Promise.all([
+        taskApi.getTasks(),
+        (async () => {
+          const { auth } = await import('@/lib/firebase');
+          const currentUser = auth.currentUser;
+          if (!currentUser) {
+            console.error('User not authenticated');
+            return [];
+          }
+          
+          const token = await currentUser.getIdToken();
+          const headers = {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          };
+          
+          const recurringResponse = await fetch('/api/recurring-tasks?view=calendar', { headers });
+          if (!recurringResponse.ok) {
+            throw new Error('Failed to fetch recurring tasks');
+          }
+          return await recurringResponse.json();
+        })()
+      ]);
+      
+      // Store in separate state to enable memoization
+      setNonRecurringTasks(nonRecurringTasksData);
+      setRecurringTasks(recurringTasksData);
+    } catch (error) {
+      console.error('Error loading tasks:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleTaskCreated = (newTask: Task) => {
