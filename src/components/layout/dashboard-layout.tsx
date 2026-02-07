@@ -3,6 +3,7 @@
 import React, { ReactNode } from 'react';
 import { Sidebar } from '@/components/Layouts/sidebar';
 import { Header } from '@/components/Layouts/header';
+import { MobileBottomNav } from '@/components/Layouts/mobile-bottom-nav';
 import { SidebarProvider } from '@/components/Layouts/sidebar/sidebar-context';
 import { ResponsiveLayout } from '@/components/ui/responsive-layout';
 import { useResponsive } from '@/hooks/use-responsive';
@@ -51,12 +52,16 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
               className={`
                 min-h-full
                 ${isTouchDevice ? 'touch-manipulation' : ''}
+                ${device.type === 'mobile' ? 'pb-16' : ''}
               `}
             >
               {children}
             </ResponsiveLayout>
           </main>
         </div>
+
+        {/* Mobile Bottom Navigation */}
+        <MobileBottomNav />
       </div>
     </SidebarProvider>
   );

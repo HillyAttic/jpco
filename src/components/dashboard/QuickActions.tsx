@@ -48,12 +48,6 @@ export function QuickActions({
       color: 'bg-green-600 hover:bg-green-700'
     },
     {
-      label: 'Analytics',
-      icon: <ChartBarIcon className="w-5 h-5" />,
-      onClick: onViewAnalytics,
-      color: 'bg-purple-600 hover:bg-purple-700'
-    },
-    {
       label: 'Projects',
       icon: <FolderIcon className="w-5 h-5" />,
       onClick: onManageProjects,
