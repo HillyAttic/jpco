@@ -233,28 +233,28 @@ export default function DashboardPage() {
           className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-blue-600 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-white">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <div className="p-1.5 sm:p-2 bg-blue-600 rounded-lg flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-white">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
                     Clients for: {task.title}
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">
                     {assignedToNames.length} client{assignedToNames.length !== 1 ? 's' : ''} assigned
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleCloseClients}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -306,28 +306,28 @@ export default function DashboardPage() {
           className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-green-600 rounded-lg">
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-white">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+            <div className="flex items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                <div className="p-1.5 sm:p-2 bg-green-600 rounded-lg flex-shrink-0">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-white">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                   </svg>
                 </div>
-                <div>
-                  <h3 className="text-xl font-bold text-gray-900">
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
                     Team: {teamName}
                   </h3>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-xs sm:text-sm text-gray-600 truncate">
                     {teamMembers.length} team member{teamMembers.length !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleCloseTeam}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -377,44 +377,44 @@ export default function DashboardPage() {
 
     return (
       <>
-        <div className="flex flex-wrap items-center gap-3 text-xs text-gray-600 mt-2 pt-2 border-t border-gray-200">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-gray-600 mt-2 pt-2 border-t border-gray-200">
           {assignedByName && (
-            <span className="flex items-center gap-1">
-              <span className="font-medium">Assigned By:</span>
-              <span className="text-gray-900">{assignedByName}</span>
+            <span className="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap overflow-hidden">
+              <span className="font-medium flex-shrink-0">Assigned By:</span>
+              <span className="text-gray-900 truncate">{assignedByName}</span>
             </span>
           )}
           {assignedToNames.length > 0 && (
             <>
               {task.isRecurring ? (
                 // For recurring tasks, show buttons to view clients and team
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto">
                   <button
                     onClick={handleShowClients}
-                    className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors font-medium"
+                    className="flex items-center gap-0.5 sm:gap-1 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-[10px] sm:text-xs font-medium whitespace-nowrap flex-shrink-0 min-h-[28px]"
                   >
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                     </svg>
-                    View {assignedToNames.length} Client{assignedToNames.length !== 1 ? 's' : ''}
+                    <span>{assignedToNames.length} Client{assignedToNames.length !== 1 ? 's' : ''}</span>
                   </button>
                   {teamName && (
                     <button
                       onClick={handleShowTeam}
-                      className="flex items-center gap-1.5 px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-md transition-colors font-medium"
+                      className="flex items-center gap-0.5 sm:gap-1 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-green-600 hover:bg-green-700 text-white rounded text-[10px] sm:text-xs font-medium whitespace-nowrap flex-shrink-0 max-w-[150px] sm:max-w-[200px] min-h-[28px]"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M18 18.72a9.094 9.094 0 003.741-.479 3 3 0 00-4.682-2.72m.94 3.198l.001.031c0 .225-.012.447-.037.666A11.944 11.944 0 0112 21c-2.17 0-4.207-.576-5.963-1.584A6.062 6.062 0 016 18.719m12 0a5.971 5.971 0 00-.941-3.197m0 0A5.995 5.995 0 0012 12.75a5.995 5.995 0 00-5.058 2.772m0 0a3 3 0 00-4.681 2.72 8.986 8.986 0 003.74.477m.94-3.197a5.971 5.971 0 00-.94 3.197M15 6.75a3 3 0 11-6 0 3 3 0 016 0zm6 3a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0zm-13.5 0a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
                       </svg>
-                      Team: {teamName}
+                      <span className="truncate min-w-0">{teamName}</span>
                     </button>
                   )}
                 </div>
               ) : (
                 // For non-recurring tasks, show names inline
-                <span className="flex items-center gap-1">
-                  <span className="font-medium">Assigned To:</span>
-                  <span className="text-gray-900">{assignedToNames.join(', ')}</span>
+                <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
+                  <span className="font-medium flex-shrink-0">Assigned To:</span>
+                  <span className="text-gray-900 truncate">{assignedToNames.join(', ')}</span>
                 </span>
               )}
             </>
@@ -996,24 +996,24 @@ export default function DashboardPage() {
             <div className="p-6 border-b border-gray-200">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
-                    <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                  <div className="p-1.5 sm:p-2 bg-red-100 rounded-lg flex-shrink-0">
+                    <ExclamationTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-gray-900">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
                       Overdue Tasks
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">
                       {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} past due date
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseOverdue}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1032,7 +1032,12 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900 mb-1">{task.title}</h4>
+                          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                            <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 bg-red-600 text-white rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                              {daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue
+                            </div>
+                          </div>
                           {task.description && (
                             <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
                           )}
@@ -1054,11 +1059,6 @@ export default function DashboardPage() {
                           </div>
                           <TaskAssignmentInfo task={task} />
                         </div>
-                        <div className="flex-shrink-0">
-                          <div className="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
-                            {daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue
-                          </div>
-                        </div>
                       </div>
                     </div>
                   );
@@ -1079,27 +1079,27 @@ export default function DashboardPage() {
             className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="p-2 bg-yellow-100 rounded-lg flex-shrink-0">
-                    <ClockIcon className="w-6 h-6 text-yellow-600" />
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-yellow-100 rounded-lg flex-shrink-0">
+                    <ClockIcon className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-gray-900">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
                       To Do Tasks
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">
                       {todoTasks.length} pending task{todoTasks.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseTodo}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1124,7 +1124,34 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900 mb-1">{task.title}</h4>
+                          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {hasDueDate && daysUntilDue !== null && (
+                                <div className={`px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
+                                  isOverdue 
+                                    ? 'bg-red-600 text-white' 
+                                    : daysUntilDue <= 3 
+                                      ? 'bg-orange-600 text-white'
+                                      : 'bg-yellow-600 text-white'
+                                }`}>
+                                  {isOverdue 
+                                    ? `${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''} overdue`
+                                    : daysUntilDue === 0 
+                                      ? 'Due today'
+                                      : daysUntilDue === 1
+                                        ? 'Due tomorrow'
+                                        : `${daysUntilDue} days left`
+                                  }
+                                </div>
+                              )}
+                              {!hasDueDate && (
+                                <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 bg-gray-200 text-gray-600 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                                  No due date
+                                </div>
+                              )}
+                            </div>
+                          </div>
                           {task.description && (
                             <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
                           )}
@@ -1150,31 +1177,6 @@ export default function DashboardPage() {
                           </div>
                           <TaskAssignmentInfo task={task} />
                         </div>
-                        <div className="flex-shrink-0">
-                          {hasDueDate && daysUntilDue !== null && (
-                            <div className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-                              isOverdue 
-                                ? 'bg-red-600 text-white' 
-                                : daysUntilDue <= 3 
-                                  ? 'bg-orange-600 text-white'
-                                  : 'bg-yellow-600 text-white'
-                            }`}>
-                              {isOverdue 
-                                ? `${Math.abs(daysUntilDue)} day${Math.abs(daysUntilDue) !== 1 ? 's' : ''} overdue`
-                                : daysUntilDue === 0 
-                                  ? 'Due today'
-                                  : daysUntilDue === 1
-                                    ? 'Due tomorrow'
-                                    : `${daysUntilDue} days left`
-                              }
-                            </div>
-                          )}
-                          {!hasDueDate && (
-                            <div className="px-3 py-1.5 bg-gray-200 text-gray-600 rounded-full text-xs font-semibold whitespace-nowrap">
-                              No due date
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   );
@@ -1195,27 +1197,32 @@ export default function DashboardPage() {
             className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="p-2 bg-blue-600 rounded-lg flex-shrink-0">
-                    <ClipboardDocumentListIcon className="w-6 h-6 text-white" />
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-blue-600 rounded-lg flex-shrink-0">
+                    <ClipboardDocumentListIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-gray-900">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
                       All Tasks
                     </h3>
-                    <p className="text-sm text-gray-600">
-                      {stats.total} total task{stats.total !== 1 ? 's' : ''} • {stats.completed} completed • {stats.inProgress} in progress • {stats.todo} pending
+                    <p className="text-xs sm:text-sm text-gray-600">
+                      <span className="hidden sm:inline">
+                        {stats.total} total task{stats.total !== 1 ? 's' : ''} • {stats.completed} completed • {stats.inProgress} in progress • {stats.todo} pending
+                      </span>
+                      <span className="sm:hidden truncate block">
+                        {stats.total} total • {stats.completed} done • {stats.inProgress} active • {stats.todo} pending
+                      </span>
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseAllTasks}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1254,11 +1261,36 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
-                            {task.status === 'completed' && (
-                              <CheckCircleIcon className="w-4 h-4 text-green-600 flex-shrink-0" />
-                            )}
+                          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                              {task.status === 'completed' && (
+                                <CheckCircleIcon className="w-4 h-4 text-green-600 flex-shrink-0" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {isOverdue && (
+                                <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 bg-red-600 text-white rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                                  {Math.abs(daysUntilDue!)} day{Math.abs(daysUntilDue!) !== 1 ? 's' : ''} overdue
+                                </div>
+                              )}
+                              {!isOverdue && hasDueDate && task.status !== 'completed' && daysUntilDue !== null && (
+                                <div className={`px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
+                                  daysUntilDue <= 1 
+                                    ? 'bg-red-600 text-white' 
+                                    : daysUntilDue <= 3 
+                                      ? 'bg-orange-600 text-white'
+                                      : 'bg-blue-600 text-white'
+                                }`}>
+                                  {daysUntilDue === 0 
+                                    ? 'Due today'
+                                    : daysUntilDue === 1
+                                      ? 'Due tomorrow'
+                                      : `${daysUntilDue} days`
+                                  }
+                                </div>
+                              )}
+                            </div>
                           </div>
                           {task.description && (
                             <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
@@ -1288,29 +1320,6 @@ export default function DashboardPage() {
                           </div>
                           <TaskAssignmentInfo task={task} />
                         </div>
-                        <div className="flex-shrink-0">
-                          {isOverdue && (
-                            <div className="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
-                              {Math.abs(daysUntilDue!)} day{Math.abs(daysUntilDue!) !== 1 ? 's' : ''} overdue
-                            </div>
-                          )}
-                          {!isOverdue && hasDueDate && task.status !== 'completed' && daysUntilDue !== null && (
-                            <div className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-                              daysUntilDue <= 1 
-                                ? 'bg-red-600 text-white' 
-                                : daysUntilDue <= 3 
-                                  ? 'bg-orange-600 text-white'
-                                  : 'bg-blue-600 text-white'
-                            }`}>
-                              {daysUntilDue === 0 
-                                ? 'Due today'
-                                : daysUntilDue === 1
-                                  ? 'Due tomorrow'
-                                  : `${daysUntilDue} days`
-                              }
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </div>
                   );
@@ -1331,27 +1340,27 @@ export default function DashboardPage() {
             className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="p-2 bg-green-600 rounded-lg flex-shrink-0">
-                    <CheckCircleIcon className="w-6 h-6 text-white" />
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-green-600 rounded-lg flex-shrink-0">
+                    <CheckCircleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-gray-900">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
                       Completed Tasks
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">
                       {completedTasks.length} task{completedTasks.length !== 1 ? 's' : ''} completed
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseCompleted}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1431,27 +1440,27 @@ export default function DashboardPage() {
             className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200">
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="p-2 bg-orange-100 rounded-lg flex-shrink-0">
-                    <ExclamationTriangleIcon className="w-6 h-6 text-orange-600" />
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg flex-shrink-0">
+                    <ExclamationTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-xl font-bold text-gray-900">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
                       In Progress Tasks
                     </h3>
-                    <p className="text-sm text-gray-600">
+                    <p className="text-xs sm:text-sm text-gray-600 truncate">
                       {inProgressTasks.length} task{inProgressTasks.length !== 1 ? 's' : ''} currently active
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseInProgress}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1478,13 +1487,43 @@ export default function DashboardPage() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <div className="w-5 h-5 flex-shrink-0">
-                              <svg className="w-5 h-5 text-orange-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <circle cx="12" cy="12" r="10" strokeWidth="2" strokeDasharray="4 4" />
-                              </svg>
+                          <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                            <div className="flex items-center gap-2">
+                              <div className="w-5 h-5 flex-shrink-0">
+                                <svg className="w-5 h-5 text-orange-600 animate-pulse" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                  <circle cx="12" cy="12" r="10" strokeWidth="2" strokeDasharray="4 4" />
+                                </svg>
+                              </div>
+                              <h4 className="font-semibold text-gray-900">{task.title}</h4>
                             </div>
-                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                              {isOverdue && daysUntilDue !== null && (
+                                <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 bg-red-600 text-white rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                                  {Math.abs(daysUntilDue)} day{Math.abs(daysUntilDue) !== 1 ? 's' : ''} overdue
+                                </div>
+                              )}
+                              {!isOverdue && hasDueDate && daysUntilDue !== null && (
+                                <div className={`px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
+                                  daysUntilDue <= 1 
+                                    ? 'bg-red-600 text-white' 
+                                    : daysUntilDue <= 3 
+                                      ? 'bg-orange-600 text-white'
+                                      : 'bg-orange-500 text-white'
+                                }`}>
+                                  {daysUntilDue === 0 
+                                    ? 'Due today'
+                                    : daysUntilDue === 1
+                                      ? 'Due tomorrow'
+                                      : `${daysUntilDue} days left`
+                                  }
+                                </div>
+                              )}
+                              {!hasDueDate && (
+                                <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 bg-orange-600 text-white rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                                  ⟳ Active
+                                </div>
+                              )}
+                            </div>
                           </div>
                           {task.description && (
                             <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
@@ -1510,34 +1549,6 @@ export default function DashboardPage() {
                             )}
                           </div>
                           <TaskAssignmentInfo task={task} />
-                        </div>
-                        <div className="flex-shrink-0">
-                          {isOverdue && daysUntilDue !== null && (
-                            <div className="px-3 py-1.5 bg-red-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
-                              {Math.abs(daysUntilDue)} day{Math.abs(daysUntilDue) !== 1 ? 's' : ''} overdue
-                            </div>
-                          )}
-                          {!isOverdue && hasDueDate && daysUntilDue !== null && (
-                            <div className={`px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
-                              daysUntilDue <= 1 
-                                ? 'bg-red-600 text-white' 
-                                : daysUntilDue <= 3 
-                                  ? 'bg-orange-600 text-white'
-                                  : 'bg-orange-500 text-white'
-                            }`}>
-                              {daysUntilDue === 0 
-                                ? 'Due today'
-                                : daysUntilDue === 1
-                                  ? 'Due tomorrow'
-                                  : `${daysUntilDue} days left`
-                              }
-                            </div>
-                          )}
-                          {!hasDueDate && (
-                            <div className="px-3 py-1.5 bg-orange-600 text-white rounded-full text-xs font-semibold whitespace-nowrap">
-                              ⟳ Active
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>

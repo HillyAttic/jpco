@@ -368,18 +368,18 @@ export default function AttendanceHistoryPage() {
         <div className="space-y-4 sm:space-y-6">
           {attendances.map((record) => (
             <Card key={record.id} className="hover:shadow-md transition-shadow">
-              <CardHeader className="pb-3 px-3 sm:px-6 py-3 sm:py-4">
+              <CardHeader className="px-3 sm:px-6 py-3 sm:py-4 pb-3 sm:pb-6">
                 <div className="flex justify-between items-start gap-2 sm:gap-3">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="flex items-start sm:items-center gap-1.5 sm:gap-2 text-sm sm:text-xl leading-tight sm:leading-normal">
-                      <Calendar className="h-3.5 w-3.5 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0 mt-0.5 sm:mt-0" />
-                      <span className="break-words">{formatDate(record.clockIn)}</span>
+                    <CardTitle className="flex items-center gap-1 sm:gap-2 leading-tight sm:leading-normal pb-2 sm:pb-0 border-b sm:border-b-0 border-gray-200">
+                      <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0" />
+                      <span className="whitespace-nowrap text-sm sm:text-xl">{formatDate(record.clockIn)}</span>
                     </CardTitle>
-                    <p className="text-xs sm:text-sm text-gray-500 mt-1 truncate ml-5 sm:ml-7">
+                    <p className="hidden sm:block text-[9px] sm:text-sm text-gray-500 mt-1 truncate ml-2.5 sm:ml-7">
                       {record.employeeName}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+                  <div className="hidden sm:flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     <div className="hidden sm:block">
                       {getStatusBadge(record)}
                     </div>
@@ -393,73 +393,72 @@ export default function AttendanceHistoryPage() {
                     </Button>
                   </div>
                 </div>
-                {/* Status badge for mobile - below title */}
-                <div className="sm:hidden mt-2 ml-5">
-                  {getStatusBadge(record)}
-                </div>
-              </CardHeader>
-              
-              <CardContent className="px-3 sm:px-6 pb-3 sm:pb-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
-                  {/* Clock In Section */}
-                  <div className="flex items-start space-x-2 sm:space-x-3">
-                    <div className="flex-shrink-0 mt-0.5 sm:mt-1">
-                      <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-green-100 flex items-center justify-center">
-                        <Clock className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-green-600" />
+                
+                {/* Clock In/Out Section - Now inside CardHeader on mobile */}
+                <div className="mt-3 sm:mt-4">
+                  <div className="flex gap-1.5 sm:grid sm:grid-cols-2 sm:gap-6">
+                    {/* Clock In Section */}
+                    <div className="flex items-start space-x-1 sm:space-x-3 flex-1">
+                      <div className="flex-shrink-0 mt-0.5 sm:mt-1">
+                        <div className="w-7 h-5 sm:w-10 sm:h-10 rounded-lg sm:rounded-full bg-green-100 flex items-center justify-center">
+                          <Clock className="w-2.5 h-2.5 sm:w-5 sm:h-5 text-green-600" />
+                        </div>
+                      </div>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1 whitespace-nowrap">Clock In</h4>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-900 whitespace-nowrap">{formatTime(record.clockIn)}</p>
+                        {record.location?.clockIn && (
+                          <button
+                            onClick={() => handleLocationClick(
+                              record.location!.clockIn!.latitude,
+                              record.location!.clockIn!.longitude,
+                              `Clock In Location - ${formatDate(record.clockIn)}`
+                            )}
+                            className="flex items-center gap-0.5 sm:gap-1 mt-0.5 sm:mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          >
+                            <MapPin className="h-2 w-2 sm:h-3 sm:w-3 flex-shrink-0" />
+                            <span className="text-xs sm:text-xs truncate">
+                              <span className="sm:hidden">Map</span>
+                              <span className="hidden sm:inline">{record.location.clockIn.latitude.toFixed(4)}, {record.location.clockIn.longitude.toFixed(4)}</span>
+                            </span>
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1">Clock In</h4>
-                      <p className="text-sm sm:text-lg font-semibold text-gray-900">{formatTime(record.clockIn)}</p>
-                      {record.location?.clockIn && (
-                        <button
-                          onClick={() => handleLocationClick(
-                            record.location!.clockIn!.latitude,
-                            record.location!.clockIn!.longitude,
-                            `Clock In Location - ${formatDate(record.clockIn)}`
-                          )}
-                          className="flex items-center gap-1 mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                        >
-                          <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
-                          <span className="text-[10px] sm:text-xs truncate">
-                            {record.location.clockIn.latitude.toFixed(4)}, {record.location.clockIn.longitude.toFixed(4)}
-                          </span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  
-                  {/* Clock Out Section */}
-                  <div className="flex items-start space-x-2 sm:space-x-3">
-                    <div className="flex-shrink-0 mt-0.5 sm:mt-1">
-                      <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-red-100 flex items-center justify-center">
-                        <Clock className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-red-600 rotate-180" />
+                    
+                    {/* Clock Out Section */}
+                    <div className="flex items-start space-x-1 sm:space-x-3 flex-1">
+                      <div className="flex-shrink-0 mt-0.5 sm:mt-1">
+                        <div className="w-7 h-5 sm:w-10 sm:h-10 rounded-lg sm:rounded-full bg-red-100 flex items-center justify-center">
+                          <Clock className="w-2.5 h-2.5 sm:w-5 sm:h-5 text-red-600 rotate-180" />
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1">Clock Out</h4>
-                      <p className="text-sm sm:text-lg font-semibold text-gray-900">{formatTime(record.clockOut)}</p>
-                      {record.location?.clockOut && (
-                        <button
-                          onClick={() => handleLocationClick(
-                            record.location!.clockOut!.latitude,
-                            record.location!.clockOut!.longitude,
-                            `Clock Out Location - ${formatDate(record.clockIn)}`
-                          )}
-                          className="flex items-center gap-1 mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                        >
-                          <MapPin className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
-                          <span className="text-[10px] sm:text-xs truncate">
-                            {record.location.clockOut.latitude.toFixed(4)}, {record.location.clockOut.longitude.toFixed(4)}
-                          </span>
-                        </button>
-                      )}
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1 whitespace-nowrap">Clock Out</h4>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-900 whitespace-nowrap">{formatTime(record.clockOut)}</p>
+                        {record.location?.clockOut && (
+                          <button
+                            onClick={() => handleLocationClick(
+                              record.location!.clockOut!.latitude,
+                              record.location!.clockOut!.longitude,
+                              `Clock Out Location - ${formatDate(record.clockIn)}`
+                            )}
+                            className="flex items-center gap-0.5 sm:gap-1 mt-0.5 sm:mt-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          >
+                            <MapPin className="h-2 w-2 sm:h-3 sm:w-3 flex-shrink-0" />
+                            <span className="text-xs sm:text-xs truncate">
+                              <span className="sm:hidden">Map</span>
+                              <span className="hidden sm:inline">{record.location.clockOut.latitude.toFixed(4)}, {record.location.clockOut.longitude.toFixed(4)}</span>
+                            </span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
                 
-                {/* Duration and Stats - Mobile Responsive */}
-                <div className="mt-3 sm:mt-6 pt-3 sm:pt-4 border-t border-gray-100">
+                {/* Duration and Stats - Now inside CardHeader on mobile */}
+                <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-gray-100">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                     <div className="flex items-center gap-3 sm:gap-6">
                       <div>
@@ -468,13 +467,16 @@ export default function AttendanceHistoryPage() {
                           {calculateDuration(record.clockIn, record.clockOut)}
                         </span>
                       </div>
+                      <div className="sm:hidden">
+                        {getStatusBadge(record)}
+                      </div>
                     </div>
-                    <div className="text-[10px] sm:text-xs text-gray-400">
+                    <div className="hidden sm:block text-[8px] sm:text-xs text-gray-400">
                       Updated: {formatDateTime(record.updatedAt)}
                     </div>
                   </div>
                 </div>
-              </CardContent>
+              </CardHeader>
             </Card>
           ))}
           

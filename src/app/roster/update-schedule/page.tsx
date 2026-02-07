@@ -428,9 +428,9 @@ export default function UpdateSchedulePage() {
 
         {/* Calendar Grid */}
         <div className="grid grid-cols-7 gap-1">
-          {/* Day Headers */}
+          {/* Day Headers - Hidden on mobile */}
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="text-center font-semibold text-sm text-gray-600 py-2">
+            <div key={day} className="hidden md:block text-center font-semibold text-sm text-gray-600 py-2">
               {day}
             </div>
           ))}
@@ -440,7 +440,7 @@ export default function UpdateSchedulePage() {
             <div
               key={index}
               className={`relative min-h-[100px] border border-gray-200 p-2 ${
-                !calDay.isCurrentMonth ? 'bg-gray-50' : 'bg-white'
+                !calDay.isCurrentMonth ? 'bg-gray-50 md:block hidden' : 'bg-white'
               } ${calDay.isCurrentMonth ? 'hover:bg-blue-50 cursor-pointer' : ''} transition-colors group`}
               onMouseEnter={() => calDay.isCurrentMonth && setHoveredDay(index)}
               onMouseLeave={() => setHoveredDay(null)}
@@ -450,12 +450,17 @@ export default function UpdateSchedulePage() {
                 {calDay.day}
               </div>
 
-              {/* Hover Actions */}
-              {hoveredDay === index && calDay.isCurrentMonth && (
-                <div className="absolute top-1 right-1 flex gap-1 z-10" onClick={(e) => e.stopPropagation()}>
+              {/* Add Task Button - Always visible on mobile, hover on desktop */}
+              {calDay.isCurrentMonth && (
+                <div 
+                  className={`absolute top-1 right-1 flex gap-1 z-10 ${
+                    hoveredDay === index ? 'block' : 'block md:hidden'
+                  }`} 
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <button
                     onClick={() => handleAddTask(calDay.date, 'single')}
-                    className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                    className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center justify-center"
                     title="Add Client Task"
                   >
                     <PlusCircleIcon className="w-4 h-4" />
