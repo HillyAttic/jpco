@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { 
@@ -25,10 +25,12 @@ import { TaskOverview } from '@/components/dashboard/TaskOverview';
 import { UpcomingDeadlines } from '@/components/dashboard/UpcomingDeadlines';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { TaskDistributionChart } from '@/components/Charts/TaskDistributionChart';
-import { WeeklyProgressChart } from '@/components/Charts/WeeklyProgressChart';
-import { TeamPerformanceChart } from '@/components/Charts/TeamPerformanceChart';
 import { useRouter } from 'next/navigation';
+
+// Lazy load heavy chart components
+const TaskDistributionChart = lazy(() => import('@/components/Charts/TaskDistributionChart').then(m => ({ default: m.TaskDistributionChart })));
+const WeeklyProgressChart = lazy(() => import('@/components/Charts/WeeklyProgressChart').then(m => ({ default: m.WeeklyProgressChart })));
+const TeamPerformanceChart = lazy(() => import('@/components/Charts/TeamPerformanceChart').then(m => ({ default: m.TeamPerformanceChart })));
 
 // Extended task type to include recurring tasks
 interface DashboardTask extends Task {
@@ -137,57 +139,43 @@ export default function DashboardPage() {
       const fetchNames = async () => {
         setLoading(true);
         try {
-          const promises: Promise<void>[] = [];
+          // Batch all async operations together
+          const [creatorName, teamInfo, assigneeNames] = await Promise.all([
+            // Fetch creator name
+            task.createdBy ? getCachedUserName(task.createdBy) : Promise.resolve(''),
+            
+            // Fetch team info for recurring tasks
+            task.isRecurring && task.teamId ? (async () => {
+              try {
+                const { teamService } = await import('@/services/team.service');
+                const team = await teamService.getById(task.teamId!);
+                return team ? { name: team.name, members: team.members || [] } : null;
+              } catch (error) {
+                console.error('Error fetching team:', error);
+                return null;
+              }
+            })() : Promise.resolve(null),
+            
+            // Fetch assigned to names
+            task.assignedTo && task.assignedTo.length > 0 ? (async () => {
+              if (task.isRecurring) {
+                // Recurring tasks: assignedTo contains client IDs
+                return Promise.all(task.assignedTo!.map(id => getCachedClientName(id)));
+              } else {
+                // Non-recurring tasks: assignedTo contains user IDs
+                return Promise.all(task.assignedTo!.map(id => getCachedUserName(id)));
+              }
+            })() : Promise.resolve([])
+          ]);
           
-          // Fetch creator name
-          if (task.createdBy) {
-            promises.push(
-              getCachedUserName(task.createdBy).then(name => {
-                if (isMounted) setAssignedByName(name);
-              })
-            );
+          if (isMounted) {
+            setAssignedByName(creatorName);
+            if (teamInfo) {
+              setTeamName(teamInfo.name);
+              setTeamMembers(teamInfo.members);
+            }
+            setAssignedToNames(assigneeNames);
           }
-          
-          // Fetch team info for recurring tasks
-          if (task.isRecurring && task.teamId) {
-            promises.push(
-              (async () => {
-                try {
-                  const { teamService } = await import('@/services/team.service');
-                  const team = await teamService.getById(task.teamId!);
-                  if (team && isMounted) {
-                    setTeamName(team.name);
-                    setTeamMembers(team.members || []);
-                  }
-                } catch (error) {
-                  console.error('Error fetching team:', error);
-                }
-              })()
-            );
-          }
-          
-          // Fetch assigned to names
-          if (task.assignedTo && task.assignedTo.length > 0) {
-            promises.push(
-              (async () => {
-                if (task.isRecurring) {
-                  // Recurring tasks: assignedTo contains client IDs
-                  const names = await Promise.all(
-                    task.assignedTo!.map(id => getCachedClientName(id))
-                  );
-                  if (isMounted) setAssignedToNames(names);
-                } else {
-                  // Non-recurring tasks: assignedTo contains user IDs
-                  const names = await Promise.all(
-                    task.assignedTo!.map(id => getCachedUserName(id))
-                  );
-                  if (isMounted) setAssignedToNames(names);
-                }
-              })()
-            );
-          }
-          
-          await Promise.all(promises);
         } finally {
           if (isMounted) setLoading(false);
         }
@@ -577,12 +565,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (user && !authLoading) {
-      // Small delay to ensure Firebase auth is fully initialized
-      const timer = setTimeout(() => {
-        loadDashboardData();
-      }, 100);
-      
-      return () => clearTimeout(timer);
+      loadDashboardData();
     }
   }, [user, authLoading]);
 
@@ -592,21 +575,19 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       
-      // Wait for Firebase auth to be ready and ensure we have a valid token
+      // Wait for Firebase auth to be ready
       const currentUser = auth.currentUser;
       if (!currentUser) {
         console.log('User not authenticated yet, waiting...');
         return;
       }
       
-      // Force token refresh to ensure we have a valid token
+      // Get token WITHOUT forcing refresh (use cached token)
       let token: string;
       try {
-        token = await currentUser.getIdToken(true);
+        token = await currentUser.getIdToken(false); // false = use cached token
       } catch (tokenError) {
-        console.error('Error refreshing token:', tokenError);
-        // Retry after a short delay
-        setTimeout(() => loadDashboardData(), 500);
+        console.error('Error getting token:', tokenError);
         return;
       }
       
@@ -615,16 +596,17 @@ export default function DashboardPage() {
         'Authorization': `Bearer ${token}`,
       };
       
-      // Fetch all data in parallel for better performance
+      // Fetch ONLY essential data in parallel
       const fetchPromises: Promise<any>[] = [
         taskApi.getTasks(), // Non-recurring tasks
         fetch('/api/recurring-tasks', { headers }).then(res => res.ok ? res.json() : []), // Recurring tasks
       ];
       
-      // Only fetch team data for admin/manager
+      // Only fetch team data for admin/manager (but do it lazily)
       if (canViewAllTasks) {
+        // Fetch activities only, skip expensive team performance for now
         fetchPromises.push(
-          dashboardService.getTeamPerformance(user.uid),
+          Promise.resolve([]), // Skip team performance initially
           activityService.getRecentActivities(10)
         );
       }
@@ -680,6 +662,20 @@ export default function DashboardPage() {
             timestamp: activity.timestamp
           })));
         }
+      }
+      
+      // Load team performance data lazily after initial render
+      if (canViewAllTasks && !performance) {
+        // Defer team performance loading to not block initial render
+        setTimeout(async () => {
+          try {
+            const teamPerf = await dashboardService.getTeamPerformance(user.uid);
+            const filteredPerformance = teamPerf.filter((p: any) => p.totalTasks > 0);
+            setTeamPerformance(filteredPerformance);
+          } catch (error) {
+            console.error('Error loading team performance:', error);
+          }
+        }, 500); // Load after 500ms
       }
     } catch (error) {
       console.error('Error loading dashboard data:', error);
@@ -756,8 +752,52 @@ export default function DashboardPage() {
 
   if (authLoading || loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="space-y-4 md:space-y-6 p-4 md:p-6 animate-pulse">
+        {/* Header Skeleton */}
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+          <div>
+            <div className="h-8 bg-gray-200 rounded w-48 mb-2"></div>
+            <div className="h-4 bg-gray-200 rounded w-96"></div>
+          </div>
+          {canViewAllTasks && (
+            <div className="h-10 bg-gray-200 rounded w-32"></div>
+          )}
+        </div>
+
+        {/* Stats Cards Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="bg-white rounded-lg border border-gray-200 p-4">
+              <div className="h-4 bg-gray-200 rounded w-20 mb-4"></div>
+              <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
+              <div className="h-3 bg-gray-200 rounded w-24"></div>
+            </div>
+          ))}
+        </div>
+
+        {/* Content Skeleton */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+            <div className="space-y-3">
+              {[1, 2, 3].map(i => (
+                <div key={i} className="h-20 bg-gray-100 rounded"></div>
+              ))}
+            </div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+            <div className="h-64 bg-gray-100 rounded"></div>
+          </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
+            <div className="space-y-3">
+              {[1, 2, 3, 4].map(i => (
+                <div key={i} className="h-16 bg-gray-100 rounded"></div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -849,12 +889,20 @@ export default function DashboardPage() {
 
         {/* Middle Column - Charts */}
         <div className={`space-y-4 md:space-y-6 ${!canViewAllTasks ? 'lg:col-span-2' : ''}`}>
-          <TaskDistributionChart
-            completed={stats.completed}
-            inProgress={stats.inProgress}
-            todo={stats.todo}
-            total={stats.total}
-          />
+          <Suspense fallback={
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="h-64 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            </div>
+          }>
+            <TaskDistributionChart
+              completed={stats.completed}
+              inProgress={stats.inProgress}
+              todo={stats.todo}
+              total={stats.total}
+            />
+          </Suspense>
           {canViewAllTasks && (
             <QuickActions
               onCreateTask={handleCreateTask}
@@ -912,8 +960,24 @@ export default function DashboardPage() {
       {/* Bottom Section - Analytics (Admin/Manager Only) */}
       {canViewAllTasks && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          <WeeklyProgressChart data={weeklyData} />
-          <TeamPerformanceChart teamMembers={teamData} />
+          <Suspense fallback={
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="h-64 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            </div>
+          }>
+            <WeeklyProgressChart data={weeklyData} />
+          </Suspense>
+          <Suspense fallback={
+            <div className="bg-white rounded-lg border border-gray-200 p-6">
+              <div className="h-64 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            </div>
+          }>
+            <TeamPerformanceChart teamMembers={teamData} />
+          </Suspense>
         </div>
       )}
 

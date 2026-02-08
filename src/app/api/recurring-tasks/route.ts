@@ -108,62 +108,74 @@ export async function GET(request: NextRequest) {
     // Admin/Manager see all tasks in both calendar and list views
     // Team members see only their assigned tasks in both views
     if (!isAdminOrManager) {
-      // CRITICAL FIX: Team members are stored with OLD employee IDs, not Firebase Auth UIDs
-      // We need to find ALL possible IDs that could represent this user
-      
       const { teamService } = await import('@/services/team.service');
       const { collection: firestoreCollection, query: firestoreQuery, where: firestoreWhere, getDocs: firestoreGetDocs } = await import('firebase/firestore');
       const { db } = await import('@/lib/firebase');
       
-      // Collect all possible user IDs
+      // OPTIMIZED: Batch all user ID lookups
       const userIds = new Set<string>([userId]); // Start with Auth UID
       
       console.log(`[Recurring Tasks API] User email: ${userProfile.email}`);
       
-      // Find all user/employee documents that might represent this user
-      // Check by email match in users collection
+      // Batch query for all user documents by email
       try {
-        const usersRef = firestoreCollection(db, 'users');
-        const emailQuery = firestoreQuery(usersRef, firestoreWhere('email', '==', userProfile.email));
-        const emailSnapshot = await firestoreGetDocs(emailQuery);
+        const [usersSnapshot, empSnapshot] = await Promise.all([
+          // Check users collection
+          (async () => {
+            try {
+              const usersRef = firestoreCollection(db, 'users');
+              const emailQuery = firestoreQuery(usersRef, firestoreWhere('email', '==', userProfile.email));
+              return await firestoreGetDocs(emailQuery);
+            } catch (error) {
+              console.error(`[Recurring Tasks API] Error finding user by email:`, error);
+              return { docs: [] };
+            }
+          })(),
+          // Check employees collection
+          (async () => {
+            try {
+              const employeesRef = firestoreCollection(db, 'employees');
+              const empEmailQuery = firestoreQuery(employeesRef, firestoreWhere('email', '==', userProfile.email));
+              return await firestoreGetDocs(empEmailQuery);
+            } catch (error) {
+              console.log(`[Recurring Tasks API] No employees collection found (this is normal)`);
+              return { docs: [] };
+            }
+          })()
+        ]);
         
-        emailSnapshot.forEach(doc => {
+        usersSnapshot.docs.forEach(doc => {
           userIds.add(doc.id);
           console.log(`[Recurring Tasks API] Found user document by email: ${doc.id}`);
         });
-      } catch (error) {
-        console.error(`[Recurring Tasks API] Error finding user by email:`, error);
-      }
-      
-      // Also check old employees collection if it exists
-      try {
-        const employeesRef = firestoreCollection(db, 'employees');
-        const empEmailQuery = firestoreQuery(employeesRef, firestoreWhere('email', '==', userProfile.email));
-        const empSnapshot = await firestoreGetDocs(empEmailQuery);
         
-        empSnapshot.forEach(doc => {
+        empSnapshot.docs.forEach(doc => {
           userIds.add(doc.id);
           console.log(`[Recurring Tasks API] Found employee document by email: ${doc.id}`);
         });
       } catch (error) {
-        // employees collection might not exist, that's okay
-        console.log(`[Recurring Tasks API] No employees collection found (this is normal)`);
+        console.error(`[Recurring Tasks API] Error in batch user lookup:`, error);
       }
       
       console.log(`[Recurring Tasks API] All possible user IDs:`, Array.from(userIds));
       
-      // Get teams for ALL possible user IDs
-      let userTeams: any[] = [];
-      for (const id of userIds) {
-        const teams = await teamService.getTeamsByMember(id);
+      // Get teams for ALL possible user IDs in parallel
+      const teamPromises = Array.from(userIds).map(id => teamService.getTeamsByMember(id));
+      const teamResults = await Promise.all(teamPromises);
+      
+      // Flatten and deduplicate teams
+      const userTeams: any[] = [];
+      const seenTeamIds = new Set<string>();
+      teamResults.forEach(teams => {
         teams.forEach(team => {
-          if (!userTeams.some(t => t.id === team.id)) {
+          if (!seenTeamIds.has(team.id)) {
+            seenTeamIds.add(team.id);
             userTeams.push(team);
           }
         });
-      }
+      });
       
-      const userTeamIds = userTeams.map(team => team.id);
+      const userTeamIds = Array.from(seenTeamIds);
       
       console.log(`[Recurring Tasks API] User teams:`, userTeams.map(t => ({ id: t.id, name: t.name })));
       console.log(`[Recurring Tasks API] User team IDs:`, userTeamIds);
