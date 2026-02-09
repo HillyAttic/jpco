@@ -168,7 +168,7 @@ export async function GET(request: NextRequest) {
       const seenTeamIds = new Set<string>();
       teamResults.forEach(teams => {
         teams.forEach(team => {
-          if (!seenTeamIds.has(team.id)) {
+          if (team.id && !seenTeamIds.has(team.id)) {
             seenTeamIds.add(team.id);
             userTeams.push(team);
           }
