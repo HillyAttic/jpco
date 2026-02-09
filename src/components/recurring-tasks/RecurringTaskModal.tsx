@@ -242,6 +242,8 @@ export function RecurringTaskModal({
 
   // Update form when task prop changes (edit mode)
   useEffect(() => {
+    console.log('🔄 [RecurringTaskModal] Task prop changed:', task);
+    
     if (task) {
       // Format dates for input fields
       const formattedStartDate = task.startDate
@@ -271,13 +273,19 @@ export function RecurringTaskModal({
           task.contactIds.includes(client.id!)
         );
         setSelectedClients(taskClients);
+        console.log('👥 [RecurringTaskModal] Loaded selected clients:', taskClients.length);
       }
 
       // Set team member mappings
       if (task.teamMemberMappings && task.teamMemberMappings.length > 0) {
+        console.log('🗺️ [RecurringTaskModal] Loading team member mappings:', task.teamMemberMappings);
         setTeamMemberMappings(task.teamMemberMappings);
+      } else {
+        console.log('⚠️ [RecurringTaskModal] No team member mappings found in task');
+        setTeamMemberMappings([]);
       }
     } else {
+      console.log('➕ [RecurringTaskModal] Creating new task - resetting form');
       // Set default dates for new task
       const today = new Date();
       const formattedToday = today.toISOString().split('T')[0];
@@ -302,17 +310,23 @@ export function RecurringTaskModal({
 
   const handleFormSubmit = async (data: RecurringTaskFormData) => {
     try {
+      console.log('📋 [RecurringTaskModal] Form data before submission:', data);
+      console.log('🗺️ [RecurringTaskModal] Team member mappings state:', teamMemberMappings);
+      
       // Include team member mappings in the submission
       const submissionData = {
         ...data,
         teamMemberMappings: teamMemberMappings.length > 0 ? teamMemberMappings : undefined,
       };
+      
+      console.log('📤 [RecurringTaskModal] Final submission data:', submissionData);
+      
       await onSubmit(submissionData as any);
       reset();
       setTeamMemberMappings([]);
       onClose();
     } catch (error) {
-      console.error('Error submitting recurring task:', error);
+      console.error('❌ [RecurringTaskModal] Error submitting recurring task:', error);
     }
   };
 

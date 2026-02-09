@@ -23,6 +23,7 @@ interface PlanTaskModalProps {
   userId: string;
   userName: string;
   taskTitle: string;
+  recurringTaskId?: string; // Add task ID to filter roster entries
 }
 
 export function PlanTaskModal({
@@ -32,9 +33,11 @@ export function PlanTaskModal({
   userId,
   userName,
   taskTitle,
+  recurringTaskId,
 }: PlanTaskModalProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [visits, setVisits] = useState<ClientVisit[]>([]);
+  const [existingVisits, setExistingVisits] = useState<ClientVisit[]>([]); // Track saved visits
   const [currentVisit, setCurrentVisit] = useState<Partial<ClientVisit>>({
     clientId: '',
     scheduleDate: '',
@@ -43,6 +46,7 @@ export function PlanTaskModal({
   });
   const [loading, setLoading] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
+  const [loadingExistingVisits, setLoadingExistingVisits] = useState(false);
   const [saving, setSaving] = useState(false);
 
   // Load assigned clients
@@ -75,7 +79,66 @@ export function PlanTaskModal({
     loadClients();
   }, [isOpen, assignedClientIds]);
 
-  // Reset when modal closes
+  // Load existing roster entries for this task
+  useEffect(() => {
+    const loadExistingVisits = async () => {
+      if (!isOpen || !userId) return;
+      
+      setLoadingExistingVisits(true);
+      try {
+        console.log('🔍 [PlanTaskModal] Loading existing visits for user:', userId, 'task:', taskTitle);
+        
+        // Get all roster entries for this user
+        const allRosterEntries = await rosterService.getRosterEntries({ userId });
+        
+        console.log('📋 [PlanTaskModal] Total roster entries for user:', allRosterEntries.length);
+        
+        // Filter entries that match this task title and are in the future or recent past (last 30 days)
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        
+        const taskVisits = allRosterEntries
+          .filter(entry => {
+            const matchesTask = entry.taskDetail === taskTitle;
+            const entryDate = entry.taskDate ? new Date(entry.taskDate) : (entry.timeStart ? new Date(entry.timeStart) : null);
+            const isRecentOrFuture = entryDate ? entryDate >= thirtyDaysAgo : false;
+            
+            console.log('🔎 [PlanTaskModal] Entry:', {
+              taskDetail: entry.taskDetail,
+              taskDate: entry.taskDate,
+              matchesTask,
+              isRecentOrFuture,
+              willInclude: matchesTask && isRecentOrFuture
+            });
+            
+            return matchesTask && isRecentOrFuture;
+          })
+          .map(entry => {
+            const timeStart = entry.timeStart instanceof Date ? entry.timeStart : new Date(entry.timeStart!);
+            const timeEnd = entry.timeEnd instanceof Date ? entry.timeEnd : new Date(entry.timeEnd!);
+            
+            return {
+              clientId: entry.clientId,
+              clientName: entry.clientName,
+              scheduleDate: entry.taskDate || timeStart.toISOString().split('T')[0],
+              startTime: `${timeStart.getHours().toString().padStart(2, '0')}:${timeStart.getMinutes().toString().padStart(2, '0')}`,
+              endTime: `${timeEnd.getHours().toString().padStart(2, '0')}:${timeEnd.getMinutes().toString().padStart(2, '0')}`,
+            };
+          });
+        
+        console.log('✅ [PlanTaskModal] Loaded existing visits:', taskVisits.length);
+        setExistingVisits(taskVisits);
+      } catch (error) {
+        console.error('❌ [PlanTaskModal] Error loading existing visits:', error);
+      } finally {
+        setLoadingExistingVisits(false);
+      }
+    };
+
+    loadExistingVisits();
+  }, [isOpen, userId, taskTitle]);
+
+  // Reset new visits when modal closes (but keep existing visits)
   useEffect(() => {
     if (!isOpen) {
       setVisits([]);
@@ -128,6 +191,8 @@ export function PlanTaskModal({
 
     setSaving(true);
     try {
+      console.log('💾 [PlanTaskModal] Saving visits:', visits.length);
+      
       // Create roster entries for each visit
       const rosterEntries = visits.map(visit => {
         const scheduleDate = new Date(visit.scheduleDate);
@@ -157,10 +222,16 @@ export function PlanTaskModal({
       // Bulk create roster entries
       await rosterService.bulkCreateRosterEntries(rosterEntries);
 
+      console.log('✅ [PlanTaskModal] Visits saved successfully');
       alert(`Successfully scheduled ${visits.length} visit${visits.length > 1 ? 's' : ''}!`);
+      
+      // Add newly saved visits to existing visits
+      setExistingVisits([...existingVisits, ...visits]);
+      setVisits([]); // Clear new visits
+      
       onClose();
     } catch (error) {
-      console.error('Error saving visits:', error);
+      console.error('❌ [PlanTaskModal] Error saving visits:', error);
       alert('Error saving visits. Please try again.');
     } finally {
       setSaving(false);
@@ -199,34 +270,93 @@ export function PlanTaskModal({
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Current Visits Table */}
-          {visits.length > 0 && (
+          {/* Loading State for Existing Visits */}
+          {loadingExistingVisits && (
+            <div className="text-center py-4 text-gray-500">
+              Loading existing visits...
+            </div>
+          )}
+
+          {/* Existing Visits (Already Saved) */}
+          {!loadingExistingVisits && existingVisits.length > 0 && (
             <div>
-              <Label className="mb-3 block font-semibold">Scheduled Visits ({visits.length})</Label>
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <Label className="mb-3 block font-semibold text-green-700">
+                Previously Scheduled Visits ({existingVisits.length})
+              </Label>
+              <div className="border border-green-200 rounded-lg overflow-hidden bg-green-50">
                 <table className="w-full">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-green-100">
                     <tr>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-green-900 uppercase tracking-wider">
                         Client Name
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-green-900 uppercase tracking-wider">
                         Schedule Date
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-green-900 uppercase tracking-wider">
                         Start Time
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-green-900 uppercase tracking-wider">
                         End Time
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider">
+                      <th className="px-4 py-3 text-left text-xs font-medium text-green-900 uppercase tracking-wider">
+                        Status
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-green-200">
+                    {existingVisits.map((visit, index) => (
+                      <tr key={`existing-${index}`} className="hover:bg-green-50">
+                        <td className="px-4 py-3 text-sm text-gray-900">{visit.clientName}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{formatDate(visit.scheduleDate)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{formatTime(visit.startTime)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900">{formatTime(visit.endTime)}</td>
+                        <td className="px-4 py-3 text-sm">
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Saved
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <p className="text-xs text-green-700 mt-2">
+                These visits are already saved in the roster calendar
+              </p>
+            </div>
+          )}
+
+          {/* Current Visits Table (New, Not Yet Saved) */}
+          {visits.length > 0 && (
+            <div>
+              <Label className="mb-3 block font-semibold text-blue-700">
+                New Visits to Schedule ({visits.length})
+              </Label>
+              <div className="border border-blue-200 rounded-lg overflow-hidden bg-blue-50">
+                <table className="w-full">
+                  <thead className="bg-blue-100">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-900 uppercase tracking-wider">
+                        Client Name
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-900 uppercase tracking-wider">
+                        Schedule Date
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-900 uppercase tracking-wider">
+                        Start Time
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-900 uppercase tracking-wider">
+                        End Time
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-blue-900 uppercase tracking-wider">
                         Action
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
+                  <tbody className="bg-white divide-y divide-blue-200">
                     {visits.map((visit, index) => (
-                      <tr key={index} className="hover:bg-gray-50">
+                      <tr key={`new-${index}`} className="hover:bg-blue-50">
                         <td className="px-4 py-3 text-sm text-gray-900">{visit.clientName}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{formatDate(visit.scheduleDate)}</td>
                         <td className="px-4 py-3 text-sm text-gray-900">{formatTime(visit.startTime)}</td>
@@ -245,6 +375,9 @@ export function PlanTaskModal({
                   </tbody>
                 </table>
               </div>
+              <p className="text-xs text-blue-700 mt-2">
+                Click "Save" button below to add these visits to the roster
+              </p>
             </div>
           )}
 
@@ -354,9 +487,17 @@ export function PlanTaskModal({
           {/* Info Box */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-900">
-              <strong>Note:</strong> Scheduled visits will appear in:
+              <strong>Summary:</strong>
             </p>
             <ul className="text-sm text-blue-800 mt-2 ml-4 list-disc space-y-1">
+              <li>Previously scheduled: <strong>{existingVisits.length}</strong> visit{existingVisits.length !== 1 ? 's' : ''}</li>
+              <li>New visits to save: <strong>{visits.length}</strong> visit{visits.length !== 1 ? 's' : ''}</li>
+              <li>Total after saving: <strong>{existingVisits.length + visits.length}</strong> visit{(existingVisits.length + visits.length) !== 1 ? 's' : ''}</li>
+            </ul>
+            <p className="text-sm text-blue-900 mt-3">
+              <strong>Note:</strong> All visits appear in:
+            </p>
+            <ul className="text-sm text-blue-800 mt-1 ml-4 list-disc space-y-1">
               <li>Admin/Manager view at <strong>/roster/view-schedule</strong></li>
               <li>Your personal calendar at <strong>/roster/update-schedule</strong></li>
               <li>Color-coded based on duration (Yellow: &lt;8hrs, Orange: ≥8hrs)</li>
@@ -372,17 +513,19 @@ export function PlanTaskModal({
             onClick={onClose}
             disabled={saving}
           >
-            Cancel
+            {visits.length > 0 ? 'Cancel' : 'Close'}
           </Button>
-          <Button
-            type="button"
-            onClick={handleSaveAll}
-            disabled={visits.length === 0 || saving}
-            loading={saving}
-            className="text-white"
-          >
-            {saving ? 'Saving...' : `Save ${visits.length} Visit${visits.length !== 1 ? 's' : ''}`}
-          </Button>
+          {visits.length > 0 && (
+            <Button
+              type="button"
+              onClick={handleSaveAll}
+              disabled={visits.length === 0 || saving}
+              loading={saving}
+              className="text-white"
+            >
+              {saving ? 'Saving...' : `Save ${visits.length} New Visit${visits.length !== 1 ? 's' : ''}`}
+            </Button>
+          )}
         </div>
       </DialogContent>
     </Dialog>

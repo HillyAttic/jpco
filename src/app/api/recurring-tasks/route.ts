@@ -257,10 +257,12 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+    console.log('📥 [POST /api/recurring-tasks] Received body:', JSON.stringify(body, null, 2));
 
     // Validate request body
     const validationResult = createRecurringTaskSchema.safeParse(body);
     if (!validationResult.success) {
+      console.error('❌ [POST /api/recurring-tasks] Validation failed:', validationResult.error);
       return ErrorResponses.badRequest(
         'Validation failed',
         validationResult.error.flatten().fieldErrors as Record<string, string[]>
@@ -268,6 +270,8 @@ export async function POST(request: NextRequest) {
     }
 
     const taskData = validationResult.data;
+    console.log('✅ [POST /api/recurring-tasks] Validation passed');
+    console.log('🗺️ [POST /api/recurring-tasks] Team member mappings:', taskData.teamMemberMappings);
 
     // Convert date strings to Date objects and add createdBy
     const taskToCreate = {
@@ -281,10 +285,14 @@ export async function POST(request: NextRequest) {
       createdBy: userId, // Store the creator's user ID
     };
     
+    console.log('💾 [POST /api/recurring-tasks] Creating task in Firestore:', JSON.stringify(taskToCreate, null, 2));
     const newTask = await recurringTaskService.create(taskToCreate);
+    console.log('✅ [POST /api/recurring-tasks] Task created successfully with ID:', newTask.id);
+    console.log('🗺️ [POST /api/recurring-tasks] Saved team member mappings:', newTask.teamMemberMappings);
     
     return NextResponse.json(newTask, { status: 201 });
   } catch (error) {
+    console.error('❌ [POST /api/recurring-tasks] Error:', error);
     return handleApiError(error);
   }
 }

@@ -99,6 +99,8 @@ export default function RecurringTasksPage() {
   const handleSubmit = async (data: any) => {
     setIsSubmitting(true);
     try {
+      console.log('📝 [Recurring Tasks Page] Form data received:', data);
+      
       // Convert contactIds string to array
       const contactIdsArray = data.contactIds
         ? data.contactIds
@@ -119,21 +121,27 @@ export default function RecurringTasksPage() {
         endDate: data.endDate ? new Date(data.endDate) : undefined,
         nextOccurrence: new Date(data.startDate), // Initial next occurrence is start date
         teamId: data.teamId || undefined,
+        teamMemberMappings: data.teamMemberMappings || undefined, // Include team member mappings
         requiresArn: data.requiresArn || false, // Include ARN requirement
       };
+
+      console.log('📤 [Recurring Tasks Page] Sending task data to API:', taskData);
+      console.log('🗺️ [Recurring Tasks Page] Team member mappings:', taskData.teamMemberMappings);
 
       if (selectedTask?.id) {
         // Update existing task
         await updateTask(selectedTask.id, taskData);
+        console.log('✅ [Recurring Tasks Page] Task updated successfully');
       } else {
         // Create new task
         await createTask(taskData);
+        console.log('✅ [Recurring Tasks Page] Task created successfully');
       }
 
       setIsModalOpen(false);
       setSelectedTask(null);
     } catch (error) {
-      console.error('Error submitting recurring task:', error);
+      console.error('❌ [Recurring Tasks Page] Error submitting recurring task:', error);
       // Error is already handled by the hook
     } finally {
       setIsSubmitting(false);

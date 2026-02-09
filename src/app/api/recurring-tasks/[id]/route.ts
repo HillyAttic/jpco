@@ -39,6 +39,11 @@ const updateRecurringTaskSchema = z.object({
   category: z.string().optional(),
   categoryId: z.string().optional(),
   teamId: z.string().optional(),
+  teamMemberMappings: z.array(z.object({
+    userId: z.string(),
+    userName: z.string(),
+    clientIds: z.array(z.string()),
+  })).optional(),
   isPaused: z.boolean().optional(),
   requiresArn: z.boolean().optional(),
 });
@@ -84,10 +89,13 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params;
     const body = await request.json();
+    
+    console.log(`📥 [PUT /api/recurring-tasks/${id}] Received body:`, JSON.stringify(body, null, 2));
 
     // Validate request body
     const validationResult = updateRecurringTaskSchema.safeParse(body);
     if (!validationResult.success) {
+      console.error(`❌ [PUT /api/recurring-tasks/${id}] Validation failed:`, validationResult.error);
       return ErrorResponses.badRequest(
         'Validation failed',
         validationResult.error.flatten().fieldErrors as Record<string, string[]>
@@ -95,6 +103,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     }
 
     const taskData = validationResult.data;
+    console.log(`✅ [PUT /api/recurring-tasks/${id}] Validation passed`);
+    console.log(`🗺️ [PUT /api/recurring-tasks/${id}] Team member mappings:`, taskData.teamMemberMappings);
     
     // Convert date strings to Date objects if present
     const taskToUpdate: any = { ...taskData };
@@ -118,14 +128,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       });
     }
     
+    console.log(`💾 [PUT /api/recurring-tasks/${id}] Updating task in Firestore:`, JSON.stringify(taskToUpdate, null, 2));
     const updatedTask = await recurringTaskService.update(id, taskToUpdate);
     
     if (!updatedTask) {
+      console.error(`❌ [PUT /api/recurring-tasks/${id}] Task not found`);
       return ErrorResponses.notFound('Recurring task');
     }
     
+    console.log(`✅ [PUT /api/recurring-tasks/${id}] Task updated successfully`);
+    console.log(`🗺️ [PUT /api/recurring-tasks/${id}] Saved team member mappings:`, updatedTask.teamMemberMappings);
+    
     return NextResponse.json(updatedTask, { status: 200 });
   } catch (error) {
+    console.error(`❌ [PUT /api/recurring-tasks] Error:`, error);
     return handleApiError(error);
   }
 }

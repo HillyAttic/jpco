@@ -1693,6 +1693,7 @@ export default function DashboardPage() {
           userId={user.uid}
           userName={userProfile?.displayName || user.email || 'User'}
           taskTitle={selectedTaskForPlanning.title}
+          recurringTaskId={selectedTaskForPlanning.id}
         />
       )}
     </div>
