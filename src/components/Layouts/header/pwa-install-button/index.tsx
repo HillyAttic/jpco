@@ -157,7 +157,7 @@ export function PWAInstallButton() {
       alert(
         'To install this app:\n\n' +
         '1. Tap the menu button (⋮) in your browser\n' +
-        '2. Select "Add to Home screen" or "Install app"\n' +
+        '2. Select "Install app"\n' +
         '3. Follow the prompts to install\n\n' +
         'Note: Make sure you\'re using Chrome or a compatible browser.'
       );
@@ -190,7 +190,7 @@ export function PWAInstallButton() {
         'Unable to show install prompt automatically.\n\n' +
         'To install manually:\n' +
         '1. Tap the menu button (⋮) in your browser\n' +
-        '2. Select "Add to Home screen" or "Install app"\n' +
+        '2. Select "Install app"\n' +
         '3. Follow the prompts to install'
       );
     }

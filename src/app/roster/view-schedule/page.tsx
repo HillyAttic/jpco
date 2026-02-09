@@ -36,6 +36,7 @@ export default function ViewSchedulePage() {
   const [showDayTasksModal, setShowDayTasksModal] = useState(false);
   const [selectedDayInUserCalendar, setSelectedDayInUserCalendar] = useState<number | null>(null);
   const [tasksForSelectedDay, setTasksForSelectedDay] = useState<RosterEntry[]>([]);
+  const [userCalendarViewMode, setUserCalendarViewMode] = useState<'calendar' | 'table'>('calendar');
 
   const canViewAllSchedules = isAdmin || isManager;
 
@@ -194,6 +195,7 @@ export default function ViewSchedulePage() {
     setUserCalendarEntries([]);
     setSelectedDayInUserCalendar(null);
     setTasksForSelectedDay([]);
+    setUserCalendarViewMode('calendar');
     closeModal(); // Close modal context to show header again
   };
 
@@ -300,7 +302,7 @@ export default function ViewSchedulePage() {
               {calDay.activities.map((activity: RosterEntry) => {
                 const displayName = activity.taskType === 'multi' 
                   ? activity.activityName 
-                  : activity.taskDetail;
+                  : (activity.clientName || activity.taskDetail);
                 return (
                   <div
                     key={activity.id}
@@ -388,7 +390,7 @@ export default function ViewSchedulePage() {
               {calDay.activities.map((activity: RosterEntry) => {
                 const displayName = activity.taskType === 'multi' 
                   ? activity.activityName 
-                  : activity.taskDetail;
+                  : (activity.clientName || activity.taskDetail);
                 return (
                   <div
                     key={activity.id}
@@ -455,6 +457,7 @@ export default function ViewSchedulePage() {
                       const span = startingActivity.endDay - startingActivity.startDay + 1;
                       const cellWidth = span * 40;
                       const displayName = startingActivity.activityName 
+                        || startingActivity.clientName 
                         || startingActivity.taskDetail 
                         || 'Task';
                       
@@ -870,92 +873,213 @@ export default function ViewSchedulePage() {
             </div>
 
             <div className="p-6">
-              {renderUserCalendarInModal()}
-              
-              {/* Task Details Table - Shows below calendar when a day is selected */}
-              {selectedDayInUserCalendar !== null && tasksForSelectedDay.length > 0 && (
-                <div className="mt-6 border-t border-gray-200 pt-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h4 className="text-lg font-semibold text-gray-900">
-                      Tasks for {MONTHS[currentMonth - 1]} {selectedDayInUserCalendar}, {currentYear}
-                    </h4>
-                    <button
-                      onClick={() => {
-                        setSelectedDayInUserCalendar(null);
-                        setTasksForSelectedDay([]);
-                      }}
-                      className="text-sm text-gray-600 hover:text-gray-900"
-                    >
-                      Clear selection
-                    </button>
-                  </div>
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse border border-gray-300">
-                      <thead>
-                        <tr className="bg-gray-100">
-                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
-                            Date
-                          </th>
-                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
-                            Client Name
-                          </th>
-                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
-                            Task Name
-                          </th>
-                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
-                            Start Time
-                          </th>
-                          <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
-                            End Time
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tasksForSelectedDay
-                          .sort((a, b) => {
-                            const aStart = a.timeStart || a.startDate;
-                            const bStart = b.timeStart || b.startDate;
-                            return (aStart?.getTime() || 0) - (bStart?.getTime() || 0);
-                          })
-                          .map((task, index) => {
-                            const start = task.timeStart || task.startDate;
-                            const end = task.timeEnd || task.endDate;
-                            
-                            return (
-                              <tr key={task.id || index} className="hover:bg-gray-50">
-                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
-                                  {start ? start.toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric'
-                                  }) : '—'}
-                                </td>
-                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
-                                  {task.clientName || '—'}
-                                </td>
-                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
-                                  {task.taskDetail || task.activityName || '—'}
-                                </td>
-                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
-                                  {start ? start.toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: true
-                                  }) : '—'}
-                                </td>
-                                <td className="border border-gray-300 px-4 py-3 text-gray-900">
-                                  {end ? end.toLocaleTimeString('en-US', {
-                                    hour: '2-digit',
-                                    minute: '2-digit',
-                                    hour12: true
-                                  }) : '—'}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
-                  </div>
+              {/* View Toggle - Desktop Only */}
+              <div className="hidden md:flex justify-center mb-6">
+                <div className="inline-flex rounded-lg border border-gray-300 bg-gray-100 p-1">
+                  <button
+                    onClick={() => setUserCalendarViewMode('calendar')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      userCalendarViewMode === 'calendar'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                    </svg>
+                    Calendar View
+                  </button>
+                  <button
+                    onClick={() => setUserCalendarViewMode('table')}
+                    className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                      userCalendarViewMode === 'table'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-2">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3.375 19.5h17.25m-17.25 0a1.125 1.125 0 01-1.125-1.125M3.375 19.5h7.5c.621 0 1.125-.504 1.125-1.125m-9.75 0V5.625m0 12.75v-1.5c0-.621.504-1.125 1.125-1.125m18.375 2.625V5.625m0 12.75c0 .621-.504 1.125-1.125 1.125m1.125-1.125v-1.5c0-.621-.504-1.125-1.125-1.125m0 3.75h-7.5A1.125 1.125 0 0112 18.375m9.75-12.75c0-.621-.504-1.125-1.125-1.125H3.375c-.621 0-1.125.504-1.125 1.125m19.5 0v1.5c0 .621-.504 1.125-1.125 1.125M2.25 5.625v1.5c0 .621.504 1.125 1.125 1.125m0 0h17.25m-17.25 0h7.5c.621 0 1.125.504 1.125 1.125M3.375 8.25c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m17.25-3.75h-7.5c-.621 0-1.125.504-1.125 1.125m8.625-1.125c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125M12 10.875v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 10.875c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125M13.125 12h7.5m-7.5 0c-.621 0-1.125.504-1.125 1.125M20.625 12c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m-17.25 0h7.5M12 14.625v-1.5m0 1.5c0 .621-.504 1.125-1.125 1.125M12 14.625c0 .621.504 1.125 1.125 1.125m-2.25 0c.621 0 1.125.504 1.125 1.125m0 1.5v-1.5m0 0c0-.621.504-1.125 1.125-1.125m0 0h7.5" />
+                    </svg>
+                    Table View
+                  </button>
+                </div>
+              </div>
+
+              {/* Calendar View - Desktop Only */}
+              {userCalendarViewMode === 'calendar' && (
+                <div className="hidden md:block">
+                  {renderUserCalendarInModal()}
+                  
+                  {/* Task Details Table - Shows below calendar when a day is selected */}
+                  {selectedDayInUserCalendar !== null && tasksForSelectedDay.length > 0 && (
+                    <div className="mt-6 border-t border-gray-200 pt-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-lg font-semibold text-gray-900">
+                          Tasks for {MONTHS[currentMonth - 1]} {selectedDayInUserCalendar}, {currentYear}
+                        </h4>
+                        <button
+                          onClick={() => {
+                            setSelectedDayInUserCalendar(null);
+                            setTasksForSelectedDay([]);
+                          }}
+                          className="text-sm text-gray-600 hover:text-gray-900"
+                        >
+                          Clear selection
+                        </button>
+                      </div>
+                      <div className="overflow-x-auto">
+                        <table className="w-full border-collapse border border-gray-300">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                                Date
+                              </th>
+                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                                Client Name
+                              </th>
+                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                                Task Name
+                              </th>
+                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                                Start Time
+                              </th>
+                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                                End Time
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {tasksForSelectedDay
+                              .sort((a, b) => {
+                                const aStart = a.timeStart || a.startDate;
+                                const bStart = b.timeStart || b.startDate;
+                                return (aStart?.getTime() || 0) - (bStart?.getTime() || 0);
+                              })
+                              .map((task, index) => {
+                                const start = task.timeStart || task.startDate;
+                                const end = task.timeEnd || task.endDate;
+                                
+                                return (
+                                  <tr key={task.id || index} className="hover:bg-gray-50">
+                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-xs whitespace-nowrap">
+                                      {start ? start.toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric',
+                                        year: 'numeric'
+                                      }) : '—'}
+                                    </td>
+                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-sm">
+                                      {task.clientName || '—'}
+                                    </td>
+                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-sm">
+                                      {task.taskDetail || task.activityName || '—'}
+                                    </td>
+                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-xs whitespace-nowrap">
+                                      {start ? start.toLocaleTimeString('en-US', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      }) : '—'}
+                                    </td>
+                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-xs whitespace-nowrap">
+                                      {end ? end.toLocaleTimeString('en-US', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      }) : '—'}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Table View - Always visible on mobile, toggle on desktop */}
+              {(userCalendarViewMode === 'table' || true) && (
+                <div className={userCalendarViewMode === 'calendar' ? 'md:hidden' : ''}>
+                  {userCalendarEntries.length === 0 ? (
+                    <div className="text-center py-12">
+                      <p className="text-gray-500 text-lg">No tasks scheduled for this month</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto -mx-6 md:mx-0">
+                      <div className="inline-block min-w-full align-middle">
+                        <table className="min-w-full border-collapse border border-gray-300">
+                          <thead>
+                            <tr className="bg-gray-100">
+                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm whitespace-nowrap">
+                                Date
+                              </th>
+                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm">
+                                Client Name
+                              </th>
+                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm">
+                                Task Name
+                              </th>
+                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm whitespace-nowrap">
+                                Start
+                              </th>
+                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm whitespace-nowrap">
+                                End
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {userCalendarEntries
+                              .sort((a, b) => {
+                                const aStart = a.timeStart || a.startDate;
+                                const bStart = b.timeStart || b.startDate;
+                                return (aStart?.getTime() || 0) - (bStart?.getTime() || 0);
+                              })
+                              .map((task, index) => {
+                                const start = task.timeStart || task.startDate;
+                                const end = task.timeEnd || task.endDate;
+                                
+                                return (
+                                  <tr key={task.id || index} className="hover:bg-gray-50">
+                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs whitespace-nowrap">
+                                      {start ? start.toLocaleDateString('en-US', {
+                                        month: 'short',
+                                        day: 'numeric'
+                                      }) : '—'}
+                                    </td>
+                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs md:text-sm">
+                                      <div className="max-w-[100px] md:max-w-[150px] truncate">
+                                        {task.clientName || '—'}
+                                      </div>
+                                    </td>
+                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs md:text-sm">
+                                      <div className="max-w-[120px] md:max-w-[200px] truncate">
+                                        {task.taskDetail || task.activityName || '—'}
+                                      </div>
+                                    </td>
+                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs whitespace-nowrap">
+                                      {start ? start.toLocaleTimeString('en-US', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      }) : '—'}
+                                    </td>
+                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs whitespace-nowrap">
+                                      {end ? end.toLocaleTimeString('en-US', {
+                                        hour: '2-digit',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      }) : '—'}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

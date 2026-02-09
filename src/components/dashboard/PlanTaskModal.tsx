@@ -102,24 +102,26 @@ export function PlanTaskModal({
             const matchesTask = entry.taskDetail === taskTitle;
             const entryDate = entry.taskDate ? new Date(entry.taskDate) : (entry.timeStart ? new Date(entry.timeStart) : null);
             const isRecentOrFuture = entryDate ? entryDate >= thirtyDaysAgo : false;
+            const hasRequiredFields = entry.clientId && entry.clientName;
             
             console.log('🔎 [PlanTaskModal] Entry:', {
               taskDetail: entry.taskDetail,
               taskDate: entry.taskDate,
               matchesTask,
               isRecentOrFuture,
-              willInclude: matchesTask && isRecentOrFuture
+              hasRequiredFields,
+              willInclude: matchesTask && isRecentOrFuture && hasRequiredFields
             });
             
-            return matchesTask && isRecentOrFuture;
+            return matchesTask && isRecentOrFuture && hasRequiredFields;
           })
           .map(entry => {
             const timeStart = entry.timeStart instanceof Date ? entry.timeStart : new Date(entry.timeStart!);
             const timeEnd = entry.timeEnd instanceof Date ? entry.timeEnd : new Date(entry.timeEnd!);
             
             return {
-              clientId: entry.clientId,
-              clientName: entry.clientName,
+              clientId: entry.clientId!,
+              clientName: entry.clientName!,
               scheduleDate: entry.taskDate || timeStart.toISOString().split('T')[0],
               startTime: `${timeStart.getHours().toString().padStart(2, '0')}:${timeStart.getMinutes().toString().padStart(2, '0')}`,
               endTime: `${timeEnd.getHours().toString().padStart(2, '0')}:${timeEnd.getMinutes().toString().padStart(2, '0')}`,

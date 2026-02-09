@@ -474,13 +474,13 @@ export default function UpdateSchedulePage() {
                   <div
                     key={task.id}
                     className={`text-xs px-1 py-0.5 rounded truncate border ${getTaskColorClass(task)}`}
-                    title={task.taskType === 'multi' ? task.activityName : task.taskDetail}
+                    title={task.taskType === 'multi' ? task.activityName : (task.clientName || task.taskDetail)}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleEditTask(task);
                     }}
                   >
-                    {task.taskType === 'multi' ? task.activityName : task.taskDetail}
+                    {task.taskType === 'multi' ? task.activityName : (task.clientName || task.taskDetail)}
                   </div>
                 ))}
                 {calDay.tasks.length > 3 && (
