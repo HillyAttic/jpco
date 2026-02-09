@@ -25,6 +25,7 @@ import { TaskOverview } from '@/components/dashboard/TaskOverview';
 import { UpcomingDeadlines } from '@/components/dashboard/UpcomingDeadlines';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { QuickActions } from '@/components/dashboard/QuickActions';
+import { PlanTaskModal } from '@/components/dashboard/PlanTaskModal';
 import { useRouter } from 'next/navigation';
 
 // Lazy load heavy chart components
@@ -37,6 +38,11 @@ interface DashboardTask extends Task {
   isRecurring?: boolean;
   recurrencePattern?: string;
   teamId?: string;
+  teamMemberMappings?: Array<{
+    userId: string;
+    userName: string;
+    clientIds: string[];
+  }>;
 }
 
 // Helper function to get user name from Firestore
@@ -94,6 +100,8 @@ export default function DashboardPage() {
   const [showInProgressModal, setShowInProgressModal] = useState(false);
   const [userNamesCache, setUserNamesCache] = useState<Record<string, string>>({});
   const [clientNamesCache, setClientNamesCache] = useState<Record<string, string>>({});
+  const [showPlanTaskModal, setShowPlanTaskModal] = useState(false);
+  const [selectedTaskForPlanning, setSelectedTaskForPlanning] = useState<DashboardTask | null>(null);
 
   // Check if user is admin or manager
   const canViewAllTasks = isAdmin || isManager;
@@ -397,6 +405,36 @@ export default function DashboardPage() {
                       <span className="truncate min-w-0">{teamName}</span>
                     </button>
                   )}
+                  {/* Show user name if team member mapping is used and no team */}
+                  {!teamName && task.teamMemberMappings && task.teamMemberMappings.length > 0 && (
+                    <div className="flex items-center gap-0.5 sm:gap-1 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-purple-600 text-white rounded text-[10px] sm:text-xs font-medium whitespace-nowrap flex-shrink-0 max-w-[150px] sm:max-w-[200px] min-h-[28px]">
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
+                      </svg>
+                      <span className="truncate min-w-0">
+                        {task.teamMemberMappings.find(m => m.userId === user?.uid)?.userName || 'Individual Assignment'}
+                      </span>
+                    </div>
+                  )}
+                  {/* Plan Task Button for recurring tasks */}
+                  {task.isRecurring && assignedToNames.length > 0 && !canViewAllTasks && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        setSelectedTaskForPlanning(task);
+                        setShowPlanTaskModal(true);
+                        openModal();
+                      }}
+                      className="flex items-center gap-0.5 sm:gap-1 px-1.5 py-0.5 sm:px-2 sm:py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-[10px] sm:text-xs font-medium whitespace-nowrap flex-shrink-0 min-h-[28px]"
+                      title="Schedule client visits"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-2.5 h-2.5 sm:w-3 sm:h-3 flex-shrink-0">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+                      </svg>
+                      <span>Plan Task</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 // For non-recurring tasks, show names inline
@@ -615,22 +653,40 @@ export default function DashboardPage() {
       const [nonRecurringTasks, recurringTasks, performance, recentActivities] = results;
       
       // Convert recurring tasks to dashboard tasks format
-      const recurringDashboardTasks: DashboardTask[] = (recurringTasks || []).map((task: RecurringTask) => ({
-        id: task.id!,
-        title: task.title,
-        description: task.description,
-        dueDate: task.nextOccurrence,
-        priority: task.priority as TaskPriority,
-        status: task.status as TaskStatus,
-        assignedTo: task.contactIds || [],
-        createdBy: task.createdBy,
-        category: task.categoryId,
-        createdAt: task.createdAt || new Date(),
-        updatedAt: task.updatedAt || new Date(),
-        isRecurring: true,
-        recurrencePattern: task.recurrencePattern,
-        teamId: task.teamId,
-      }));
+      const recurringDashboardTasks: DashboardTask[] = (recurringTasks || []).map((task: RecurringTask) => {
+        let assignedClients = task.contactIds || [];
+        
+        // If task has team member mappings and user is not admin/manager, filter clients
+        if (!canViewAllTasks && task.teamMemberMappings && task.teamMemberMappings.length > 0) {
+          // Find mapping for current user
+          const userMapping = task.teamMemberMappings.find(mapping => mapping.userId === user.uid);
+          if (userMapping) {
+            // Show only clients assigned to this user
+            assignedClients = userMapping.clientIds;
+          } else {
+            // User not in mappings, show no clients
+            assignedClients = [];
+          }
+        }
+        
+        return {
+          id: task.id!,
+          title: task.title,
+          description: task.description,
+          dueDate: task.nextOccurrence,
+          priority: task.priority as TaskPriority,
+          status: task.status as TaskStatus,
+          assignedTo: assignedClients,
+          createdBy: task.createdBy,
+          category: task.categoryId,
+          createdAt: task.createdAt || new Date(),
+          updatedAt: task.updatedAt || new Date(),
+          isRecurring: true,
+          recurrencePattern: task.recurrencePattern,
+          teamId: task.teamId,
+          teamMemberMappings: task.teamMemberMappings,
+        };
+      });
       
       // Combine both types of tasks
       let allTasks = [
@@ -1622,6 +1678,22 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Plan Task Modal */}
+      {showPlanTaskModal && selectedTaskForPlanning && user && (
+        <PlanTaskModal
+          isOpen={showPlanTaskModal}
+          onClose={() => {
+            setShowPlanTaskModal(false);
+            setSelectedTaskForPlanning(null);
+            closeModal();
+          }}
+          assignedClientIds={selectedTaskForPlanning.assignedTo || []}
+          userId={user.uid}
+          userName={userProfile?.displayName || user.email || 'User'}
+          taskTitle={selectedTaskForPlanning.title}
+        />
       )}
     </div>
   );

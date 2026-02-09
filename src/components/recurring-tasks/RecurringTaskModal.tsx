@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { RecurringTask } from '@/services/recurring-task.service';
+import { RecurringTask, TeamMemberMapping } from '@/services/recurring-task.service';
 import { Team, teamService } from '@/services/team.service';
 import { Category, categoryService } from '@/services/category.service';
 import { Client, clientService } from '@/services/client.service';
@@ -18,7 +18,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import Select from '@/components/ui/select';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { TeamMemberMappingDialog } from './TeamMemberMappingDialog';
 
 // Form-specific schema matching the design requirements
 // Requirement 3.2, 3.8
@@ -80,6 +81,8 @@ export function RecurringTaskModal({
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
+  const [teamMemberMappings, setTeamMemberMappings] = useState<TeamMemberMapping[]>([]);
+  const [showMappingDialog, setShowMappingDialog] = useState(false);
   
   const {
     register,
@@ -269,6 +272,11 @@ export function RecurringTaskModal({
         );
         setSelectedClients(taskClients);
       }
+
+      // Set team member mappings
+      if (task.teamMemberMappings && task.teamMemberMappings.length > 0) {
+        setTeamMemberMappings(task.teamMemberMappings);
+      }
     } else {
       // Set default dates for new task
       const today = new Date();
@@ -288,13 +296,20 @@ export function RecurringTaskModal({
         requiresArn: false,
       });
       setSelectedClients([]);
+      setTeamMemberMappings([]);
     }
   }, [task, reset, clients]);
 
   const handleFormSubmit = async (data: RecurringTaskFormData) => {
     try {
-      await onSubmit(data);
+      // Include team member mappings in the submission
+      const submissionData = {
+        ...data,
+        teamMemberMappings: teamMemberMappings.length > 0 ? teamMemberMappings : undefined,
+      };
+      await onSubmit(submissionData as any);
       reset();
+      setTeamMemberMappings([]);
       onClose();
     } catch (error) {
       console.error('Error submitting recurring task:', error);
@@ -306,6 +321,7 @@ export function RecurringTaskModal({
     setSelectedClients([]);
     setClientFilter('all');
     setClientSearchQuery('');
+    setTeamMemberMappings([]);
     onClose();
   };
 
@@ -396,6 +412,42 @@ export function RecurringTaskModal({
             )}
             {!loadingTeams && teams.length === 0 && (
               <p className="text-sm text-gray-500 mt-1">No teams available</p>
+            )}
+          </div>
+
+          {/* Team Member Mapping */}
+          <div>
+            <Label htmlFor="teamMemberMapping" className="mb-2 block">Team Member Mapping</Label>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowMappingDialog(true)}
+              disabled={isLoading}
+              className="w-full flex items-center justify-center gap-2"
+            >
+              <UserGroupIcon className="w-5 h-5" />
+              <span>
+                {teamMemberMappings.length === 0
+                  ? 'Configure Team Member Mapping'
+                  : `${teamMemberMappings.length} Team Member${teamMemberMappings.length !== 1 ? 's' : ''} Mapped`}
+              </span>
+            </Button>
+            <p className="text-xs text-gray-500 mt-2">
+              Assign specific clients to individual team members. If configured, team members will only see tasks for their assigned clients.
+            </p>
+            
+            {/* Display current mappings summary */}
+            {teamMemberMappings.length > 0 && (
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium text-blue-900 mb-2">Current Mappings:</p>
+                <div className="space-y-1">
+                  {teamMemberMappings.map((mapping) => (
+                    <div key={mapping.userId} className="text-xs text-blue-800">
+                      <span className="font-medium">{mapping.userName}</span>: {mapping.clientIds.length} client{mapping.clientIds.length !== 1 ? 's' : ''}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
 
@@ -672,6 +724,14 @@ export function RecurringTaskModal({
             </Button>
           </DialogFooter>
         </form>
+
+        {/* Team Member Mapping Dialog */}
+        <TeamMemberMappingDialog
+          isOpen={showMappingDialog}
+          onClose={() => setShowMappingDialog(false)}
+          onSave={(mappings) => setTeamMemberMappings(mappings)}
+          initialMappings={teamMemberMappings}
+        />
       </DialogContent>
     </Dialog>
   );

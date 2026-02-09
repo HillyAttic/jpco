@@ -27,9 +27,11 @@ import {
   Users,
   Filter,
   Download,
-  ShieldAlert
+  ShieldAlert,
+  FullscreenIcon
 } from 'lucide-react';
 import { employeeService } from '@/services/employee.service';
+import { inMemoryPersistence } from 'firebase/auth/cordova';
 
 interface AttendanceRecord {
   id: string;

@@ -31,6 +31,11 @@ const createRecurringTaskSchema = z.object({
   contactIds: z.array(z.string()).default([]),
   categoryId: z.string().optional(),
   teamId: z.string().optional(),
+  teamMemberMappings: z.array(z.object({
+    userId: z.string(),
+    userName: z.string(),
+    clientIds: z.array(z.string()),
+  })).optional(),
   requiresArn: z.boolean().optional(),
 }).refine(
   (data) => {
@@ -182,7 +187,8 @@ export async function GET(request: NextRequest) {
       
       // Employees see tasks that are:
       // 1. Directly assigned to them (in contactIds), OR
-      // 2. Assigned to a team they are a member of
+      // 2. Assigned to a team they are a member of, OR
+      // 3. Assigned to them via team member mappings
       tasks = tasks.filter(task => {
         // Check if task is directly assigned to user (check all possible user IDs)
         const isDirectlyAssigned = task.contactIds && 
@@ -192,16 +198,23 @@ export async function GET(request: NextRequest) {
         // Check if task is assigned to a team the user is a member of
         const isTeamAssigned = task.teamId && userTeamIds.includes(task.teamId);
         
+        // Check if task has team member mappings for this user
+        const isMappedToUser = task.teamMemberMappings && 
+          Array.isArray(task.teamMemberMappings) &&
+          task.teamMemberMappings.some(mapping => Array.from(userIds).includes(mapping.userId));
+        
         console.log(`[Recurring Tasks API] Task "${task.title}":`, {
           taskId: task.id,
           teamId: task.teamId,
           contactIdsCount: task.contactIds?.length || 0,
+          hasMappings: !!task.teamMemberMappings,
           isDirectlyAssigned,
           isTeamAssigned,
-          willShow: isDirectlyAssigned || isTeamAssigned
+          isMappedToUser,
+          willShow: isDirectlyAssigned || isTeamAssigned || isMappedToUser
         });
         
-        return isDirectlyAssigned || isTeamAssigned;
+        return isDirectlyAssigned || isTeamAssigned || isMappedToUser;
       });
       
       console.log(`[Recurring Tasks API] Team member ${userId} filtered recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);

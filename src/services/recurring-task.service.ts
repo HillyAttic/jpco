@@ -13,6 +13,12 @@ export interface CompletionRecord {
   arnName?: string; // Name of person who provided ARN
 }
 
+export interface TeamMemberMapping {
+  userId: string;
+  userName: string;
+  clientIds: string[];
+}
+
 export interface RecurringTask {
   id?: string;
   title: string;
@@ -28,6 +34,7 @@ export interface RecurringTask {
   completionHistory: CompletionRecord[];
   isPaused: boolean;
   teamId?: string; // Team ID
+  teamMemberMappings?: TeamMemberMapping[]; // Team member to client mappings
   requiresArn?: boolean; // Whether ARN is required for completion
   createdBy?: string; // User ID of the creator
   createdAt?: Date;
