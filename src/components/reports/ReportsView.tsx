@@ -102,41 +102,41 @@ export function ReportsView() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Reports</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Reports</h1>
           <p className="text-gray-600 mt-1">Track task completion status across all clients</p>
         </div>
         <button
           onClick={loadData}
           disabled={loading}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" />
           </svg>
-          {loading ? 'Refreshing...' : 'Refresh'}
+          <span className="hidden sm:inline">{loading ? 'Refreshing...' : 'Refresh'}</span>
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white rounded-lg shadow overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Task Name
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden md:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Recurrence
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="hidden lg:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Total Clients
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Completion Rate
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Completion
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
@@ -164,23 +164,39 @@ export function ReportsView() {
                 
                 return (
                   <tr key={task.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <div className="text-sm font-medium text-gray-900">{task.title}</div>
-                        {hasTeamMemberMapping && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800" title="Assigned via Team Member Mapping">
-                            <UserGroupIcon className="w-3 h-3" />
-                            Team Mapped
+                    <td className="px-3 sm:px-6 py-4">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="text-sm font-medium text-gray-900 break-words">{task.title}</div>
+                          {hasTeamMemberMapping && (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 whitespace-nowrap" title="Assigned via Team Member Mapping">
+                              <UserGroupIcon className="w-3 h-3" />
+                              <span className="hidden sm:inline">Team Mapped</span>
+                              <span className="sm:hidden">Mapped</span>
+                            </span>
+                          )}
+                        </div>
+                        {/* Mobile: Show recurrence and client count */}
+                        <div className="flex items-center gap-3 text-xs md:hidden">
+                          <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white font-semibold">
+                            {task.recurrencePattern}
                           </span>
-                        )}
+                          <span className="text-gray-500">
+                            {hasTeamMemberMapping ? (
+                              <span>{task.teamMemberMappings!.reduce((sum, m) => sum + m.clientIds.length, 0)} clients</span>
+                            ) : (
+                              <span>{taskClients.length} clients</span>
+                            )}
+                          </span>
+                        </div>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="hidden md:table-cell px-3 sm:px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-600 text-white">
                         {task.recurrencePattern}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    <td className="hidden lg:table-cell px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {hasTeamMemberMapping ? (
                         <span title={`${task.teamMemberMappings!.length} team member(s) assigned`}>
                           {task.teamMemberMappings!.reduce((sum, m) => sum + m.clientIds.length, 0)} (mapped)
@@ -189,23 +205,24 @@ export function ReportsView() {
                         taskClients.length
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
-                        <div className="w-full bg-gray-200 rounded-full h-2 mr-2">
+                        <div className="w-full bg-gray-200 rounded-full h-2 mr-2 min-w-[60px]">
                           <div
                             className="bg-green-600 h-2 rounded-full"
                             style={{ width: `${completionRate}%` }}
                           ></div>
                         </div>
-                        <span className="text-sm text-gray-700">{completionRate}%</span>
+                        <span className="text-xs sm:text-sm text-gray-700 whitespace-nowrap">{completionRate}%</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                    <td className="px-3 sm:px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
                         onClick={() => handleTaskClick(task)}
-                        className="text-blue-600 hover:text-blue-900"
+                        className="text-blue-600 hover:text-blue-900 text-xs sm:text-sm"
                       >
-                        View Details
+                        <span className="hidden sm:inline">View Details</span>
+                        <span className="sm:hidden">View</span>
                       </button>
                     </td>
                   </tr>
@@ -280,16 +297,16 @@ function TaskReportModal({ task, clients, completions, onClose }: TaskReportModa
         <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
 
         <div className="inline-block w-full max-w-6xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 z-10">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900">{task.title}</h2>
-              <p className="text-sm text-gray-600 mt-1">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">{task.title}</h2>
+              <p className="text-xs sm:text-sm text-gray-600 mt-1">
                 Track completion for {clients.length} clients • {task.recurrencePattern} recurrence
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-600 transition-colors self-end sm:self-auto"
               aria-label="Close modal"
             >
               <XMarkIcon className="w-6 h-6" />
@@ -342,8 +359,8 @@ function TaskReportModal({ task, clients, completions, onClose }: TaskReportModa
             </table>
           </div>
 
-          <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
-            <div className="flex items-center space-x-6 text-sm">
+          <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-gray-200">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm">
               <div className="flex items-center">
                 <CheckIcon className="w-4 h-4 text-green-600 mr-2" />
                 <span className="text-gray-700">Completed</span>
@@ -354,12 +371,12 @@ function TaskReportModal({ task, clients, completions, onClose }: TaskReportModa
               </div>
               <div className="flex items-center">
                 <span className="text-gray-400 mr-2">-</span>
-                <span className="text-gray-700">Future Deadline</span>
+                <span className="text-gray-700">Future</span>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
             >
               Close
             </button>
@@ -416,17 +433,17 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TeamMemb
         <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
 
         <div className="inline-block w-full max-w-6xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
-          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
-            <div className="flex items-center justify-between mb-4">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 z-10">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
               <div>
-                <h2 className="text-2xl font-bold text-gray-900">{task.title}</h2>
-                <p className="text-sm text-gray-600 mt-1">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 break-words">{task.title}</h2>
+                <p className="text-xs sm:text-sm text-gray-600 mt-1">
                   Team Member Reports • {task.recurrencePattern} recurrence
                 </p>
               </div>
               <button
                 onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors self-end sm:self-auto"
                 aria-label="Close modal"
               >
                 <XMarkIcon className="w-6 h-6" />
@@ -434,27 +451,27 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TeamMemb
             </div>
             
             {/* Team Member Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {teamMemberReports.map(report => (
                 <button
                   key={report.userId}
                   onClick={() => setSelectedMemberId(selectedMemberId === report.userId ? null : report.userId)}
-                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                  className={`p-3 sm:p-4 rounded-lg border-2 transition-all text-left ${
                     selectedMemberId === report.userId
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 bg-white hover:border-blue-300'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <UserGroupIcon className="w-5 h-5 text-gray-600" />
-                      <span className="font-semibold text-gray-900">{report.userName}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <UserGroupIcon className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600 flex-shrink-0" />
+                      <span className="font-semibold text-sm sm:text-base text-gray-900 truncate">{report.userName}</span>
                     </div>
                     {selectedMemberId === report.userId && (
-                      <span className="text-xs font-medium text-blue-600">Selected</span>
+                      <span className="text-xs font-medium text-blue-600 whitespace-nowrap ml-2">Selected</span>
                     )}
                   </div>
-                  <div className="text-sm text-gray-600 mb-2">
+                  <div className="text-xs sm:text-sm text-gray-600 mb-2">
                     {report.clients.length} client{report.clients.length !== 1 ? 's' : ''}
                   </div>
                   <div className="text-xs text-gray-500 mb-2">
@@ -467,7 +484,7 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TeamMemb
                         style={{ width: `${report.completionRate}%` }}
                       ></div>
                     </div>
-                    <span className="text-sm font-medium text-gray-700">{report.completionRate}%</span>
+                    <span className="text-xs sm:text-sm font-medium text-gray-700 whitespace-nowrap">{report.completionRate}%</span>
                   </div>
                 </button>
               ))}
@@ -475,7 +492,7 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TeamMemb
             
             {selectedMember && (
               <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-sm font-medium text-blue-900">
+                <p className="text-xs sm:text-sm font-medium text-blue-900">
                   Showing {selectedMember.clients.length} client{selectedMember.clients.length !== 1 ? 's' : ''} assigned to {selectedMember.userName}
                 </p>
                 <p className="text-xs text-blue-700 mt-1">
@@ -541,8 +558,8 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TeamMemb
             )}
           </div>
 
-          <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
-            <div className="flex items-center space-x-6 text-sm">
+          <div className="bg-gray-50 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-gray-200">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm">
               <div className="flex items-center">
                 <CheckIcon className="w-4 h-4 text-green-600 mr-2" />
                 <span className="text-gray-700">Completed</span>
@@ -553,12 +570,12 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TeamMemb
               </div>
               <div className="flex items-center">
                 <span className="text-gray-400 mr-2">-</span>
-                <span className="text-gray-700">Future Deadline</span>
+                <span className="text-gray-700">Future</span>
               </div>
             </div>
             <button
               onClick={onClose}
-              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              className="w-full sm:w-auto px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
             >
               Close
             </button>

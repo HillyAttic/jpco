@@ -16,6 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { LocationMapModal } from '@/components/attendance/LocationMapModal';
+import { AttendanceExportModal } from '@/components/attendance/AttendanceExportModal';
+import { AttendanceCalendarModal } from '@/components/attendance/AttendanceCalendarModal';
+import { HolidayManagementModal } from '@/components/attendance/HolidayManagementModal';
 import { ManagerGuard } from '@/components/Auth/PermissionGuard';
 import { 
   Clock, 
@@ -77,6 +80,16 @@ export default function AttendanceTrayPage() {
   // State for location map modal
   const [showMapModal, setShowMapModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number; title: string } | null>(null);
+  
+  // State for export modal
+  const [showExportModal, setShowExportModal] = useState(false);
+  
+  // State for calendar modal
+  const [showCalendarModal, setShowCalendarModal] = useState(false);
+  const [selectedEmployeeForCalendar, setSelectedEmployeeForCalendar] = useState<{ id: string; name: string } | null>(null);
+  
+  // State for holiday management modal
+  const [showHolidayModal, setShowHolidayModal] = useState(false);
 
   // Convert Firestore timestamp to Date
   const convertTimestamps = (record: any): AttendanceRecord => {
@@ -290,6 +303,12 @@ export default function AttendanceTrayPage() {
     setShowMapModal(true);
   };
 
+  // Handle calendar overview click
+  const handleCalendarClick = (employeeId: string, employeeName: string) => {
+    setSelectedEmployeeForCalendar({ id: employeeId, name: employeeName });
+    setShowCalendarModal(true);
+  };
+
   if (!user) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -338,6 +357,24 @@ export default function AttendanceTrayPage() {
           <p className="text-gray-600 mt-2">View attendance history for all employees</p>
         </div>
         <div className="flex items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowHolidayModal(true)}
+            className="flex items-center gap-2 text-blue-600 border-blue-600 hover:bg-blue-50"
+          >
+            <Calendar className="h-4 w-4" />
+            Manage Holidays
+          </Button>
+          <Button
+            variant="default"
+            size="sm"
+            onClick={() => setShowExportModal(true)}
+            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -490,33 +527,46 @@ export default function AttendanceTrayPage() {
                 {/* Location Info */}
                 {(record.location?.clockIn || record.location?.clockOut) && (
                   <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="flex items-center gap-4 text-xs">
-                      {record.location?.clockIn && (
-                        <button
-                          onClick={() => handleLocationClick(
-                            record.location!.clockIn!.latitude,
-                            record.location!.clockIn!.longitude,
-                            `${record.employeeName} - Clock In Location`
-                          )}
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                        >
-                          <MapPin className="h-3 w-3" />
-                          <span>In: {record.location.clockIn.latitude.toFixed(4)}, {record.location.clockIn.longitude.toFixed(4)}</span>
-                        </button>
-                      )}
-                      {record.location?.clockOut && (
-                        <button
-                          onClick={() => handleLocationClick(
-                            record.location!.clockOut!.latitude,
-                            record.location!.clockOut!.longitude,
-                            `${record.employeeName} - Clock Out Location`
-                          )}
-                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                        >
-                          <MapPin className="h-3 w-3" />
-                          <span>Out: {record.location.clockOut.latitude.toFixed(4)}, {record.location.clockOut.longitude.toFixed(4)}</span>
-                        </button>
-                      )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-4 text-xs">
+                        {record.location?.clockIn && (
+                          <button
+                            onClick={() => handleLocationClick(
+                              record.location!.clockIn!.latitude,
+                              record.location!.clockIn!.longitude,
+                              `${record.employeeName} - Clock In Location`
+                            )}
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          >
+                            <MapPin className="h-3 w-3" />
+                            <span>In: {record.location.clockIn.latitude.toFixed(4)}, {record.location.clockIn.longitude.toFixed(4)}</span>
+                          </button>
+                        )}
+                        {record.location?.clockOut && (
+                          <button
+                            onClick={() => handleLocationClick(
+                              record.location!.clockOut!.latitude,
+                              record.location!.clockOut!.longitude,
+                              `${record.employeeName} - Clock Out Location`
+                            )}
+                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                          >
+                            <MapPin className="h-3 w-3" />
+                            <span>Out: {record.location.clockOut.latitude.toFixed(4)}, {record.location.clockOut.longitude.toFixed(4)}</span>
+                          </button>
+                        )}
+                      </div>
+                      
+                      {/* Calendar Overview Button */}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCalendarClick(record.employeeId, record.employeeName)}
+                        className="flex items-center gap-1 text-xs"
+                      >
+                        <Calendar className="h-3 w-3" />
+                        Calendar Overview
+                      </Button>
                     </div>
                   </div>
                 )}
@@ -581,6 +631,31 @@ export default function AttendanceTrayPage() {
           title={selectedLocation.title}
         />
       )}
+
+      {/* Export Modal */}
+      <AttendanceExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+      />
+
+      {/* Calendar Overview Modal */}
+      {selectedEmployeeForCalendar && (
+        <AttendanceCalendarModal
+          isOpen={showCalendarModal}
+          onClose={() => {
+            setShowCalendarModal(false);
+            setSelectedEmployeeForCalendar(null);
+          }}
+          employeeId={selectedEmployeeForCalendar.id}
+          employeeName={selectedEmployeeForCalendar.name}
+        />
+      )}
+
+      {/* Holiday Management Modal */}
+      <HolidayManagementModal
+        isOpen={showHolidayModal}
+        onClose={() => setShowHolidayModal(false)}
+      />
     </div>
   </ManagerGuard>
   );
