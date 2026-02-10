@@ -88,6 +88,43 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return ErrorResponses.notFound('Task');
     }
     
+    // Send notifications to newly assigned users
+    if (taskData.assignedTo && taskData.assignedTo.length > 0) {
+      try {
+        // Get the original task to compare assignees
+        const originalTask = await nonRecurringTaskService.getById(id);
+        
+        if (originalTask) {
+          // Find newly assigned users
+          const newlyAssigned = taskData.assignedTo.filter(
+            userId => !originalTask.assignedTo?.includes(userId)
+          );
+          
+          if (newlyAssigned.length > 0) {
+            await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/send`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                userIds: newlyAssigned,
+                title: 'New Task Assigned',
+                body: `You have been assigned to task: ${updatedTask.title}`,
+                data: {
+                  taskId: updatedTask.id,
+                  url: '/tasks',
+                  type: 'task_assigned',
+                },
+              }),
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Error sending task assignment notifications:', error);
+        // Don't fail the task update if notification fails
+      }
+    }
+    
     return NextResponse.json(updatedTask, { status: 200 });
   } catch (error) {
     return handleApiError(error);

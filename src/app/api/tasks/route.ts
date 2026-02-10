@@ -142,6 +142,31 @@ export async function POST(request: NextRequest) {
     
     const newTask = await nonRecurringTaskService.create(taskToCreate);
     
+    // Send push notifications to assigned users
+    if (taskData.assignedTo && taskData.assignedTo.length > 0) {
+      try {
+        await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/send`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userIds: taskData.assignedTo,
+            title: 'New Task Assigned',
+            body: `You have been assigned a new task: ${taskData.title}`,
+            data: {
+              taskId: newTask.id,
+              url: '/tasks',
+              type: 'task_assigned',
+            },
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending task assignment notifications:', error);
+        // Don't fail the task creation if notification fails
+      }
+    }
+    
     return NextResponse.json(newTask, { status: 201 });
   } catch (error) {
     return handleApiError(error);
