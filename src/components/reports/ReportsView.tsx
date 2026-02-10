@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { RecurringTask, recurringTaskService } from '@/services/recurring-task.service';
+import { RecurringTask, recurringTaskService, TeamMemberMapping } from '@/services/recurring-task.service';
 import { clientService, Client } from '@/services/client.service';
 import { taskCompletionService, ClientTaskCompletion } from '@/services/task-completion.service';
-import { XMarkIcon, CheckIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckIcon, XCircleIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { isFuture, isToday, startOfMonth } from 'date-fns';
 import { useModal } from '@/contexts/modal-context';
 
@@ -12,6 +12,16 @@ interface TaskReport {
   task: RecurringTask;
   clients: Client[];
   completionData: Map<string, Map<string, boolean>>; // clientId -> monthKey -> isCompleted
+}
+
+interface TeamMemberReport {
+  userId: string;
+  userName: string;
+  clientIds: string[];
+  clients: Client[];
+  completionRate: number;
+  completedCount: number;
+  totalExpected: number;
 }
 
 export function ReportsView() {
@@ -133,14 +143,37 @@ export function ReportsView() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {tasks.map((task) => {
-                const taskClients = clients.filter(c => c.id && task.contactIds?.includes(c.id));
+                const hasTeamMemberMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
+                
+                // Get clients based on task type
+                let taskClients: Client[];
+                if (hasTeamMemberMapping) {
+                  // For team member mapped tasks, get all clients from mappings
+                  const allMappedClientIds = new Set<string>();
+                  task.teamMemberMappings!.forEach(mapping => {
+                    mapping.clientIds.forEach(clientId => allMappedClientIds.add(clientId));
+                  });
+                  taskClients = clients.filter(c => c.id && allMappedClientIds.has(c.id));
+                } else {
+                  // For regular tasks, use contactIds
+                  taskClients = clients.filter(c => c.id && task.contactIds?.includes(c.id));
+                }
+                
                 const taskCompletions = completions.get(task.id || '') || [];
                 const completionRate = calculateCompletionRate(task, taskClients.length, taskCompletions);
                 
                 return (
                   <tr key={task.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-sm font-medium text-gray-900">{task.title}</div>
+                        {hasTeamMemberMapping && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800" title="Assigned via Team Member Mapping">
+                            <UserGroupIcon className="w-3 h-3" />
+                            Team Mapped
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-600 text-white">
@@ -148,7 +181,13 @@ export function ReportsView() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {taskClients.length}
+                      {hasTeamMemberMapping ? (
+                        <span title={`${task.teamMemberMappings!.length} team member(s) assigned`}>
+                          {task.teamMemberMappings!.reduce((sum, m) => sum + m.clientIds.length, 0)} (mapped)
+                        </span>
+                      ) : (
+                        taskClients.length
+                      )}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -180,7 +219,18 @@ export function ReportsView() {
       {isModalOpen && selectedTask && (
         <TaskReportModal
           task={selectedTask}
-          clients={clients.filter(c => c.id && selectedTask.contactIds?.includes(c.id))}
+          clients={(() => {
+            // For team member mapped tasks, get all clients from mappings
+            if (selectedTask.teamMemberMappings && selectedTask.teamMemberMappings.length > 0) {
+              const allMappedClientIds = new Set<string>();
+              selectedTask.teamMemberMappings.forEach(mapping => {
+                mapping.clientIds.forEach(clientId => allMappedClientIds.add(clientId));
+              });
+              return clients.filter(c => c.id && allMappedClientIds.has(c.id));
+            }
+            // For regular tasks, use contactIds
+            return clients.filter(c => c.id && selectedTask.contactIds?.includes(c.id));
+          })()}
           completions={completions.get(selectedTask.id || '') || []}
           onClose={closeModal}
         />
@@ -214,6 +264,14 @@ interface TaskReportModalProps {
 
 function TaskReportModal({ task, clients, completions, onClose }: TaskReportModalProps) {
   const months = generateMonths(task.recurrencePattern);
+  const hasTeamMemberMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
+  
+  // If task has team member mappings, show team member reports
+  if (hasTeamMemberMapping) {
+    return <TeamMemberReportModal task={task} clients={clients} completions={completions} onClose={onClose} />;
+  }
+  
+  // Otherwise show regular client report
   const completionData = buildCompletionData(completions, clients, months);
 
   return (
@@ -282,6 +340,205 @@ function TaskReportModal({ task, clients, completions, onClose }: TaskReportModa
                 ))}
               </tbody>
             </table>
+          </div>
+
+          <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">
+            <div className="flex items-center space-x-6 text-sm">
+              <div className="flex items-center">
+                <CheckIcon className="w-4 h-4 text-green-600 mr-2" />
+                <span className="text-gray-700">Completed</span>
+              </div>
+              <div className="flex items-center">
+                <XCircleIcon className="w-4 h-4 text-red-600 mr-2" />
+                <span className="text-gray-700">Incomplete</span>
+              </div>
+              <div className="flex items-center">
+                <span className="text-gray-400 mr-2">-</span>
+                <span className="text-gray-700">Future Deadline</span>
+              </div>
+            </div>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface TeamMemberReportModalProps {
+  task: RecurringTask;
+  clients: Client[];
+  completions: ClientTaskCompletion[];
+  onClose: () => void;
+}
+
+function TeamMemberReportModal({ task, clients, completions, onClose }: TeamMemberReportModalProps) {
+  const months = generateMonths(task.recurrencePattern);
+  const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  
+  // Build team member reports
+  const teamMemberReports: TeamMemberReport[] = (task.teamMemberMappings || []).map(mapping => {
+    const memberClients = clients.filter(c => c.id && mapping.clientIds.includes(c.id));
+    const memberCompletions = completions.filter(comp => 
+      comp.isCompleted && mapping.clientIds.includes(comp.clientId)
+    );
+    
+    const totalExpected = memberClients.length * months.filter(m => !isFuture(m.fullDate) || isToday(startOfMonth(m.fullDate))).length;
+    const completedCount = memberCompletions.length;
+    const completionRate = totalExpected > 0 ? Math.round((completedCount / totalExpected) * 100) : 0;
+    
+    return {
+      userId: mapping.userId,
+      userName: mapping.userName,
+      clientIds: mapping.clientIds,
+      clients: memberClients,
+      completionRate,
+      completedCount,
+      totalExpected,
+    };
+  });
+  
+  const selectedMember = selectedMemberId 
+    ? teamMemberReports.find(r => r.userId === selectedMemberId)
+    : null;
+  
+  const displayClients = selectedMember ? selectedMember.clients : clients;
+  const completionData = buildCompletionData(completions, displayClients, months);
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+
+        <div className="inline-block w-full max-w-6xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white rounded-lg shadow-xl">
+          <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 z-10">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-2xl font-bold text-gray-900">{task.title}</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Team Member Reports • {task.recurrencePattern} recurrence
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Close modal"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+            
+            {/* Team Member Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {teamMemberReports.map(report => (
+                <button
+                  key={report.userId}
+                  onClick={() => setSelectedMemberId(selectedMemberId === report.userId ? null : report.userId)}
+                  className={`p-4 rounded-lg border-2 transition-all text-left ${
+                    selectedMemberId === report.userId
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-gray-200 bg-white hover:border-blue-300'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <UserGroupIcon className="w-5 h-5 text-gray-600" />
+                      <span className="font-semibold text-gray-900">{report.userName}</span>
+                    </div>
+                    {selectedMemberId === report.userId && (
+                      <span className="text-xs font-medium text-blue-600">Selected</span>
+                    )}
+                  </div>
+                  <div className="text-sm text-gray-600 mb-2">
+                    {report.clients.length} client{report.clients.length !== 1 ? 's' : ''}
+                  </div>
+                  <div className="text-xs text-gray-500 mb-2">
+                    {report.completedCount} of {report.totalExpected} completed
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-gray-200 rounded-full h-2">
+                      <div
+                        className="bg-green-600 h-2 rounded-full transition-all"
+                        style={{ width: `${report.completionRate}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium text-gray-700">{report.completionRate}%</span>
+                  </div>
+                </button>
+              ))}
+            </div>
+            
+            {selectedMember && (
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                <p className="text-sm font-medium text-blue-900">
+                  Showing {selectedMember.clients.length} client{selectedMember.clients.length !== 1 ? 's' : ''} assigned to {selectedMember.userName}
+                </p>
+                <p className="text-xs text-blue-700 mt-1">
+                  Completion: {selectedMember.completedCount} of {selectedMember.totalExpected} ({selectedMember.completionRate}%)
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="p-6 overflow-x-auto">
+            {displayClients.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500">
+                  {selectedMember 
+                    ? `No clients assigned to ${selectedMember.userName}`
+                    : 'No clients assigned to this task'}
+                </p>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
+                      Client Name
+                    </th>
+                    {months.map((month) => (
+                      <th
+                        key={month.key}
+                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider"
+                      >
+                        <div>{month.monthName}</div>
+                        <div className="text-xs font-normal text-gray-400">{month.year}</div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {displayClients.map((client) => (
+                    <tr key={client.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 sticky left-0 bg-white">
+                        {client.name}
+                      </td>
+                      {months.map((month) => {
+                        const status = getCompletionStatus(completionData, client.id || '', month.key, month.fullDate);
+                        return (
+                          <td key={month.key} className="px-4 py-4 whitespace-nowrap text-center">
+                            {status === 'completed' && (
+                              <CheckIcon className="w-5 h-5 text-green-600 mx-auto" />
+                            )}
+                            {status === 'incomplete' && (
+                              <XCircleIcon className="w-5 h-5 text-red-600 mx-auto" />
+                            )}
+                            {status === 'future' && (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
           <div className="bg-gray-50 px-6 py-4 flex items-center justify-between border-t border-gray-200">

@@ -151,7 +151,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
     if (task.isRecurring && task.recurringTaskId) {
       setSelectedTask(task);
       
-      // Fetch the full recurring task to get contactIds
+      // Fetch the full recurring task to get contactIds and team member mappings
       try {
         const response = await fetch(`/api/recurring-tasks/${task.recurringTaskId}`);
         if (!response.ok) {
@@ -160,20 +160,50 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
         const recurringTask = await response.json();
         setFullRecurringTask(recurringTask);
         
+        // Collect all client IDs from both contactIds and team member mappings
         const contactIds = recurringTask.contactIds || [];
+        const teamMemberMappings = recurringTask.teamMemberMappings || [];
         
-        // Fetch only the clients assigned to this task
-        if (contactIds.length > 0) {
+        // Get all unique client IDs from team member mappings
+        const mappedClientIds = new Set<string>();
+        teamMemberMappings.forEach((mapping: any) => {
+          if (mapping.clientIds && Array.isArray(mapping.clientIds)) {
+            mapping.clientIds.forEach((clientId: string) => mappedClientIds.add(clientId));
+          }
+        });
+        
+        // Combine contactIds and mapped client IDs
+        const allClientIds = [...new Set([...contactIds, ...Array.from(mappedClientIds)])];
+        
+        console.log('[Calendar] Loading clients for task:', {
+          taskId: recurringTask.id,
+          taskTitle: recurringTask.title,
+          contactIds: contactIds.length,
+          teamMemberMappings: teamMemberMappings.length,
+          mappedClientIds: mappedClientIds.size,
+          totalClientIds: allClientIds.length
+        });
+        
+        // Fetch only the clients assigned to this task (either directly or via team member mappings)
+        if (allClientIds.length > 0) {
           const clientsResponse = await fetch('/api/clients');
           const clientsData = await clientsResponse.json();
           const allClients = clientsData.data || [];
           
           // Filter to only show assigned clients
           const assignedClients = allClients.filter((client: any) => 
-            contactIds.includes(client.id)
+            allClientIds.includes(client.id)
           );
+          
+          console.log('[Calendar] Loaded clients:', {
+            totalClients: allClients.length,
+            assignedClients: assignedClients.length,
+            clientNames: assignedClients.map((c: any) => c.name)
+          });
+          
           setClients(assignedClients);
         } else {
+          console.log('[Calendar] No clients assigned to task');
           setClients([]);
         }
       } catch (error) {

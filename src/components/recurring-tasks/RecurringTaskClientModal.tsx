@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { taskCompletionService } from '@/services/task-completion.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
@@ -85,6 +85,38 @@ export function RecurringTaskClientModal({
     }
   }, [task, clients, isOpen, viewingMonth]);
 
+  // Filter clients based on team member mappings
+  const getFilteredClients = (): Client[] => {
+    if (!task || !user) return clients;
+    
+    // Check if task has team member mappings
+    if (task.teamMemberMappings && task.teamMemberMappings.length > 0) {
+      // Find the mapping for current user
+      const userMapping = task.teamMemberMappings.find(mapping => mapping.userId === user.uid);
+      
+      if (userMapping) {
+        // Filter clients to only show those assigned to this user
+        const filteredClients = clients.filter(client => 
+          client.id && userMapping.clientIds.includes(client.id)
+        );
+        
+        console.log('[Team Member Mapping] Filtered clients for user:', {
+          userId: user.uid,
+          totalClients: clients.length,
+          assignedClients: filteredClients.length,
+          clientIds: userMapping.clientIds
+        });
+        
+        return filteredClients;
+      }
+    }
+    
+    // No team member mappings or user not in mappings - show all clients
+    return clients;
+  };
+
+  const filteredClients = getFilteredClients();
+
   const loadCompletions = async () => {
     if (!task || !task.id) return;
     
@@ -93,8 +125,11 @@ export function RecurringTaskClientModal({
       const completions = new Map<string, Set<string>>();
       const arnDataMap = new Map<string, Map<string, { arnNumber: string; arnName: string }>>();
       
-      // Initialize all clients with empty sets
-      clients.forEach(client => {
+      // Get filtered clients
+      const clientsToLoad = getFilteredClients();
+      
+      // Initialize all filtered clients with empty sets
+      clientsToLoad.forEach(client => {
         completions.set(client.id, new Set());
         arnDataMap.set(client.id, new Map());
       });
@@ -263,7 +298,7 @@ export function RecurringTaskClientModal({
       }> = [];
       
       visibleMonths.forEach(month => {
-        clients.forEach(client => {
+        filteredClients.forEach(client => {
           const isCompleted = clientCompletions.get(client.id)?.has(month.key) || false;
           const clientArnData = arnData.get(client.id);
           const monthArnData = clientArnData?.get(month.key);
@@ -318,8 +353,14 @@ export function RecurringTaskClientModal({
             <div>
               <h2 className="text-2xl font-bold text-gray-900">{task.title}</h2>
               <p className="text-sm text-gray-600 mt-1">
-                Track completion for {clients.length} client{clients.length !== 1 ? 's' : ''} • {visibleMonths[0]?.label || 'Current month'} only
+                Track completion for {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} • {visibleMonths[0]?.label || 'Current month'} only
               </p>
+              {task.teamMemberMappings && task.teamMemberMappings.length > 0 && filteredClients.length < clients.length && (
+                <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
+                  <UserGroupIcon className="w-3 h-3" />
+                  Showing only your assigned clients
+                </p>
+              )}
             </div>
             <button
               onClick={onClose}
@@ -337,9 +378,13 @@ export function RecurringTaskClientModal({
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
                 </div>
-              ) : clients.length === 0 ? (
+              ) : filteredClients.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-500">No clients assigned to this task</p>
+                  <p className="text-gray-500">
+                    {task.teamMemberMappings && task.teamMemberMappings.length > 0
+                      ? 'No clients assigned to you for this task'
+                      : 'No clients assigned to this task'}
+                  </p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
@@ -366,7 +411,7 @@ export function RecurringTaskClientModal({
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {clients.map((client, clientIndex) => {
+                      {filteredClients.map((client, clientIndex) => {
                         const stats = getCompletionStats(client.id);
                         return (
                           <tr 
@@ -424,7 +469,7 @@ export function RecurringTaskClientModal({
           {/* Footer */}
           <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 px-6 py-4 flex items-center justify-between">
             <div className="text-sm text-gray-600">
-              Total: {clients.length} client{clients.length !== 1 ? 's' : ''} × {visibleMonths.length} month{visibleMonths.length !== 1 ? 's' : ''}
+              Total: {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} × {visibleMonths.length} month{visibleMonths.length !== 1 ? 's' : ''}
             </div>
             <div className="flex gap-3">
               <button
