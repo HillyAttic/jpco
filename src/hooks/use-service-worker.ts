@@ -31,7 +31,7 @@ export function useServiceWorker() {
 
   const [offlineQueue, setOfflineQueue] = useState<OfflineQueueItem[]>([]);
   const offlineQueueRef = useRef<OfflineQueueItem[]>([]);
-  
+
   // Keep ref in sync with state
   useEffect(() => {
     offlineQueueRef.current = offlineQueue;
@@ -51,7 +51,8 @@ export function useServiceWorker() {
     try {
       // Register Firebase messaging service worker for push notifications
       const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/'
+        scope: '/',
+        updateViaCache: 'none', // Always check for latest SW version
       });
 
       setState(prev => ({
@@ -122,7 +123,7 @@ export function useServiceWorker() {
     };
 
     setOfflineQueue(prev => [...prev, queueItem]);
-    
+
     // Store in localStorage for persistence
     const existingQueue = JSON.parse(localStorage.getItem('offline-queue') || '[]');
     localStorage.setItem('offline-queue', JSON.stringify([...existingQueue, queueItem]));
@@ -132,7 +133,7 @@ export function useServiceWorker() {
   const processOfflineQueue = useCallback(async () => {
     const currentQueue = offlineQueueRef.current;
     const isOnline = navigator.onLine;
-    
+
     if (!isOnline || currentQueue.length === 0) return;
 
     const processedItems: string[] = [];
@@ -158,10 +159,10 @@ export function useServiceWorker() {
 
     // Remove processed items from queue
     setOfflineQueue(prev => {
-      const filtered = prev.filter(item => 
+      const filtered = prev.filter(item =>
         !processedItems.includes(`${item.method}-${item.url}-${item.timestamp}`)
       );
-      
+
       // Update localStorage with remaining items
       localStorage.setItem('offline-queue', JSON.stringify(filtered));
       return filtered;
@@ -265,7 +266,7 @@ export function useOfflineAPI() {
         options.body,
         options.headers as Record<string, string>
       );
-      
+
       throw new Error('Request queued for when online');
     }
 
@@ -296,7 +297,7 @@ export function useOfflineForm() {
         formData,
         { 'Content-Type': 'application/json', ...options.headers as Record<string, string> }
       );
-      
+
       setPendingSubmissions(prev => prev + 1);
       return { success: true, queued: true };
     }

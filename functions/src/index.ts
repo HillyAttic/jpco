@@ -1,6 +1,7 @@
 /**
  * Firebase Cloud Functions for Push Notifications
  * TypeScript version - Using v2 API
+ * VERSION: 2.0 - Fixed for Android PWA background notifications
  */
 
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
@@ -34,6 +35,7 @@ export const sendPushNotification = onDocumentCreated(
     const notificationId = event.params.notificationId;
 
     console.log("New notification created:", notificationId);
+    console.log("Notification data:", JSON.stringify(notification));
 
     // Skip if already sent
     if (notification.sent) {
@@ -41,12 +43,32 @@ export const sendPushNotification = onDocumentCreated(
       return null;
     }
 
-    // Validate required fields
-    if (!notification.fcmToken) {
-      console.error("No FCM token found in notification");
+    // Get FCM token - check the document first, then look up by userId
+    let fcmToken = notification.fcmToken;
+
+    if (!fcmToken && notification.userId) {
+      // Try to get the token from the fcmTokens collection
+      console.log("No fcmToken in notification doc, looking up by userId:", notification.userId);
+      try {
+        const tokenDoc = await admin.firestore()
+          .collection("fcmTokens")
+          .doc(notification.userId)
+          .get();
+
+        if (tokenDoc.exists) {
+          fcmToken = tokenDoc.data()?.token;
+          console.log("Found FCM token from fcmTokens collection");
+        }
+      } catch (error) {
+        console.error("Error looking up FCM token:", error);
+      }
+    }
+
+    if (!fcmToken) {
+      console.error("No FCM token found for notification:", notificationId);
       await snap.ref.update({
         sent: false,
-        error: "No FCM token provided",
+        error: "No FCM token available (not in doc, not in fcmTokens collection)",
       });
       return null;
     }
@@ -58,7 +80,7 @@ export const sendPushNotification = onDocumentCreated(
     // By using data-only, our service worker gets full control over
     // the notification display (requireInteraction, vibrate, heads-up, etc.)
     const titleText = notification.title || "New Notification";
-    const bodyText = notification.body || "You have a new notification";
+    const bodyText = notification.body || notification.message || "You have a new notification";
 
     // All data values MUST be strings for FCM data messages
     const dataPayload: { [key: string]: string } = {
@@ -66,60 +88,34 @@ export const sendPushNotification = onDocumentCreated(
       body: bodyText,
       icon: "/images/logo/logo-icon.svg",
       badge: "/images/logo/logo-icon.svg",
-      url: notification.data?.url || "/notifications",
+      url: notification.data?.url || notification.actionUrl || "/notifications",
       notificationId: notificationId,
-      type: notification.data?.type || "general",
-      taskId: notification.data?.taskId || "",
+      type: notification.data?.type || notification.type || "general",
+      taskId: notification.data?.taskId || notification.metadata?.taskId || "",
       timestamp: Date.now().toString(),
     };
 
+    // For PWA on Android, we use web push ONLY.
+    // The 'android' block only applies to native Android apps with Firebase SDK.
+    // The 'apns' block only applies to native iOS apps.
+    // Our PWA runs in Chrome, so ONLY the 'webpush' config matters.
     const message: admin.messaging.Message = {
-      // NO top-level 'notification' key - this is intentional!
+      // NO top-level 'notification' key - this is intentional for background!
       data: dataPayload,
-      token: notification.fcmToken,
+      token: fcmToken,
       webpush: {
         headers: {
           Urgency: "high",  // Tells push service to wake device immediately
-          TTL: "86400",     // 24 hours - don't drop the message
+          TTL: "86400",     // 24 hours - keep message if device is offline
         },
         fcmOptions: {
-          link: notification.data?.url || "/notifications",
+          link: notification.data?.url || notification.actionUrl || "/notifications",
         },
-        // No webpush.notification - let service worker handle it
+        // No webpush.notification - let service worker handle it fully
       },
-      android: {
-        priority: "high" as const,
-        notification: {
-          title: titleText,
-          body: bodyText,
-          icon: "logo_icon",
-          color: "#5750F1",
-          sound: "default",
-          channelId: "high_importance_channel",
-          priority: "high" as const,
-          defaultSound: true,
-          defaultVibrateTimings: true,
-          defaultLightSettings: true,
-          visibility: "public" as const,
-        },
-      },
-      apns: {
-        headers: {
-          "apns-priority": "10",  // Immediate delivery
-          "apns-push-type": "alert",
-        },
-        payload: {
-          aps: {
-            sound: "default",
-            badge: 1,
-            "content-available": 1,
-            alert: {
-              title: titleText,
-              body: bodyText,
-            },
-          },
-        },
-      },
+      // NOTE: 'android' and 'apns' blocks are NOT included because this is a PWA.
+      // PWAs on Android use the webpush protocol, not the native Android push.
+      // Including android.notification would have NO effect on Chrome PWA.
     };
 
     try {
@@ -139,11 +135,33 @@ export const sendPushNotification = onDocumentCreated(
     } catch (error: any) {
       console.error("Error sending notification:", error);
 
+      // Handle specific FCM error codes
+      let errorAction = "none";
+      if (error.code === "messaging/invalid-registration-token" ||
+        error.code === "messaging/registration-token-not-registered") {
+        // Token is invalid or expired - clean it up
+        errorAction = "token_cleanup";
+        console.log("Invalid token detected, cleaning up...");
+
+        if (notification.userId) {
+          try {
+            await admin.firestore()
+              .collection("fcmTokens")
+              .doc(notification.userId)
+              .delete();
+            console.log("Cleaned up invalid token for user:", notification.userId);
+          } catch (cleanupError) {
+            console.error("Error cleaning up token:", cleanupError);
+          }
+        }
+      }
+
       // Update with error information
       await snap.ref.update({
         sent: false,
         error: error.message,
         errorCode: error.code,
+        errorAction,
       });
 
       return { success: false, error: error.message };
@@ -252,7 +270,7 @@ export const sendTestNotification = onCall(async (request) => {
 
     const fcmToken = tokenDoc.data()?.token;
 
-    // Send test notification - DATA-ONLY for web push
+    // Send test notification - DATA-ONLY for web push (PWA)
     const message: admin.messaging.Message = {
       // NO top-level 'notification' - let service worker handle display
       data: {
@@ -274,39 +292,7 @@ export const sendTestNotification = onCall(async (request) => {
           link: "/notifications",
         },
       },
-      android: {
-        priority: "high" as const,
-        notification: {
-          title: "Test Notification",
-          body: "This is a test notification from Firebase Cloud Functions",
-          icon: "logo_icon",
-          color: "#5750F1",
-          sound: "default",
-          channelId: "high_importance_channel",
-          priority: "high" as const,
-          defaultSound: true,
-          defaultVibrateTimings: true,
-          defaultLightSettings: true,
-          visibility: "public" as const,
-        },
-      },
-      apns: {
-        headers: {
-          "apns-priority": "10",
-          "apns-push-type": "alert",
-        },
-        payload: {
-          aps: {
-            sound: "default",
-            badge: 1,
-            "content-available": 1,
-            alert: {
-              title: "Test Notification",
-              body: "This is a test notification from Firebase Cloud Functions",
-            },
-          },
-        },
-      },
+      // No android/apns blocks - this is a PWA, not a native app
     };
 
     const response = await admin.messaging().send(message);
@@ -326,4 +312,3 @@ export const sendTestNotification = onCall(async (request) => {
     );
   }
 });
-

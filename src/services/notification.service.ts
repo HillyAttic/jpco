@@ -8,6 +8,7 @@ import {
   addDoc,
   updateDoc,
   doc,
+  getDoc,
   serverTimestamp,
   onSnapshot,
   Timestamp,
@@ -125,17 +126,58 @@ class NotificationService {
   }
 
   /**
+   * Get user's FCM token from Firestore
+   * Returns the token or null if not found
+   */
+  private async getUserFCMToken(userId: string): Promise<string | null> {
+    try {
+      const tokenDoc = await getDoc(doc(db, 'fcmTokens', userId));
+      if (tokenDoc.exists()) {
+        return tokenDoc.data().token || null;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error getting FCM token for user:', userId, error);
+      return null;
+    }
+  }
+
+  /**
    * Create a new notification
+   * 
+   * This writes to the 'notifications' collection in Firestore.
+   * The Cloud Function `sendPushNotification` triggers on document creation
+   * and sends the actual FCM push message.
+   * 
+   * IMPORTANT: We include the fcmToken in the document so the Cloud Function
+   * can send the push notification. If no fcmToken is found, the Cloud Function
+   * will also try to look up the token from the 'fcmTokens' collection.
    */
   async createNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<string> {
     try {
-      const docRef = await addDoc(collection(db, this.collectionName), {
-        ...notification,
-        createdAt: serverTimestamp(),
-      });
+      // Retrieve the user's FCM token to include in the notification document
+      const fcmToken = await this.getUserFCMToken(notification.userId);
 
-      // Send push notification if user has enabled it
-      await this.sendPushNotification(notification);
+      const notificationData: Record<string, any> = {
+        ...notification,
+        // Map 'message' to 'body' for the Cloud Function
+        body: notification.message,
+        title: notification.title,
+        // Include FCM token so Cloud Function can send push notification
+        fcmToken: fcmToken || null,
+        // Include data fields for the push notification payload
+        data: {
+          url: notification.actionUrl || '/notifications',
+          type: notification.type || 'general',
+          taskId: notification.metadata?.taskId || '',
+        },
+        sent: false,
+        createdAt: serverTimestamp(),
+      };
+
+      const docRef = await addDoc(collection(db, this.collectionName), notificationData);
+
+      console.log('Notification created with id:', docRef.id, 'fcmToken present:', !!fcmToken);
 
       return docRef.id;
     } catch (error) {
@@ -215,39 +257,6 @@ class NotificationService {
     } catch (error) {
       console.error('Error deleting all notifications:', error);
       throw error;
-    }
-  }
-
-  /**
-   * Send push notification
-   */
-  private async sendPushNotification(notification: Omit<Notification, 'id' | 'createdAt'>): Promise<void> {
-    try {
-      // Check if push notifications are supported
-      if (!('Notification' in window) || !('serviceWorker' in navigator)) {
-        return;
-      }
-
-      // Check if user has granted permission
-      if (Notification.permission !== 'granted') {
-        return;
-      }
-
-      // Get service worker registration
-      const registration = await navigator.serviceWorker.ready;
-
-      // Show notification
-      await registration.showNotification(notification.title, {
-        body: notification.message,
-        icon: '/images/logo/logo-icon.svg',
-        badge: '/images/logo/logo-icon.svg',
-        tag: notification.type,
-        data: {
-          url: notification.actionUrl || '/',
-        },
-      });
-    } catch (error) {
-      console.error('Error sending push notification:', error);
     }
   }
 

@@ -1,18 +1,19 @@
 // Firebase Cloud Messaging Service Worker
 // This file must be in the public folder and served from the root
-// VERSION: 2.0 - Data-only messages for full notification control
+// VERSION: 3.0 - Fixed background notifications for Android PWA
+// IMPORTANT: This is the ONLY service worker that should handle push events
 
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js');
 
 // Take control immediately on install/activate
 self.addEventListener('install', (event) => {
-  console.log('[firebase-messaging-sw.js] Service worker installing (v2.0)...');
+  console.log('[firebase-messaging-sw.js] Service worker installing (v3.0)...');
   self.skipWaiting(); // Activate immediately, don't wait for old SW to stop
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[firebase-messaging-sw.js] Service worker activating (v2.0)...');
+  console.log('[firebase-messaging-sw.js] Service worker activating (v3.0)...');
   event.waitUntil(clients.claim()); // Take control of all pages immediately
 });
 
@@ -77,7 +78,11 @@ messaging.onBackgroundMessage((payload) => {
 
 /**
  * Handle raw push events (fallback + direct push)
- * This fires for ALL push messages and is our safety net
+ * This fires for ALL push messages and is our safety net.
+ * 
+ * IMPORTANT: For data-only FCM messages, onBackgroundMessage above will handle
+ * the display. This handler acts as a fallback in case onBackgroundMessage
+ * doesn't fire (which can happen in some edge cases on Android).
  */
 self.addEventListener('push', (event) => {
   console.log('[firebase-messaging-sw.js] Push event received');
@@ -87,41 +92,53 @@ self.addEventListener('push', (event) => {
     return;
   }
 
+  // Check if this looks like an FCM message that onBackgroundMessage will handle
+  // FCM messages have a specific structure with 'data' and sometimes 'from'
+  let payload;
   try {
-    const payload = event.data.json();
+    payload = event.data.json();
     console.log('[firebase-messaging-sw.js] Push payload:', JSON.stringify(payload));
-
-    // Data-only messages: everything is in payload.data
-    const data = payload.data || {};
-
-    // If there's no title in data, check if FCM auto-added notification
-    // (shouldn't happen with data-only, but just in case)
-    const title = data.title || payload.notification?.title || 'New Notification';
-
-    // Merge any notification fields into data for buildNotificationOptions
-    if (!data.body && payload.notification?.body) {
-      data.body = payload.notification.body;
-    }
-    if (!data.icon && payload.notification?.icon) {
-      data.icon = payload.notification.icon;
-    }
-
-    const options = buildNotificationOptions(data);
-
-    console.log('[firebase-messaging-sw.js] Showing push notification:', title);
-
-    event.waitUntil(
-      self.registration.showNotification(title, options)
-        .then(() => {
-          console.log('[firebase-messaging-sw.js] ✅ Notification displayed successfully');
-        })
-        .catch((error) => {
-          console.error('[firebase-messaging-sw.js] ❌ Error showing notification:', error);
-        })
-    );
   } catch (error) {
     console.error('[firebase-messaging-sw.js] Error parsing push data:', error);
+    return;
   }
+
+  // If this is an FCM message (has 'from' field with sender ID), let onBackgroundMessage handle it
+  // Only show notification here if onBackgroundMessage did NOT handle it
+  if (payload.from && payload.from.includes('492450530050')) {
+    console.log('[firebase-messaging-sw.js] FCM message detected, onBackgroundMessage should handle this');
+    // Still call waitUntil to keep the SW alive, but don't show duplicate notification
+    // onBackgroundMessage will fire separately for this same push event
+    return;
+  }
+
+  // For non-FCM push messages (or as fallback), show notification directly
+  const data = payload.data || {};
+
+  // If there's no title in data, check if FCM auto-added notification
+  const title = data.title || payload.notification?.title || 'New Notification';
+
+  // Merge any notification fields into data for buildNotificationOptions
+  if (!data.body && payload.notification?.body) {
+    data.body = payload.notification.body;
+  }
+  if (!data.icon && payload.notification?.icon) {
+    data.icon = payload.notification.icon;
+  }
+
+  const options = buildNotificationOptions(data);
+
+  console.log('[firebase-messaging-sw.js] Showing push notification (fallback):', title);
+
+  event.waitUntil(
+    self.registration.showNotification(title, options)
+      .then(() => {
+        console.log('[firebase-messaging-sw.js] ✅ Notification displayed successfully');
+      })
+      .catch((error) => {
+        console.error('[firebase-messaging-sw.js] ❌ Error showing notification:', error);
+      })
+  );
 });
 
 /**
