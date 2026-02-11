@@ -28,7 +28,7 @@ export function isIOSDevice(): boolean {
 export function isStandalonePWA(): boolean {
   if (typeof window === 'undefined') return false;
   return window.matchMedia('(display-mode: standalone)').matches ||
-         (window.navigator as any).standalone === true;
+    (window.navigator as any).standalone === true;
 }
 
 export function getIOSVersion(): number | null {
@@ -95,13 +95,13 @@ export async function requestNotificationPermission(): Promise<string | null> {
 
     // Request permission
     const permission = await Notification.requestPermission();
-    
+
     if (permission === 'granted') {
       console.log('Notification permission granted');
-      
+
       // Initialize messaging and get token
       const token = await initializeMessaging();
-      
+
       if (token) {
         console.log('FCM Token:', token);
         return token;
@@ -177,44 +177,53 @@ export async function requestNotificationPermissionMobile(): Promise<string | nu
 export function onForegroundMessage(callback: (payload: any) => void) {
   if (!messaging) {
     console.error('Firebase Messaging not initialized');
-    return () => {};
+    return () => { };
   }
 
   return onMessage(messaging, (payload) => {
     console.log('Foreground message received:', payload);
-    
-    // Only handle if page is actually visible
-    if (document.visibilityState !== 'visible') {
-      console.log('Page not visible, letting service worker handle notification');
-      return;
-    }
-    
+
+    // With data-only messages, title/body are in payload.data
+    // Fall back to payload.notification for backward compatibility
+    const data = payload.data || {};
+    const notificationTitle = data.title || payload.notification?.title || 'New Notification';
+    const notificationBody = data.body || payload.notification?.body || 'You have a new notification';
+
     // Show browser notification for foreground messages
     if (Notification.permission === 'granted') {
-      const notificationTitle = payload.notification?.title || 'New Notification';
-      const notificationOptions = {
-        body: payload.notification?.body || 'You have a new notification',
-        icon: payload.notification?.icon || '/images/logo/logo-icon.svg',
+      const notificationOptions: NotificationOptions = {
+        body: notificationBody,
+        icon: data.icon || payload.notification?.icon || '/images/logo/logo-icon.svg',
         badge: '/images/logo/logo-icon.svg',
-        tag: payload.data?.taskId || 'notification',
-        data: payload.data,
-        requireInteraction: false,
+        tag: data.notificationId || data.taskId || 'notification',
+        data: data,
+        requireInteraction: true,   // Keep visible until user interacts
+        vibrate: [300, 100, 300, 100, 300],
+        renotify: true,
       };
 
       // Create browser notification
       const notification = new Notification(notificationTitle, notificationOptions);
-      
+
       notification.onclick = () => {
         window.focus();
-        if (payload.data?.url) {
-          window.location.href = payload.data.url;
+        if (data.url) {
+          window.location.href = data.url;
         }
         notification.close();
       };
     }
-    
+
     // Also call the callback for additional handling (like toast)
-    callback(payload);
+    // Include extracted title/body for convenience
+    callback({
+      ...payload,
+      notification: {
+        ...payload.notification,
+        title: notificationTitle,
+        body: notificationBody,
+      }
+    });
   });
 }
 

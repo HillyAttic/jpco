@@ -1,13 +1,13 @@
 /**
  * Firebase Cloud Functions for Push Notifications
  * TypeScript version - Using v2 API
- */ 
+ */
 
-import {onDocumentCreated} from "firebase-functions/v2/firestore";
-import {onSchedule} from "firebase-functions/v2/scheduler";
-import {onCall, HttpsError} from "firebase-functions/v2/https";
+import { onDocumentCreated } from "firebase-functions/v2/firestore";
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
-import {setGlobalOptions} from "firebase-functions/v2";
+import { setGlobalOptions } from "firebase-functions/v2";
 
 // Set global options - MUST match your Firebase project region
 setGlobalOptions({
@@ -51,32 +51,47 @@ export const sendPushNotification = onDocumentCreated(
       return null;
     }
 
-    // Construct the message
+    // Construct DATA-ONLY message for web push
+    // IMPORTANT: Do NOT include top-level 'notification' payload!
+    // When FCM sees a 'notification' payload, it auto-displays a basic
+    // notification and BYPASSES the service worker's onBackgroundMessage.
+    // By using data-only, our service worker gets full control over
+    // the notification display (requireInteraction, vibrate, heads-up, etc.)
+    const titleText = notification.title || "New Notification";
+    const bodyText = notification.body || "You have a new notification";
+
+    // All data values MUST be strings for FCM data messages
+    const dataPayload: { [key: string]: string } = {
+      title: titleText,
+      body: bodyText,
+      icon: "/images/logo/logo-icon.svg",
+      badge: "/images/logo/logo-icon.svg",
+      url: notification.data?.url || "/notifications",
+      notificationId: notificationId,
+      type: notification.data?.type || "general",
+      taskId: notification.data?.taskId || "",
+      timestamp: Date.now().toString(),
+    };
+
     const message: admin.messaging.Message = {
-      notification: {
-        title: notification.title || "New Notification",
-        body: notification.body || "You have a new notification",
-      },
-      data: {
-        ...(notification.data || {}),
-        notificationId: notificationId,
-      },
+      // NO top-level 'notification' key - this is intentional!
+      data: dataPayload,
       token: notification.fcmToken,
       webpush: {
+        headers: {
+          Urgency: "high",  // Tells push service to wake device immediately
+          TTL: "86400",     // 24 hours - don't drop the message
+        },
         fcmOptions: {
           link: notification.data?.url || "/notifications",
         },
-        notification: {
-          icon: "/images/logo/logo-icon.svg",
-          badge: "/images/logo/logo-icon.svg",
-          requireInteraction: false,
-          vibrate: [200, 100, 200],
-          tag: "jpco-notification",
-        },
+        // No webpush.notification - let service worker handle it
       },
       android: {
         priority: "high" as const,
         notification: {
+          title: titleText,
+          body: bodyText,
           icon: "logo_icon",
           color: "#5750F1",
           sound: "default",
@@ -89,13 +104,18 @@ export const sendPushNotification = onDocumentCreated(
         },
       },
       apns: {
+        headers: {
+          "apns-priority": "10",  // Immediate delivery
+          "apns-push-type": "alert",
+        },
         payload: {
           aps: {
             sound: "default",
             badge: 1,
+            "content-available": 1,
             alert: {
-              title: notification.title || "New Notification",
-              body: notification.body || "You have a new notification",
+              title: titleText,
+              body: bodyText,
             },
           },
         },
@@ -115,7 +135,7 @@ export const sendPushNotification = onDocumentCreated(
         messageId: response,
       });
 
-      return {success: true, messageId: response};
+      return { success: true, messageId: response };
     } catch (error: any) {
       console.error("Error sending notification:", error);
 
@@ -126,7 +146,7 @@ export const sendPushNotification = onDocumentCreated(
         errorCode: error.code,
       });
 
-      return {success: false, error: error.message};
+      return { success: false, error: error.message };
     }
   }
 );
@@ -181,7 +201,7 @@ export const updateFCMToken = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "User must be authenticated");
   }
 
-  const {token} = request.data;
+  const { token } = request.data;
   const userId = request.auth.uid;
 
   if (!token) {
@@ -198,10 +218,10 @@ export const updateFCMToken = onCall(async (request) => {
           token,
           updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         },
-        {merge: true}
+        { merge: true }
       );
 
-    return {success: true};
+    return { success: true };
   } catch (error: any) {
     console.error("Error updating FCM token:", error);
     throw new HttpsError("internal", "Failed to update FCM token");
@@ -232,29 +252,33 @@ export const sendTestNotification = onCall(async (request) => {
 
     const fcmToken = tokenDoc.data()?.token;
 
-    // Send test notification
+    // Send test notification - DATA-ONLY for web push
     const message: admin.messaging.Message = {
-      notification: {
+      // NO top-level 'notification' - let service worker handle display
+      data: {
         title: "Test Notification",
         body: "This is a test notification from Firebase Cloud Functions",
-      },
-      data: {
+        icon: "/images/logo/logo-icon.svg",
+        badge: "/images/logo/logo-icon.svg",
         type: "test",
         url: "/notifications",
+        timestamp: Date.now().toString(),
       },
       token: fcmToken,
       webpush: {
+        headers: {
+          Urgency: "high",
+          TTL: "86400",
+        },
         fcmOptions: {
           link: "/notifications",
-        },
-        notification: {
-          icon: "/images/logo/logo-icon.svg",
-          badge: "/images/logo/logo-icon.svg",
         },
       },
       android: {
         priority: "high" as const,
         notification: {
+          title: "Test Notification",
+          body: "This is a test notification from Firebase Cloud Functions",
           icon: "logo_icon",
           color: "#5750F1",
           sound: "default",
@@ -267,10 +291,15 @@ export const sendTestNotification = onCall(async (request) => {
         },
       },
       apns: {
+        headers: {
+          "apns-priority": "10",
+          "apns-push-type": "alert",
+        },
         payload: {
           aps: {
             sound: "default",
             badge: 1,
+            "content-available": 1,
             alert: {
               title: "Test Notification",
               body: "This is a test notification from Firebase Cloud Functions",
