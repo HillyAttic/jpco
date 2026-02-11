@@ -1,0 +1,25 @@
+# Firebase Cloud Functions (not needed for Vercel deployment)
+functions/
+
+# Firebase files
+firebase.json
+.firebaserc
+firebase-debug.log
+firestore-*.txt
+
+# Deployment scripts
+deploy-functions.bat
+deploy-functions.ps1
+
+# Documentation files (optional - remove if you want them in deployment)
+*.md
+!README.md
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+jest.config.js
+jest.setup.js
+jest.setup.d.ts
