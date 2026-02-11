@@ -56,7 +56,6 @@ export const sendPushNotification = onDocumentCreated(
       notification: {
         title: notification.title || "New Notification",
         body: notification.body || "You have a new notification",
-        icon: "/images/logo/logo-icon.svg",
       },
       data: {
         ...(notification.data || {}),
@@ -71,6 +70,24 @@ export const sendPushNotification = onDocumentCreated(
           icon: "/images/logo/logo-icon.svg",
           badge: "/images/logo/logo-icon.svg",
           requireInteraction: false,
+          vibrate: [200, 100, 200],
+          tag: "jpco-notification",
+        },
+      },
+      android: {
+        notification: {
+          icon: "logo_icon",
+          color: "#5750F1",
+          sound: "default",
+          channelId: "default",
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+            badge: 1,
+          },
         },
       },
     };
@@ -210,13 +227,28 @@ export const sendTestNotification = onCall(async (request) => {
       notification: {
         title: "Test Notification",
         body: "This is a test notification from Firebase Cloud Functions",
-        icon: "/images/logo/logo-icon.svg",
       },
       data: {
         type: "test",
         url: "/notifications",
       },
       token: fcmToken,
+      webpush: {
+        fcmOptions: {
+          link: "/notifications",
+        },
+        notification: {
+          icon: "/images/logo/logo-icon.svg",
+          badge: "/images/logo/logo-icon.svg",
+        },
+      },
+      android: {
+        notification: {
+          icon: "logo_icon",
+          color: "#5750F1",
+          sound: "default",
+        },
+      },
     };
 
     const response = await admin.messaging().send(message);
