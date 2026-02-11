@@ -4,12 +4,13 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, LayoutDashboard, Settings, Bell, ClipboardCheck } from "lucide-react";
+import { useNotifications } from "@/hooks/use-notifications";
 
 interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   label: string;
-  badge?: number;
+  showBadge?: boolean;
 }
 
 const NAV_ITEMS: NavItem[] = [
@@ -27,7 +28,7 @@ const NAV_ITEMS: NavItem[] = [
     href: "/notifications",
     icon: Bell,
     label: "Notifications",
-    badge: 0, // Will be dynamic in the future
+    showBadge: true,
   },
   {
     href: "/attendance",
@@ -43,6 +44,7 @@ const NAV_ITEMS: NavItem[] = [
 
 export function MobileBottomNav() {
   const pathname = usePathname();
+  const { unreadCount } = useNotifications();
 
   return (
     <nav
@@ -54,6 +56,7 @@ export function MobileBottomNav() {
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
           const Icon = item.icon;
+          const badge = item.showBadge ? unreadCount : 0;
 
           return (
             <Link
@@ -79,12 +82,12 @@ export function MobileBottomNav() {
                   )}
                   aria-hidden="true"
                 />
-                {item.badge !== undefined && item.badge > 0 && (
+                {badge > 0 && (
                   <span
-                    className="absolute -top-1 -right-1 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-red-500 rounded-full"
-                    aria-label={`${item.badge} notifications`}
+                    className="absolute -top-1 -right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 text-[10px] font-bold text-white bg-red-500 rounded-full"
+                    aria-label={`${badge} unread notifications`}
                   >
-                    {item.badge > 9 ? "9+" : item.badge}
+                    {badge > 99 ? "99+" : badge}
                   </span>
                 )}
               </div>
