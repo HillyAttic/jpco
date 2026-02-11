@@ -49,7 +49,8 @@ export function useServiceWorker() {
     }
 
     try {
-      const registration = await navigator.serviceWorker.register('/sw.js', {
+      // Register Firebase messaging service worker for push notifications
+      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
         scope: '/'
       });
 
