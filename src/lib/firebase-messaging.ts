@@ -70,6 +70,32 @@ export function onForegroundMessage(callback: (payload: any) => void) {
 
   return onMessage(messaging, (payload) => {
     console.log('Foreground message received:', payload);
+    
+    // Show browser notification for foreground messages
+    if (Notification.permission === 'granted') {
+      const notificationTitle = payload.notification?.title || 'New Notification';
+      const notificationOptions = {
+        body: payload.notification?.body || 'You have a new notification',
+        icon: payload.notification?.icon || '/images/logo/logo-icon.svg',
+        badge: '/images/logo/logo-icon.svg',
+        tag: payload.data?.taskId || 'notification',
+        data: payload.data,
+        requireInteraction: false,
+      };
+
+      // Create browser notification
+      const notification = new Notification(notificationTitle, notificationOptions);
+      
+      notification.onclick = () => {
+        window.focus();
+        if (payload.data?.url) {
+          window.location.href = payload.data.url;
+        }
+        notification.close();
+      };
+    }
+    
+    // Also call the callback for additional handling (like toast)
     callback(payload);
   });
 }
