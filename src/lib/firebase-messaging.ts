@@ -191,16 +191,14 @@ export function onForegroundMessage(callback: (payload: any) => void) {
 
     // Show browser notification for foreground messages
     if (Notification.permission === 'granted') {
-      const notificationOptions: NotificationOptions = {
+      const notificationOptions = {
         body: notificationBody,
         icon: data.icon || payload.notification?.icon || '/images/logo/logo-icon.svg',
         badge: '/images/logo/logo-icon.svg',
         tag: data.notificationId || data.taskId || 'notification',
         data: data,
         requireInteraction: true,   // Keep visible until user interacts
-        vibrate: [300, 100, 300, 100, 300],
-        renotify: true,
-      };
+      } as NotificationOptions;
 
       // Create browser notification
       const notification = new Notification(notificationTitle, notificationOptions);
