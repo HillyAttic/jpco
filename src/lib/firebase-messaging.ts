@@ -183,6 +183,12 @@ export function onForegroundMessage(callback: (payload: any) => void) {
   return onMessage(messaging, (payload) => {
     console.log('Foreground message received:', payload);
     
+    // Only handle if page is actually visible
+    if (document.visibilityState !== 'visible') {
+      console.log('Page not visible, letting service worker handle notification');
+      return;
+    }
+    
     // Show browser notification for foreground messages
     if (Notification.permission === 'granted') {
       const notificationTitle = payload.notification?.title || 'New Notification';

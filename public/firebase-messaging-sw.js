@@ -104,10 +104,65 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-// Handle push events (for additional logging)
+// Handle push events directly (fallback for when onBackgroundMessage doesn't trigger)
 self.addEventListener('push', (event) => {
   console.log('[firebase-messaging-sw.js] Push event received:', event);
   
-  // Firebase messaging handles this automatically via onBackgroundMessage
-  // This listener is just for logging
+  // Check if we have push data
+  if (!event.data) {
+    console.log('[firebase-messaging-sw.js] No push data');
+    return;
+  }
+  
+  try {
+    const payload = event.data.json();
+    console.log('[firebase-messaging-sw.js] Push payload:', payload);
+    
+    // Extract notification data
+    const notificationData = payload.notification || {};
+    const data = payload.data || {};
+    
+    const notificationTitle = notificationData.title || 'New Notification';
+    const notificationOptions = {
+      body: notificationData.body || 'You have a new notification',
+      icon: notificationData.icon || '/images/logo/logo-icon.svg',
+      badge: '/images/logo/logo-icon.svg',
+      tag: data.notificationId || 'jpco-notification',
+      data: {
+        url: data.url || '/notifications',
+        taskId: data.taskId,
+        type: data.type,
+        notificationId: data.notificationId,
+      },
+      actions: [
+        {
+          action: 'open',
+          title: 'View',
+        },
+        {
+          action: 'close',
+          title: 'Dismiss',
+        },
+      ],
+      requireInteraction: false,
+      vibrate: [200, 100, 200],
+      silent: false,
+      timestamp: Date.now(),
+      renotify: true,
+    };
+    
+    console.log('[firebase-messaging-sw.js] Showing notification from push event:', notificationTitle);
+    
+    event.waitUntil(
+      self.registration.showNotification(notificationTitle, notificationOptions)
+        .then(() => {
+          console.log('[firebase-messaging-sw.js] Notification shown successfully');
+        })
+        .catch((error) => {
+          console.error('[firebase-messaging-sw.js] Error showing notification:', error);
+        })
+    );
+  } catch (error) {
+    console.error('[firebase-messaging-sw.js] Error parsing push data:', error);
+  }
 });
