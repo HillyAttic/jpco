@@ -1,7 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 // Note: Only importing storage if you plan to use it
 // import { getStorage } from 'firebase/storage'; 
 
@@ -21,7 +21,17 @@ const app = initializeApp(firebaseConfig);
 
 // Initialize Firebase services
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+
+// Initialize Firestore with long-polling instead of gRPC/QUIC streaming.
+// This fixes ERR_QUIC_PROTOCOL_ERROR.QUIC_TOO_MANY_RTOS errors that occur
+// when the network blocks or throttles UDP packets (QUIC uses UDP).
+// Long-polling uses standard HTTP (TCP) which works on all networks.
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true,
+  localCache: persistentLocalCache({
+    tabManager: persistentMultipleTabManager(),
+  }),
+});
 // export const storage = getStorage(app); // Uncomment if you plan to use Firebase Storage
 export const googleProvider = new GoogleAuthProvider();
 
