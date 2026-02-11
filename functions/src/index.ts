@@ -1,7 +1,7 @@
 /**
  * Firebase Cloud Functions for Push Notifications
  * TypeScript version - Using v2 API
- */
+ */ 
 
 import {onDocumentCreated} from "firebase-functions/v2/firestore";
 import {onSchedule} from "firebase-functions/v2/scheduler";
@@ -52,7 +52,7 @@ export const sendPushNotification = onDocumentCreated(
     }
 
     // Construct the message
-    const message = {
+    const message: admin.messaging.Message = {
       notification: {
         title: notification.title || "New Notification",
         body: notification.body || "You have a new notification",
@@ -75,11 +75,17 @@ export const sendPushNotification = onDocumentCreated(
         },
       },
       android: {
+        priority: "high" as const,
         notification: {
           icon: "logo_icon",
           color: "#5750F1",
           sound: "default",
-          channelId: "default",
+          channelId: "high_importance_channel",
+          priority: "high" as const,
+          defaultSound: true,
+          defaultVibrateTimings: true,
+          defaultLightSettings: true,
+          visibility: "public" as const,
         },
       },
       apns: {
@@ -87,6 +93,10 @@ export const sendPushNotification = onDocumentCreated(
           aps: {
             sound: "default",
             badge: 1,
+            alert: {
+              title: notification.title || "New Notification",
+              body: notification.body || "You have a new notification",
+            },
           },
         },
       },
@@ -223,7 +233,7 @@ export const sendTestNotification = onCall(async (request) => {
     const fcmToken = tokenDoc.data()?.token;
 
     // Send test notification
-    const message = {
+    const message: admin.messaging.Message = {
       notification: {
         title: "Test Notification",
         body: "This is a test notification from Firebase Cloud Functions",
@@ -243,10 +253,29 @@ export const sendTestNotification = onCall(async (request) => {
         },
       },
       android: {
+        priority: "high" as const,
         notification: {
           icon: "logo_icon",
           color: "#5750F1",
           sound: "default",
+          channelId: "high_importance_channel",
+          priority: "high" as const,
+          defaultSound: true,
+          defaultVibrateTimings: true,
+          defaultLightSettings: true,
+          visibility: "public" as const,
+        },
+      },
+      apns: {
+        payload: {
+          aps: {
+            sound: "default",
+            badge: 1,
+            alert: {
+              title: "Test Notification",
+              body: "This is a test notification from Firebase Cloud Functions",
+            },
+          },
         },
       },
     };
