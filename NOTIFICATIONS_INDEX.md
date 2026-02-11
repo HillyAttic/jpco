@@ -56,13 +56,31 @@ Start here for a quick overview and setup:
    - Data flow visualization
    - State diagrams
 
-### Implementation Details
+### Deployment
 
-7. **[PUSH_NOTIFICATIONS_IMPLEMENTATION_SUMMARY.md](PUSH_NOTIFICATIONS_IMPLEMENTATION_SUMMARY.md)**
-   - What's been implemented
-   - Files created/modified
-   - Features list
+8. **[DEPLOY_CLOUD_FUNCTIONS.md](DEPLOY_CLOUD_FUNCTIONS.md)** ⭐ **NEW**
+   - Step-by-step deployment guide
+   - Automated deployment scripts
+   - Verification and testing
+   - Troubleshooting deployment issues
+
+9. **[CLOUD_FUNCTIONS_DEPLOYMENT_SUMMARY.md](CLOUD_FUNCTIONS_DEPLOYMENT_SUMMARY.md)** ⭐ **NEW**
+   - Quick deployment summary
+   - Automated vs manual deployment
+   - Cost information
    - Success criteria
+
+### Deployment Scripts
+
+10. **`deploy-functions.ps1`** ⭐ **NEW**
+    - PowerShell deployment script
+    - Automated deployment process
+    - Run: `.\deploy-functions.ps1`
+
+11. **`deploy-functions.bat`** ⭐ **NEW**
+    - Batch file deployment script
+    - Windows Command Prompt compatible
+    - Run: `.\deploy-functions.bat`
 
 ---
 
@@ -77,8 +95,13 @@ Start here for a quick overview and setup:
 ### "I want to test notifications"
 → Check: **[NOTIFICATION_TESTING_GUIDE.md](NOTIFICATION_TESTING_GUIDE.md)**
 
-### "I need to deploy to production"
+### "I want to deploy to production"
 → Follow: **[FCM_PUSH_NOTIFICATIONS_SETUP.md](FCM_PUSH_NOTIFICATIONS_SETUP.md)** (Step 6)
+
+### "I want to deploy Cloud Functions"
+→ Use automated script: **`.\deploy-functions.ps1`** or **`.\deploy-functions.bat`**  
+→ Or follow manual guide: **[DEPLOY_CLOUD_FUNCTIONS.md](DEPLOY_CLOUD_FUNCTIONS.md)**  
+→ Quick summary: **[CLOUD_FUNCTIONS_DEPLOYMENT_SUMMARY.md](CLOUD_FUNCTIONS_DEPLOYMENT_SUMMARY.md)**
 
 ### "Something's not working"
 → Debug with: **[NOTIFICATION_TESTING_GUIDE.md](NOTIFICATION_TESTING_GUIDE.md)** (Debugging section)

@@ -183,6 +183,15 @@ notifications/
 ### ⏳ Optional (For Background Notifications):
 Deploy Cloud Functions to enable notifications when app is closed:
 
+**Option 1: Automated Script (Recommended)**
+```bash
+# Run the deployment script
+.\deploy-functions.ps1
+# or
+.\deploy-functions.bat
+```
+
+**Option 2: Manual Deployment**
 ```bash
 # Install Firebase CLI
 npm install -g firebase-tools
@@ -199,7 +208,7 @@ firebase init functions
 firebase deploy --only functions
 ```
 
-See: `FCM_PUSH_NOTIFICATIONS_SETUP.md` for detailed instructions.
+See: `DEPLOY_CLOUD_FUNCTIONS.md` for detailed step-by-step instructions.
 
 ---
 
