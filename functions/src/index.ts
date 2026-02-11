@@ -9,8 +9,11 @@ import {onCall, HttpsError} from "firebase-functions/v2/https";
 import * as admin from "firebase-admin";
 import {setGlobalOptions} from "firebase-functions/v2";
 
-// Set global options
-setGlobalOptions({maxInstances: 10});
+// Set global options - MUST match your Firebase project region
+setGlobalOptions({
+  region: "asia-south2", // Match your Firebase project location
+  maxInstances: 10,
+});
 
 admin.initializeApp();
 
@@ -104,9 +107,13 @@ export const sendPushNotification = onDocumentCreated(
 /**
  * Clean up old notifications (optional)
  * Runs daily to delete notifications older than 30 days
+ * Note: Uses asia-south1 because Cloud Scheduler doesn't support asia-south2
  */
 export const cleanupOldNotifications = onSchedule(
-  "every 24 hours",
+  {
+    schedule: "every 24 hours",
+    region: "asia-south1", // Cloud Scheduler supported region
+  },
   async (event) => {
     const db = admin.firestore();
     const thirtyDaysAgo = new Date();
