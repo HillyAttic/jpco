@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { adminDb, adminMessaging } from '@/lib/firebase-admin';
 
 /**
  * POST /api/notifications/send
- * Send push notification to user(s) when task is assigned
+ * Send push notification to user(s) - FAST direct FCM delivery
  * 
- * This endpoint stores notification data in Firestore.
- * You'll need to set up Firebase Cloud Functions to actually send the push notifications.
+ * This endpoint:
+ * 1. Sends FCM push notification DIRECTLY (no Cloud Function needed)
+ * 2. Stores notification in Firestore for history (in parallel)
+ * 
+ * This eliminates the Cloud Function cold start delay (3-15 seconds)
+ * making notifications nearly instant.
  */
 export async function POST(request: NextRequest) {
+  const startTime = Date.now();
+
   try {
     const { userIds, title, body, data } = await request.json();
 
@@ -27,59 +32,127 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const notifications = [];
+    const results: Array<{ userId: string; messageId: string; deliveryTime: string }> = [];
+    const errors: Array<{ userId: string; error: string }> = [];
 
-    // Create notification for each user
-    for (const userId of userIds) {
-      // Get user's FCM token
-      const tokenRef = doc(db, 'fcmTokens', userId);
-      const tokenDoc = await getDoc(tokenRef);
+    // Process all users in parallel for maximum speed
+    const promises = userIds.map(async (userId: string) => {
+      try {
+        // Get user's FCM token
+        const tokenDoc = await adminDb.collection('fcmTokens').doc(userId).get();
 
-      if (!tokenDoc.exists()) {
-        console.log(`No FCM token found for user ${userId}`);
-        continue;
+        if (!tokenDoc.exists) {
+          console.log(`No FCM token found for user ${userId}`);
+          errors.push({ userId, error: 'No FCM token' });
+
+          // Still store notification in Firestore (without sending push)
+          await adminDb.collection('notifications').add({
+            userId,
+            title,
+            body,
+            data: data || {},
+            read: false,
+            sent: false,
+            error: 'No FCM token',
+            createdAt: new Date(),
+          });
+          return;
+        }
+
+        const fcmToken = tokenDoc.data()?.token;
+
+        // Send FCM and store in Firestore IN PARALLEL
+        const [fcmResult, firestoreResult] = await Promise.allSettled([
+          // 1. Send FCM push notification directly (DATA-ONLY for service worker control)
+          adminMessaging.send({
+            data: {
+              title: title,
+              body: body,
+              icon: '/images/logo/logo-icon.svg',
+              badge: '/images/logo/logo-icon.svg',
+              url: data?.url || '/notifications',
+              type: data?.type || 'general',
+              taskId: data?.taskId || '',
+              timestamp: Date.now().toString(),
+            },
+            token: fcmToken,
+            webpush: {
+              headers: {
+                Urgency: 'high',
+                TTL: '86400',
+              },
+              fcmOptions: {
+                link: data?.url || '/notifications',
+              },
+            },
+          }),
+
+          // 2. Store notification in Firestore for history/UI
+          adminDb.collection('notifications').add({
+            userId,
+            fcmToken,
+            title,
+            body,
+            data: data || {},
+            read: false,
+            sent: true,
+            sentAt: new Date(),
+            sentDirect: true, // Flag: sent directly, not via Cloud Function
+            createdAt: new Date(),
+          }),
+        ]);
+
+        if (fcmResult.status === 'fulfilled') {
+          console.log(`✅ FCM sent to ${userId} in ${Date.now() - startTime}ms`);
+          results.push({
+            userId,
+            messageId: fcmResult.value,
+            deliveryTime: `${Date.now() - startTime}ms`,
+          });
+        } else {
+          const error = fcmResult.reason;
+          console.error(`❌ FCM failed for ${userId}:`, error.message);
+
+          // Handle invalid/expired tokens
+          if (error.code === 'messaging/invalid-registration-token' ||
+            error.code === 'messaging/registration-token-not-registered') {
+            // Clean up expired token
+            await adminDb.collection('fcmTokens').doc(userId).delete();
+            console.log(`🗑️ Cleaned up expired token for ${userId}`);
+          }
+
+          errors.push({ userId, error: error.message });
+        }
+
+        if (firestoreResult.status === 'rejected') {
+          console.error(`Firestore write failed for ${userId}:`, firestoreResult.reason);
+        }
+
+      } catch (error: any) {
+        console.error(`Error processing notification for ${userId}:`, error);
+        errors.push({ userId, error: error.message });
       }
+    });
 
-      const fcmToken = tokenDoc.data().token;
+    // Wait for all notifications to be processed
+    await Promise.all(promises);
 
-      // Store notification in Firestore
-      const notificationRef = await addDoc(collection(db, 'notifications'), {
-        userId,
-        fcmToken,
-        title,
-        body,
-        data: data || {},
-        read: false,
-        sent: false,
-        createdAt: serverTimestamp(),
-      });
-
-      notifications.push({
-        id: notificationRef.id,
-        userId,
-      });
-
-      // In a production environment, you would trigger a Cloud Function here
-      // to actually send the push notification using the FCM Admin SDK
-      // For now, we'll just log it
-      console.log(`Notification queued for user ${userId}:`, {
-        title,
-        body,
-        data,
-      });
-    }
+    const totalTime = Date.now() - startTime;
+    console.log(`📬 Notification batch completed in ${totalTime}ms (${results.length} sent, ${errors.length} errors)`);
 
     return NextResponse.json(
       {
-        message: 'Notifications queued successfully',
-        notifications,
+        message: 'Notifications processed',
+        totalTime: `${totalTime}ms`,
+        sent: results,
+        errors: errors.length > 0 ? errors : undefined,
       },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error sending notifications:', error);
     return NextResponse.json(
-      { error: 'Failed to send notifications' },
+      { error: 'Failed to send notifications', details: error.message },
       { status: 500 }
     );
   }

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/firebase';
-import { doc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
+import { adminDb } from '@/lib/firebase-admin';
 
 /**
  * POST /api/notifications/fcm-token
- * Save FCM token for a user
+ * Save user's FCM token
  */
 export async function POST(request: NextRequest) {
   try {
@@ -17,21 +16,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Save token to Firestore
-    const tokenRef = doc(db, 'fcmTokens', userId);
-    await setDoc(tokenRef, {
-      token,
-      updatedAt: serverTimestamp(),
-    }, { merge: true });
+    // Save FCM token using Admin SDK (faster, more reliable)
+    await adminDb.collection('fcmTokens').doc(userId).set(
+      {
+        token,
+        updatedAt: new Date(),
+        platform: 'web',
+      },
+      { merge: true }
+    );
+
+    console.log(`FCM token saved for user ${userId}`);
 
     return NextResponse.json(
       { message: 'FCM token saved successfully' },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error saving FCM token:', error);
     return NextResponse.json(
-      { error: 'Failed to save FCM token' },
+      { error: 'Failed to save FCM token', details: error.message },
       { status: 500 }
     );
   }
@@ -39,7 +43,7 @@ export async function POST(request: NextRequest) {
 
 /**
  * DELETE /api/notifications/fcm-token
- * Delete FCM token for a user
+ * Remove user's FCM token
  */
 export async function DELETE(request: NextRequest) {
   try {
@@ -52,18 +56,18 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete token from Firestore
-    const tokenRef = doc(db, 'fcmTokens', userId);
-    await deleteDoc(tokenRef);
+    await adminDb.collection('fcmTokens').doc(userId).delete();
+
+    console.log(`FCM token deleted for user ${userId}`);
 
     return NextResponse.json(
       { message: 'FCM token deleted successfully' },
       { status: 200 }
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error deleting FCM token:', error);
     return NextResponse.json(
-      { error: 'Failed to delete FCM token' },
+      { error: 'Failed to delete FCM token', details: error.message },
       { status: 500 }
     );
   }

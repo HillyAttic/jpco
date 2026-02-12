@@ -3,10 +3,10 @@
 import { useEffect, useState } from "react";
 import { Bell, BellOff, Check, X } from "lucide-react";
 import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
-import { 
+import {
   requestNotificationPermission,
   requestNotificationPermissionMobile,
-  saveFCMToken, 
+  saveFCMToken,
   onForegroundMessage,
   deleteFCMToken,
   isMobileDevice,
@@ -16,7 +16,7 @@ import {
 } from "@/lib/firebase-messaging";
 import { toast } from "react-toastify";
 import { db } from "@/lib/firebase";
-import { collection, query, where, orderBy, onSnapshot, doc, updateDoc } from "firebase/firestore";
+import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 
 interface Notification {
   id: string;
@@ -102,19 +102,19 @@ export default function NotificationsPage() {
       }
 
       // Request permission (use mobile-specific handler if on mobile)
-      const token = isMobile 
+      const token = isMobile
         ? await requestNotificationPermissionMobile()
         : await requestNotificationPermission();
-      
+
       if (token) {
         // Save token to Firestore
         const saved = await saveFCMToken(user.uid, token);
-        
+
         if (saved) {
           setFcmToken(token);
           setNotificationPermission('granted');
           toast.success("Notifications enabled successfully!");
-          
+
           // Log success for debugging
           console.log('Notification setup complete:', {
             token: token.substring(0, 20) + '...',
@@ -130,7 +130,7 @@ export default function NotificationsPage() {
       }
     } catch (error: any) {
       console.error("Error enabling notifications:", error);
-      
+
       // Show user-friendly error message
       const errorMessage = error.message || "Failed to enable notifications";
       toast.error(errorMessage, {
@@ -159,7 +159,7 @@ export default function NotificationsPage() {
 
     const unsubscribe = onForegroundMessage((payload) => {
       console.log("Foreground message:", payload);
-      
+
       // Show toast notification
       toast.info(payload.notification?.body || "New notification", {
         onClick: () => {
@@ -181,20 +181,35 @@ export default function NotificationsPage() {
     }
 
     const notificationsRef = collection(db, 'notifications');
+    // NOTE: Do NOT use orderBy here - it requires a composite index in Firestore
+    // Sort client-side instead for reliability
     const q = query(
       notificationsRef,
-      where('userId', '==', user.uid),
-      orderBy('createdAt', 'desc')
+      where('userId', '==', user.uid)
     );
+
+    console.log('Subscribing to notifications for user:', user.uid);
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const notifs: Notification[] = [];
       snapshot.forEach((doc) => {
+        const data = doc.data();
         notifs.push({
           id: doc.id,
-          ...doc.data(),
+          title: data.title || 'Notification',
+          body: data.body || data.message || '',
+          read: data.read || false,
+          createdAt: data.createdAt,
+          data: data.data || {},
         } as Notification);
       });
+      // Sort client-side by createdAt descending
+      notifs.sort((a, b) => {
+        const aTime = a.createdAt?.toDate?.()?.getTime() || 0;
+        const bTime = b.createdAt?.toDate?.()?.getTime() || 0;
+        return bTime - aTime;
+      });
+      console.log('Loaded notifications:', notifs.length);
       setNotifications(notifs);
       setLoading(false);
     }, (error) => {
@@ -218,7 +233,7 @@ export default function NotificationsPage() {
   // Handle notification click
   const handleNotificationClick = (notification: Notification) => {
     markAsRead(notification.id);
-    
+
     if (notification.data?.url) {
       window.location.href = notification.data.url;
     }
@@ -259,11 +274,10 @@ export default function NotificationsPage() {
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className={`p-3 rounded-full ${
-              notificationPermission === 'granted' 
-                ? 'bg-green-100 dark:bg-green-900' 
-                : 'bg-gray-100 dark:bg-gray-700'
-            }`}>
+            <div className={`p-3 rounded-full ${notificationPermission === 'granted'
+              ? 'bg-green-100 dark:bg-green-900'
+              : 'bg-gray-100 dark:bg-gray-700'
+              }`}>
               {notificationPermission === 'granted' ? (
                 <Bell className="w-6 h-6 text-green-600 dark:text-green-400" />
               ) : (
@@ -275,13 +289,13 @@ export default function NotificationsPage() {
                 Push Notifications
               </h3>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {notificationPermission === 'granted' 
-                  ? 'Notifications are enabled' 
+                {notificationPermission === 'granted'
+                  ? 'Notifications are enabled'
                   : 'Enable notifications to receive task updates'}
               </p>
             </div>
           </div>
-          
+
           {notificationPermission === 'granted' ? (
             <button
               onClick={handleDisableNotifications}
@@ -355,7 +369,7 @@ export default function NotificationsPage() {
             Recent Notifications
           </h2>
         </div>
-        
+
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {loading ? (
             <div className="p-8 text-center text-gray-500 dark:text-gray-400">
@@ -370,9 +384,8 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${
-                  !notification.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''
-                }`}
+                className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${!notification.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                  }`}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -391,7 +404,7 @@ export default function NotificationsPage() {
                       {notification.createdAt?.toDate?.()?.toLocaleString() || 'Just now'}
                     </p>
                   </div>
-                  
+
                   {!notification.read && (
                     <button
                       onClick={(e) => {

@@ -1,31 +1,28 @@
 // Firebase Cloud Messaging Service Worker
-// This file must be in the public folder and served from the root
-// VERSION: 4.0 - FIXED: Reliable background notifications for Android PWA
+// This file must be in the public folder and served from the root  
+// VERSION: 5.1 - Reliable background notifications for Android PWA
 //
-// KEY FIX: On Android Chrome PWA, onBackgroundMessage() is unreliable.
-// Chrome requires that the 'push' event handler calls showNotification()
-// DIRECTLY via event.waitUntil(). If it doesn't, Chrome shows a generic
-// "Tap to copy the URL for this app" fallback notification.
-//
-// Solution: Handle ALL notification display in the 'push' event handler.
-// Do NOT use onBackgroundMessage() for display.
+// ARCHITECTURE:
+// - Firebase messaging SDK is loaded (required for FCM token generation via getToken())
+// - onBackgroundMessage is NOT used (it's unreliable on Android Chrome)
+// - ALL notification display is handled by our custom 'push' event handler
+// - Every push event ALWAYS calls showNotification() to prevent Chrome's fallback
 
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js');
 
-// Take control immediately on install/activate
+// Take control immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW v4.0] Installing...');
+  console.log('[SW v5.1] Installing...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW v4.0] Activating...');
+  console.log('[SW v5.1] Activating...');
   event.waitUntil(clients.claim());
 });
 
-// Initialize Firebase in the service worker
-// (needed for FCM token management, NOT for notification display)
+// Initialize Firebase (required for FCM push subscription management)
 firebase.initializeApp({
   apiKey: "AIzaSyBkxT1xMRCj2iAoig87tBkFXSGcoZyuQDw",
   authDomain: "jpcopanel.firebaseapp.com",
@@ -36,22 +33,21 @@ firebase.initializeApp({
   measurementId: "G-GNT1N7174R"
 });
 
-// Initialize messaging (required for token generation on the client side)
+// Initialize messaging - required for getToken() to work on client side
+// The SDK registers its own push handler, but we override notification display
 const messaging = firebase.messaging();
 
-// DO NOT use onBackgroundMessage for showing notifications!
-// It is unreliable on Android Chrome PWA and causes the generic
-// "Tap to copy the URL" fallback notification.
-// Instead, we handle EVERYTHING in the 'push' event handler below.
-//
-// We keep onBackgroundMessage ONLY for logging (no showNotification call):
+// IMPORTANT: Register onBackgroundMessage but return FALSE to tell Firebase
+// SDK that we did NOT handle the notification display.
+// This prevents Firebase from "consuming" the push event silently.
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW v4.0] onBackgroundMessage fired (logging only):', JSON.stringify(payload));
-  // DO NOT call showNotification() here - the push handler handles it
+  console.log('[SW v5.1] onBackgroundMessage fired:', JSON.stringify(payload));
+  // Return undefined/void - do NOT return a showNotification promise here
+  // Our push handler below will display the notification
 });
 
 /**
- * Build notification options from data payload
+ * Build notification options from FCM data payload
  */
 function buildNotificationOptions(data) {
   const tag = data.notificationId || data.taskId || ('jpco-' + Date.now());
@@ -80,106 +76,99 @@ function buildNotificationOptions(data) {
 }
 
 /**
- * MAIN PUSH HANDLER - This is the ONLY place that calls showNotification()
- *
- * Chrome on Android requires that event.waitUntil() is called with a
- * showNotification() promise DIRECTLY in the 'push' event handler.
- * If this doesn't happen, Chrome shows the generic fallback notification.
- *
- * This handler fires for EVERY push message (FCM or otherwise).
+ * PUSH EVENT HANDLER - Main notification display logic
+ * 
+ * Chrome REQUIRES event.waitUntil(showNotification()) or it shows
+ * "Tap to copy the URL for this app" fallback.
+ * 
+ * Every code path MUST call showNotification().
  */
 self.addEventListener('push', (event) => {
-  console.log('[SW v4.0] Push event received');
+  console.log('[SW v5.1] ===== PUSH EVENT =====');
 
-  // CRITICAL: We MUST call event.waitUntil() with showNotification()
-  // If we don't, Chrome shows "Tap to copy the URL for this app"
   const notificationPromise = (async () => {
     try {
       if (!event.data) {
-        console.log('[SW v4.0] No push data, showing default notification');
+        console.log('[SW v5.1] No push data');
         return self.registration.showNotification('JPCO Dashboard', {
           body: 'You have a new notification',
           icon: '/images/logo/logo-icon.svg',
           badge: '/images/logo/logo-icon.svg',
-          tag: 'jpco-default-' + Date.now(),
+          tag: 'jpco-nodata-' + Date.now(),
+          requireInteraction: true,
+          vibrate: [300, 100, 300, 100, 300],
         });
       }
 
+      // Parse push payload
       let payload;
       try {
         payload = event.data.json();
       } catch (e) {
-        // If JSON parsing fails, try text
         const text = event.data.text();
-        console.log('[SW v4.0] Push data (text):', text);
+        console.log('[SW v5.1] Text payload:', text);
         return self.registration.showNotification('JPCO Dashboard', {
           body: text || 'You have a new notification',
           icon: '/images/logo/logo-icon.svg',
           badge: '/images/logo/logo-icon.svg',
           tag: 'jpco-text-' + Date.now(),
+          requireInteraction: true,
+          vibrate: [300, 100, 300, 100, 300],
         });
       }
 
-      console.log('[SW v4.0] Push payload:', JSON.stringify(payload));
+      console.log('[SW v5.1] Payload keys:', Object.keys(payload));
 
-      // Extract notification data
-      // FCM data-only messages put everything in payload.data
-      // FCM notification messages put display info in payload.notification
+      // Extract data from FCM message
+      // Data-only: { data: { title, body, ... }, from: "..." }
+      // Notification: { notification: { title, body }, data: { ... } }
+      // Firebase wrapped: { data: { ... }, fcmMessageId: "..." }
       const data = payload.data || {};
+      const notification = payload.notification || {};
 
-      // Get title - check data first (data-only), then notification (legacy)
-      const title = data.title
-        || payload.notification?.title
-        || 'New Notification';
+      const title = data.title || notification.title || 'JPCO Dashboard';
 
-      // Merge notification fields into data if present
-      if (!data.body && payload.notification?.body) {
-        data.body = payload.notification.body;
-      }
-      if (!data.icon && payload.notification?.icon) {
-        data.icon = payload.notification.icon;
-      }
+      // Merge notification fields into data for buildNotificationOptions
+      if (!data.body && notification.body) data.body = notification.body;
+      if (!data.icon && notification.icon) data.icon = notification.icon;
 
       const options = buildNotificationOptions(data);
 
-      console.log('[SW v4.0] Showing notification:', title, JSON.stringify(options));
+      console.log('[SW v5.1] 🔔 Title:', title);
+      console.log('[SW v5.1] 🔔 Body:', options.body);
 
       return self.registration.showNotification(title, options);
+
     } catch (error) {
-      console.error('[SW v4.0] Error in push handler:', error);
-      // ALWAYS show SOMETHING to prevent Chrome's fallback
+      console.error('[SW v5.1] Error:', error);
       return self.registration.showNotification('JPCO Dashboard', {
         body: 'You have a new notification',
         icon: '/images/logo/logo-icon.svg',
         badge: '/images/logo/logo-icon.svg',
         tag: 'jpco-error-' + Date.now(),
+        requireInteraction: true,
+        vibrate: [300, 100, 300, 100, 300],
       });
     }
   })();
 
-  // CRITICAL: event.waitUntil() MUST be called with the showNotification promise
   event.waitUntil(notificationPromise);
 });
 
 /**
- * Handle notification click events
+ * Notification click handler
  */
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW v4.0] Notification clicked:', event.action);
-
+  console.log('[SW v5.1] Click:', event.action);
   event.notification.close();
 
-  if (event.action === 'close') {
-    return;
-  }
+  if (event.action === 'close') return;
 
   const urlToOpen = event.notification.data?.url || '/notifications';
-  console.log('[SW v4.0] Opening URL:', urlToOpen);
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((windowClients) => {
-        // Try to find and focus an existing window
         for (const client of windowClients) {
           try {
             const clientUrl = new URL(client.url);
@@ -187,30 +176,19 @@ self.addEventListener('notificationclick', (event) => {
             if (clientUrl.pathname === targetUrl.pathname && 'focus' in client) {
               return client.focus();
             }
-          } catch (e) {
-            // URL parsing failed, skip
-          }
+          } catch (e) { /* skip */ }
         }
-
-        // Navigate an existing window to the target URL
         if (windowClients.length > 0 && windowClients[0].navigate) {
-          return windowClients[0].navigate(urlToOpen).then(client => client?.focus());
+          return windowClients[0].navigate(urlToOpen).then(c => c?.focus());
         }
-
-        // Open a new window
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
+        if (clients.openWindow) return clients.openWindow(urlToOpen);
       })
-      .catch((error) => {
-        console.error('[SW v4.0] Error handling click:', error);
-      })
+      .catch((e) => console.error('[SW v5.1] Click error:', e))
   );
 });
 
-/**
- * Handle notification close events
- */
-self.addEventListener('notificationclose', (event) => {
-  console.log('[SW v4.0] Notification dismissed');
+self.addEventListener('notificationclose', () => {
+  console.log('[SW v5.1] Dismissed');
 });
+
+console.log('[SW v5.1] Loaded');
