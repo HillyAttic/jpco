@@ -250,7 +250,7 @@ export function TaskListView({
       {/* Desktop Table View - Hidden on mobile */}
       <div className="hidden md:block bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-2 px-3 py-3 bg-gray-50 dark:bg-gray-800 text-xs font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+        <div className="grid grid-cols-12 gap-2 px-3 py-2.5 bg-gray-50 dark:bg-gray-800 text-[11px] font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
           <div className="col-span-2">Title</div>
           <div className="col-span-2">Client</div>
           <div className="col-span-1">Category</div>
@@ -268,7 +268,7 @@ export function TaskListView({
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="grid grid-cols-12 gap-2 px-3 py-3 text-xs transition-colors bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="grid grid-cols-12 gap-2 px-3 py-2.5 text-[11px] transition-colors bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800"
             >
               {/* Title */}
               <div className="col-span-2">
@@ -276,7 +276,7 @@ export function TaskListView({
                   {task.title}
                 </div>
                 {task.description && (
-                  <div className="text-gray-500 dark:text-gray-400 text-xs mt-0.5 truncate" title={task.description}>
+                  <div className="text-gray-500 dark:text-gray-400 text-[10px] mt-0.5 truncate" title={task.description}>
                     {task.description}
                   </div>
                 )}
@@ -298,14 +298,14 @@ export function TaskListView({
 
               {/* Status */}
               <div className="col-span-1 flex items-center">
-                <Badge className={`${getStatusColor(task.status)} text-xs px-1.5 py-0.5`}>
+                <Badge className={`${getStatusColor(task.status)} text-[10px] px-1.5 py-0.5`}>
                   {task.status === 'in-progress' ? 'progress' : task.status}
                 </Badge>
               </div>
 
               {/* Priority */}
               <div className="col-span-1 flex items-center">
-                <Badge className={`${getPriorityColor(task.priority)} text-xs px-1.5 py-0.5`}>
+                <Badge className={`${getPriorityColor(task.priority)} text-[10px] px-1.5 py-0.5`}>
                   {task.priority}
                 </Badge>
               </div>
@@ -373,59 +373,59 @@ export function TaskListView({
         {tasks.map((task) => (
           <div
             key={task.id}
-            className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3"
+            className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2.5"
           >
             {/* Title and Description */}
             <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white text-base">
+              <h3 className="font-semibold text-gray-900 dark:text-white text-sm leading-tight">
                 {task.title}
               </h3>
               {task.description && (
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
                   {task.description}
                 </p>
               )}
             </div>
 
             {/* Status and Priority Badges */}
-            <div className="flex gap-2 flex-wrap">
-              <Badge className={`${getStatusColor(task.status)} text-xs`}>
+            <div className="flex gap-1.5 flex-wrap">
+              <Badge className={`${getStatusColor(task.status)} text-[10px] px-1.5 py-0.5`}>
                 {task.status === 'in-progress' ? 'In Progress' : task.status}
               </Badge>
-              <Badge className={`${getPriorityColor(task.priority)} text-xs`}>
+              <Badge className={`${getPriorityColor(task.priority)} text-[10px] px-1.5 py-0.5`}>
                 {task.priority}
               </Badge>
             </div>
 
             {/* Task Details */}
-            <div className="space-y-2 text-sm">
+            <div className="space-y-1.5 text-xs">
               {task.contactId && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Client:</span>
-                  <span className="text-gray-900 dark:text-white font-medium">
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Client:</span>
+                  <span className="text-gray-900 dark:text-white font-medium text-right break-words">
                     {getClientName(task.contactId)}
                   </span>
                 </div>
               )}
               {(task.categoryId || task.category) && (
-                <div className="flex justify-between">
-                  <span className="text-gray-500 dark:text-gray-400">Category:</span>
-                  <span className="text-gray-900 dark:text-white font-medium">
+                <div className="flex justify-between gap-2">
+                  <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Category:</span>
+                  <span className="text-gray-900 dark:text-white font-medium text-right break-words">
                     {getCategoryName(task.categoryId || task.category)}
                   </span>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Due Date:</span>
-                <span className="text-gray-900 dark:text-white font-medium">
+              <div className="flex justify-between gap-2">
+                <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Due Date:</span>
+                <span className="text-gray-900 dark:text-white font-medium text-right">
                   {formatDate(task.dueDate)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-gray-400">
+              <div className="flex justify-between gap-2">
+                <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">
                   {isAdminOrManager ? 'Assigned To:' : 'Assigned By:'}
                 </span>
-                <span className="text-gray-900 dark:text-white font-medium truncate ml-2">
+                <span className="text-gray-900 dark:text-white font-medium text-right break-words max-w-[60%]">
                   {isAdminOrManager 
                     ? getAssignedNames(task.assignedTo)
                     : getCreatorName(task.createdBy)
@@ -438,31 +438,31 @@ export function TaskListView({
             <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
               <button
                 onClick={() => onToggleComplete(task.id)}
-                className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium transition-colors min-h-[44px] ${
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors min-h-[40px] ${
                   task.status === 'completed'
                     ? 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50'
                     : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 }`}
                 aria-label="Toggle complete"
               >
-                <CheckCircleIcon className="w-5 h-5" />
-                <span className="text-sm">{task.status === 'completed' ? 'Completed' : 'Complete'}</span>
+                <CheckCircleIcon className="w-4 h-4" />
+                <span className="text-xs">{task.status === 'completed' ? 'Done' : 'Complete'}</span>
               </button>
               <button
                 onClick={() => onEdit(task)}
-                className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 transition-colors min-h-[44px]"
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 transition-colors min-h-[40px]"
                 aria-label="Edit task"
               >
-                <PencilIcon className="w-5 h-5" />
-                <span className="text-sm">Edit</span>
+                <PencilIcon className="w-4 h-4" />
+                <span className="text-xs">Edit</span>
               </button>
               {isAdminOrManager && (
                 <button
                   onClick={() => onDelete(task.id)}
-                  className="px-4 py-2.5 rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
+                  className="px-3 py-2 rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors min-h-[40px]"
                   aria-label="Delete task"
                 >
-                  <TrashIcon className="w-5 h-5" />
+                  <TrashIcon className="w-4 h-4" />
                 </button>
               )}
             </div>

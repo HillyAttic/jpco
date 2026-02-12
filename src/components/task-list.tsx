@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Task } from '@/types/task.types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,16 +18,74 @@ interface TaskListProps {
 }
 
 export function TaskList({ tasks, onTaskClick, showStatus = true }: TaskListProps) {
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
+  // Fetch user names for all assigned users
+  useEffect(() => {
+    const fetchUserNames = async () => {
+      try {
+        setLoadingUsers(true);
+        
+        // Get authentication token
+        const { auth } = await import('@/lib/firebase');
+        const user = auth.currentUser;
+        
+        if (!user) {
+          console.error('User not authenticated');
+          setUserNames({});
+          setLoadingUsers(false);
+          return;
+        }
+
+        const token = await user.getIdToken();
+        
+        // Fetch user names from API endpoint
+        const response = await fetch('/api/users/names', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch user names');
+        }
+
+        const nameMap = await response.json();
+        setUserNames(nameMap);
+      } catch (error) {
+        console.error('Error fetching user names:', error);
+        setUserNames({});
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    if (tasks.length > 0) {
+      fetchUserNames();
+    } else {
+      setLoadingUsers(false);
+      setUserNames({});
+    }
+  }, [tasks]);
+
+  const getUserName = (userId: string) => {
+    if (loadingUsers) {
+      return 'Loading...';
+    }
+    return userNames[userId] || userId;
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-100 text-green-800';
+        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
       case 'in-progress':
-        return 'bg-orange-100 text-orange-800';
+        return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
       case 'todo':
-        return 'bg-yellow-100 text-yellow-800';
+        return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
       default:
-        return 'bg-gray-100 text-gray-800';
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300';
     }
   };
 
@@ -68,22 +126,22 @@ export function TaskList({ tasks, onTaskClick, showStatus = true }: TaskListProp
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {tasks.map((task) => (
         <Card 
           key={task.id} 
           className="hover:shadow-md transition-shadow cursor-pointer"
           onClick={() => onTaskClick?.(task)}
         >
-          <CardContent className="p-4">
-            <div className="flex items-start justify-between">
+          <CardContent className="p-3 md:p-4">
+            <div className="flex items-start justify-between gap-2">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center space-x-2 mb-2">
-                  <h3 className="text-lg font-medium text-gray-900 truncate">
+                <div className="flex items-start md:items-center flex-col md:flex-row gap-1.5 md:gap-2 mb-2">
+                  <h3 className="text-sm md:text-base font-medium text-gray-900 dark:text-white break-words">
                     {task.title}
                   </h3>
                   {showStatus && (
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(task.status)}`}>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] md:text-xs font-medium ${getStatusColor(task.status)} flex-shrink-0`}>
                       {getStatusIcon(task.status)}
                       <span className="ml-1 capitalize">{task.status.replace('-', ' ')}</span>
                     </span>
@@ -91,35 +149,36 @@ export function TaskList({ tasks, onTaskClick, showStatus = true }: TaskListProp
                 </div>
                 
                 {task.description && (
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                  <p className="text-gray-600 dark:text-gray-400 text-xs md:text-sm mb-2 md:mb-3 line-clamp-2">
                     {task.description}
                   </p>
                 )}
                 
-                <div className="flex items-center space-x-4 text-sm text-gray-500">
-                  {task.assignedTo && task.assignedTo.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-500 dark:text-gray-400">
+                  {task.createdBy && (
                     <div className="flex items-center">
-                      <div className="w-6 h-6 rounded-full bg-gray-300 flex items-center justify-center mr-2">
-                        <span className="text-xs font-medium text-gray-700">
-                          {task.assignedTo[0].charAt(0).toUpperCase()}
+                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-gray-300 dark:bg-gray-600 flex items-center justify-center mr-1.5 md:mr-2 flex-shrink-0">
+                        <span className="text-[10px] md:text-xs font-medium text-gray-700 dark:text-gray-200">
+                          {getUserName(task.createdBy).charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <span>{task.assignedTo[0]}</span>
+                      <span className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 mr-1">Assigned by:</span>
+                      <span className="truncate max-w-[120px] md:max-w-none">{getUserName(task.createdBy)}</span>
                     </div>
                   )}
                   
                   {task.dueDate && (
-                    <div className="flex items-center">
-                      <CalendarIcon className="w-4 h-4 mr-1" />
-                      <span>{formatDate(task.dueDate)}</span>
+                    <div className="flex items-center flex-shrink-0">
+                      <CalendarIcon className="w-3.5 h-3.5 md:w-4 md:h-4 mr-1" />
+                      <span className="whitespace-nowrap">{formatDate(task.dueDate)}</span>
                     </div>
                   )}
                   
                   {task.priority && (
-                    <div className={`px-2 py-1 rounded text-xs font-medium ${
-                      task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                      task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-green-100 text-green-800'
+                    <div className={`px-1.5 md:px-2 py-0.5 md:py-1 rounded text-[10px] md:text-xs font-medium flex-shrink-0 ${
+                      task.priority === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' :
+                      task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400' :
+                      'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
                     }`}>
                       {task.priority}
                     </div>
@@ -128,9 +187,9 @@ export function TaskList({ tasks, onTaskClick, showStatus = true }: TaskListProp
               </div>
               
               {task.commentCount !== undefined && task.commentCount > 0 && (
-                <div className="ml-4 flex-shrink-0">
-                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-600 text-white">
-                    {task.commentCount} comments
+                <div className="flex-shrink-0">
+                  <span className="inline-flex items-center px-1.5 md:px-2 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-medium bg-blue-600 text-white">
+                    {task.commentCount}
                   </span>
                 </div>
               )}

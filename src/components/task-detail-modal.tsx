@@ -35,13 +35,65 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(false);
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [displayValue, setDisplayValue] = useState('');
+
+  // Fetch user names
+  useEffect(() => {
+    const fetchUserNames = async () => {
+      try {
+        setLoadingUsers(true);
+        
+        const { auth } = await import('@/lib/firebase');
+        const user = auth.currentUser;
+        
+        if (!user) {
+          console.error('User not authenticated');
+          setUserNames({});
+          setLoadingUsers(false);
+          return;
+        }
+
+        const token = await user.getIdToken();
+        
+        const response = await fetch('/api/users/names', {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch user names');
+        }
+
+        const nameMap = await response.json();
+        setUserNames(nameMap);
+      } catch (error) {
+        console.error('Error fetching user names:', error);
+        setUserNames({});
+      } finally {
+        setLoadingUsers(false);
+      }
+    };
+
+    if (open) {
+      fetchUserNames();
+    }
+  }, [open]);
 
   useEffect(() => {
     if (task) {
       setEditingTask({ ...task });
       loadComments(task.id);
+      
+      // Set display value with user names
+      if (!loadingUsers && task.assignedTo) {
+        const names = task.assignedTo.map(id => userNames[id] || id).join(', ');
+        setDisplayValue(names);
+      }
     }
-  }, [task]);
+  }, [task, userNames, loadingUsers]);
 
   const loadComments = async (taskId: string) => {
     try {
@@ -200,18 +252,38 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Assigned Users
               </label>
               <Input
-                value={editingTask.assignedTo.join(', ')}
-                onChange={(e) => setEditingTask({
-                  ...editingTask, 
-                  assignedTo: e.target.value.split(',').map(u => u.trim()).filter(u => u)
-                })}
-                placeholder="Enter usernames separated by commas"
+                value={displayValue}
+                onChange={(e) => {
+                  setDisplayValue(e.target.value);
+                  // Keep the original IDs in editingTask
+                  const inputNames = e.target.value.split(',').map(n => n.trim()).filter(n => n);
+                  // Try to map names back to IDs, or keep as is if not found
+                  const userIdMap = Object.entries(userNames).reduce((acc, [id, name]) => {
+                    acc[name.toLowerCase()] = id;
+                    return acc;
+                  }, {} as Record<string, string>);
+                  
+                  const ids = inputNames.map(name => {
+                    const lowerName = name.toLowerCase();
+                    return userIdMap[lowerName] || name;
+                  });
+                  
+                  setEditingTask({
+                    ...editingTask, 
+                    assignedTo: ids
+                  });
+                }}
+                placeholder={loadingUsers ? "Loading users..." : "Enter usernames separated by commas"}
                 className="w-full"
+                disabled={loadingUsers}
               />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {loadingUsers ? 'Loading user names...' : 'Separate multiple users with commas'}
+              </p>
             </div>
           </div>
           
