@@ -116,11 +116,11 @@ export default function TasksPage() {
       />
 
       {/* Task List */}
-      <div className="bg-white rounded-lg shadow">
+      <div className="bg-white dark:bg-gray-dark rounded-lg shadow border border-gray-200 dark:border-gray-700">
         <div className="p-6">
           {loading ? (
             <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
             </div>
           ) : (
             <TaskList 

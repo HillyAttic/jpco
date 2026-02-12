@@ -40,7 +40,7 @@ export function TaskFilter({ filters, onFiltersChange, onClearFilters }: TaskFil
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900">Tasks</h2>
+        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Tasks</h2>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
@@ -68,10 +68,10 @@ export function TaskFilter({ filters, onFiltersChange, onClearFilters }: TaskFil
       </div>
 
       {showFilters && (
-        <div className="mt-4 p-4 bg-white border border-gray-200 rounded-lg shadow-sm">
+        <div className="mt-4 p-4 bg-white dark:bg-gray-dark border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Search
               </label>
               <Input
@@ -82,7 +82,7 @@ export function TaskFilter({ filters, onFiltersChange, onClearFilters }: TaskFil
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Status
               </label>
               <Select
@@ -97,7 +97,7 @@ export function TaskFilter({ filters, onFiltersChange, onClearFilters }: TaskFil
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Priority
               </label>
               <Select
@@ -112,7 +112,7 @@ export function TaskFilter({ filters, onFiltersChange, onClearFilters }: TaskFil
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Assignee
               </label>
               <Input

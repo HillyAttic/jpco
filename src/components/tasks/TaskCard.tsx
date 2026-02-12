@@ -87,7 +87,7 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
               type="checkbox"
               checked={selected}
               onChange={(e) => onSelect(task.id, e.target.checked)}
-              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
               aria-label={`Select ${task.title}`}
             />
           </div>
@@ -151,7 +151,7 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
         {/* Task Details */}
         <div className="space-y-3 mb-4">
           {/* Due Date - Requirement 2.4 */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <CalendarIcon className="w-4 h-4 flex-shrink-0" />
             <span className={isOverdue ? 'text-red-600 font-medium' : ''}>
               Due: {formatDate(task.dueDate)}
@@ -160,7 +160,7 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
 
           {/* Status Badge */}
           <div className="flex items-center gap-2 text-sm">
-            <ClockIcon className="w-4 h-4 flex-shrink-0 text-gray-600" />
+            <ClockIcon className="w-4 h-4 flex-shrink-0 text-gray-600 dark:text-gray-400" />
             <Badge variant={isCompleted ? 'success' : 'info'}>
               {task.status.split('-').map(word => 
                 word.charAt(0).toUpperCase() + word.slice(1)
@@ -171,7 +171,7 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
           {/* Assigned Users - Requirement 2.4 */}
           {task.assignedTo && task.assignedTo.length > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Assigned to:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Assigned to:</span>
               <div className="flex -space-x-2">
                 {task.assignedTo.slice(0, 3).map((userId, index) => (
                   <Avatar
@@ -182,7 +182,7 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
                   />
                 ))}
                 {task.assignedTo.length > 3 && (
-                  <div className="h-8 w-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
+                  <div className="h-8 w-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400">
                     +{task.assignedTo.length - 3}
                   </div>
                 )}
@@ -216,7 +216,7 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
 
         {/* Footer with creation date */}
         {task.createdAt && (
-          <div className="mt-4 text-xs text-gray-500">
+          <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
             Created {new Date(task.createdAt).toLocaleDateString()}
           </div>
         )}

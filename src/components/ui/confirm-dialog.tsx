@@ -30,7 +30,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
           <DialogTitle>{title}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-gray-700">{message}</p>
+          <p className="text-gray-700 dark:text-gray-300">{message}</p>
         </div>
         
         <div className="flex justify-end space-x-3">

@@ -30,7 +30,7 @@ export function EmptyState({
       aria-live="polite"
     >
       {icon && (
-        <div className="mb-4 text-gray-400 dark:text-gray-500" aria-hidden="true">
+        <div className="mb-4 text-gray-400 dark:text-gray-500 dark:text-gray-400" aria-hidden="true">
           {icon}
         </div>
       )}

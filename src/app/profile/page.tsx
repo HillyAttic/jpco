@@ -84,7 +84,7 @@ export default function Page() {
           {/* User Details Grid */}
           <div className="max-w-2xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-gray-50 dark:bg-dark-2 rounded-xl p-5 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors duration-200">
+              <div className="bg-gray-50 dark:bg-dark-2 rounded-xl p-5 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-dark-3 transition-colors duration-200">
                 <div className="flex items-center mb-2">
                   <div className="w-3 h-3 rounded-full bg-blue-500 mr-2"></div>
                   <h4 className="font-semibold text-dark dark:text-white">Email</h4>
@@ -92,7 +92,7 @@ export default function Page() {
                 <p className="text-gray-600 dark:text-gray-300 truncate">{data.email}</p>
               </div>
               
-              <div className="bg-gray-50 dark:bg-dark-2 rounded-xl p-5 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors duration-200">
+              <div className="bg-gray-50 dark:bg-dark-2 rounded-xl p-5 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-dark-3 transition-colors duration-200">
                 <div className="flex items-center mb-2">
                   <div className="w-3 h-3 rounded-full bg-green-500 mr-2"></div>
                   <h4 className="font-semibold text-dark dark:text-white">Role</h4>
@@ -100,7 +100,7 @@ export default function Page() {
                 <p className="text-gray-600 dark:text-gray-300 capitalize">{data.role}</p>
               </div>
               
-              <div className="bg-gray-50 dark:bg-dark-2 rounded-xl p-5 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors duration-200">
+              <div className="bg-gray-50 dark:bg-dark-2 rounded-xl p-5 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-dark-3 transition-colors duration-200">
                 <div className="flex items-center mb-2">
                   <div className="w-3 h-3 rounded-full bg-purple-500 mr-2"></div>
                   <h4 className="font-semibold text-dark dark:text-white">Department</h4>
@@ -108,7 +108,7 @@ export default function Page() {
                 <p className="text-gray-600 dark:text-gray-300">{data.department || 'Not specified'}</p>
               </div>
               
-              <div className="bg-gray-50 dark:bg-dark-2 rounded-xl p-5 hover:bg-gray-100 dark:hover:bg-dark-3 transition-colors duration-200">
+              <div className="bg-gray-50 dark:bg-dark-2 rounded-xl p-5 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-dark-3 transition-colors duration-200">
                 <div className="flex items-center mb-2">
                   <div className="w-3 h-3 rounded-full bg-emerald-500 mr-2"></div>
                   <h4 className="font-semibold text-dark dark:text-white">Status</h4>

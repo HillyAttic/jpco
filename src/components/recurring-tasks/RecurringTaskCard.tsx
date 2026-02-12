@@ -152,7 +152,7 @@ export function RecurringTaskCard({
               type="checkbox"
               checked={selected}
               onChange={(e) => task.id && onSelect(task.id, e.target.checked)}
-              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
               aria-label={`Select ${task.title}`}
             />
           </div>
@@ -228,7 +228,7 @@ export function RecurringTaskCard({
         {/* Task Details */}
         <div className="space-y-3 mb-4">
           {/* Next Occurrence Date - Requirement 3.3 */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <CalendarIcon className="w-4 h-4 flex-shrink-0" />
             <span className={isOverdue && !task.isPaused ? 'text-red-600 font-medium' : ''}>
               Next: {formatDate(task.nextOccurrence)}
@@ -236,7 +236,7 @@ export function RecurringTaskCard({
           </div>
 
           {/* Recurrence Period */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <ArrowPathIcon className="w-4 h-4 flex-shrink-0" />
             <span>
               {formatDate(task.startDate)} 
@@ -246,7 +246,7 @@ export function RecurringTaskCard({
 
           {/* Status Badge */}
           <div className="flex items-center gap-2 text-sm">
-            <ClockIcon className="w-4 h-4 flex-shrink-0 text-gray-600" />
+            <ClockIcon className="w-4 h-4 flex-shrink-0 text-gray-600 dark:text-gray-400" />
             <Badge variant={isCompleted ? 'success' : 'info'}>
               {task.status.split('-').map(word => 
                 word.charAt(0).toUpperCase() + word.slice(1)
@@ -257,7 +257,7 @@ export function RecurringTaskCard({
           {/* Assigned Contacts */}
           {task.contactIds && task.contactIds.length > 0 && (
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">Assigned to:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400">Assigned to:</span>
               <div className="flex -space-x-2">
                 {task.contactIds.slice(0, 3).map((contactId) => (
                   <Avatar
@@ -268,7 +268,7 @@ export function RecurringTaskCard({
                   />
                 ))}
                 {task.contactIds.length > 3 && (
-                  <div className="h-8 w-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600">
+                  <div className="h-8 w-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400">
                     +{task.contactIds.length - 3}
                   </div>
                 )}
@@ -280,8 +280,8 @@ export function RecurringTaskCard({
         {/* Progress Indicator - Requirement 3.9 */}
         <div className="mb-4">
           <div className="flex items-center justify-between text-sm mb-2">
-            <span className="text-gray-600 font-medium">Completion Rate</span>
-            <span className="text-gray-900 font-semibold">{completionRate}%</span>
+            <span className="text-gray-600 dark:text-gray-400 font-medium">Completion Rate</span>
+            <span className="text-gray-900 dark:text-white font-semibold">{completionRate}%</span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div 
@@ -289,27 +289,27 @@ export function RecurringTaskCard({
               style={{ width: `${completionRate}%` }}
             />
           </div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
             {task.completionHistory.length} of {calculateTotalCycles(task.startDate, task.nextOccurrence, task.recurrencePattern)} cycles completed
           </div>
         </div>
 
         {/* Completion History Section - Requirement 3.6 */}
         {task.completionHistory.length > 0 && (
-          <div className="mb-4 p-3 bg-gray-50 rounded-lg">
+          <div className="mb-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
             <div className="flex items-center gap-2 mb-2">
               <CheckCircleSolidIcon className="w-4 h-4 text-green-600" />
-              <span className="text-sm font-medium text-gray-700">Recent Completions</span>
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Recent Completions</span>
             </div>
             <div className="space-y-1">
               {task.completionHistory.slice(-3).reverse().map((record, index) => (
-                <div key={index} className="flex items-center justify-between text-xs text-gray-600">
+                <div key={index} className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400">
                   <span>{formatDate(record.date)}</span>
-                  <span className="text-gray-500">by {record.completedBy}</span>
+                  <span className="text-gray-500 dark:text-gray-400">by {record.completedBy}</span>
                 </div>
               ))}
               {task.completionHistory.length > 3 && (
-                <div className="text-xs text-gray-500 italic">
+                <div className="text-xs text-gray-500 dark:text-gray-400 italic">
                   +{task.completionHistory.length - 3} more
                 </div>
               )}
@@ -346,7 +346,7 @@ export function RecurringTaskCard({
 
         {/* Footer with creation date */}
         {task.createdAt && (
-          <div className="mt-4 text-xs text-gray-500">
+          <div className="mt-4 text-xs text-gray-500 dark:text-gray-400">
             Created {new Date(task.createdAt).toLocaleDateString()}
           </div>
         )}

@@ -7,7 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Select from '@/components/ui/select';
 import { 
-  XMarkIcon,
   PaperClipIcon,
   ChatBubbleLeftRightIcon,
   ClockIcon,
@@ -15,6 +14,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 interface TaskDetailModalProps {
   open: boolean;
@@ -31,6 +31,7 @@ interface Comment {
 }
 
 export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailModalProps) {
+  const { user } = useEnhancedAuth();
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
@@ -38,6 +39,9 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [displayValue, setDisplayValue] = useState('');
+  
+  // Check if current user is the task creator
+  const isTaskCreator = task?.createdBy === user?.uid;
 
   // Fetch user names
   useEffect(() => {
@@ -165,49 +169,54 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
     <Dialog open={open} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center justify-between">
-            <span>Task Details</span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              className="h-6 w-6 p-0"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </Button>
-          </DialogTitle>
+          <DialogTitle>Task Details</DialogTitle>
         </DialogHeader>
         
         <div className="space-y-6">
           {/* Task Info */}
           <div className="space-y-4">
+            {/* Title - Read-only for non-creators */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Title
               </label>
-              <Input
-                value={editingTask.title}
-                onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
-                className="w-full"
-              />
+              {isTaskCreator ? (
+                <Input
+                  value={editingTask.title}
+                  onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
+                  className="w-full"
+                />
+              ) : (
+                <div className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-900 dark:text-white">
+                  {editingTask.title}
+                </div>
+              )}
             </div>
             
+            {/* Description - Read-only for non-creators */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Description
               </label>
-              <Textarea
-                value={editingTask.description || ''}
-                onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
-                rows={3}
-                className="w-full"
-              />
+              {isTaskCreator ? (
+                <Textarea
+                  value={editingTask.description || ''}
+                  onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
+                  rows={3}
+                  className="w-full"
+                />
+              ) : (
+                <div className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-900 dark:text-white min-h-[80px]">
+                  {editingTask.description || 'No description'}
+                </div>
+              )}
             </div>
             
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Status
+              {/* Status - Editable for everyone */}
+              <div className={!isTaskCreator ? 'ring-2 ring-blue-500 ring-offset-2 rounded-lg p-2 -m-2' : ''}>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Status {!isTaskCreator && <span className="text-blue-600 text-xs">(You can edit this)</span>}
                 </label>
                 <Select
                   value={editingTask.status}
@@ -220,94 +229,121 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 </Select>
               </div>
               
+              {/* Priority - Read-only for non-creators */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Priority
                 </label>
-                <Select
-                  value={editingTask.priority}
-                  onChange={(e) => setEditingTask({...editingTask, priority: e.target.value as TaskPriority})}
-                  className="w-full"
-                >
-                  <option value={TaskPriority.LOW}>Low</option>
-                  <option value={TaskPriority.MEDIUM}>Medium</option>
-                  <option value={TaskPriority.HIGH}>High</option>
-                </Select>
+                {isTaskCreator ? (
+                  <Select
+                    value={editingTask.priority}
+                    onChange={(e) => setEditingTask({...editingTask, priority: e.target.value as TaskPriority})}
+                    className="w-full"
+                  >
+                    <option value={TaskPriority.LOW}>Low</option>
+                    <option value={TaskPriority.MEDIUM}>Medium</option>
+                    <option value={TaskPriority.HIGH}>High</option>
+                  </Select>
+                ) : (
+                  <div className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-900 dark:text-white h-10 flex items-center">
+                    {editingTask.priority === TaskPriority.LOW && 'Low'}
+                    {editingTask.priority === TaskPriority.MEDIUM && 'Medium'}
+                    {editingTask.priority === TaskPriority.HIGH && 'High'}
+                  </div>
+                )}
               </div>
             </div>
             
+            {/* Due Date - Read-only for non-creators */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Due Date
               </label>
-              <Input
-                type="date"
-                value={editingTask.dueDate ? (editingTask.dueDate instanceof Date ? editingTask.dueDate.toISOString().split('T')[0] : new Date(editingTask.dueDate).toISOString().split('T')[0]) : ''}
-                onChange={(e) => setEditingTask({
-                  ...editingTask, 
-                  dueDate: e.target.value ? new Date(e.target.value) : new Date()
-                })}
-                className="w-full"
-              />
+              {isTaskCreator ? (
+                <Input
+                  type="date"
+                  value={editingTask.dueDate ? (editingTask.dueDate instanceof Date ? editingTask.dueDate.toISOString().split('T')[0] : new Date(editingTask.dueDate).toISOString().split('T')[0]) : ''}
+                  onChange={(e) => setEditingTask({
+                    ...editingTask, 
+                    dueDate: e.target.value ? new Date(e.target.value) : new Date()
+                  })}
+                  className="w-full"
+                />
+              ) : (
+                <div className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-900 dark:text-white">
+                  {editingTask.dueDate 
+                    ? new Date(editingTask.dueDate).toLocaleDateString()
+                    : 'No due date'}
+                </div>
+              )}
             </div>
             
+            {/* Assigned Users - Read-only for non-creators */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Assigned Users
               </label>
-              <Input
-                value={displayValue}
-                onChange={(e) => {
-                  setDisplayValue(e.target.value);
-                  // Keep the original IDs in editingTask
-                  const inputNames = e.target.value.split(',').map(n => n.trim()).filter(n => n);
-                  // Try to map names back to IDs, or keep as is if not found
-                  const userIdMap = Object.entries(userNames).reduce((acc, [id, name]) => {
-                    acc[name.toLowerCase()] = id;
-                    return acc;
-                  }, {} as Record<string, string>);
-                  
-                  const ids = inputNames.map(name => {
-                    const lowerName = name.toLowerCase();
-                    return userIdMap[lowerName] || name;
-                  });
-                  
-                  setEditingTask({
-                    ...editingTask, 
-                    assignedTo: ids
-                  });
-                }}
-                placeholder={loadingUsers ? "Loading users..." : "Enter usernames separated by commas"}
-                className="w-full"
-                disabled={loadingUsers}
-              />
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {loadingUsers ? 'Loading user names...' : 'Separate multiple users with commas'}
-              </p>
+              {isTaskCreator ? (
+                <>
+                  <Input
+                    value={displayValue}
+                    onChange={(e) => {
+                      setDisplayValue(e.target.value);
+                      // Keep the original IDs in editingTask
+                      const inputNames = e.target.value.split(',').map(n => n.trim()).filter(n => n);
+                      // Try to map names back to IDs, or keep as is if not found
+                      const userIdMap = Object.entries(userNames).reduce((acc, [id, name]) => {
+                        acc[name.toLowerCase()] = id;
+                        return acc;
+                      }, {} as Record<string, string>);
+                      
+                      const ids = inputNames.map(name => {
+                        const lowerName = name.toLowerCase();
+                        return userIdMap[lowerName] || name;
+                      });
+                      
+                      setEditingTask({
+                        ...editingTask, 
+                        assignedTo: ids
+                      });
+                    }}
+                    placeholder={loadingUsers ? "Loading users..." : "Enter usernames separated by commas"}
+                    className="w-full"
+                    disabled={loadingUsers}
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    {loadingUsers ? 'Loading user names...' : 'Separate multiple users with commas'}
+                  </p>
+                </>
+              ) : (
+                <div className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-900 dark:text-white">
+                  {displayValue || 'No users assigned'}
+                </div>
+              )}
             </div>
           </div>
           
           {/* Comments Section */}
           <div className="border-t pt-6">
             <div className="flex items-center mb-4">
-              <ChatBubbleLeftRightIcon className="w-5 h-5 mr-2 text-gray-500" />
+              <ChatBubbleLeftRightIcon className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
               <h3 className="text-lg font-medium">Comments ({comments.length})</h3>
             </div>
             
             <div className="space-y-4 mb-4 max-h-60 overflow-y-auto">
               {comments.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No comments yet</p>
+                <p className="text-gray-500 dark:text-gray-400 text-center py-4">No comments yet</p>
               ) : (
                 comments.map((comment) => (
-                  <div key={comment.id} className="bg-gray-50 rounded-lg p-4">
+                  <div key={comment.id} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
                     <div className="flex items-start space-x-3">
                       <UserCircleIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-900">{comment.author}</span>
-                          <span className="text-sm text-gray-500">{formatDate(comment.createdAt)}</span>
+                          <span className="font-medium text-gray-900 dark:text-white">{comment.author}</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">{formatDate(comment.createdAt)}</span>
                         </div>
-                        <p className="mt-1 text-gray-700">{comment.content}</p>
+                        <p className="mt-1 text-gray-700 dark:text-gray-300">{comment.content}</p>
                       </div>
                     </div>
                   </div>
@@ -349,7 +385,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
               onClick={handleSave}
               disabled={loading}
             >
-              {loading ? 'Saving...' : 'Save Changes'}
+              {loading ? 'Saving...' : (isTaskCreator ? 'Save Changes' : 'Update Status')}
             </Button>
           </div>
         </div>

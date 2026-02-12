@@ -211,8 +211,8 @@ export default function TeamsPage() {
         {/* Page Header - Requirement 4.1 */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Teams</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Teams</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
               Manage your organization's teams and members
             </p>
           </div>
@@ -260,8 +260,8 @@ export default function TeamsPage() {
                   <UserGroupIcon className="w-6 h-6 text-blue-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Teams</p>
-                  <p className="text-2xl font-bold text-gray-900">{teams.length}</p>
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Teams</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{teams.length}</p>
                 </div>
               </div>
             </CardContent>
@@ -274,8 +274,8 @@ export default function TeamsPage() {
                   <UserGroupIcon className="w-6 h-6 text-green-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Active Teams</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Active Teams</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {teams.filter(team => team.status === 'active').length}
                   </p>
                 </div>
@@ -290,8 +290,8 @@ export default function TeamsPage() {
                   <UserGroupIcon className="w-6 h-6 text-yellow-600" />
                 </div>
                 <div>
-                  <p className="text-sm text-gray-600">Total Members</p>
-                  <p className="text-2xl font-bold text-gray-900">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">Total Members</p>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
                     {teams.reduce((total, team) => total + team.members.length + 1, 0)}
                   </p>
                 </div>
@@ -376,7 +376,7 @@ export default function TeamsPage() {
                   {teams.map((team) => (
                     <div 
                       key={team.id} 
-                      className="grid grid-cols-12 gap-4 px-6 py-4 text-sm bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                      className="grid grid-cols-12 gap-4 px-6 py-4 text-sm bg-white dark:bg-gray-dark hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-800 transition-colors"
                     >
                       <div className="col-span-4">
                         <div className="font-medium text-gray-900 dark:text-white">{team.name}</div>

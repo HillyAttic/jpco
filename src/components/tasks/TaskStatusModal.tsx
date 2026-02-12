@@ -72,20 +72,20 @@ export function TaskStatusModal({
         <form onSubmit={handleSubmit} className="space-y-4">
           {/* Task Title (Read-only) */}
           <div>
-            <Label className="text-sm font-medium text-gray-700">Task</Label>
-            <p className="mt-1 text-sm text-gray-900 font-medium">{task?.title}</p>
+            <Label className="text-sm font-medium text-gray-700 dark:text-gray-300">Task</Label>
+            <p className="mt-1 text-sm text-gray-900 dark:text-white font-medium">{task?.title}</p>
           </div>
 
           {/* Status Selector */}
           <div>
-            <Label htmlFor="status" className="text-sm font-medium text-gray-700">
+            <Label htmlFor="status" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Status
             </Label>
             <select
               id="status"
               value={status}
               onChange={(e) => setStatus(e.target.value as 'pending' | 'in-progress' | 'completed')}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
               <option value="pending">Pending</option>

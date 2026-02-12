@@ -380,8 +380,8 @@ export default function EmployeesPage() {
         {/* Page Title and Add Button */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Employee Management</h1>
-            <p className="text-gray-600 mt-1">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Employee Management</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
               Manage employee records and information
             </p>
           </div>
@@ -440,7 +440,7 @@ export default function EmployeesPage() {
 
         {/* Results Summary and View Toggle */}
         <div className="flex items-center justify-between">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-600 dark:text-gray-400">
             Showing {filteredEmployees.length} of {employees.length} employees
           </p>
           
@@ -507,7 +507,7 @@ export default function EmployeesPage() {
                             type="checkbox"
                             checked={isSelected(employee.id!)}
                             onChange={(e) => toggleSelection(employee.id!, e.target.checked)}
-                            className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary mt-1"
+                            className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary focus:ring-primary mt-1"
                           />
                           <div>
                             <div className="font-medium text-gray-900 dark:text-white">{employee.name}</div>
@@ -547,7 +547,7 @@ export default function EmployeesPage() {
                           type="checkbox"
                           checked={isSelected(employee.id!)}
                           onChange={(e) => toggleSelection(employee.id!, e.target.checked)}
-                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary focus:ring-primary"
                         />
                       </div>
                       <div className="col-span-1 font-medium text-gray-900 dark:text-white flex items-center">{employee.employeeId}</div>

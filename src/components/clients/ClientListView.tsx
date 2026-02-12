@@ -33,7 +33,7 @@ export function ClientListView({ clients, onEdit, onDelete }: ClientListViewProp
         {clients.map((client) => (
           <div
             key={client.id}
-            className="grid grid-cols-[1.8fr_1.8fr_1.2fr_1.2fr_1.5fr_0.8fr_0.7fr] gap-3 px-4 py-3 bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            className="grid grid-cols-[1.8fr_1.8fr_1.2fr_1.2fr_1.5fr_0.8fr_0.7fr] gap-3 px-4 py-3 bg-white dark:bg-gray-dark hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-800 transition-colors"
           >
             {/* Name */}
             <div className="min-w-0">

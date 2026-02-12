@@ -32,9 +32,9 @@ export function KanbanColumn({
       onDrop={(e) => onDrop(e, id)}
     >
       {/* Column Header */}
-      <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-300">
+      <div className="flex items-center justify-between mb-4 pb-3 border-b border-gray-300 dark:border-gray-600">
         <h3 className="font-bold text-lg text-gray-800">{title}</h3>
-        <span className="bg-white bg-opacity-70 rounded-full px-3 py-1 text-sm font-semibold text-gray-700">
+        <span className="bg-white dark:bg-gray-dark bg-opacity-70 rounded-full px-3 py-1 text-sm font-semibold text-gray-700 dark:text-gray-300">
           {tasks.length}
         </span>
       </div>

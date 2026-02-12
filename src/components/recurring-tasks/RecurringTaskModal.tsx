@@ -389,7 +389,7 @@ export function RecurringTaskModal({
             <select
               id="recurrencePattern"
               {...register('recurrencePattern')}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
               <option value="monthly">Monthly</option>
@@ -422,10 +422,10 @@ export function RecurringTaskModal({
               <p className="text-sm text-red-600 mt-1">{errors.teamId.message}</p>
             )}
             {loadingTeams && (
-              <p className="text-sm text-gray-500 mt-1">Loading teams...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading teams...</p>
             )}
             {!loadingTeams && teams.length === 0 && (
-              <p className="text-sm text-gray-500 mt-1">No teams available</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">No teams available</p>
             )}
           </div>
 
@@ -446,7 +446,7 @@ export function RecurringTaskModal({
                   : `${teamMemberMappings.length} Team Member${teamMemberMappings.length !== 1 ? 's' : ''} Mapped`}
               </span>
             </Button>
-            <p className="text-xs text-gray-500 mt-2">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
               Assign specific clients to individual team members. If configured, team members will only see tasks for their assigned clients.
             </p>
             
@@ -485,10 +485,10 @@ export function RecurringTaskModal({
               <p className="text-sm text-red-600 mt-1">{errors.categoryId.message}</p>
             )}
             {loadingCategories && (
-              <p className="text-sm text-gray-500 mt-1">Loading categories...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading categories...</p>
             )}
             {!loadingCategories && categories.length === 0 && (
-              <p className="text-sm text-gray-500 mt-1">No categories available</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">No categories available</p>
             )}
           </div>
 
@@ -550,11 +550,11 @@ export function RecurringTaskModal({
             {/* Multi-Select Client List */}
             <div className="mb-3">
               <Label className="text-xs mb-2 block">Select Clients (Click to add multiple)</Label>
-              <div className="border border-gray-300 rounded-md max-h-60 overflow-y-auto">
+              <div className="border border-gray-300 dark:border-gray-600 rounded-md max-h-60 overflow-y-auto">
                 {loadingClients ? (
-                  <div className="p-4 text-center text-gray-500">Loading clients...</div>
+                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">Loading clients...</div>
                 ) : getAvailableClients().length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                     {clientSearchQuery.trim() !== '' 
                       ? 'No clients match your search'
                       : clientFilter !== 'all' 
@@ -574,8 +574,8 @@ export function RecurringTaskModal({
                         disabled={isLoading}
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">{client.name}</span>
-                          <span className="text-xs text-gray-600">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{client.name}</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             {client.businessName || 'No Business Name'}
                             {client.gstin ? ` • GSTIN: ${client.gstin}` : 
                              client.tan ? ` • TAN: ${client.tan}` : 
@@ -591,9 +591,9 @@ export function RecurringTaskModal({
 
             {/* Selected Clients Display */}
             {selectedClients.length > 0 && (
-              <div className="mt-2 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="mt-2 mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-medium text-gray-600">Selected Clients ({selectedClients.length})</p>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Selected Clients ({selectedClients.length})</p>
                   <Button
                     type="button"
                     variant="ghost"
@@ -612,11 +612,11 @@ export function RecurringTaskModal({
                   {selectedClients.map((client) => (
                     <div
                       key={client.id}
-                      className="flex items-center gap-2 bg-white border border-gray-300 rounded-md px-2.5 py-1.5 shadow-sm"
+                      className="flex items-center gap-2 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 shadow-sm"
                     >
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">{client.name}</span>
-                        <span className="text-xs text-gray-500">
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{client.name}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
                           {client.gstin ? `GSTIN: ${client.gstin}` : 
                            client.tan ? `TAN: ${client.tan}` : 
                            client.pan ? `PAN: ${client.pan}` : 
@@ -638,7 +638,7 @@ export function RecurringTaskModal({
               </div>
             )}
             
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Optional: Use search and filters to find specific clients, then click "Select All" or click individual clients to add them.
             </p>
             
@@ -660,7 +660,7 @@ export function RecurringTaskModal({
                 type="date"
                 {...register('startDate')}
                 min={getMinDate()}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
                 required
               />
@@ -677,7 +677,7 @@ export function RecurringTaskModal({
                 type="date"
                 {...register('endDate')}
                 min={startDate || getMinDate()}
-                className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
               />
               {errors.endDate && (
@@ -692,7 +692,7 @@ export function RecurringTaskModal({
             <select
               id="priority"
               {...register('priority')}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
               <option value="low">Low</option>
@@ -711,7 +711,7 @@ export function RecurringTaskModal({
               type="checkbox"
               id="requiresArn"
               {...register('requiresArn')}
-              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="mt-1 w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
               disabled={isLoading}
             />
             <div className="flex-1">

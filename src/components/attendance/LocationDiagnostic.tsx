@@ -64,7 +64,7 @@ export function LocationDiagnostic() {
         </Button>
         
         {diagnosticData && (
-          <div className="bg-gray-100 p-4 rounded-md overflow-auto max-h-96">
+          <div className="bg-gray-100 dark:bg-gray-700 p-4 rounded-md overflow-auto max-h-96">
             <pre className="text-xs">
               {JSON.stringify(diagnosticData, null, 2)}
             </pre>

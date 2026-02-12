@@ -2,7 +2,7 @@ import React from 'react';
 import { Category } from '@/types/category.types';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PencilSquareIcon, TrashIcon, TagIcon } from '@heroicons/react/24/outline';
+import { PencilSquareIcon, TrashIcon, TagIcon, MapPinIcon } from '@heroicons/react/24/outline';
 
 interface CategoryCardProps {
   category: Category;
@@ -13,86 +13,51 @@ interface CategoryCardProps {
 
 export function CategoryCard({ category, onEdit, onDelete, onToggleStatus }: CategoryCardProps) {
   return (
-    <Card className="group hover:shadow-lg transition-all duration-200 border-l-4" style={{ borderLeftColor: category.color }}>
-      <CardContent className="p-6">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start gap-4 flex-1">
-            {/* Category Icon/Color */}
-            <div
-              className="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ backgroundColor: `${category.color}20` }}
-            >
-              {category.icon ? (
-                <span className="text-2xl">{category.icon}</span>
-              ) : (
-                <TagIcon className="w-6 h-6" style={{ color: category.color }} />
-              )}
-            </div>
-
-            {/* Category Info */}
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-semibold text-gray-900 truncate">
-                  {category.name}
-                </h3>
-                <span
-                  className={`px-2 py-0.5 text-xs rounded-full ${
-                    category.isActive
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {category.isActive ? 'Active' : 'Inactive'}
-                </span>
-              </div>
-              
-              {category.description && (
-                <p className="text-sm text-gray-600 mb-3 line-clamp-2">
-                  {category.description}
-                </p>
-              )}
-
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <span className="flex items-center gap-1">
-                  <TagIcon className="w-4 h-4" />
-                  {category.taskCount} {category.taskCount === 1 ? 'task' : 'tasks'}
-                </span>
-                <span>
-                  Created {new Date(category.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-            </div>
+    <Card className="group hover:shadow-lg transition-all duration-200 border-l-4 aspect-square" style={{ borderLeftColor: category.color }}>
+      <CardContent className="p-2 h-full flex flex-col">
+        {/* Icon and Status */}
+        <div className="flex items-start justify-between mb-1.5">
+          <div
+            className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+            style={{ backgroundColor: `${category.color}20` }}
+          >
+            {category.icon ? (
+              <span className="text-lg">{category.icon}</span>
+            ) : (
+              <TagIcon className="w-4 h-4" style={{ color: category.color }} />
+            )}
           </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onEdit(category)}
-              className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-            >
-              <PencilSquareIcon className="w-4 h-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => onDelete(category.id)}
-              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </Button>
-          </div>
+          
+          {category.isActive && (
+            <MapPinIcon className="w-4 h-4 text-green-600 dark:text-green-400" />
+          )}
         </div>
 
-        {/* Toggle Status */}
-        <div className="mt-4 pt-4 border-t">
-          <button
-            onClick={() => onToggleStatus(category.id, !category.isActive)}
-            className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+        {/* Category Name */}
+        <div className="flex-1 flex items-center justify-center min-h-0">
+          <h3 className="text-xs font-bold text-gray-900 dark:text-white line-clamp-2 text-center leading-tight">
+            {category.name}
+          </h3>
+        </div>
+
+        {/* Actions */}
+        <div className="flex items-center gap-1 mt-auto">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onEdit(category)}
+            className="flex-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 border-blue-200 dark:border-blue-800 h-6 text-[10px] px-0 min-w-0"
           >
-            {category.isActive ? 'Deactivate' : 'Activate'} category
-          </button>
+            <PencilSquareIcon className="w-3 h-3" />
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => onDelete(category.id)}
+            className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 h-6 px-1 min-w-0"
+          >
+            <TrashIcon className="w-3 h-3" />
+          </Button>
         </div>
       </CardContent>
     </Card>

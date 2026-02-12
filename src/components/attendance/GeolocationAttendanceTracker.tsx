@@ -488,7 +488,7 @@ export function GeolocationAttendanceTracker() {
         <CardContent className="p-6 text-center">
           <AlertCircle className="h-12 w-12 text-yellow-500 mx-auto mb-4" />
           <p className="text-lg font-medium mb-2">Authentication Required</p>
-          <p className="text-gray-600">Please sign in to use attendance tracking</p>
+          <p className="text-gray-600 dark:text-gray-400">Please sign in to use attendance tracking</p>
         </CardContent>
       </Card>
     );
@@ -504,7 +504,7 @@ export function GeolocationAttendanceTracker() {
             <h3 className="font-semibold">Security Warning</h3>
           </div>
           
-          <div className="text-sm text-gray-700 space-y-2">
+          <div className="text-sm text-gray-700 dark:text-gray-300 space-y-2">
             <p>Location access requires a secure connection (HTTPS).</p>
             <p>Please access this application via:</p>
             <ul className="list-disc pl-5 space-y-1 mt-2">
@@ -545,7 +545,7 @@ export function GeolocationAttendanceTracker() {
             ) : status.status === 'error' ? (
               <AlertCircle className="h-5 w-5 text-red-500" />
             ) : (
-              <Clock className="h-5 w-5 text-gray-500" />
+              <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400" />
             )}
             <span className={`font-medium ${getStatusColor()}`}>
               {getStatusMessage()}
@@ -553,7 +553,7 @@ export function GeolocationAttendanceTracker() {
           </div>
           
           {status.data?.clockInTime && (
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
               Clocked in at {formatClockInTime(status.data.clockInTime)}
             </p>
           )}
@@ -577,18 +577,18 @@ export function GeolocationAttendanceTracker() {
                       </ol>
                       
                       {/* Visual reference images */}
-                      <div className="mt-3 p-2 bg-white rounded border border-red-300">
+                      <div className="mt-3 p-2 bg-white dark:bg-gray-dark rounded border border-red-300">
                         <p className="text-xs text-red-800 font-medium mb-2">Visual Guide:</p>
                         <div className="space-y-2">
                           <img 
                             src="/images/icons/tune_icon_chrome.webp" 
                             alt="Step 1: Click the lock icon in browser address bar"
-                            className="w-full rounded border border-gray-200"
+                            className="w-full rounded border border-gray-200 dark:border-gray-700"
                           />
                           <img 
                             src="/images/icons/location_allow.jpg" 
                             alt="Step 2: Allow location access"
-                            className="w-full rounded border border-gray-200"
+                            className="w-full rounded border border-gray-200 dark:border-gray-700"
                           />
                         </div>
                       </div>

@@ -26,7 +26,7 @@ export function TeamPerformanceChart({ teamMembers }: TeamPerformanceChartProps)
         <div className="space-y-4">
           {teamMembers.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-sm text-gray-500 mb-2">No team members with assigned tasks yet</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">No team members with assigned tasks yet</p>
               <p className="text-xs text-gray-400">Assign tasks to team members to see their performance here</p>
             </div>
           ) : (
@@ -38,13 +38,13 @@ export function TeamPerformanceChart({ teamMembers }: TeamPerformanceChartProps)
               return (
                 <div key={index} className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-medium text-gray-700">{member.name}</span>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{member.name}</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                       {totalTasks} task{totalTasks !== 1 ? 's' : ''}
                     </span>
                   </div>
                   
-                  <div className="relative w-full h-8 bg-gray-100 rounded-lg overflow-hidden">
+                  <div className="relative w-full h-8 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
                     {/* Completed tasks bar */}
                     <div
                       className="absolute left-0 top-0 h-full bg-green-500 transition-all duration-300"
@@ -61,7 +61,7 @@ export function TeamPerformanceChart({ teamMembers }: TeamPerformanceChartProps)
                     
                     {/* Task counts overlay */}
                     <div className="absolute inset-0 flex items-center justify-center">
-                      <span className="text-xs font-medium text-gray-700 mix-blend-difference">
+                      <span className="text-xs font-medium text-gray-700 dark:text-gray-300 mix-blend-difference">
                         {member.tasksCompleted} completed, {member.tasksInProgress} in progress
                       </span>
                     </div>
@@ -76,11 +76,11 @@ export function TeamPerformanceChart({ teamMembers }: TeamPerformanceChartProps)
             <div className="flex justify-center gap-6 pt-4 border-t">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-green-500"></div>
-                <span className="text-sm text-gray-600">Completed</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">Completed</span>
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded bg-orange-500"></div>
-                <span className="text-sm text-gray-600">In Progress</span>
+                <span className="text-sm text-gray-600 dark:text-gray-400">In Progress</span>
               </div>
             </div>
           )}

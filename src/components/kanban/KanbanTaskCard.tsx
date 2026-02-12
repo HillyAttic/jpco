@@ -50,18 +50,18 @@ export function KanbanTaskCard({ task, onDragStart, onClick }: KanbanTaskCardPro
       {task.priority && (
         <div className="flex items-center gap-1 mb-2">
           <FlagIcon className={`w-4 h-4 ${getPriorityColor(task.priority)}`} />
-          <span className="text-xs text-gray-500 capitalize">{task.priority}</span>
+          <span className="text-xs text-gray-500 dark:text-gray-400 capitalize">{task.priority}</span>
         </div>
       )}
 
       {/* Title */}
-      <h4 className="font-semibold text-gray-900 mb-2 line-clamp-2">
+      <h4 className="font-semibold text-gray-900 dark:text-white mb-2 line-clamp-2">
         {task.title}
       </h4>
 
       {/* Description */}
       {task.description && (
-        <p className="text-sm text-gray-600 mb-3 line-clamp-2">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-3 line-clamp-2">
           {task.description}
         </p>
       )}
@@ -92,13 +92,13 @@ export function KanbanTaskCard({ task, onDragStart, onClick }: KanbanTaskCardPro
             {task.assignee.name.charAt(0).toUpperCase()}
           </div>
           <div className="hidden sm:block">
-            <p className="text-xs font-medium text-gray-700">{task.assignee.name}</p>
-            <p className="text-xs text-gray-500">{task.assignee.role}</p>
+            <p className="text-xs font-medium text-gray-700 dark:text-gray-300">{task.assignee.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400">{task.assignee.role}</p>
           </div>
         </div>
 
         {/* Meta Info */}
-        <div className="flex items-center gap-3 text-gray-500">
+        <div className="flex items-center gap-3 text-gray-500 dark:text-gray-400">
           {/* Due Date */}
           <div className={`flex items-center gap-1 ${isOverdue ? 'text-red-500' : ''}`}>
             <CalendarIcon className="w-4 h-4" />

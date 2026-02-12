@@ -284,7 +284,7 @@ export default function ViewSchedulePage() {
     return (
       <div className="grid grid-cols-7 gap-1">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="text-center font-semibold text-sm text-gray-600 py-2">
+          <div key={day} className="text-center font-semibold text-sm text-gray-600 dark:text-gray-400 py-2">
             {day}
           </div>
         ))}
@@ -372,7 +372,7 @@ export default function ViewSchedulePage() {
     return (
       <div className="grid grid-cols-7 gap-1">
         {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-          <div key={day} className="text-center font-semibold text-sm text-gray-600 py-2">
+          <div key={day} className="text-center font-semibold text-sm text-gray-600 dark:text-gray-400 py-2">
             {day}
           </div>
         ))}
@@ -416,14 +416,14 @@ export default function ViewSchedulePage() {
 
     return (
       <div className="w-full overflow-x-auto">
-        <table className="border-collapse border border-gray-300">
+        <table className="border-collapse border border-gray-300 dark:border-gray-600">
           <thead>
-            <tr className="bg-gray-100">
-              <th className="border border-gray-300 px-2 py-2 text-left font-semibold bg-gray-100 whitespace-nowrap" style={{ width: '150px', minWidth: '150px' }}>
+            <tr className="bg-gray-100 dark:bg-gray-700">
+              <th className="border border-gray-300 dark:border-gray-600 px-2 py-2 text-left font-semibold bg-gray-100 dark:bg-gray-700 whitespace-nowrap" style={{ width: '150px', minWidth: '150px' }}>
                 EMP NAME
               </th>
               {days.map(day => (
-                <th key={day} className="border border-gray-300 text-center font-semibold text-xs" style={{ width: '40px', minWidth: '40px', maxWidth: '40px', height: '40px', padding: '0' }}>
+                <th key={day} className="border border-gray-300 dark:border-gray-600 text-center font-semibold text-xs" style={{ width: '40px', minWidth: '40px', maxWidth: '40px', height: '40px', padding: '0' }}>
                   {day}
                 </th>
               ))}
@@ -435,9 +435,9 @@ export default function ViewSchedulePage() {
               const activities = employeeData?.activities || [];
 
               return (
-                <tr key={user.id} className="hover:bg-gray-50" style={{ height: '40px' }}>
+                <tr key={user.id} className="hover:bg-gray-50 dark:bg-gray-800" style={{ height: '40px' }}>
                   <td 
-                    className="border border-gray-300 px-2 font-medium bg-white whitespace-nowrap cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm"
+                    className="border border-gray-300 dark:border-gray-600 px-2 font-medium bg-white dark:bg-gray-dark whitespace-nowrap cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors text-sm"
                     onClick={() => handleUserNameClick(user)}
                     title="Click to view full calendar"
                     style={{ width: '150px', minWidth: '150px', height: '40px' }}
@@ -494,7 +494,7 @@ export default function ViewSchedulePage() {
                       return (
                         <td 
                           key={day} 
-                          className="border border-gray-300 bg-green-100"
+                          className="border border-gray-300 dark:border-gray-600 bg-green-100"
                           style={{ width: '40px', minWidth: '40px', maxWidth: '40px', height: '40px', padding: '0' }}
                         ></td>
                       );
@@ -524,8 +524,8 @@ export default function ViewSchedulePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">View Schedule</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">View Schedule</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             {canViewAllSchedules
               ? 'Organization-wide roster view'
               : 'Your personal schedule'}
@@ -534,11 +534,11 @@ export default function ViewSchedulePage() {
       </div>
 
       {/* Month Navigation */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-700 p-4">
         <div className="flex items-center justify-between">
           <button
             onClick={handlePreviousMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -549,7 +549,7 @@ export default function ViewSchedulePage() {
           </h2>
           <button
             onClick={handleNextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -559,17 +559,17 @@ export default function ViewSchedulePage() {
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+      <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-700 p-4 md:p-6">
         {canViewAllSchedules ? renderExcelView() : renderUserCalendar()}
       </div>
 
       {/* Legend for Excel View */}
       {canViewAllSchedules && (
-        <div className="bg-white rounded-xl border border-gray-200 p-4">
-          <h3 className="text-sm font-semibold text-gray-700 mb-2">Task Duration Legend</h3>
-          <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+        <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-700 p-4">
+          <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Task Duration Legend</h3>
+          <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-100 border border-gray-300 rounded"></div>
+              <div className="w-4 h-4 bg-green-100 border border-gray-300 dark:border-gray-600 rounded"></div>
               <span>No task assigned</span>
             </div>
             <div className="flex items-center gap-2">
@@ -591,16 +591,16 @@ export default function ViewSchedulePage() {
           onClick={handleCloseDayTasksModal}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-5xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10">
+            <div className="sticky top-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 p-6 z-10">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-900">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">
                     {selectedUser.name}'s Tasks
                   </h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     {selectedDate.toLocaleDateString('en-US', { 
                       weekday: 'long', 
                       year: 'numeric', 
@@ -611,7 +611,7 @@ export default function ViewSchedulePage() {
                 </div>
                 <button
                   onClick={handleCloseDayTasksModal}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -623,26 +623,26 @@ export default function ViewSchedulePage() {
             <div className="p-6">
               {selectedDateTasks.length === 0 ? (
                 <div className="text-center py-12">
-                  <p className="text-gray-500 text-lg">No tasks assigned for this day</p>
+                  <p className="text-gray-500 dark:text-gray-400 text-lg">No tasks assigned for this day</p>
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full border-collapse border border-gray-300">
+                  <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
                     <thead>
-                      <tr className="bg-gray-100">
-                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                      <tr className="bg-gray-100 dark:bg-gray-700">
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
                           Date
                         </th>
-                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
                           Client Name
                         </th>
-                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
                           Task Name
                         </th>
-                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
                           Start Time
                         </th>
-                        <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                        <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
                           End Time
                         </th>
                       </tr>
@@ -659,28 +659,28 @@ export default function ViewSchedulePage() {
                           const end = task.timeEnd || task.endDate;
                           
                           return (
-                            <tr key={task.id || index} className="hover:bg-gray-50">
-                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                            <tr key={task.id || index} className="hover:bg-gray-50 dark:bg-gray-800">
+                              <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white">
                                 {start ? start.toLocaleDateString('en-US', {
                                   month: 'short',
                                   day: 'numeric',
                                   year: 'numeric'
                                 }) : '—'}
                               </td>
-                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                              <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white">
                                 {task.clientName || '—'}
                               </td>
-                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                              <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white">
                                 {task.taskDetail || task.activityName || '—'}
                               </td>
-                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                              <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white">
                                 {start ? start.toLocaleTimeString('en-US', {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                   hour12: true
                                 }) : '—'}
                               </td>
-                              <td className="border border-gray-300 px-4 py-3 text-gray-900">
+                              <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white">
                                 {end ? end.toLocaleTimeString('en-US', {
                                   hour: '2-digit',
                                   minute: '2-digit',
@@ -696,7 +696,7 @@ export default function ViewSchedulePage() {
               )}
             </div>
 
-            <div className="sticky bottom-0 bg-gray-50 border-t border-gray-200 p-6">
+            <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 p-6">
               <button
                 onClick={handleCloseDayTasksModal}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -715,14 +715,14 @@ export default function ViewSchedulePage() {
           onClick={handleCloseActivityModal}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-md w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900">Activity Details</h3>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Activity Details</h3>
               <button
                 onClick={handleCloseActivityModal}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -732,29 +732,29 @@ export default function ViewSchedulePage() {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
+                <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                   Employee
                 </label>
-                <p className="text-base text-gray-900 font-medium">
+                <p className="text-base text-gray-900 dark:text-white font-medium">
                   {selectedActivity.userName}
                 </p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-500 mb-1">
+                <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                   {selectedActivity.taskType === 'multi' ? 'Activity Name' : 'Client Name'}
                 </label>
-                <p className="text-base text-gray-900 font-medium">
+                <p className="text-base text-gray-900 dark:text-white font-medium">
                   {selectedActivity.taskType === 'multi' ? selectedActivity.activityName : selectedActivity.clientName}
                 </p>
               </div>
 
               {selectedActivity.taskType === 'single' && selectedActivity.taskDetail && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                     Task Detail
                   </label>
-                  <p className="text-base text-gray-900">
+                  <p className="text-base text-gray-900 dark:text-white">
                     {selectedActivity.taskDetail}
                   </p>
                 </div>
@@ -762,10 +762,10 @@ export default function ViewSchedulePage() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                     {selectedActivity.taskType === 'multi' ? 'Start Date' : 'Start Time'}
                   </label>
-                  <p className="text-base text-gray-900">
+                  <p className="text-base text-gray-900 dark:text-white">
                     {selectedActivity.taskType === 'multi' && selectedActivity.startDate
                       ? new Date(selectedActivity.startDate).toLocaleDateString('en-US', {
                           month: 'short',
@@ -785,10 +785,10 @@ export default function ViewSchedulePage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                     {selectedActivity.taskType === 'multi' ? 'End Date' : 'End Time'}
                   </label>
-                  <p className="text-base text-gray-900">
+                  <p className="text-base text-gray-900 dark:text-white">
                     {selectedActivity.taskType === 'multi' && selectedActivity.endDate
                       ? new Date(selectedActivity.endDate).toLocaleDateString('en-US', {
                           month: 'short',
@@ -810,10 +810,10 @@ export default function ViewSchedulePage() {
 
               {selectedActivity.startDay && selectedActivity.endDay && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                     Duration
                   </label>
-                  <p className="text-base text-gray-900">
+                  <p className="text-base text-gray-900 dark:text-white">
                     {selectedActivity.endDay - selectedActivity.startDay + 1} day(s)
                   </p>
                 </div>
@@ -821,10 +821,10 @@ export default function ViewSchedulePage() {
 
               {selectedActivity.notes && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-500 mb-1">
+                  <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">
                     Notes
                   </label>
-                  <p className="text-base text-gray-900 whitespace-pre-wrap">
+                  <p className="text-base text-gray-900 dark:text-white whitespace-pre-wrap">
                     {selectedActivity.notes}
                   </p>
                 </div>
@@ -850,20 +850,20 @@ export default function ViewSchedulePage() {
           onClick={handleCloseUserCalendarModal}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10">
+            <div className="sticky top-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 p-6 z-10">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-bold text-gray-900">{selectedUser.name}'s Schedule</h3>
-                  <p className="text-sm text-gray-600 mt-1">
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-white">{selectedUser.name}'s Schedule</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                     {MONTHS[currentMonth - 1]} {currentYear}
                   </p>
                 </div>
                 <button
                   onClick={handleCloseUserCalendarModal}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -875,7 +875,7 @@ export default function ViewSchedulePage() {
             <div className="p-6">
               {/* View Toggle - Desktop Only */}
               <div className="hidden md:flex justify-center mb-6">
-                <div className="inline-flex rounded-lg border border-gray-300 bg-gray-100 p-1">
+                <div className="inline-flex rounded-lg border border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-gray-700 p-1">
                   <button
                     onClick={() => setUserCalendarViewMode('calendar')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -912,9 +912,9 @@ export default function ViewSchedulePage() {
                   
                   {/* Task Details Table - Shows below calendar when a day is selected */}
                   {selectedDayInUserCalendar !== null && tasksForSelectedDay.length > 0 && (
-                    <div className="mt-6 border-t border-gray-200 pt-6">
+                    <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-6">
                       <div className="flex items-center justify-between mb-4">
-                        <h4 className="text-lg font-semibold text-gray-900">
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
                           Tasks for {MONTHS[currentMonth - 1]} {selectedDayInUserCalendar}, {currentYear}
                         </h4>
                         <button
@@ -922,28 +922,28 @@ export default function ViewSchedulePage() {
                             setSelectedDayInUserCalendar(null);
                             setTasksForSelectedDay([]);
                           }}
-                          className="text-sm text-gray-600 hover:text-gray-900"
+                          className="text-sm text-gray-600 hover:text-gray-900 dark:text-white"
                         >
                           Clear selection
                         </button>
                       </div>
                       <div className="overflow-x-auto">
-                        <table className="w-full border-collapse border border-gray-300">
+                        <table className="w-full border-collapse border border-gray-300 dark:border-gray-600">
                           <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                            <tr className="bg-gray-100 dark:bg-gray-700">
+                              <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                 Date
                               </th>
-                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                              <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
                                 Client Name
                               </th>
-                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700">
+                              <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300">
                                 Task Name
                               </th>
-                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                              <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                 Start Time
                               </th>
-                              <th className="border border-gray-300 px-4 py-3 text-left font-semibold text-gray-700 whitespace-nowrap">
+                              <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">
                                 End Time
                               </th>
                             </tr>
@@ -960,28 +960,28 @@ export default function ViewSchedulePage() {
                                 const end = task.timeEnd || task.endDate;
                                 
                                 return (
-                                  <tr key={task.id || index} className="hover:bg-gray-50">
-                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-xs whitespace-nowrap">
+                                  <tr key={task.id || index} className="hover:bg-gray-50 dark:bg-gray-800">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
                                       {start ? start.toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric',
                                         year: 'numeric'
                                       }) : '—'}
                                     </td>
-                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-sm">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white text-sm">
                                       {task.clientName || '—'}
                                     </td>
-                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-sm">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white text-sm">
                                       {task.taskDetail || task.activityName || '—'}
                                     </td>
-                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-xs whitespace-nowrap">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
                                       {start ? start.toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit',
                                         hour12: true
                                       }) : '—'}
                                     </td>
-                                    <td className="border border-gray-300 px-4 py-3 text-gray-900 text-xs whitespace-nowrap">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
                                       {end ? end.toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit',
@@ -1004,27 +1004,27 @@ export default function ViewSchedulePage() {
                 <div className={userCalendarViewMode === 'calendar' ? 'md:hidden' : ''}>
                   {userCalendarEntries.length === 0 ? (
                     <div className="text-center py-12">
-                      <p className="text-gray-500 text-lg">No tasks scheduled for this month</p>
+                      <p className="text-gray-500 dark:text-gray-400 text-lg">No tasks scheduled for this month</p>
                     </div>
                   ) : (
                     <div className="overflow-x-auto -mx-6 md:mx-0">
                       <div className="inline-block min-w-full align-middle">
-                        <table className="min-w-full border-collapse border border-gray-300">
+                        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
                           <thead>
-                            <tr className="bg-gray-100">
-                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm whitespace-nowrap">
+                            <tr className="bg-gray-100 dark:bg-gray-700">
+                              <th className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs md:text-sm whitespace-nowrap">
                                 Date
                               </th>
-                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm">
+                              <th className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs md:text-sm">
                                 Client Name
                               </th>
-                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm">
+                              <th className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs md:text-sm">
                                 Task Name
                               </th>
-                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm whitespace-nowrap">
+                              <th className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs md:text-sm whitespace-nowrap">
                                 Start
                               </th>
-                              <th className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 text-xs md:text-sm whitespace-nowrap">
+                              <th className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-left font-semibold text-gray-700 dark:text-gray-300 text-xs md:text-sm whitespace-nowrap">
                                 End
                               </th>
                             </tr>
@@ -1041,31 +1041,31 @@ export default function ViewSchedulePage() {
                                 const end = task.timeEnd || task.endDate;
                                 
                                 return (
-                                  <tr key={task.id || index} className="hover:bg-gray-50">
-                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs whitespace-nowrap">
+                                  <tr key={task.id || index} className="hover:bg-gray-50 dark:bg-gray-800">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
                                       {start ? start.toLocaleDateString('en-US', {
                                         month: 'short',
                                         day: 'numeric'
                                       }) : '—'}
                                     </td>
-                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs md:text-sm">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-gray-900 dark:text-white text-xs md:text-sm">
                                       <div className="max-w-[100px] md:max-w-[150px] truncate">
                                         {task.clientName || '—'}
                                       </div>
                                     </td>
-                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs md:text-sm">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-gray-900 dark:text-white text-xs md:text-sm">
                                       <div className="max-w-[120px] md:max-w-[200px] truncate">
                                         {task.taskDetail || task.activityName || '—'}
                                       </div>
                                     </td>
-                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs whitespace-nowrap">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
                                       {start ? start.toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit',
                                         hour12: true
                                       }) : '—'}
                                     </td>
-                                    <td className="border border-gray-300 px-2 md:px-4 py-2 md:py-3 text-gray-900 text-xs whitespace-nowrap">
+                                    <td className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
                                       {end ? end.toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit',
@@ -1084,7 +1084,7 @@ export default function ViewSchedulePage() {
               )}
             </div>
 
-            <div className="sticky bottom-0 bg-white border-t border-gray-200 p-4">
+            <div className="sticky bottom-0 bg-white dark:bg-gray-dark border-t border-gray-200 dark:border-gray-700 p-4">
               <button
                 onClick={handleCloseUserCalendarModal}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"

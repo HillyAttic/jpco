@@ -259,7 +259,7 @@ export function TeamModal({
               <p className="text-sm text-red-600 mt-1">{errors.leaderId.message}</p>
             )}
             {loadingEmployees && (
-              <p className="text-sm text-gray-500 mt-1">Loading employees...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading employees...</p>
             )}
             {!loadingEmployees && employees.length === 0 && (
               <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
@@ -305,13 +305,13 @@ export function TeamModal({
             
             {/* Selected Members Display */}
             {selectedMembers.length > 0 && (
-              <div className="mt-2 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
-                <p className="text-xs font-medium text-gray-600 mb-2">Selected Members ({selectedMembers.length})</p>
+              <div className="mt-2 mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-2">Selected Members ({selectedMembers.length})</p>
                 <div className="flex flex-wrap gap-2">
                   {selectedMembers.map((member) => (
                     <div
                       key={member.id}
-                      className="flex items-center gap-2 bg-white border border-gray-300 rounded-md px-2.5 py-1.5 shadow-sm hover:shadow-md transition-shadow"
+                      className="flex items-center gap-2 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 shadow-sm hover:shadow-md transition-shadow"
                     >
                       <Avatar
                         alt={member.name}
@@ -319,8 +319,8 @@ export function TeamModal({
                         size="sm"
                       />
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">{member.name}</span>
-                        <span className="text-xs text-gray-500">{member.role}</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{member.name}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{member.role}</span>
                       </div>
                       <button
                         type="button"
@@ -356,7 +356,7 @@ export function TeamModal({
               ))}
             </Select>
             
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
               Select employees to add to the team. The team leader will be automatically included.
             </p>
             
@@ -385,9 +385,9 @@ export function TeamModal({
 
           {/* Team Summary */}
           {(leaderId || selectedMembers.length > 0) && (
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Team Summary</h4>
-              <div className="space-y-2 text-sm text-gray-600">
+            <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Team Summary</h4>
+              <div className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
                 {leaderId && (
                   <div>
                     <span className="font-medium">Leader:</span> {getLeaderName()}

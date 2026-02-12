@@ -13,7 +13,7 @@ export function CategoryList({ categories, onEdit, onDelete, onToggleStatus }: C
   if (categories.length === 0) {
     return (
       <div className="text-center py-12">
-        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 mb-4">
+        <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-100 dark:bg-gray-700 mb-4">
           <svg
             className="w-8 h-8 text-gray-400"
             fill="none"
@@ -28,14 +28,14 @@ export function CategoryList({ categories, onEdit, onDelete, onToggleStatus }: C
             />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">No categories yet</h3>
-        <p className="text-gray-600">Get started by creating your first category.</p>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No categories yet</h3>
+        <p className="text-gray-600 dark:text-gray-400">Get started by creating your first category.</p>
       </div>
     );
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-3">
       {categories.map((category) => (
         <CategoryCard
           key={category.id}

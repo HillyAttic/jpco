@@ -11,33 +11,34 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import { BellIcon } from "./icons";
-import { 
-  ClockIcon, 
-  UserGroupIcon, 
+import {
+  ClockIcon,
+  UserGroupIcon,
   CheckCircleIcon,
   BellAlertIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
 // Simple time ago function
-const timeAgo = (date: Date): string => {
-  const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
-  
+const timeAgo = (date: Date | string): string => {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  const seconds = Math.floor((new Date().getTime() - d.getTime()) / 1000);
+
   let interval = seconds / 31536000;
   if (interval > 1) return Math.floor(interval) + " years ago";
-  
+
   interval = seconds / 2592000;
   if (interval > 1) return Math.floor(interval) + " months ago";
-  
+
   interval = seconds / 86400;
   if (interval > 1) return Math.floor(interval) + " days ago";
-  
+
   interval = seconds / 3600;
   if (interval > 1) return Math.floor(interval) + " hours ago";
-  
+
   interval = seconds / 60;
   if (interval > 1) return Math.floor(interval) + " minutes ago";
-  
+
   return Math.floor(seconds) + " seconds ago";
 };
 
@@ -52,7 +53,7 @@ const getNotificationIcon = (type: string) => {
     case 'employee':
       return <UserGroupIcon className="w-5 h-5 text-orange-600" />;
     default:
-      return <BellAlertIcon className="w-5 h-5 text-gray-600" />;
+      return <BellAlertIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />;
   }
 };
 
@@ -162,7 +163,7 @@ export function Notification() {
               {notifications.map((notification) => (
                 <li key={notification.id} role="menuitem" className="relative group">
                   <Link
-                    href={notification.actionUrl || '#'}
+                    href={notification.data?.url || notification.actionUrl || '#'}
                     onClick={() => handleNotificationClick(notification)}
                     className={cn(
                       "flex items-start gap-3 rounded-lg px-2 py-2.5 outline-none hover:bg-gray-2 focus-visible:bg-gray-2 dark:hover:bg-dark-3 dark:focus-visible:bg-dark-3 transition-colors",
@@ -170,7 +171,7 @@ export function Notification() {
                     )}
                   >
                     <div className="flex-shrink-0 mt-0.5">
-                      {getNotificationIcon(notification.type)}
+                      {getNotificationIcon(notification.type || 'general')}
                     </div>
 
                     <div className="flex-1 min-w-0">
@@ -187,7 +188,7 @@ export function Notification() {
                       </div>
 
                       <p className="text-sm text-dark-5 dark:text-dark-6 line-clamp-2 mt-0.5">
-                        {notification.message}
+                        {notification.body || notification.message}
                       </p>
 
                       <span className="text-xs text-gray-500 dark:text-gray-400 mt-1 block">

@@ -29,7 +29,7 @@ export function WeeklyProgressChart({ data }: WeeklyProgressChartProps) {
                 <ArrowTrendingDownIcon className="w-4 h-4 text-orange-500" />
               )}
               <span className="font-semibold">{completionRate}%</span>
-              <span className="text-gray-500">completion</span>
+              <span className="text-gray-500 dark:text-gray-400">completion</span>
             </div>
           </div>
         </div>
@@ -95,7 +95,7 @@ export function WeeklyProgressChart({ data }: WeeklyProgressChartProps) {
                         className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-lg transition-all duration-500 ease-out group-hover:from-blue-500 group-hover:to-blue-700"
                         style={{ width: `${createdPercent}%`, minWidth: created > 0 ? '8px' : '0' }}
                       >
-                        <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                        <div className="absolute inset-0 bg-white dark:bg-gray-dark/20 animate-pulse"></div>
                       </div>
                     </div>
                     {/* Completed bar */}
@@ -104,7 +104,7 @@ export function WeeklyProgressChart({ data }: WeeklyProgressChartProps) {
                         className="h-full bg-gradient-to-r from-green-400 to-green-600 rounded-lg transition-all duration-500 ease-out group-hover:from-green-500 group-hover:to-green-700"
                         style={{ width: `${completedPercent}%`, minWidth: completed > 0 ? '8px' : '0' }}
                       >
-                        <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                        <div className="absolute inset-0 bg-white dark:bg-gray-dark/20 animate-pulse"></div>
                       </div>
                     </div>
                   </div>

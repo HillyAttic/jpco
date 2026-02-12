@@ -22,15 +22,15 @@ interface StatItemProps {
 
 function StatItem({ icon, label, value, color, bgColor }: StatItemProps) {
   return (
-    <div className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+    <div className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:bg-gray-700 transition-colors">
       <div className={`flex items-center justify-center w-12 h-12 rounded-full ${bgColor}`}>
         <div className={color}>
           {icon}
         </div>
       </div>
       <div>
-        <p className="text-2xl font-bold text-gray-900">{value}</p>
-        <p className="text-sm text-gray-600">{label}</p>
+        <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
       </div>
     </div>
   );
@@ -61,8 +61,8 @@ export function TaskStatsCard({ tasks }: TaskStatsCardProps) {
     <Card>
       <CardContent className="p-6">
         <div className="mb-6">
-          <h2 className="text-xl font-semibold text-gray-900">Task Overview</h2>
-          <p className="text-sm text-gray-600 mt-1">Summary of all task statuses</p>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Task Overview</h2>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Summary of all task statuses</p>
         </div>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -105,10 +105,10 @@ export function TaskStatsCard({ tasks }: TaskStatsCardProps) {
 
         {/* Progress Bar */}
         {totalTasks > 0 && (
-          <div className="mt-6 pt-6 border-t border-gray-200">
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-gray-700">Completion Rate</span>
-              <span className="text-sm font-semibold text-gray-900">
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Completion Rate</span>
+              <span className="text-sm font-semibold text-gray-900 dark:text-white">
                 {Math.round((completedTasks / totalTasks) * 100)}%
               </span>
             </div>

@@ -297,7 +297,7 @@ export function TaskModal({
               type="date"
               {...register('dueDate')}
               min={getMinDate()}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
               required
             />
@@ -312,7 +312,7 @@ export function TaskModal({
             <select
               id="priority"
               {...register('priority')}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
               <option value="low">Low</option>
@@ -331,7 +331,7 @@ export function TaskModal({
             <select
               id="status"
               {...register('status')}
-              className="mt-1 w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
               <option value="pending">Pending</option>
@@ -350,11 +350,11 @@ export function TaskModal({
             {/* Multi-Select Employee List */}
             <div className="mb-3 mt-2">
               <Label className="text-xs mb-2 block">Select Employees (Click to add multiple)</Label>
-              <div className="border border-gray-300 rounded-md max-h-48 overflow-y-auto">
+              <div className="border border-gray-300 dark:border-gray-600 rounded-md max-h-48 overflow-y-auto">
                 {loadingEmployees ? (
-                  <div className="p-4 text-center text-gray-500">Loading employees...</div>
+                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">Loading employees...</div>
                 ) : employees.filter(emp => !selectedEmployees.some(sel => sel.id === emp.id)).length === 0 ? (
-                  <div className="p-4 text-center text-gray-500">
+                  <div className="p-4 text-center text-gray-500 dark:text-gray-400">
                     {selectedEmployees.length > 0 
                       ? 'All employees have been selected'
                       : 'No employees available'}
@@ -370,8 +370,8 @@ export function TaskModal({
                         disabled={isLoading}
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">{employee.name}</span>
-                          <span className="text-xs text-gray-600">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{employee.name}</span>
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             {employee.email} • {employee.role}
                           </span>
                         </div>
@@ -384,9 +384,9 @@ export function TaskModal({
 
             {/* Selected Employees Display */}
             {selectedEmployees.length > 0 && (
-              <div className="mt-2 mb-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="mt-2 mb-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-medium text-gray-600">Selected Employees ({selectedEmployees.length})</p>
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Selected Employees ({selectedEmployees.length})</p>
                   <Button
                     type="button"
                     variant="ghost"
@@ -405,11 +405,11 @@ export function TaskModal({
                   {selectedEmployees.map((employee) => (
                     <div
                       key={employee.id}
-                      className="flex items-center gap-2 bg-white border border-gray-300 rounded-md px-2.5 py-1.5 shadow-sm"
+                      className="flex items-center gap-2 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 shadow-sm"
                     >
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900">{employee.name}</span>
-                        <span className="text-xs text-gray-500">{employee.role}</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{employee.name}</span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">{employee.role}</span>
                       </div>
                       <button
                         type="button"
@@ -454,10 +454,10 @@ export function TaskModal({
               <p className="text-sm text-red-600 mt-1">{errors.categoryId.message}</p>
             )}
             {loadingCategories && (
-              <p className="text-sm text-gray-500 mt-1">Loading categories...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading categories...</p>
             )}
             {!loadingCategories && categories.length === 0 && (
-              <p className="text-sm text-gray-500 mt-1">No categories available</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">No categories available</p>
             )}
           </div>
 
@@ -503,10 +503,10 @@ export function TaskModal({
               <p className="text-sm text-red-600 mt-1">{errors.contactId.message}</p>
             )}
             {loadingClients && (
-              <p className="text-sm text-gray-500 mt-1">Loading clients...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading clients...</p>
             )}
             {!loadingClients && getFilteredClients().length === 0 && (
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                 {clientFilter !== 'all' 
                   ? `No clients with ${clientFilter.toUpperCase()} available` 
                   : 'No clients available'}

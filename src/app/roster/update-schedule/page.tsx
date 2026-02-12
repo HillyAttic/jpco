@@ -379,15 +379,15 @@ export default function UpdateSchedulePage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Update Schedule</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Update Schedule</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Manage your personal schedule and activities
           </p>
         </div>
       </div>
 
       {/* Color Legend */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4">
+      <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-4">
         <h3 className="text-sm font-semibold mb-2">Task Duration Legend:</h3>
         <div className="flex flex-wrap gap-4 text-sm">
           <div className="flex items-center gap-2">
@@ -402,12 +402,12 @@ export default function UpdateSchedulePage() {
       </div>
 
       {/* Calendar */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 md:p-6">
+      <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-700 p-4 md:p-6">
         {/* Month Navigation */}
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={handlePreviousMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -418,7 +418,7 @@ export default function UpdateSchedulePage() {
           </h2>
           <button
             onClick={handleNextMonth}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -430,7 +430,7 @@ export default function UpdateSchedulePage() {
         <div className="grid grid-cols-7 gap-1">
           {/* Day Headers - Hidden on mobile */}
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-            <div key={day} className="hidden md:block text-center font-semibold text-sm text-gray-600 py-2">
+            <div key={day} className="hidden md:block text-center font-semibold text-sm text-gray-600 dark:text-gray-400 py-2">
               {day}
             </div>
           ))}
@@ -484,7 +484,7 @@ export default function UpdateSchedulePage() {
                   </div>
                 ))}
                 {calDay.tasks.length > 3 && (
-                  <div className="text-xs text-gray-500 px-1">
+                  <div className="text-xs text-gray-500 dark:text-gray-400 px-1">
                     +{calDay.tasks.length - 3} more
                   </div>
                 )}
@@ -501,17 +501,17 @@ export default function UpdateSchedulePage() {
           onClick={handleCloseModal}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
               {editingEntry ? 'Edit Task' : 'Add Task'}
             </h3>
 
             {/* Task Type Selector (only for new tasks) */}
             {!editingEntry && (
               <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">Task Type</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Task Type</label>
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -527,7 +527,7 @@ export default function UpdateSchedulePage() {
                   <button
                     type="button"
                     disabled
-                    className="flex-1 py-2 px-4 rounded-lg border bg-gray-100 text-gray-400 border-gray-300 cursor-not-allowed opacity-60"
+                    className="flex-1 py-2 px-4 rounded-lg border bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-300 dark:border-gray-600 cursor-not-allowed opacity-60"
                     title="Activity tasks are currently disabled"
                   >
                     Activity (Coming Soon)
@@ -540,50 +540,50 @@ export default function UpdateSchedulePage() {
               {taskType === 'multi' ? (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Activity Name *
                     </label>
                     <input
                       type="text"
                       value={formData.activityName}
                       onChange={(e) => setFormData({ ...formData, activityName: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                       placeholder="e.g., Audit, Monthly Visit, ROC Filing"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Start Date *
                     </label>
                     <input
                       type="date"
                       value={formData.startDate}
                       onChange={(e) => setFormData({ ...formData, startDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       End Date *
                     </label>
                     <input
                       type="date"
                       value={formData.endDate}
                       onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Notes (Optional)
                     </label>
                     <textarea
                       value={formData.notes}
                       onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       rows={3}
                       placeholder="Additional details..."
                     />
@@ -592,13 +592,13 @@ export default function UpdateSchedulePage() {
               ) : (
                 <>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Client (Optional)
                     </label>
                     <select
                       value={formData.clientId}
                       onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select a client</option>
                       {clients.map(client => (
@@ -609,52 +609,52 @@ export default function UpdateSchedulePage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Task Detail *
                     </label>
                     <input
                       type="text"
                       value={formData.taskDetail}
                       onChange={(e) => setFormData({ ...formData, taskDetail: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                       placeholder="e.g., GST filing and reconciliation"
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Date
                     </label>
                     <input
                       type="date"
                       value={formData.taskDate}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-600 cursor-not-allowed"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 cursor-not-allowed"
                       disabled
                       readOnly
                     />
-                    <p className="text-xs text-gray-500 mt-1">Date is automatically set from the calendar</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Date is automatically set from the calendar</p>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Start Time *
                     </label>
                     <input
                       type="time"
                       value={formData.timeStart}
                       onChange={(e) => setFormData({ ...formData, timeStart: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       End Time *
                     </label>
                     <input
                       type="time"
                       value={formData.timeEnd}
                       onChange={(e) => setFormData({ ...formData, timeEnd: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                       required
                     />
                   </div>
@@ -686,11 +686,11 @@ export default function UpdateSchedulePage() {
           onClick={handleCloseTaskTable}
         >
           <div
-            className="bg-white rounded-lg shadow-xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
                 Tasks for {selectedDate.toLocaleDateString('en-US', { 
                   weekday: 'long', 
                   year: 'numeric', 
@@ -700,25 +700,25 @@ export default function UpdateSchedulePage() {
               </h3>
               <button
                 onClick={handleCloseTaskTable}
-                className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
             {selectedDateTasks.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">No tasks assigned for this day</p>
+              <p className="text-gray-500 dark:text-gray-400 text-center py-8">No tasks assigned for this day</p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
                   <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Date</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Client Name</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Task Name</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Start Time</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">End Time</th>
-                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700">Actions</th>
+                    <tr className="bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700 dark:text-gray-300">Date</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700 dark:text-gray-300">Client Name</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700 dark:text-gray-300">Task Name</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700 dark:text-gray-300">Start Time</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700 dark:text-gray-300">End Time</th>
+                      <th className="text-left py-3 px-4 font-semibold text-sm text-gray-700 dark:text-gray-300">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -733,23 +733,23 @@ export default function UpdateSchedulePage() {
                         const end = task.timeEnd || task.endDate;
                         
                         return (
-                          <tr key={task.id} className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="py-3 px-4 text-sm text-gray-900">
+                          <tr key={task.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:bg-gray-800">
+                            <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
                               {start?.toLocaleDateString()}
                             </td>
-                            <td className="py-3 px-4 text-sm text-gray-900">
+                            <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
                               {task.clientName || '—'}
                             </td>
-                            <td className="py-3 px-4 text-sm text-gray-900">
+                            <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
                               {task.taskDetail || task.activityName}
                             </td>
-                            <td className="py-3 px-4 text-sm text-gray-900">
+                            <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
                               {start ? start.toLocaleTimeString('en-US', { 
                                 hour: '2-digit', 
                                 minute: '2-digit' 
                               }) : '—'}
                             </td>
-                            <td className="py-3 px-4 text-sm text-gray-900">
+                            <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
                               {end ? end.toLocaleTimeString('en-US', { 
                                 hour: '2-digit', 
                                 minute: '2-digit' 

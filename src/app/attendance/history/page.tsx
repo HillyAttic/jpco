@@ -307,8 +307,8 @@ export default function AttendanceHistoryPage() {
           <div className="mx-auto h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mb-4">
             <Clock className="h-6 w-6 text-blue-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
-          <p className="text-gray-600 mb-6">Please sign in to view attendance history.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Authentication Required</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Please sign in to view attendance history.</p>
           <Button 
             onClick={() => window.location.href = '/auth/signin'}
             className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -326,8 +326,8 @@ export default function AttendanceHistoryPage() {
       <div className="mb-6 sm:mb-8">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Attendance History</h1>
-            <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">View your historical attendance records</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Attendance History</h1>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">View your historical attendance records</p>
           </div>
           
           {/* Action Buttons - Mobile Responsive */}
@@ -357,11 +357,11 @@ export default function AttendanceHistoryPage() {
       {attendances.length === 0 && !loading && !isInitialLoad ? (
         <Card className="text-center py-12">
           <CardContent>
-            <div className="mx-auto h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+            <div className="mx-auto h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
               <Clock className="h-8 w-8 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Attendance Records</h3>
-            <p className="text-gray-600">You don't have any attendance records yet.</p>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Attendance Records</h3>
+            <p className="text-gray-600 dark:text-gray-400">You don't have any attendance records yet.</p>
           </CardContent>
         </Card>
       ) : (
@@ -371,11 +371,11 @@ export default function AttendanceHistoryPage() {
               <CardHeader className="px-3 sm:px-6 py-3 sm:py-4 pb-3 sm:pb-6">
                 <div className="flex justify-between items-start gap-2 sm:gap-3">
                   <div className="flex-1 min-w-0">
-                    <CardTitle className="flex items-center gap-1 sm:gap-2 leading-tight sm:leading-normal pb-2 sm:pb-0 border-b sm:border-b-0 border-gray-200">
-                      <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0" />
+                    <CardTitle className="flex items-center gap-1 sm:gap-2 leading-tight sm:leading-normal pb-2 sm:pb-0 border-b sm:border-b-0 border-gray-200 dark:border-gray-700">
+                      <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                       <span className="whitespace-nowrap text-sm sm:text-xl">{formatDate(record.clockIn)}</span>
                     </CardTitle>
-                    <p className="hidden sm:block text-[9px] sm:text-sm text-gray-500 mt-1 truncate ml-2.5 sm:ml-7">
+                    <p className="hidden sm:block text-[9px] sm:text-sm text-gray-500 dark:text-gray-400 mt-1 truncate ml-2.5 sm:ml-7">
                       {record.employeeName}
                     </p>
                   </div>
@@ -405,8 +405,8 @@ export default function AttendanceHistoryPage() {
                         </div>
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1 whitespace-nowrap">Clock In</h4>
-                        <p className="text-sm sm:text-lg font-semibold text-gray-900 whitespace-nowrap">{formatTime(record.clockIn)}</p>
+                        <h4 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-0.5 sm:mb-1 whitespace-nowrap">Clock In</h4>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white whitespace-nowrap">{formatTime(record.clockIn)}</p>
                         {record.location?.clockIn && (
                           <button
                             onClick={() => handleLocationClick(
@@ -434,8 +434,8 @@ export default function AttendanceHistoryPage() {
                         </div>
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
-                        <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-0.5 sm:mb-1 whitespace-nowrap">Clock Out</h4>
-                        <p className="text-sm sm:text-lg font-semibold text-gray-900 whitespace-nowrap">{formatTime(record.clockOut)}</p>
+                        <h4 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-0.5 sm:mb-1 whitespace-nowrap">Clock Out</h4>
+                        <p className="text-sm sm:text-lg font-semibold text-gray-900 dark:text-white whitespace-nowrap">{formatTime(record.clockOut)}</p>
                         {record.location?.clockOut && (
                           <button
                             onClick={() => handleLocationClick(
@@ -462,8 +462,8 @@ export default function AttendanceHistoryPage() {
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-4">
                     <div className="flex items-center gap-3 sm:gap-6">
                       <div>
-                        <span className="text-xs sm:text-sm text-gray-500">Duration:</span>
-                        <span className="ml-2 text-xs sm:text-sm font-medium text-gray-900">
+                        <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Duration:</span>
+                        <span className="ml-2 text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                           {calculateDuration(record.clockIn, record.clockOut)}
                         </span>
                       </div>
@@ -497,7 +497,7 @@ export default function AttendanceHistoryPage() {
             </Button>
           
             <div className="flex items-center justify-center gap-2">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
                 Page {currentPage} {hasMoreData ? 'of many' : ''}
               </span>
             </div>
@@ -521,7 +521,7 @@ export default function AttendanceHistoryPage() {
             <div className="text-center py-8">
               <div className="inline-flex items-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                <span className="text-gray-600">Loading records...</span>
+                <span className="text-gray-600 dark:text-gray-400">Loading records...</span>
               </div>
             </div>
           )}
@@ -531,19 +531,19 @@ export default function AttendanceHistoryPage() {
       {/* Delete Confirmation Modal - Mobile Responsive */}
       {showDeleteModal && recordToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-md w-full p-4 sm:p-6 mx-4">
+          <div className="bg-white dark:bg-gray-dark rounded-lg max-w-md w-full p-4 sm:p-6 mx-4">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
                 <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
-              <h3 className="text-base sm:text-lg font-semibold text-gray-900">Confirm Deletion</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">Confirm Deletion</h3>
             </div>
             
-            <p className="text-sm sm:text-base text-gray-600 mb-2">
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-2">
               Are you sure you want to delete this attendance record?
             </p>
             
-            <p className="text-xs sm:text-sm text-gray-500 mb-6">
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mb-6">
               Date: {formatDate(recordToDelete.clockIn)}
             </p>
             

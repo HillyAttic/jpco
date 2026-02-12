@@ -226,10 +226,10 @@ export default function DashboardPage() {
         onClick={handleCloseClients}
       >
         <div 
-          className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] overflow-hidden"
+          className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between gap-2 sm:gap-3">
               <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                 <div className="p-1.5 sm:p-2 bg-blue-600 rounded-lg flex-shrink-0">
@@ -238,17 +238,17 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
+                  <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                     Clients for: {task.title}
                   </h3>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                     {assignedToNames.length} client{assignedToNames.length !== 1 ? 's' : ''} assigned
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleCloseClients}
-                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -262,7 +262,7 @@ export default function DashboardPage() {
               {assignedToNames.map((clientName, index) => (
                 <div
                   key={index}
-                  className="p-3 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:bg-gray-700 transition-colors"
                 >
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
@@ -270,7 +270,7 @@ export default function DashboardPage() {
                         {clientName.charAt(0).toUpperCase()}
                       </span>
                     </div>
-                    <span className="text-sm font-medium text-gray-900 truncate">
+                    <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
                       {clientName}
                     </span>
                   </div>
@@ -279,7 +279,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <Button
               onClick={handleCloseClients}
               variant="primary"
@@ -299,10 +299,10 @@ export default function DashboardPage() {
         onClick={handleCloseTeam}
       >
         <div 
-          className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] overflow-hidden"
+          className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-2xl w-full max-h-[70vh] overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+          <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between gap-2 sm:gap-3">
               <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                 <div className="p-1.5 sm:p-2 bg-green-600 rounded-lg flex-shrink-0">
@@ -311,17 +311,17 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
+                  <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                     Team: {teamName}
                   </h3>
-                  <p className="text-xs sm:text-sm text-gray-600 truncate">
+                  <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                     {teamMembers.length} team member{teamMembers.length !== 1 ? 's' : ''}
                   </p>
                 </div>
               </div>
               <button
                 onClick={handleCloseTeam}
-                className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                className="p-1.5 sm:p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-4 h-4 sm:w-5 sm:h-5">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -335,7 +335,7 @@ export default function DashboardPage() {
               {teamMembers.map((member) => (
                 <div
                   key={member.id}
-                  className="p-4 border border-gray-200 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                  className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:bg-gray-700 transition-colors"
                 >
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-green-600 rounded-full flex items-center justify-center flex-shrink-0">
@@ -344,10 +344,10 @@ export default function DashboardPage() {
                       </span>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900 truncate">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                         {member.name}
                       </p>
-                      <p className="text-xs text-gray-500 capitalize">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 capitalize">
                         {member.role}
                       </p>
                     </div>
@@ -357,7 +357,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="p-6 border-t border-gray-200 bg-gray-50">
+          <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
             <Button
               onClick={handleCloseTeam}
               variant="primary"
@@ -373,11 +373,11 @@ export default function DashboardPage() {
 
     return (
       <>
-        <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-gray-600 mt-2 pt-2 border-t border-gray-200">
+        <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
           {assignedByName && (
             <span className="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap overflow-hidden">
               <span className="font-medium flex-shrink-0">Assigned By:</span>
-              <span className="text-gray-900 truncate">{assignedByName}</span>
+              <span className="text-gray-900 dark:text-white truncate">{assignedByName}</span>
             </span>
           )}
           {assignedToNames.length > 0 && (
@@ -440,7 +440,7 @@ export default function DashboardPage() {
                 // For non-recurring tasks, show names inline
                 <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
                   <span className="font-medium flex-shrink-0">Assigned To:</span>
-                  <span className="text-gray-900 truncate">{assignedToNames.join(', ')}</span>
+                  <span className="text-gray-900 dark:text-white truncate">{assignedToNames.join(', ')}</span>
                 </span>
               )}
             </>
@@ -823,7 +823,7 @@ export default function DashboardPage() {
         {/* Stats Cards Skeleton */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 md:gap-4">
           {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="bg-white rounded-lg border border-gray-200 p-4">
+            <div key={i} className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-4">
               <div className="h-4 bg-gray-200 rounded w-20 mb-4"></div>
               <div className="h-8 bg-gray-200 rounded w-16 mb-2"></div>
               <div className="h-3 bg-gray-200 rounded w-24"></div>
@@ -833,23 +833,23 @@ export default function DashboardPage() {
 
         {/* Content Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
             <div className="space-y-3">
               {[1, 2, 3].map(i => (
-                <div key={i} className="h-20 bg-gray-100 rounded"></div>
+                <div key={i} className="h-20 bg-gray-100 dark:bg-gray-700 rounded"></div>
               ))}
             </div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
-            <div className="h-64 bg-gray-100 rounded"></div>
+            <div className="h-64 bg-gray-100 dark:bg-gray-700 rounded"></div>
           </div>
-          <div className="bg-white rounded-lg border border-gray-200 p-6">
+          <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-6">
             <div className="h-6 bg-gray-200 rounded w-32 mb-4"></div>
             <div className="space-y-3">
               {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-16 bg-gray-100 rounded"></div>
+                <div key={i} className="h-16 bg-gray-100 dark:bg-gray-700 rounded"></div>
               ))}
             </div>
           </div>
@@ -867,8 +867,8 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
             {canViewAllTasks 
               ? "Welcome back! Here's what's happening with your team today."
               : "Welcome back! Here's an overview of your tasks."}
@@ -946,7 +946,7 @@ export default function DashboardPage() {
         {/* Middle Column - Charts */}
         <div className={`space-y-4 md:space-y-6 ${!canViewAllTasks ? 'lg:col-span-2' : ''}`}>
           <Suspense fallback={
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <div className="h-64 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
@@ -983,27 +983,27 @@ export default function DashboardPage() {
         {/* For Employees - Show personal stats or other relevant info */}
         {!canViewAllTasks && (
           <div className="space-y-4 md:space-y-6">
-            <div className="rounded-xl border border-gray-200 bg-white p-6">
+            <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-dark p-6">
               <h3 className="text-xl font-semibold mb-4">My Tasks</h3>
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
                 You have {stats.total} task{stats.total !== 1 ? 's' : ''} assigned to you.
               </p>
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">Completed:</span>
+                  <span className="text-gray-600 dark:text-gray-400">Completed:</span>
                   <span className="font-medium text-green-600">{stats.completed}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">In Progress:</span>
+                  <span className="text-gray-600 dark:text-gray-400">In Progress:</span>
                   <span className="font-medium text-orange-600">{stats.inProgress}</span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">To Do:</span>
+                  <span className="text-gray-600 dark:text-gray-400">To Do:</span>
                   <span className="font-medium text-blue-600">{stats.todo}</span>
                 </div>
                 {stats.overdue > 0 && (
                   <div className="flex justify-between text-sm">
-                    <span className="text-gray-600">Overdue:</span>
+                    <span className="text-gray-600 dark:text-gray-400">Overdue:</span>
                     <span className="font-medium text-red-600">{stats.overdue}</span>
                   </div>
                 )}
@@ -1017,7 +1017,7 @@ export default function DashboardPage() {
       {canViewAllTasks && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           <Suspense fallback={
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <div className="h-64 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
@@ -1026,7 +1026,7 @@ export default function DashboardPage() {
             <WeeklyProgressChart data={weeklyData} />
           </Suspense>
           <Suspense fallback={
-            <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-6">
               <div className="h-64 flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
               </div>
@@ -1044,28 +1044,28 @@ export default function DashboardPage() {
           onClick={handleCancelDialog}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-md w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-xl font-bold text-gray-900 mb-4">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
               Choose Task Type
             </h3>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
               Select the type of task you want to create:
             </p>
             
             <div className="space-y-3">
               <button
                 onClick={() => handleTaskTypeSelect('non-recurring')}
-                className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
+                className="w-full p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-all text-left group"
               >
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-blue-600 rounded-lg group-hover:bg-blue-700 transition-colors">
                     <ClipboardDocumentListIcon className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">Non-Recurring Task</h4>
-                    <p className="text-sm text-gray-600">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Non-Recurring Task</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       One-time task with a single due date
                     </p>
                   </div>
@@ -1074,15 +1074,15 @@ export default function DashboardPage() {
 
               <button
                 onClick={() => handleTaskTypeSelect('recurring')}
-                className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all text-left group"
+                className="w-full p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-green-500 hover:bg-green-50 transition-all text-left group"
               >
                 <div className="flex items-start gap-3">
                   <div className="p-2 bg-green-600 rounded-lg group-hover:bg-green-700 transition-colors">
                     <ClockIcon className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h4 className="font-semibold text-gray-900 mb-1">Recurring Task</h4>
-                    <p className="text-sm text-gray-600">
+                    <h4 className="font-semibold text-gray-900 dark:text-white mb-1">Recurring Task</h4>
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
                       Task that repeats on a schedule (daily, weekly, monthly)
                     </p>
                   </div>
@@ -1110,30 +1110,30 @@ export default function DashboardPage() {
           onClick={handleCloseOverdue}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3 flex-1 min-w-0">
                   <div className="p-1.5 sm:p-2 bg-red-100 rounded-lg flex-shrink-0">
                     <ExclamationTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                       Overdue Tasks
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                       {overdueTasks.length} task{overdueTasks.length !== 1 ? 's' : ''} past due date
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseOverdue}
-                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1153,15 +1153,15 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
                             <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 bg-red-600 text-white rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
                               {daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue
                             </div>
                           </div>
                           {task.description && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
                           )}
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                             <span className="flex items-center gap-1">
                               <ClockIcon className="w-3.5 h-3.5" />
                               Due: {new Date(task.dueDate!).toLocaleDateString('en-US', { 
@@ -1170,10 +1170,10 @@ export default function DashboardPage() {
                                 year: 'numeric'
                               })}
                             </span>
-                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                            <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium">
                               Priority: {task.priority}
                             </span>
-                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                            <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium">
                               Status: {task.status}
                             </span>
                           </div>
@@ -1196,30 +1196,30 @@ export default function DashboardPage() {
           onClick={handleCloseTodo}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between gap-2 sm:gap-4">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   <div className="p-1.5 sm:p-2 bg-yellow-100 rounded-lg flex-shrink-0">
                     <ClockIcon className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                       To Do Tasks
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                       {todoTasks.length} pending task{todoTasks.length !== 1 ? 's' : ''}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseTodo}
-                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1245,7 +1245,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               {hasDueDate && daysUntilDue !== null && (
                                 <div className={`px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
@@ -1266,16 +1266,16 @@ export default function DashboardPage() {
                                 </div>
                               )}
                               {!hasDueDate && (
-                                <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 bg-gray-200 text-gray-600 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
+                                <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 bg-gray-200 text-gray-600 dark:text-gray-400 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap">
                                   No due date
                                 </div>
                               )}
                             </div>
                           </div>
                           {task.description && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
                           )}
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                             {hasDueDate && (
                               <span className="flex items-center gap-1">
                                 <ClockIcon className="w-3.5 h-3.5" />
@@ -1286,7 +1286,7 @@ export default function DashboardPage() {
                                 })}
                               </span>
                             )}
-                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                            <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium">
                               Priority: {task.priority}
                             </span>
                             {task.isRecurring && (
@@ -1314,20 +1314,20 @@ export default function DashboardPage() {
           onClick={handleCloseAllTasks}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between gap-2 sm:gap-4">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   <div className="p-1.5 sm:p-2 bg-blue-600 rounded-lg flex-shrink-0">
                     <ClipboardDocumentListIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                       All Tasks
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
                       <span className="hidden sm:inline">
                         {stats.total} total task{stats.total !== 1 ? 's' : ''} • {stats.completed} completed • {stats.inProgress} in progress • {stats.todo} pending
                       </span>
@@ -1339,10 +1339,10 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={handleCloseAllTasks}
-                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1383,7 +1383,7 @@ export default function DashboardPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
                             <div className="flex items-center gap-2">
-                              <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                              <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
                               {task.status === 'completed' && (
                                 <CheckCircleIcon className="w-4 h-4 text-green-600 flex-shrink-0" />
                               )}
@@ -1413,17 +1413,17 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           {task.description && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
                           )}
                           <div className="flex flex-wrap items-center gap-2 text-xs">
                             <span className={`px-2 py-0.5 rounded-full font-medium ${statusBadgeColors[task.status] || 'bg-gray-100 text-gray-700'}`}>
                               {task.status === 'in-progress' ? 'In Progress' : task.status.charAt(0).toUpperCase() + task.status.slice(1)}
                             </span>
-                            <span className="px-2 py-0.5 bg-white rounded-full font-medium text-gray-600">
+                            <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium text-gray-600 dark:text-gray-400">
                               {task.priority}
                             </span>
                             {hasDueDate && (
-                              <span className="flex items-center gap-1 text-gray-500">
+                              <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
                                 <ClockIcon className="w-3.5 h-3.5" />
                                 {dueDate!.toLocaleDateString('en-US', { 
                                   month: 'short', 
@@ -1457,30 +1457,30 @@ export default function DashboardPage() {
           onClick={handleCloseCompleted}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between gap-2 sm:gap-4">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   <div className="p-1.5 sm:p-2 bg-green-600 rounded-lg flex-shrink-0">
                     <CheckCircleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                       Completed Tasks
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                       {completedTasks.length} task{completedTasks.length !== 1 ? 's' : ''} completed
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseCompleted}
-                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1502,12 +1502,12 @@ export default function DashboardPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <CheckCircleIcon className="w-5 h-5 text-green-600 flex-shrink-0" />
-                            <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                            <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
                           </div>
                           {task.description && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
                           )}
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                             <span className="flex items-center gap-1">
                               <ClockIcon className="w-3.5 h-3.5" />
                               Completed: {completedDate.toLocaleDateString('en-US', { 
@@ -1524,7 +1524,7 @@ export default function DashboardPage() {
                                 })}
                               </span>
                             )}
-                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                            <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium">
                               {task.priority}
                             </span>
                             {task.isRecurring && (
@@ -1557,30 +1557,30 @@ export default function DashboardPage() {
           onClick={handleCloseInProgress}
         >
           <div 
-            className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-2xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between gap-2 sm:gap-4">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   <div className="p-1.5 sm:p-2 bg-orange-100 rounded-lg flex-shrink-0">
                     <ExclamationTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-base sm:text-xl font-bold text-gray-900 truncate">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
                       In Progress Tasks
                     </h3>
-                    <p className="text-xs sm:text-sm text-gray-600 truncate">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">
                       {inProgressTasks.length} task{inProgressTasks.length !== 1 ? 's' : ''} currently active
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleCloseInProgress}
-                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition-colors flex-shrink-0"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
                   aria-label="Close modal"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
@@ -1614,7 +1614,7 @@ export default function DashboardPage() {
                                   <circle cx="12" cy="12" r="10" strokeWidth="2" strokeDasharray="4 4" />
                                 </svg>
                               </div>
-                              <h4 className="font-semibold text-gray-900">{task.title}</h4>
+                              <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
                             </div>
                             <div className="flex items-center gap-2 flex-shrink-0">
                               {isOverdue && daysUntilDue !== null && (
@@ -1646,9 +1646,9 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           {task.description && (
-                            <p className="text-sm text-gray-600 mb-2 line-clamp-2">{task.description}</p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mb-2 line-clamp-2">{task.description}</p>
                           )}
-                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                          <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
                             {hasDueDate && (
                               <span className="flex items-center gap-1">
                                 <ClockIcon className="w-3.5 h-3.5" />
@@ -1659,7 +1659,7 @@ export default function DashboardPage() {
                                 })}
                               </span>
                             )}
-                            <span className="px-2 py-0.5 bg-white rounded-full font-medium">
+                            <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium">
                               {task.priority}
                             </span>
                             {task.isRecurring && (

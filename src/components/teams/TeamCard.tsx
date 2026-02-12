@@ -70,7 +70,7 @@ export function TeamCard({ team, onEdit, onDelete, onViewDetails, selected = fal
         <div className="flex items-start justify-between mb-4">
           <div className="flex-1 min-w-0 pr-4">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg font-semibold text-gray-900 truncate">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                 {team.name}
               </h3>
               {/* Status Badge - Requirement 4.7 */}
@@ -108,7 +108,7 @@ export function TeamCard({ team, onEdit, onDelete, onViewDetails, selected = fal
         
         {/* Description - Requirement 4.3 */}
         {team.description && (
-          <p className="text-sm text-gray-600 mb-4 line-clamp-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
             {team.description}
           </p>
         )}
@@ -116,16 +116,16 @@ export function TeamCard({ team, onEdit, onDelete, onViewDetails, selected = fal
         {/* Team Details */}
         <div className="space-y-3 mb-4">
           {/* Team Leader - Requirement 4.3 */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <UserIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="font-medium text-gray-700">Leader:</span>
+            <span className="font-medium text-gray-700 dark:text-gray-300">Leader:</span>
             <span className="truncate">{team.leaderName}</span>
           </div>
 
           {/* Member Count - Requirement 4.3 */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <UserGroupIcon className="w-4 h-4 flex-shrink-0" />
-            <span className="font-medium text-gray-700">Members:</span>
+            <span className="font-medium text-gray-700 dark:text-gray-300">Members:</span>
             <span>{memberCount} {memberCount === 1 ? 'member' : 'members'}</span>
           </div>
         </div>
@@ -134,7 +134,7 @@ export function TeamCard({ team, onEdit, onDelete, onViewDetails, selected = fal
         {memberCount > 0 && (
           <div className="pt-4 border-t">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600 font-medium">Team:</span>
+              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">Team:</span>
               <div className="flex -space-x-2">
                 {/* Display first 5 member avatars */}
                 {displayMembers.map((member) => (
@@ -151,7 +151,7 @@ export function TeamCard({ team, onEdit, onDelete, onViewDetails, selected = fal
                 {/* Show count indicator for additional members - Requirement 4.8 */}
                 {remainingCount > 0 && (
                   <div 
-                    className="h-8 w-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600"
+                    className="h-8 w-8 rounded-full bg-gray-200 border-2 border-white flex items-center justify-center text-xs font-medium text-gray-600 dark:text-gray-400"
                     title={`${remainingCount} more ${remainingCount === 1 ? 'member' : 'members'}`}
                   >
                     +{remainingCount}
@@ -164,7 +164,7 @@ export function TeamCard({ team, onEdit, onDelete, onViewDetails, selected = fal
 
         {/* Footer with creation date */}
         {team.createdAt && (
-          <div className="mt-4 pt-4 border-t text-xs text-gray-500">
+          <div className="mt-4 pt-4 border-t text-xs text-gray-500 dark:text-gray-400">
             Created {new Date(team.createdAt).toLocaleDateString()}
           </div>
         )}

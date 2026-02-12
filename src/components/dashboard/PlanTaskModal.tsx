@@ -266,7 +266,7 @@ export function PlanTaskModal({
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Plan Task - {taskTitle}</DialogTitle>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
             Schedule client visits for your assigned clients
           </p>
         </DialogHeader>
@@ -274,7 +274,7 @@ export function PlanTaskModal({
         <div className="space-y-6">
           {/* Loading State for Existing Visits */}
           {loadingExistingVisits && (
-            <div className="text-center py-4 text-gray-500">
+            <div className="text-center py-4 text-gray-500 dark:text-gray-400">
               Loading existing visits...
             </div>
           )}
@@ -306,13 +306,13 @@ export function PlanTaskModal({
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-green-200">
+                  <tbody className="bg-white dark:bg-gray-dark divide-y divide-green-200">
                     {existingVisits.map((visit, index) => (
                       <tr key={`existing-${index}`} className="hover:bg-green-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">{visit.clientName}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{formatDate(visit.scheduleDate)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{formatTime(visit.startTime)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{formatTime(visit.endTime)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{visit.clientName}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatDate(visit.scheduleDate)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatTime(visit.startTime)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatTime(visit.endTime)}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             Saved
@@ -356,13 +356,13 @@ export function PlanTaskModal({
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-blue-200">
+                  <tbody className="bg-white dark:bg-gray-dark divide-y divide-blue-200">
                     {visits.map((visit, index) => (
                       <tr key={`new-${index}`} className="hover:bg-blue-50">
-                        <td className="px-4 py-3 text-sm text-gray-900">{visit.clientName}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{formatDate(visit.scheduleDate)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{formatTime(visit.startTime)}</td>
-                        <td className="px-4 py-3 text-sm text-gray-900">{formatTime(visit.endTime)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{visit.clientName}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatDate(visit.scheduleDate)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatTime(visit.startTime)}</td>
+                        <td className="px-4 py-3 text-sm text-gray-900 dark:text-white">{formatTime(visit.endTime)}</td>
                         <td className="px-4 py-3 text-sm">
                           <button
                             type="button"
@@ -384,15 +384,15 @@ export function PlanTaskModal({
           )}
 
           {/* Add Visit Form */}
-          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
             <Label className="mb-3 block font-semibold">
               {visits.length === 0 ? 'Add Visit' : 'Add More Visit'}
             </Label>
             
             {loadingClients ? (
-              <div className="text-center py-4 text-gray-500">Loading clients...</div>
+              <div className="text-center py-4 text-gray-500 dark:text-gray-400">Loading clients...</div>
             ) : clients.length === 0 ? (
-              <div className="text-center py-4 text-gray-500">
+              <div className="text-center py-4 text-gray-500 dark:text-gray-400">
                 No clients assigned to you for this task
               </div>
             ) : (
@@ -401,7 +401,7 @@ export function PlanTaskModal({
                 <div>
                   <Label htmlFor="clientId" className="flex items-center gap-2 mb-2">
                     <span>Client Name</span>
-                    <span className="text-xs text-gray-500">(Auto-picked from assigned)</span>
+                    <span className="text-xs text-gray-500 dark:text-gray-400">(Auto-picked from assigned)</span>
                   </Label>
                   <Select
                     id="clientId"
@@ -416,7 +416,7 @@ export function PlanTaskModal({
                       </option>
                     ))}
                   </Select>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {clients.length} client{clients.length !== 1 ? 's' : ''} assigned to you
                   </p>
                 </div>
@@ -433,7 +433,7 @@ export function PlanTaskModal({
                     value={currentVisit.scheduleDate}
                     onChange={(e) => setCurrentVisit({ ...currentVisit, scheduleDate: e.target.value })}
                     min={new Date().toISOString().split('T')[0]}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -448,7 +448,7 @@ export function PlanTaskModal({
                     id="startTime"
                     value={currentVisit.startTime}
                     onChange={(e) => setCurrentVisit({ ...currentVisit, startTime: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -463,7 +463,7 @@ export function PlanTaskModal({
                     id="endTime"
                     value={currentVisit.endTime}
                     onChange={(e) => setCurrentVisit({ ...currentVisit, endTime: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
@@ -508,7 +508,7 @@ export function PlanTaskModal({
         </div>
 
         {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
+        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
           <Button
             type="button"
             variant="outline"

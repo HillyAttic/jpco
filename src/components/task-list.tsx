@@ -119,8 +119,8 @@ export function TaskList({ tasks, onTaskClick, showStatus = true }: TaskListProp
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
           </svg>
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-1">No tasks found</h3>
-        <p className="text-gray-500">Get started by creating a new task.</p>
+        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No tasks found</h3>
+        <p className="text-gray-500 dark:text-gray-400">Get started by creating a new task.</p>
       </div>
     );
   }
@@ -162,7 +162,7 @@ export function TaskList({ tasks, onTaskClick, showStatus = true }: TaskListProp
                           {getUserName(task.createdBy).charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <span className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 mr-1">Assigned by:</span>
+                      <span className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 dark:text-gray-400 mr-1">Assigned by:</span>
                       <span className="truncate max-w-[120px] md:max-w-none">{getUserName(task.createdBy)}</span>
                     </div>
                   )}

@@ -84,7 +84,7 @@ export function LocationMapModal({
           </div>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+            className="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
             aria-label="Close modal"
           >
             <X className="w-6 h-6" />

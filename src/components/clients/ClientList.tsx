@@ -95,7 +95,7 @@ export function ClientList({
             <FunnelIcon className="w-5 h-5 text-gray-400" />
             <select
               disabled
-              className="px-3 py-2 border border-gray-300 rounded-md bg-white opacity-50"
+              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-dark opacity-50"
             >
               <option>All Status</option>
             </select>
@@ -131,7 +131,7 @@ export function ClientList({
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as 'all' | 'active' | 'inactive')}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+            className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-gray-dark"
             aria-label="Filter by status"
           >
             <option value="all">All Status</option>
@@ -142,7 +142,7 @@ export function ClientList({
       </div>
 
       {/* Results Count */}
-      <div className="text-sm text-gray-600">
+      <div className="text-sm text-gray-600 dark:text-gray-400">
         Showing {paginatedClients.length} of {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''}
         {searchQuery && ` matching "${searchQuery}"`}
       </div>
@@ -181,7 +181,7 @@ export function ClientList({
       {/* Pagination Controls */}
       {showPagination && (
         <div className="flex items-center justify-between border-t pt-4">
-          <div className="text-sm text-gray-600">
+          <div className="text-sm text-gray-600 dark:text-gray-400">
             Page {currentPage} of {totalPages}
           </div>
           

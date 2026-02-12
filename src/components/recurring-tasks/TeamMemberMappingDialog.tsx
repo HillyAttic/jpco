@@ -141,14 +141,14 @@ export function TeamMemberMappingDialog({
       <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Team Member Mapping</DialogTitle>
-          <p className="text-sm text-gray-600 mt-2">
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
             Assign specific clients to team members. Each member will only see tasks for their assigned clients.
           </p>
         </DialogHeader>
 
         <div className="space-y-6">
           {/* Selection Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
             {/* Team Member Selection */}
             <div>
               <Label htmlFor="user-select" className="flex items-center gap-2 mb-2">
@@ -170,7 +170,7 @@ export function TeamMemberMappingDialog({
                 ))}
               </Select>
               {loadingUsers && (
-                <p className="text-xs text-gray-500 mt-1">Loading users...</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Loading users...</p>
               )}
             </div>
 
@@ -199,10 +199,10 @@ export function TeamMemberMappingDialog({
                 ))}
               </Select>
               {!selectedUserId && (
-                <p className="text-xs text-gray-500 mt-1">Select a team member first</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Select a team member first</p>
               )}
               {loadingClients && (
-                <p className="text-xs text-gray-500 mt-1">Loading clients...</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Loading clients...</p>
               )}
             </div>
           </div>
@@ -212,7 +212,7 @@ export function TeamMemberMappingDialog({
             <Label className="mb-3 block">Current Mappings ({mappings.length} team members)</Label>
             
             {mappings.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 bg-gray-50 rounded-lg border border-gray-200">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
                 <UserIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
                 <p>No team member mappings yet</p>
                 <p className="text-sm mt-1">Select a team member and assign clients to get started</p>
@@ -222,14 +222,14 @@ export function TeamMemberMappingDialog({
                 {mappings.map((mapping) => (
                   <div
                     key={mapping.userId}
-                    className="p-4 bg-white border border-gray-200 rounded-lg shadow-sm"
+                    className="p-4 bg-white dark:bg-gray-dark border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm"
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <UserIcon className="w-5 h-5 text-blue-600" />
                         <div>
-                          <h4 className="font-medium text-gray-900">{mapping.userName}</h4>
-                          <p className="text-xs text-gray-500">
+                          <h4 className="font-medium text-gray-900 dark:text-white">{mapping.userName}</h4>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">
                             {mapping.clientIds.length} client{mapping.clientIds.length !== 1 ? 's' : ''} assigned
                           </p>
                         </div>
@@ -252,7 +252,7 @@ export function TeamMemberMappingDialog({
                           className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5"
                         >
                           <BuildingOfficeIcon className="w-3.5 h-3.5 text-blue-600" />
-                          <span className="text-sm text-gray-900">{getClientName(clientId)}</span>
+                          <span className="text-sm text-gray-900 dark:text-white">{getClientName(clientId)}</span>
                           <button
                             type="button"
                             onClick={() => handleRemoveClient(mapping.userId, clientId)}

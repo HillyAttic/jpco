@@ -272,17 +272,17 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   };
 
   return (
-    <div className="bg-white rounded-lg shadow">
+    <div className="bg-white dark:bg-gray-dark rounded-lg shadow">
       <div className="p-6">
         {/* Calendar Header */}
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-gray-900">
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
             {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
           </h2>
           <div className="flex items-center space-x-2">
             <button
               onClick={() => navigateMonth('prev')}
-              className="p-2 rounded-full hover:bg-gray-100"
+              className="p-2 rounded-full hover:bg-gray-100 dark:bg-gray-700"
             >
               <ChevronLeftIcon className="w-5 h-5" />
             </button>
@@ -294,7 +294,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
             </button>
             <button
               onClick={() => navigateMonth('next')}
-              className="p-2 rounded-full hover:bg-gray-100"
+              className="p-2 rounded-full hover:bg-gray-100 dark:bg-gray-700"
             >
               <ChevronRightIcon className="w-5 h-5" />
             </button>
@@ -302,7 +302,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
         </div>
 
         {/* Legend */}
-        <div className="mb-4 flex items-center gap-4 text-xs text-gray-600">
+        <div className="mb-4 flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-1">
             <ArrowPathIcon className="w-4 h-4" />
             <span>Recurring Task</span>
@@ -315,7 +315,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           </div>
           {canViewRosterStats && (
             <>
-              <div className="border-l border-gray-300 h-4 mx-2"></div>
+              <div className="border-l border-gray-300 dark:border-gray-600 h-4 mx-2"></div>
               <div className="flex items-center gap-2">
                 <span className="font-semibold">Employee Status:</span>
                 <div className="flex items-center gap-1">
@@ -338,7 +338,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
         {/* Weekday Headers */}
         <div className="grid grid-cols-7 gap-1 mb-2">
           {weekdays.map(day => (
-            <div key={day} className="p-2 text-center text-sm font-medium text-gray-500">
+            <div key={day} className="p-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
               {day}
             </div>
           ))}
@@ -396,7 +396,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                         </div>
                       ))}
                       {dayTasks.length > 3 && (
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
                           +{dayTasks.length - 3} more
                         </div>
                       )}
@@ -411,8 +411,8 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
 
         {/* Selected Date Details */}
         {selectedDate && (
-          <div className="mt-6 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-medium text-gray-900 mb-2">
+          <div className="mt-6 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <h3 className="font-medium text-gray-900 dark:text-white mb-2">
               Tasks for {formatDate(selectedDate)}
             </h3>
             {getTasksForDate(selectedDate).length > 0 ? (
@@ -420,7 +420,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                 {getTasksForDate(selectedDate).map(task => (
                   <div 
                     key={task.id} 
-                    className="p-3 bg-white rounded border cursor-pointer hover:bg-gray-50 transition-colors"
+                    className="p-3 bg-white dark:bg-gray-dark rounded border cursor-pointer hover:bg-gray-50 dark:bg-gray-800 transition-colors"
                     onClick={(e) => handleTaskClick(task, e, selectedDate)}
                   >
                     <div className="flex justify-between items-start">
@@ -435,7 +435,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                           )}
                         </div>
                         {task.description && (
-                          <p className="text-sm text-gray-600 mt-1">{task.description}</p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{task.description}</p>
                         )}
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ml-2 ${
@@ -450,7 +450,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500">No tasks scheduled for this day.</p>
+              <p className="text-gray-500 dark:text-gray-400">No tasks scheduled for this day.</p>
             )}
           </div>
         )}

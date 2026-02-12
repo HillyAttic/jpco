@@ -360,7 +360,7 @@ export function AttendanceExportModal({
         <div className="space-y-6 py-4">
           {/* Date Range Selection */}
           <div className="space-y-4">
-            <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Calendar className="w-4 h-4" />
               <span>Select Date Range</span>
             </div>
@@ -372,7 +372,7 @@ export function AttendanceExportModal({
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div>
@@ -382,7 +382,7 @@ export function AttendanceExportModal({
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -391,7 +391,7 @@ export function AttendanceExportModal({
           {/* Employee Selection */}
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-sm font-medium text-gray-700">
+              <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
                 <Users className="w-4 h-4" />
                 <span>Select Employees</span>
               </div>
@@ -410,7 +410,7 @@ export function AttendanceExportModal({
                 placeholder="Search employees by name, email, or role..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 pl-10 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <svg
                 xmlns="http://www.w3.org/2000/svg"
@@ -433,11 +433,11 @@ export function AttendanceExportModal({
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
               </div>
             ) : filteredEmployees.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 No employees found matching your search
               </div>
             ) : (
-              <div className="border border-gray-200 rounded-md max-h-60 overflow-y-auto">
+              <div className="border border-gray-200 dark:border-gray-700 rounded-md max-h-60 overflow-y-auto">
                 {filteredEmployees.map((employee) => {
                   const isPreSelected = employee.id === preSelectedEmployeeId;
                   return (
@@ -453,7 +453,7 @@ export function AttendanceExportModal({
                         type="checkbox"
                         checked={selectedEmployees.includes(employee.id!)}
                         onChange={() => handleEmployeeToggle(employee.id!)}
-                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        className="w-4 h-4 text-blue-600 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500"
                       />
                       <div className="flex-1">
                         <div className={`font-medium ${isPreSelected ? 'text-blue-900' : 'text-gray-900'}`}>
@@ -474,7 +474,7 @@ export function AttendanceExportModal({
               </div>
             )}
 
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               {selectedEmployees.length} employee{selectedEmployees.length !== 1 ? 's' : ''} selected
               {searchQuery && ` • ${filteredEmployees.length} found`}
             </div>
@@ -494,8 +494,8 @@ export function AttendanceExportModal({
               >
                 <FileSpreadsheet className={`w-6 h-6 ${exportFormat === 'excel' ? 'text-blue-600' : 'text-gray-400'}`} />
                 <div className="text-left">
-                  <div className="font-medium text-gray-900">Excel</div>
-                  <div className="text-xs text-gray-500">.xlsx format</div>
+                  <div className="font-medium text-gray-900 dark:text-white">Excel</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">.xlsx format</div>
                 </div>
               </button>
 
@@ -509,8 +509,8 @@ export function AttendanceExportModal({
               >
                 <FileText className={`w-6 h-6 ${exportFormat === 'pdf' ? 'text-blue-600' : 'text-gray-400'}`} />
                 <div className="text-left">
-                  <div className="font-medium text-gray-900">PDF</div>
-                  <div className="text-xs text-gray-500">.pdf format</div>
+                  <div className="font-medium text-gray-900 dark:text-white">PDF</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">.pdf format</div>
                 </div>
               </button>
             </div>

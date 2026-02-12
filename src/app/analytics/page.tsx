@@ -60,61 +60,61 @@ export default function AnalyticsPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-        <p className="text-gray-600 mt-2">Track your productivity and team performance</p>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Analytics</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">Track your productivity and team performance</p>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Total Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Tasks</CardTitle>
             <div className="p-2 bg-blue-100 rounded-lg">
               <ChartBarIcon className="w-5 h-5 text-blue-600" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-xs text-gray-500 mt-1">All tasks in system</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">All tasks in system</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Completion Rate</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Completion Rate</CardTitle>
             <div className="p-2 bg-green-100 rounded-lg">
               <ArrowTrendingUpIcon className="w-5 h-5 text-green-600" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.completionRate}%</div>
-            <p className="text-xs text-gray-500 mt-1">Tasks completed</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Tasks completed</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">In Progress</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">In Progress</CardTitle>
             <div className="p-2 bg-orange-100 rounded-lg">
               <UserGroupIcon className="w-5 h-5 text-orange-600" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.inProgress}</div>
-            <p className="text-xs text-gray-500 mt-1">Active tasks</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Active tasks</p>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-gray-500">Overdue</CardTitle>
+            <CardTitle className="text-sm font-medium text-gray-500 dark:text-gray-400">Overdue</CardTitle>
             <div className="p-2 bg-red-100 rounded-lg">
               <ClockIcon className="w-5 h-5 text-red-600" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.overdue}</div>
-            <p className="text-xs text-gray-500 mt-1">Past due date</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Past due date</p>
           </CardContent>
         </Card>
       </div>
@@ -130,7 +130,7 @@ export default function AnalyticsPage() {
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-sm font-medium">Completed</span>
-                  <span className="text-sm text-gray-500">{stats.completed} ({Math.round(stats.completed/stats.total*100 || 0)}%)</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{stats.completed} ({Math.round(stats.completed/stats.total*100 || 0)}%)</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
@@ -143,7 +143,7 @@ export default function AnalyticsPage() {
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-sm font-medium">In Progress</span>
-                  <span className="text-sm text-gray-500">{stats.inProgress} ({Math.round(stats.inProgress/stats.total*100 || 0)}%)</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{stats.inProgress} ({Math.round(stats.inProgress/stats.total*100 || 0)}%)</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
@@ -156,7 +156,7 @@ export default function AnalyticsPage() {
               <div>
                 <div className="flex justify-between mb-1">
                   <span className="text-sm font-medium">To Do</span>
-                  <span className="text-sm text-gray-500">{stats.todo} ({Math.round(stats.todo/stats.total*100 || 0)}%)</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">{stats.todo} ({Math.round(stats.todo/stats.total*100 || 0)}%)</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
@@ -176,10 +176,10 @@ export default function AnalyticsPage() {
           <CardContent>
             <div className="space-y-4">
               {tasks.slice(0, 5).map(task => (
-                <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                <div key={task.id} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
                   <div>
-                    <h4 className="font-medium text-gray-900">{task.title}</h4>
-                    <p className="text-sm text-gray-500">
+                    <h4 className="font-medium text-gray-900 dark:text-white">{task.title}</h4>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Updated {(task.updatedAt instanceof Date ? task.updatedAt : new Date(task.updatedAt)).toLocaleDateString()}
                     </p>
                   </div>

@@ -35,7 +35,7 @@ export default function KanbanPage() {
 
         // Load businesses
         const userBusinesses = await kanbanService.getUserBusinesses(user.uid);
-        
+
         // Automatic migration: Rename "My First Business" to "Personal"
         const businessToRename = userBusinesses.find(b => b.name === 'My First Business');
         if (businessToRename) {
@@ -48,7 +48,7 @@ export default function KanbanPage() {
           businessToRename.name = 'Personal';
           businessToRename.description = 'Personal workspace';
         }
-        
+
         // If no businesses exist, create a default one
         if (userBusinesses.length === 0) {
           const defaultBusiness = await kanbanService.createBusiness(user.uid, {
@@ -105,7 +105,7 @@ export default function KanbanPage() {
         ...taskData,
         businessId: selectedBusinessId,
       });
-      
+
       setAllTasks(prevTasks => [newTask, ...prevTasks]);
     } catch (err) {
       console.error('Error creating task:', err);
@@ -143,12 +143,12 @@ export default function KanbanPage() {
   const handleDeleteBusiness = async (businessId: string) => {
     try {
       await kanbanService.deleteBusiness(businessId);
-      
+
       // Remove business and its tasks from state
       const updatedBusinesses = businesses.filter(b => b.id !== businessId);
       setBusinesses(updatedBusinesses);
       setAllTasks(prev => prev.filter(task => task.businessId !== businessId));
-      
+
       // Select another business
       if (selectedBusinessId === businessId && updatedBusinesses.length > 0) {
         setSelectedBusinessId(updatedBusinesses[0].id);
@@ -166,7 +166,7 @@ export default function KanbanPage() {
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading your Kanban board...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading your Kanban board...</p>
         </div>
       </div>
     );
@@ -193,49 +193,82 @@ export default function KanbanPage() {
   }
 
   return (
-    <div className="space-y-4 md:space-y-6 px-2 sm:px-4 md:px-0">
-      {/* Page Header */}
-      <div className="px-2 sm:px-0">
-        <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Kanban Board</h1>
-        <p className="text-sm sm:text-base text-gray-600 mt-1 sm:mt-2">Manage tasks across multiple businesses</p>
-      </div>
-
-      {/* Business Manager */}
-      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6">
-        <BusinessManager
-          businesses={businesses}
-          selectedBusinessId={selectedBusinessId}
-          onSelectBusiness={setSelectedBusinessId}
-          onAddBusiness={handleAddBusiness}
-          onUpdateBusiness={handleUpdateBusiness}
-          onDeleteBusiness={handleDeleteBusiness}
-        />
-      </div>
-
-      {/* Current Business Info */}
-      {selectedBusiness && (
-        <div 
-          className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-3 sm:p-4 border-l-4" 
-          style={{ borderLeftColor: selectedBusiness.color }}
-        >
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900">{selectedBusiness.name}</h2>
-          {selectedBusiness.description && (
-            <p className="text-sm sm:text-base text-gray-600 mt-1">{selectedBusiness.description}</p>
-          )}
-          <p className="text-xs sm:text-sm text-gray-500 mt-2">
-            {currentTasks.length} task{currentTasks.length !== 1 ? 's' : ''} in this business
+    <>
+      {/* Mobile View - Desktop Only Message */}
+      <div className="md:hidden flex items-center justify-center min-h-[60vh] px-4">
+        <div className="text-center max-w-md">
+          <div className="mb-6">
+            <svg
+              className="w-20 h-20 mx-auto text-gray-400 dark:text-gray-600"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1.5}
+                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-3">
+            Desktop Only
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-2">
+            The Kanban board is optimized for desktop viewing and is not available on mobile devices.
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500">
+            Please access this feature from a desktop or laptop computer for the best experience.
           </p>
         </div>
-      )}
-
-      {/* Kanban Board */}
-      <div className="bg-white rounded-lg shadow-sm p-3 sm:p-4 md:p-6">
-        <EnhancedKanbanBoard
-          tasks={currentTasks}
-          onTaskUpdate={handleTaskUpdate}
-          onTaskAdd={handleTaskAdd}
-        />
       </div>
-    </div>
+
+      {/* Desktop View - Full Kanban Board */}
+      <div className="hidden md:block space-y-4 md:space-y-6 px-2 sm:px-4 md:px-0">
+        {/* Page Header */}
+        <div className="px-2 sm:px-0">
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Kanban Board</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">Manage tasks across multiple businesses</p>
+        </div>
+
+        {/* Business Manager */}
+        <div className="bg-white dark:bg-gray-dark rounded-lg shadow-sm p-3 sm:p-4 md:p-6">
+          <BusinessManager
+            businesses={businesses}
+            selectedBusinessId={selectedBusinessId}
+            onSelectBusiness={setSelectedBusinessId}
+            onAddBusiness={handleAddBusiness}
+            onUpdateBusiness={handleUpdateBusiness}
+            onDeleteBusiness={handleDeleteBusiness}
+          />
+        </div>
+
+        {/* Current Business Info */}
+        {selectedBusiness && (
+          <div
+            className="bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg p-3 sm:p-4 border-l-4"
+            style={{ borderLeftColor: selectedBusiness.color }}
+          >
+            <h2 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white">{selectedBusiness.name}</h2>
+            {selectedBusiness.description && (
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">{selectedBusiness.description}</p>
+            )}
+            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-2">
+              {currentTasks.length} task{currentTasks.length !== 1 ? 's' : ''} in this business
+            </p>
+          </div>
+        )}
+
+        {/* Kanban Board */}
+        <div className="bg-white dark:bg-gray-dark rounded-lg shadow-sm p-3 sm:p-4 md:p-6">
+          <EnhancedKanbanBoard
+            tasks={currentTasks}
+            onTaskUpdate={handleTaskUpdate}
+            onTaskAdd={handleTaskAdd}
+          />
+        </div>
+      </div>
+    </>
   );
 }

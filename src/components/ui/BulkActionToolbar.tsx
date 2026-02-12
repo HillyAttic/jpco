@@ -47,7 +47,7 @@ export function BulkActionToolbar({
     >
       {/* Selection Info */}
       <div className="flex items-center gap-3">
-        <span className="text-sm font-medium text-gray-900">
+        <span className="text-sm font-medium text-gray-900 dark:text-white">
           {selectedCount} selected
         </span>
         
@@ -67,7 +67,7 @@ export function BulkActionToolbar({
             size="sm"
             variant="ghost"
             onClick={onClearSelection}
-            className="text-gray-600 hover:text-gray-700 hover:bg-gray-100"
+            className="text-gray-600 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-700"
             aria-label="Clear selection"
           >
             <XMarkIcon className="w-4 h-4 mr-1" />

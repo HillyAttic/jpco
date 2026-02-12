@@ -266,7 +266,7 @@ export function EmployeeBulkImportModal({
 
           {/* File Upload */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Upload CSV File
             </label>
             <div className="flex items-center gap-2">
@@ -274,12 +274,12 @@ export function EmployeeBulkImportModal({
                 type="file"
                 accept=".csv"
                 onChange={handleFileChange}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
+                className="block w-full text-sm text-gray-500 dark:text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
                 disabled={importing}
               />
             </div>
             {file && (
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                 Selected: {file.name}
               </p>
             )}
@@ -287,13 +287,13 @@ export function EmployeeBulkImportModal({
 
           {/* Preview Data */}
           {previewData.length > 0 && !importResult && (
-            <div className="border border-gray-200 rounded-lg p-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-2">
+            <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
                 Preview (First 5 rows)
               </h4>
               <div className="overflow-x-auto">
                 <table className="min-w-full text-xs">
-                  <thead className="bg-gray-50">
+                  <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
                       <th className="px-2 py-1 text-left">Employee ID</th>
                       <th className="px-2 py-1 text-left">Name</th>
@@ -362,11 +362,11 @@ export function EmployeeBulkImportModal({
 
           {/* Instructions */}
           {!importResult && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <div className="flex items-start gap-2">
-                <ExclamationTriangleIcon className="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" />
-                <div className="text-xs text-gray-600 space-y-1">
-                  <p className="font-medium text-gray-900">CSV Format Requirements:</p>
+                <ExclamationTriangleIcon className="w-5 h-5 text-gray-600 dark:text-gray-400 flex-shrink-0 mt-0.5" />
+                <div className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                  <p className="font-medium text-gray-900 dark:text-white">CSV Format Requirements:</p>
                   <ul className="list-disc list-inside space-y-0.5 ml-2">
                     <li>Required columns: Employee ID, Name, Email, Phone, Role, Password, Status</li>
                     <li>Role must be: Manager, Admin, or Employee</li>

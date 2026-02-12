@@ -163,7 +163,7 @@ export function ServiceWorkerProvider({ children }: ServiceWorkerProviderProps) 
       {device.type === 'mobile' && !isOnline && (
         <div className="fixed bottom-4 left-4 z-50">
           <div className="bg-red-500 text-white px-3 py-2 rounded-full text-xs font-medium flex items-center space-x-2">
-            <div className="w-2 h-2 bg-white rounded-full animate-pulse" />
+            <div className="w-2 h-2 bg-white dark:bg-gray-dark rounded-full animate-pulse" />
             <span>Offline</span>
           </div>
         </div>

@@ -385,13 +385,13 @@ export function AttendanceCalendarModal({
           </div>
 
           {/* Calendar Grid */}
-          <div className="border border-gray-200 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             {/* Week day headers - Hidden on mobile */}
-            <div className="hidden sm:grid grid-cols-7 bg-gray-50 border-b border-gray-200">
+            <div className="hidden sm:grid grid-cols-7 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
               {weekDays.map(day => (
                 <div
                   key={day}
-                  className="p-2 text-center text-xs font-semibold text-gray-600"
+                  className="p-2 text-center text-xs font-semibold text-gray-600 dark:text-gray-400"
                 >
                   {day}
                 </div>
@@ -428,8 +428,8 @@ export function AttendanceCalendarModal({
                       
                       {status.status === 'upcoming' && (
                         <div className="flex items-center justify-center">
-                          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-gray-300 bg-white flex items-center justify-center">
-                            <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-white"></div>
+                          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-dark flex items-center justify-center">
+                            <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-white dark:bg-gray-dark"></div>
                           </div>
                         </div>
                       )}
@@ -461,25 +461,25 @@ export function AttendanceCalendarModal({
           <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
             <div className="flex items-center gap-1 sm:gap-2">
               <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 border border-green-600"></div>
-              <span className="text-gray-700">Present</span>
+              <span className="text-gray-700 dark:text-gray-300">Present</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
               <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 border border-red-600"></div>
-              <span className="text-gray-700">Absent</span>
+              <span className="text-gray-700 dark:text-gray-300">Absent</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
               <div className="w-3 h-3 sm:w-4 sm:h-4 bg-yellow-500 border border-yellow-600"></div>
-              <span className="text-gray-700">Leave</span>
+              <span className="text-gray-700 dark:text-gray-300">Leave</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-white border-2 border-gray-300 rounded-full flex items-center justify-center">
-                <div className="w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 rounded-full bg-white"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-white dark:bg-gray-dark border-2 border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center">
+                <div className="w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 rounded-full bg-white dark:bg-gray-dark"></div>
               </div>
-              <span className="text-gray-700">Upcoming</span>
+              <span className="text-gray-700 dark:text-gray-300">Upcoming</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
               <div className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-500 border border-blue-600"></div>
-              <span className="text-gray-700">Sunday/Holiday</span>
+              <span className="text-gray-700 dark:text-gray-300">Sunday/Holiday</span>
             </div>
           </div>
         </div>

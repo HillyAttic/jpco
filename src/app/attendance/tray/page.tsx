@@ -316,8 +316,8 @@ export default function AttendanceTrayPage() {
           <div className="mx-auto h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mb-4">
             <Clock className="h-6 w-6 text-blue-600" />
           </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Authentication Required</h2>
-          <p className="text-gray-600 mb-6">Please sign in to view attendance tray.</p>
+          <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Authentication Required</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">Please sign in to view attendance tray.</p>
           <Button 
             onClick={() => window.location.href = '/auth/signin'}
             className="bg-blue-600 hover:bg-blue-700 text-white"
@@ -352,9 +352,9 @@ export default function AttendanceTrayPage() {
         <div>
           <div className="flex items-center gap-3">
             <Users className="h-8 w-8 text-blue-600" />
-            <h1 className="text-3xl font-bold text-gray-900">Attendance Tray</h1>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Attendance Tray</h1>
           </div>
-          <p className="text-gray-600 mt-2">View attendance history for all employees</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">View attendance history for all employees</p>
         </div>
         <div className="flex items-center gap-3">
           <Button
@@ -410,7 +410,7 @@ export default function AttendanceTrayPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Employee Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Employee
               </label>
               <select
@@ -419,7 +419,7 @@ export default function AttendanceTrayPage() {
                   setSelectedEmployee(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Employees</option>
                 {employees.map((emp) => (
@@ -432,7 +432,7 @@ export default function AttendanceTrayPage() {
 
             {/* Status Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Status
               </label>
               <select
@@ -441,7 +441,7 @@ export default function AttendanceTrayPage() {
                   setSelectedStatus(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Status</option>
                 <option value="active">Active</option>
@@ -451,7 +451,7 @@ export default function AttendanceTrayPage() {
 
             {/* Date Filter */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Date Range
               </label>
               <select
@@ -460,7 +460,7 @@ export default function AttendanceTrayPage() {
                   setDateFilter(e.target.value);
                   setCurrentPage(1);
                 }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="all">All Time</option>
                 <option value="today">Today</option>
@@ -476,11 +476,11 @@ export default function AttendanceTrayPage() {
       {attendances.length === 0 && !loading && !isInitialLoad ? (
         <Card className="text-center py-12">
           <CardContent>
-            <div className="mx-auto h-16 w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+            <div className="mx-auto h-16 w-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
               <Clock className="h-8 w-8 text-gray-400" />
             </div>
-            <h3 className="text-xl font-semibold text-gray-900 mb-2">No Attendance Records</h3>
-            <p className="text-gray-600">No attendance records found matching your filters.</p>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">No Attendance Records</h3>
+            <p className="text-gray-600 dark:text-gray-400">No attendance records found matching your filters.</p>
           </CardContent>
         </Card>
       ) : (
@@ -496,8 +496,8 @@ export default function AttendanceTrayPage() {
                         <Users className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-gray-900">{record.employeeName}</h3>
-                        <p className="text-sm text-gray-500">{formatDate(record.clockIn)}</p>
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{record.employeeName}</h3>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">{formatDate(record.clockIn)}</p>
                       </div>
                     </div>
                   </div>
@@ -505,16 +505,16 @@ export default function AttendanceTrayPage() {
                   {/* Time Info */}
                   <div className="flex items-center gap-6">
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Clock In</p>
-                      <p className="font-medium text-gray-900">{formatTime(record.clockIn)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Clock In</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{formatTime(record.clockIn)}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Clock Out</p>
-                      <p className="font-medium text-gray-900">{formatTime(record.clockOut)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Clock Out</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{formatTime(record.clockOut)}</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-xs text-gray-500 mb-1">Duration</p>
-                      <p className="font-medium text-gray-900">{calculateDuration(record.clockIn, record.clockOut)}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Duration</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{calculateDuration(record.clockIn, record.clockOut)}</p>
                     </div>
                   </div>
 
@@ -589,7 +589,7 @@ export default function AttendanceTrayPage() {
             </Button>
           
             <div className="flex items-center gap-2">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
                 Page {currentPage} {hasMoreData ? 'of many' : ''}
               </span>
             </div>
@@ -611,7 +611,7 @@ export default function AttendanceTrayPage() {
             <div className="text-center py-8">
               <div className="inline-flex items-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                <span className="text-gray-600">Loading records...</span>
+                <span className="text-gray-600 dark:text-gray-400">Loading records...</span>
               </div>
             </div>
           )}

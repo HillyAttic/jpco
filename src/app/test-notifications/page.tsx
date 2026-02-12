@@ -332,7 +332,7 @@ export default function TestNotificationsPage() {
           
           <div className="bg-gray-900 rounded-lg p-4 h-[600px] overflow-y-auto font-mono text-xs">
             {logs.length === 0 ? (
-              <p className="text-gray-500">No logs yet. Start testing!</p>
+              <p className="text-gray-500 dark:text-gray-400">No logs yet. Start testing!</p>
             ) : (
               logs.map((log, index) => (
                 <div

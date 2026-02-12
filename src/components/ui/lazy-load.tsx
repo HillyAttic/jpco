@@ -92,7 +92,7 @@ export function LazyComponent<T = any>({
       )}
       style={{ minHeight }}
     >
-      <div className="w-8 h-8 border-2 border-gray-300 border-t-primary rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-gray-300 dark:border-gray-600 border-t-primary rounded-full animate-spin" />
     </div>
   );
 

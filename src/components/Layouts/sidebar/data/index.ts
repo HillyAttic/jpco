@@ -30,7 +30,15 @@ export const NAV_DATA = [
         url: "/kanban",
         icon: Icons.Table,
         items: [],
+        hideOnMobile: true, // Hide on mobile view
       },
+      {
+        title: "My Tasks",
+        url: "/my-tasks",
+        icon: Icons.MyTasksIcon,
+        items: [],
+      },
+
     ],
   },
   {

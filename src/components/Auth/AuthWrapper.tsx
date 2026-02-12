@@ -55,10 +55,10 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   // Show loading spinner while checking authentication
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading...</p>
         </div>
       </div>
     );
@@ -70,10 +70,10 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   // Show loading for redirects
   if (!user && !isPublicRoute) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting to sign in...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Redirecting to sign in...</p>
         </div>
       </div>
     );
@@ -81,10 +81,10 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
 
   if (user && (isAuthRoute || pathname === '/')) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Redirecting to dashboard...</p>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Redirecting to dashboard...</p>
         </div>
       </div>
     );

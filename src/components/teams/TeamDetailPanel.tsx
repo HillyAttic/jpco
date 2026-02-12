@@ -196,8 +196,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
           {/* Description */}
           {currentTeam.description && (
             <div>
-              <h4 className="text-xs font-medium text-gray-600 mb-1">Description</h4>
-              <p className="text-sm text-gray-600">{currentTeam.description}</p>
+              <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Description</h4>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{currentTeam.description}</p>
             </div>
           )}
 
@@ -205,12 +205,12 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Member Count */}
             <div>
-              <h4 className="text-xs font-medium text-gray-600 mb-1">Team Size</h4>
+              <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Team Size</h4>
               <div className="flex items-center gap-2">
-                <UserGroupIcon className="w-4 h-4 text-gray-500" />
-                <span className="text-gray-600">
+                <UserGroupIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                <span className="text-gray-600 dark:text-gray-400">
                   {currentTeam.members.length + 1} {currentTeam.members.length === 0 ? 'member' : 'members'}
-                  <span className="text-sm text-gray-500 ml-1">(including leader)</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400 ml-1">(including leader)</span>
                 </span>
               </div>
             </div>
@@ -218,8 +218,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
             {/* Created Date */}
             {currentTeam.createdAt && (
               <div>
-                <h4 className="text-xs font-medium text-gray-600 mb-1">Created</h4>
-                <p className="text-sm text-gray-600">
+                <h4 className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Created</h4>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
                   {new Date(currentTeam.createdAt).toLocaleDateString()}
                 </p>
               </div>
@@ -244,8 +244,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
               size="sm"
             />
             <div>
-              <p className="font-medium text-gray-900 text-sm">{leaderInfo.name}</p>
-              <p className="text-xs text-gray-500">Team Leader</p>
+              <p className="font-medium text-gray-900 dark:text-white text-sm">{leaderInfo.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Team Leader</p>
             </div>
           </div>
         </CardContent>
@@ -271,7 +271,7 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
         </CardHeader>
         <CardContent>
           {currentTeam.members.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
+            <div className="text-center py-8 text-gray-500 dark:text-gray-400">
               <UserGroupIcon className="w-12 h-12 mx-auto mb-3 text-gray-300" />
               <p>No team members yet</p>
               <p className="text-sm">Add members to build your team</p>
@@ -281,7 +281,7 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
               {currentTeam.members.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-2 bg-gray-50 rounded-md"
+                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-md"
                 >
                   <div className="flex items-center gap-2">
                     <Avatar
@@ -291,8 +291,8 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
                       size="sm"
                     />
                     <div>
-                      <p className="font-medium text-gray-900 text-sm">{member.name}</p>
-                      <p className="text-xs text-gray-600">{member.role}</p>
+                      <p className="font-medium text-gray-900 dark:text-white text-sm">{member.name}</p>
+                      <p className="text-xs text-gray-600 dark:text-gray-400">{member.role}</p>
                     </div>
                   </div>
                   
@@ -342,7 +342,7 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
                 ))}
               </Select>
               {getAvailableEmployees().length === 0 && (
-                <p className="text-sm text-gray-500 mt-1">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                   No available employees to add
                 </p>
               )}

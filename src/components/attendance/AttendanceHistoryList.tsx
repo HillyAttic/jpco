@@ -237,7 +237,7 @@ export function AttendanceHistoryList({
   if (!userId) {
     return (
       <div className="text-center py-8">
-        <p className="text-gray-500">User ID is required to load attendance history.</p>
+        <p className="text-gray-500 dark:text-gray-400">User ID is required to load attendance history.</p>
       </div>
     );
   }
@@ -246,10 +246,10 @@ export function AttendanceHistoryList({
     <div className={className}>
       {showHeader && (
         <div className="mb-4 sm:mb-6 px-4 sm:px-0">
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             Attendance History {employeeName && `for ${employeeName}`}
           </h2>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1">
             Historical attendance records with clock-in/clock-out times
           </p>
         </div>
@@ -258,11 +258,11 @@ export function AttendanceHistoryList({
       {attendances.length === 0 && !loading && !isInitialLoad ? (
         <Card className="text-center py-8 sm:py-12 mx-4 sm:mx-0">
           <CardContent>
-            <div className="mx-auto h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-gray-100 flex items-center justify-center mb-4">
+            <div className="mx-auto h-12 w-12 sm:h-16 sm:w-16 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center mb-4">
               <Clock className="h-6 w-6 sm:h-8 sm:w-8 text-gray-400" />
             </div>
-            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 mb-2">No Attendance Records</h3>
-            <p className="text-sm sm:text-base text-gray-600">
+            <h3 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white mb-2">No Attendance Records</h3>
+            <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
               {employeeName ? `No attendance records found for ${employeeName}.` : 'No attendance records found.'}
             </p>
           </CardContent>
@@ -275,11 +275,11 @@ export function AttendanceHistoryList({
                 <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
                   <div className="flex-1">
                     <CardTitle className="flex items-center gap-2 text-lg sm:text-xl">
-                      <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 flex-shrink-0" />
+                      <Calendar className="h-4 w-4 sm:h-5 sm:w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                       <span className="break-words">{formatDate(record.clockIn)}</span>
                     </CardTitle>
                     {employeeName && (
-                      <p className="text-xs sm:text-sm text-gray-500 mt-1">
+                      <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {record.employeeName}
                       </p>
                     )}
@@ -300,8 +300,8 @@ export function AttendanceHistoryList({
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Clock In</h4>
-                      <p className="text-base sm:text-lg font-semibold text-gray-900">{formatTime(record.clockIn)}</p>
+                      <h4 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Clock In</h4>
+                      <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">{formatTime(record.clockIn)}</p>
                       {record.location?.clockIn && (
                         <button
                           onClick={() => handleLocationClick(
@@ -328,8 +328,8 @@ export function AttendanceHistoryList({
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-xs sm:text-sm font-medium text-gray-500 mb-1">Clock Out</h4>
-                      <p className="text-base sm:text-lg font-semibold text-gray-900">{formatTime(record.clockOut)}</p>
+                      <h4 className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 mb-1">Clock Out</h4>
+                      <p className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white">{formatTime(record.clockOut)}</p>
                       {record.location?.clockOut && (
                         <button
                           onClick={() => handleLocationClick(
@@ -354,14 +354,14 @@ export function AttendanceHistoryList({
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
                     <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                       <div>
-                        <span className="text-xs sm:text-sm text-gray-500">Duration:</span>
-                        <span className="ml-2 text-xs sm:text-sm font-medium text-gray-900">
+                        <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Duration:</span>
+                        <span className="ml-2 text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                           {calculateDuration(record.clockIn, record.clockOut)}
                         </span>
                       </div>
                       <div>
-                        <span className="text-xs sm:text-sm text-gray-500">Total Hours:</span>
-                        <span className="ml-2 text-xs sm:text-sm font-medium text-gray-900">
+                        <span className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Hours:</span>
+                        <span className="ml-2 text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                           {record.totalHours.toFixed(2)}h
                         </span>
                       </div>
@@ -392,7 +392,7 @@ export function AttendanceHistoryList({
             </Button>
             
             <div className="flex items-center justify-center gap-2">
-              <span className="text-sm text-gray-600">
+              <span className="text-sm text-gray-600 dark:text-gray-400">
                 Page {currentPage} {hasMoreData ? 'of many' : ''}
               </span>
             </div>
@@ -416,7 +416,7 @@ export function AttendanceHistoryList({
             <div className="text-center py-8">
               <div className="inline-flex items-center gap-2">
                 <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-                <span className="text-sm sm:text-base text-gray-600">Loading records...</span>
+                <span className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Loading records...</span>
               </div>
             </div>
           )}

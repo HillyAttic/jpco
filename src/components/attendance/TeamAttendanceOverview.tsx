@@ -63,7 +63,7 @@ export function TeamAttendanceOverview({
           <div
             key={member.employeeId}
             onClick={() => onEmployeeClick(member.employeeId)}
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 cursor-pointer transition-colors"
+            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:bg-gray-800 cursor-pointer transition-colors"
           >
             <div className="flex items-center gap-3">
               {getStatusIcon(member.status)}

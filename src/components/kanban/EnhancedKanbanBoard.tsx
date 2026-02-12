@@ -132,8 +132,8 @@ export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd }: Enhanced
       {/* Header Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-0">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Task Board</h2>
-          <p className="text-xs sm:text-sm text-gray-600 mt-1">
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Task Board</h2>
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
             {filteredAndSortedTasks.length} task{filteredAndSortedTasks.length !== 1 ? 's' : ''}
           </p>
         </div>
@@ -142,7 +142,7 @@ export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd }: Enhanced
           <Button
             onClick={() => setShowFilterModal(true)}
             variant="outline"
-            className="flex items-center gap-1.5 sm:gap-2 hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 text-sm sm:text-base px-3 py-1.5 sm:px-4 sm:py-2"
+            className="flex items-center gap-1.5 sm:gap-2 hover:bg-gray-50 dark:bg-gray-800 focus:ring-2 focus:ring-blue-500 text-sm sm:text-base px-3 py-1.5 sm:px-4 sm:py-2"
           >
             <FunnelIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Filter & Sort</span>

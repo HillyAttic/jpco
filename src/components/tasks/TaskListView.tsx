@@ -268,7 +268,7 @@ export function TaskListView({
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="grid grid-cols-12 gap-2 px-3 py-2.5 text-[11px] transition-colors bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800"
+              className="grid grid-cols-12 gap-2 px-3 py-2.5 text-[11px] transition-colors bg-white dark:bg-gray-dark hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-800"
             >
               {/* Title */}
               <div className="col-span-2">

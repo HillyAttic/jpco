@@ -98,7 +98,7 @@ export function RecurringTaskListView({
                     type="checkbox"
                     checked={selected.includes(task.id!)}
                     onChange={() => onSelect(task.id!)}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-gray-300 dark:border-gray-600 text-primary focus:ring-primary"
                   />
                 </div>
               )}
@@ -191,7 +191,7 @@ export function RecurringTaskListView({
                     ) : task.teamId ? (
                       <span className="text-sm text-gray-500 dark:text-gray-400">Team ID: {task.teamId}</span>
                     ) : (
-                      <span className="text-sm text-gray-400 dark:text-gray-500 italic">No team assigned</span>
+                      <span className="text-sm text-gray-400 dark:text-gray-500 dark:text-gray-400 italic">No team assigned</span>
                     )}
                   </div>
                 )}
@@ -262,7 +262,7 @@ export function RecurringTaskListView({
                     ) : task.teamId ? (
                       <span className="text-gray-500 dark:text-gray-400">Team ID: {task.teamId}</span>
                     ) : (
-                      <span className="text-gray-400 dark:text-gray-500 italic">No team assigned</span>
+                      <span className="text-gray-400 dark:text-gray-500 dark:text-gray-400 italic">No team assigned</span>
                     )}
                   </span>
                 </div>

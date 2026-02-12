@@ -132,7 +132,7 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
           )}
           
           <div className="space-y-2">
-            <label htmlFor="title" className="text-sm font-medium text-gray-700">
+            <label htmlFor="title" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Task Title *
             </label>
             <Input
@@ -148,7 +148,7 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="description" className="text-sm font-medium text-gray-700">
+            <label htmlFor="description" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Description
             </label>
             <Textarea
@@ -166,7 +166,7 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
           
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <label htmlFor="status" className="text-sm font-medium text-gray-700">
+              <label htmlFor="status" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Status
               </label>
               <Select
@@ -181,7 +181,7 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
             </div>
             
             <div className="space-y-2">
-              <label htmlFor="priority" className="text-sm font-medium text-gray-700">
+              <label htmlFor="priority" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 Priority
               </label>
               <Select
@@ -197,7 +197,7 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="dueDate" className="text-sm font-medium text-gray-700">
+            <label htmlFor="dueDate" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Due Date
             </label>
             <Input
@@ -210,7 +210,7 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
           </div>
           
           <div className="space-y-2">
-            <label htmlFor="assignee" className="text-sm font-medium text-gray-700">
+            <label htmlFor="assignee" className="text-sm font-medium text-gray-700 dark:text-gray-300">
               Assignee
             </label>
             <Input

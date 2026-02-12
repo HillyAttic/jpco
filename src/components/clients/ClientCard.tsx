@@ -44,7 +44,7 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-semibold text-gray-900 truncate">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                   {client.name}
                 </h3>
                 <Badge
@@ -83,7 +83,7 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
         <div className="space-y-2">
           {/* Email */}
           {client.email && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
               <a 
                 href={`mailto:${client.email}`}
@@ -96,7 +96,7 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
 
           {/* Phone */}
           {client.phone && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <PhoneIcon className="w-4 h-4 flex-shrink-0" />
               <a 
                 href={`tel:${client.phone}`}
@@ -109,7 +109,7 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
 
           {/* Business Name */}
           {client.businessName && (
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <BuildingOfficeIcon className="w-4 h-4 flex-shrink-0" />
               <span className="truncate">{client.businessName}</span>
             </div>
@@ -118,7 +118,7 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
 
         {/* Footer with creation date */}
         {client.createdAt && (
-          <div className="mt-4 pt-4 border-t text-xs text-gray-500">
+          <div className="mt-4 pt-4 border-t text-xs text-gray-500 dark:text-gray-400">
             Added {new Date(client.createdAt).toLocaleDateString()}
           </div>
         )}

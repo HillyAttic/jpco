@@ -125,75 +125,73 @@ export default function CategoriesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 max-w-[1600px] mx-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Categories</h1>
-          <p className="text-gray-600 mt-2">Organize and manage your task categories</p>
-          <p className="text-sm text-blue-600 mt-1">✅ Connected to Firestore Database</p>
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+        <div className="flex-1">
+          <h1 className="text-xl lg:text-2xl font-bold text-gray-900 dark:text-white">Categories</h1>
+          <p className="text-xs lg:text-sm text-gray-600 dark:text-gray-400 mt-0.5">
+            {categories.length} {categories.length === 1 ? 'category' : 'categories'} • {categories.filter((c) => c.isActive).length} active
+          </p>
         </div>
-        <Button onClick={() => handleOpenModal()} className="w-full sm:w-auto text-white">
-          <PlusCircleIcon className="w-5 h-5 mr-2" />
+        <Button onClick={() => handleOpenModal()} className="w-full lg:w-auto text-white shrink-0 h-9">
+          <PlusCircleIcon className="w-4 h-4 mr-2" />
           Add Category
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="bg-blue-50 rounded-lg p-4">
-          <p className="text-sm text-blue-600 font-medium">Total Categories</p>
-          <p className="text-2xl font-bold text-blue-900 mt-1">{categories.length}</p>
-        </div>
-        <div className="bg-green-50 rounded-lg p-4">
-          <p className="text-sm text-green-600 font-medium">Active</p>
-          <p className="text-2xl font-bold text-green-900 mt-1">
-            {categories.filter((c) => c.isActive).length}
-          </p>
-        </div>
-        <div className="bg-orange-50 rounded-lg p-4">
-          <p className="text-sm text-orange-600 font-medium">Total Tasks</p>
-          <p className="text-2xl font-bold text-orange-900 mt-1">
-            {categories.reduce((sum, c) => sum + c.taskCount, 0)}
-          </p>
-        </div>
-      </div>
-
       {/* Search and Filter */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <Input
-            type="text"
-            placeholder="Search categories..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+      <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-3 shadow-sm">
+        <div className="flex flex-col lg:flex-row gap-3">
+          <div className="relative flex-1">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
+            <Input
+              type="text"
+              placeholder="Search categories by name or description..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-9 text-sm"
+            />
+          </div>
+          <div className="flex gap-2 shrink-0">
+            <Button
+              variant={filterStatus === 'all' ? 'default' : 'outline'}
+              onClick={() => setFilterStatus('all')}
+              size="sm"
+              className="flex-1 lg:flex-none h-9"
+            >
+              <span className="hidden sm:inline">All</span>
+              <span className="sm:hidden">All ({categories.length})</span>
+            </Button>
+            <Button
+              variant={filterStatus === 'active' ? 'default' : 'outline'}
+              onClick={() => setFilterStatus('active')}
+              size="sm"
+              className="flex-1 lg:flex-none h-9"
+            >
+              <span className="hidden sm:inline">Active</span>
+              <span className="sm:hidden">Active ({categories.filter((c) => c.isActive).length})</span>
+            </Button>
+            <Button
+              variant={filterStatus === 'inactive' ? 'default' : 'outline'}
+              onClick={() => setFilterStatus('inactive')}
+              size="sm"
+              className="flex-1 lg:flex-none h-9"
+            >
+              <span className="hidden sm:inline">Inactive</span>
+              <span className="sm:hidden">Inactive ({categories.filter((c) => !c.isActive).length})</span>
+            </Button>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant={filterStatus === 'all' ? 'default' : 'outline'}
-            onClick={() => setFilterStatus('all')}
-            size="sm"
-          >
-            All
-          </Button>
-          <Button
-            variant={filterStatus === 'active' ? 'default' : 'outline'}
-            onClick={() => setFilterStatus('active')}
-            size="sm"
-          >
-            Active
-          </Button>
-          <Button
-            variant={filterStatus === 'inactive' ? 'default' : 'outline'}
-            onClick={() => setFilterStatus('inactive')}
-            size="sm"
-          >
-            Inactive
-          </Button>
-        </div>
+        
+        {/* Results count */}
+        {(searchQuery || filterStatus !== 'all') && (
+          <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
+              Showing <span className="font-semibold text-gray-900 dark:text-white">{filteredCategories.length}</span> of <span className="font-semibold text-gray-900 dark:text-white">{categories.length}</span> categories
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Categories List */}
@@ -210,7 +208,7 @@ export default function CategoriesPage() {
           
           {filteredCategories.length === 0 && !loading && (
             <div className="text-center py-12">
-              <p className="text-gray-600 mb-4">
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
                 {searchQuery || filterStatus !== 'all'
                   ? 'No categories match your search criteria.'
                   : 'No categories found.'}

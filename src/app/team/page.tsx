@@ -69,8 +69,8 @@ export default function TeamPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Team Management</h1>
-          <p className="text-gray-600 mt-2">Manage your team members and their assignments</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Team Management</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">Manage your team members and their assignments</p>
         </div>
         <Button onClick={() => setShowAddMember(true)}>
           <UserPlusIcon className="w-5 h-5 mr-2" />
@@ -99,37 +99,37 @@ export default function TeamPage() {
             <CardHeader>
               <div className="flex items-center space-x-4">
                 <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center">
-                  <span className="text-lg font-medium text-gray-700">
+                  <span className="text-lg font-medium text-gray-700 dark:text-gray-300">
                     {member.name.charAt(0).toUpperCase()}
                   </span>
                 </div>
                 <div>
                   <CardTitle className="text-lg">{member.name}</CardTitle>
-                  <p className="text-sm text-gray-500">{member.role}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{member.role}</p>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm text-gray-500">Email</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
                   <p className="font-medium">{member.email}</p>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-sm text-gray-500">Tasks Assigned</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Tasks Assigned</p>
                     <p className="text-lg font-bold text-blue-600">{member.tasksAssigned}</p>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-500">Tasks Completed</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Tasks Completed</p>
                     <p className="text-lg font-bold text-green-600">{member.tasksCompleted}</p>
                   </div>
                 </div>
                 
                 <div>
                   <div className="flex justify-between mb-1">
-                    <span className="text-sm text-gray-500">Completion Rate</span>
+                    <span className="text-sm text-gray-500 dark:text-gray-400">Completion Rate</span>
                     <span className="text-sm font-medium">{getCompletionRate(member)}%</span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -152,26 +152,26 @@ export default function TeamPage() {
       {/* Add Member Modal Placeholder */}
       {showAddMember && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="bg-white dark:bg-gray-dark rounded-lg p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Add Team Member</h2>
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Name
                 </label>
                 <Input placeholder="Enter full name" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Email
                 </label>
                 <Input type="email" placeholder="Enter email address" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Role
                 </label>
-                <select className="w-full rounded-md border border-gray-300 px-3 py-2">
+                <select className="w-full rounded-md border border-gray-300 dark:border-gray-600 px-3 py-2">
                   <option value="">Select role</option>
                   <option value="developer">Developer</option>
                   <option value="designer">Designer</option>

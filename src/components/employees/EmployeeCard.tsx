@@ -67,7 +67,7 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
               type="checkbox"
               checked={selected}
               onChange={(e) => onSelect(employee.id!, e.target.checked)}
-              className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+              className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500 cursor-pointer"
               aria-label={`Select ${employee.name}`}
             />
           </div>
@@ -85,14 +85,14 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
-                <h3 className="text-lg font-semibold text-gray-900 truncate">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                   {employee.name}
                 </h3>
                 <Badge variant={getStatusBadgeVariant(employee.status)}>
                   {formatStatus(employee.status)}
                 </Badge>
               </div>
-              <p className="text-sm text-gray-600">{employee.role}</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">{employee.role}</p>
             </div>
           </div>
 
@@ -135,13 +135,13 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
         {/* Contact Information */}
         <div className="space-y-2">
           {/* Employee ID */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <span className="font-medium">ID:</span>
             <span>{employee.employeeId}</span>
           </div>
 
           {/* Email */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
             <a 
               href={`mailto:${employee.email}`}
@@ -152,7 +152,7 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
           </div>
 
           {/* Phone */}
-          <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <PhoneIcon className="w-4 h-4 flex-shrink-0" />
             <a 
               href={`tel:${employee.phone}`}

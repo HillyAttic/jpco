@@ -15,8 +15,6 @@ import {
   getIOSVersion
 } from "@/lib/firebase-messaging";
 import { toast } from "react-toastify";
-import { db } from "@/lib/firebase";
-import { collection, query, where, onSnapshot, doc, updateDoc } from "firebase/firestore";
 
 interface Notification {
   id: string;
@@ -173,58 +171,53 @@ export default function NotificationsPage() {
     return unsubscribe;
   }, [user]);
 
-  // Load notifications from Firestore
-  useEffect(() => {
+  // Fetch notifications from server API (bypasses Firestore security rules)
+  const fetchNotifications = async () => {
     if (!user) {
       setLoading(false);
       return;
     }
 
-    const notificationsRef = collection(db, 'notifications');
-    // NOTE: Do NOT use orderBy here - it requires a composite index in Firestore
-    // Sort client-side instead for reliability
-    const q = query(
-      notificationsRef,
-      where('userId', '==', user.uid)
-    );
+    try {
+      const response = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('Failed to fetch notifications:', errorData);
+        setLoading(false);
+        return;
+      }
 
-    console.log('Subscribing to notifications for user:', user.uid);
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifs: Notification[] = [];
-      snapshot.forEach((doc) => {
-        const data = doc.data();
-        notifs.push({
-          id: doc.id,
-          title: data.title || 'Notification',
-          body: data.body || data.message || '',
-          read: data.read || false,
-          createdAt: data.createdAt,
-          data: data.data || {},
-        } as Notification);
-      });
-      // Sort client-side by createdAt descending
-      notifs.sort((a, b) => {
-        const aTime = a.createdAt?.toDate?.()?.getTime() || 0;
-        const bTime = b.createdAt?.toDate?.()?.getTime() || 0;
-        return bTime - aTime;
-      });
-      console.log('Loaded notifications:', notifs.length);
-      setNotifications(notifs);
+      const { notifications: notifs } = await response.json();
+      console.log('Loaded notifications:', notifs?.length || 0);
+      setNotifications(notifs || []);
       setLoading(false);
-    }, (error) => {
-      console.error("Error loading notifications:", error);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
       setLoading(false);
-    });
+    }
+  };
 
-    return () => unsubscribe();
+  useEffect(() => {
+    fetchNotifications();
+
+    // Poll for new notifications every 15 seconds
+    const interval = setInterval(fetchNotifications, 15000);
+    return () => clearInterval(interval);
   }, [user]);
 
   // Mark notification as read
   const markAsRead = async (notificationId: string) => {
     try {
-      const notifRef = doc(db, 'notifications', notificationId);
-      await updateDoc(notifRef, { read: true });
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'markAsRead', notificationId }),
+      });
+
+      // Update local state immediately
+      setNotifications(prev =>
+        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+      );
     } catch (error) {
       console.error("Error marking notification as read:", error);
     }
@@ -241,17 +234,17 @@ export default function NotificationsPage() {
 
   if (!user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] p-6">
-        <div className="text-center space-y-4">
+      <div className="flex flex-col items-center justify-center min-h-[60vh] p-4 sm:p-6">
+        <div className="text-center space-y-4 max-w-md">
           <div className="flex justify-center">
-            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full">
-              <Bell className="w-12 h-12 text-gray-400" />
+            <div className="p-3 sm:p-4 bg-gray-100 dark:bg-gray-800 rounded-full">
+              <Bell className="w-10 h-10 sm:w-12 sm:h-12 text-gray-400" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
             Notifications
           </h1>
-          <p className="text-gray-500 dark:text-gray-400 max-w-md">
+          <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
             Please log in to view notifications
           </p>
         </div>
@@ -260,35 +253,35 @@ export default function NotificationsPage() {
   }
 
   return (
-    <div className="p-6 max-w-4xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto pb-20 sm:pb-6">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
           Notifications
         </h1>
-        <p className="text-gray-500 dark:text-gray-400">
+        <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">
           Manage your push notifications and view recent alerts
         </p>
       </div>
 
       {/* Notification Permission Card */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-6 mb-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-4">
-            <div className={`p-3 rounded-full ${notificationPermission === 'granted'
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 sm:p-6 mb-4 sm:mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="flex items-center space-x-3 sm:space-x-4">
+            <div className={`p-2 sm:p-3 rounded-full flex-shrink-0 ${notificationPermission === 'granted'
               ? 'bg-green-100 dark:bg-green-900'
               : 'bg-gray-100 dark:bg-gray-700'
               }`}>
               {notificationPermission === 'granted' ? (
-                <Bell className="w-6 h-6 text-green-600 dark:text-green-400" />
+                <Bell className="w-5 h-5 sm:w-6 sm:h-6 text-green-600 dark:text-green-400" />
               ) : (
-                <BellOff className="w-6 h-6 text-gray-400" />
+                <BellOff className="w-5 h-5 sm:w-6 sm:h-6 text-gray-400" />
               )}
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
+            <div className="flex-1 min-w-0">
+              <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
                 Push Notifications
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
+              <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 {notificationPermission === 'granted'
                   ? 'Notifications are enabled'
                   : 'Enable notifications to receive task updates'}
@@ -299,14 +292,14 @@ export default function NotificationsPage() {
           {notificationPermission === 'granted' ? (
             <button
               onClick={handleDisableNotifications}
-              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-red-600 text-white text-sm sm:text-base rounded-lg hover:bg-red-700 transition-colors font-medium"
             >
               Disable
             </button>
           ) : (
             <button
               onClick={handleEnableNotifications}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-blue-600 text-white text-sm sm:text-base rounded-lg hover:bg-blue-700 transition-colors font-medium"
             >
               Enable Notifications
             </button>
@@ -316,21 +309,21 @@ export default function NotificationsPage() {
 
       {/* iOS PWA Info Card */}
       {isIOSDevice() && !isStandalonePWA() && notificationPermission !== 'granted' && (
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="flex items-start space-x-2 sm:space-x-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <div className="flex-1">
-              <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs sm:text-sm font-semibold text-blue-900 dark:text-blue-200 mb-1">
                 iOS Users: Add to Home Screen Required
               </h4>
-              <p className="text-sm text-blue-800 dark:text-blue-300 mb-2">
+              <p className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 mb-2">
                 To enable push notifications on iOS, you need to add this app to your home screen first:
               </p>
-              <ol className="text-sm text-blue-800 dark:text-blue-300 space-y-1 list-decimal list-inside">
+              <ol className="text-xs sm:text-sm text-blue-800 dark:text-blue-300 space-y-1 list-decimal list-inside">
                 <li>Tap the Share button in Safari</li>
                 <li>Scroll down and tap "Add to Home Screen"</li>
                 <li>Open the app from your home screen</li>
@@ -343,18 +336,18 @@ export default function NotificationsPage() {
 
       {/* Mobile Info Card */}
       {isMobileDevice() && notificationPermission !== 'granted' && (
-        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
-          <div className="flex items-start space-x-3">
-            <div className="flex-shrink-0">
-              <svg className="w-6 h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="flex items-start space-x-2 sm:space-x-3">
+            <div className="flex-shrink-0 mt-0.5">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
               </svg>
             </div>
-            <div className="flex-1">
-              <h4 className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs sm:text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
                 Mobile Device Detected
               </h4>
-              <p className="text-sm text-yellow-800 dark:text-yellow-300">
+              <p className="text-xs sm:text-sm text-yellow-800 dark:text-yellow-300">
                 Make sure notifications are enabled in your device settings and browser settings for the best experience.
               </p>
             </div>
@@ -363,20 +356,20 @@ export default function NotificationsPage() {
       )}
 
       {/* Notifications List */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
-        <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="font-semibold text-gray-900 dark:text-white">
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
+          <h2 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
             Recent Notifications
           </h2>
         </div>
 
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
           {loading ? (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-6 sm:p-8 text-center text-gray-500 dark:text-gray-400 text-sm sm:text-base">
               Loading notifications...
             </div>
           ) : notifications.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+            <div className="p-6 sm:p-8 text-center text-gray-500 dark:text-gray-400 text-sm sm:text-base">
               No notifications yet
             </div>
           ) : (
@@ -384,24 +377,24 @@ export default function NotificationsPage() {
               <div
                 key={notification.id}
                 onClick={() => handleNotificationClick(notification)}
-                className={`p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${!notification.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''
+                className={`p-3 sm:p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors ${!notification.read ? 'bg-blue-50 dark:bg-blue-900/20' : ''
                   }`}
               >
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center space-x-2 mb-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
+                      <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
                         {notification.title}
                       </h3>
                       {!notification.read && (
-                        <span className="w-2 h-2 bg-blue-600 rounded-full"></span>
+                        <span className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">
                       {notification.body}
                     </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      {notification.createdAt?.toDate?.()?.toLocaleString() || 'Just now'}
+                    <p className="text-xs text-gray-400 dark:text-gray-500 dark:text-gray-400">
+                      {notification.createdAt ? new Date(notification.createdAt).toLocaleString() : 'Just now'}
                     </p>
                   </div>
 
@@ -411,10 +404,10 @@ export default function NotificationsPage() {
                         e.stopPropagation();
                         markAsRead(notification.id);
                       }}
-                      className="ml-4 p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                      className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors"
                       title="Mark as read"
                     >
-                      <Check className="w-5 h-5" />
+                      <Check className="w-4 h-4 sm:w-5 sm:h-5" />
                     </button>
                   )}
                 </div>

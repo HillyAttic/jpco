@@ -137,8 +137,8 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
 
         <div className="space-y-6 py-4">
           {/* Add Holiday Form */}
-          <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-            <h3 className="text-sm font-semibold text-gray-900 mb-4">Add New Holiday</h3>
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Add New Holiday</h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -148,7 +148,7 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
                   type="date"
                   value={holidayDate}
                   onChange={(e) => setHolidayDate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -160,7 +160,7 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
                   value={holidayName}
                   onChange={(e) => setHolidayName(e.target.value)}
                   placeholder="e.g., Independence Day"
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -172,7 +172,7 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
                   value={holidayDescription}
                   onChange={(e) => setHolidayDescription(e.target.value)}
                   placeholder="e.g., National Holiday"
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
@@ -198,7 +198,7 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
 
           {/* Holidays List */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 mb-3">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
               Existing Holidays ({holidays.length})
             </h3>
 
@@ -207,7 +207,7 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
                 <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
               </div>
             ) : holidays.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 border border-gray-200 rounded-lg">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 rounded-lg">
                 No holidays added yet
               </div>
             ) : (
@@ -215,7 +215,7 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
                 {holidays.map((holiday) => (
                   <div
                     key={holiday.id}
-                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:bg-gray-800 transition-colors"
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-3">
@@ -228,10 +228,10 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-semibold text-gray-900">{holiday.name}</h4>
-                          <p className="text-sm text-gray-600">{formatDate(holiday.date)}</p>
+                          <h4 className="font-semibold text-gray-900 dark:text-white">{holiday.name}</h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(holiday.date)}</p>
                           {holiday.description && (
-                            <p className="text-xs text-gray-500 mt-1">{holiday.description}</p>
+                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{holiday.description}</p>
                           )}
                         </div>
                       </div>
