@@ -1,23 +1,31 @@
 // Firebase Cloud Messaging Service Worker
 // This file must be in the public folder and served from the root
-// VERSION: 3.0 - Fixed background notifications for Android PWA
-// IMPORTANT: This is the ONLY service worker that should handle push events
+// VERSION: 4.0 - FIXED: Reliable background notifications for Android PWA
+//
+// KEY FIX: On Android Chrome PWA, onBackgroundMessage() is unreliable.
+// Chrome requires that the 'push' event handler calls showNotification()
+// DIRECTLY via event.waitUntil(). If it doesn't, Chrome shows a generic
+// "Tap to copy the URL for this app" fallback notification.
+//
+// Solution: Handle ALL notification display in the 'push' event handler.
+// Do NOT use onBackgroundMessage() for display.
 
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js');
 
 // Take control immediately on install/activate
 self.addEventListener('install', (event) => {
-  console.log('[firebase-messaging-sw.js] Service worker installing (v3.0)...');
-  self.skipWaiting(); // Activate immediately, don't wait for old SW to stop
+  console.log('[SW v4.0] Installing...');
+  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[firebase-messaging-sw.js] Service worker activating (v3.0)...');
-  event.waitUntil(clients.claim()); // Take control of all pages immediately
+  console.log('[SW v4.0] Activating...');
+  event.waitUntil(clients.claim());
 });
 
 // Initialize Firebase in the service worker
+// (needed for FCM token management, NOT for notification display)
 firebase.initializeApp({
   apiKey: "AIzaSyBkxT1xMRCj2iAoig87tBkFXSGcoZyuQDw",
   authDomain: "jpcopanel.firebaseapp.com",
@@ -28,21 +36,33 @@ firebase.initializeApp({
   measurementId: "G-GNT1N7174R"
 });
 
+// Initialize messaging (required for token generation on the client side)
 const messaging = firebase.messaging();
+
+// DO NOT use onBackgroundMessage for showing notifications!
+// It is unreliable on Android Chrome PWA and causes the generic
+// "Tap to copy the URL" fallback notification.
+// Instead, we handle EVERYTHING in the 'push' event handler below.
+//
+// We keep onBackgroundMessage ONLY for logging (no showNotification call):
+messaging.onBackgroundMessage((payload) => {
+  console.log('[SW v4.0] onBackgroundMessage fired (logging only):', JSON.stringify(payload));
+  // DO NOT call showNotification() here - the push handler handles it
+});
 
 /**
  * Build notification options from data payload
- * Since we use DATA-ONLY FCM messages, title/body come from data, not notification
  */
 function buildNotificationOptions(data) {
+  const tag = data.notificationId || data.taskId || ('jpco-' + Date.now());
+
   return {
-    body: data.body || 'You have a new notification',
+    body: data.body || data.message || 'You have a new notification',
     icon: data.icon || '/images/logo/logo-icon.svg',
     badge: data.badge || '/images/logo/logo-icon.svg',
-    // Use notificationId or taskId as tag for grouping
-    tag: data.notificationId || data.taskId || ('jpco-' + Date.now()),
+    tag: tag,
     data: {
-      url: data.url || '/notifications',
+      url: data.url || data.actionUrl || '/notifications',
       taskId: data.taskId || '',
       type: data.type || 'general',
       notificationId: data.notificationId || '',
@@ -51,116 +71,115 @@ function buildNotificationOptions(data) {
       { action: 'open', title: 'View' },
       { action: 'close', title: 'Dismiss' },
     ],
-    // CRITICAL for lock screen / heads-up:
-    requireInteraction: true,   // Keep notification visible until user interacts
-    vibrate: [300, 100, 300, 100, 300],  // Strong vibration pattern
-    silent: false,              // Play sound
+    requireInteraction: true,
+    vibrate: [300, 100, 300, 100, 300],
+    silent: false,
     timestamp: parseInt(data.timestamp) || Date.now(),
-    renotify: true,             // Re-alert even if same tag exists
+    renotify: true,
   };
 }
 
 /**
- * Handle background messages from FCM SDK
- * This fires for DATA-ONLY messages when the page is not in foreground
- */
-messaging.onBackgroundMessage((payload) => {
-  console.log('[firebase-messaging-sw.js] Background message received:', JSON.stringify(payload));
-
-  // With data-only messages, everything is in payload.data
-  const data = payload.data || {};
-  const title = data.title || 'New Notification';
-  const options = buildNotificationOptions(data);
-
-  console.log('[firebase-messaging-sw.js] Showing background notification:', title, options);
-  return self.registration.showNotification(title, options);
-});
-
-/**
- * Handle raw push events (fallback + direct push)
- * This fires for ALL push messages and is our safety net.
- * 
- * IMPORTANT: For data-only FCM messages, onBackgroundMessage above will handle
- * the display. This handler acts as a fallback in case onBackgroundMessage
- * doesn't fire (which can happen in some edge cases on Android).
+ * MAIN PUSH HANDLER - This is the ONLY place that calls showNotification()
+ *
+ * Chrome on Android requires that event.waitUntil() is called with a
+ * showNotification() promise DIRECTLY in the 'push' event handler.
+ * If this doesn't happen, Chrome shows the generic fallback notification.
+ *
+ * This handler fires for EVERY push message (FCM or otherwise).
  */
 self.addEventListener('push', (event) => {
-  console.log('[firebase-messaging-sw.js] Push event received');
+  console.log('[SW v4.0] Push event received');
 
-  if (!event.data) {
-    console.log('[firebase-messaging-sw.js] No push data, skipping');
-    return;
-  }
+  // CRITICAL: We MUST call event.waitUntil() with showNotification()
+  // If we don't, Chrome shows "Tap to copy the URL for this app"
+  const notificationPromise = (async () => {
+    try {
+      if (!event.data) {
+        console.log('[SW v4.0] No push data, showing default notification');
+        return self.registration.showNotification('JPCO Dashboard', {
+          body: 'You have a new notification',
+          icon: '/images/logo/logo-icon.svg',
+          badge: '/images/logo/logo-icon.svg',
+          tag: 'jpco-default-' + Date.now(),
+        });
+      }
 
-  // Check if this looks like an FCM message that onBackgroundMessage will handle
-  // FCM messages have a specific structure with 'data' and sometimes 'from'
-  let payload;
-  try {
-    payload = event.data.json();
-    console.log('[firebase-messaging-sw.js] Push payload:', JSON.stringify(payload));
-  } catch (error) {
-    console.error('[firebase-messaging-sw.js] Error parsing push data:', error);
-    return;
-  }
+      let payload;
+      try {
+        payload = event.data.json();
+      } catch (e) {
+        // If JSON parsing fails, try text
+        const text = event.data.text();
+        console.log('[SW v4.0] Push data (text):', text);
+        return self.registration.showNotification('JPCO Dashboard', {
+          body: text || 'You have a new notification',
+          icon: '/images/logo/logo-icon.svg',
+          badge: '/images/logo/logo-icon.svg',
+          tag: 'jpco-text-' + Date.now(),
+        });
+      }
 
-  // If this is an FCM message (has 'from' field with sender ID), let onBackgroundMessage handle it
-  // Only show notification here if onBackgroundMessage did NOT handle it
-  if (payload.from && payload.from.includes('492450530050')) {
-    console.log('[firebase-messaging-sw.js] FCM message detected, onBackgroundMessage should handle this');
-    // Still call waitUntil to keep the SW alive, but don't show duplicate notification
-    // onBackgroundMessage will fire separately for this same push event
-    return;
-  }
+      console.log('[SW v4.0] Push payload:', JSON.stringify(payload));
 
-  // For non-FCM push messages (or as fallback), show notification directly
-  const data = payload.data || {};
+      // Extract notification data
+      // FCM data-only messages put everything in payload.data
+      // FCM notification messages put display info in payload.notification
+      const data = payload.data || {};
 
-  // If there's no title in data, check if FCM auto-added notification
-  const title = data.title || payload.notification?.title || 'New Notification';
+      // Get title - check data first (data-only), then notification (legacy)
+      const title = data.title
+        || payload.notification?.title
+        || 'New Notification';
 
-  // Merge any notification fields into data for buildNotificationOptions
-  if (!data.body && payload.notification?.body) {
-    data.body = payload.notification.body;
-  }
-  if (!data.icon && payload.notification?.icon) {
-    data.icon = payload.notification.icon;
-  }
+      // Merge notification fields into data if present
+      if (!data.body && payload.notification?.body) {
+        data.body = payload.notification.body;
+      }
+      if (!data.icon && payload.notification?.icon) {
+        data.icon = payload.notification.icon;
+      }
 
-  const options = buildNotificationOptions(data);
+      const options = buildNotificationOptions(data);
 
-  console.log('[firebase-messaging-sw.js] Showing push notification (fallback):', title);
+      console.log('[SW v4.0] Showing notification:', title, JSON.stringify(options));
 
-  event.waitUntil(
-    self.registration.showNotification(title, options)
-      .then(() => {
-        console.log('[firebase-messaging-sw.js] ✅ Notification displayed successfully');
-      })
-      .catch((error) => {
-        console.error('[firebase-messaging-sw.js] ❌ Error showing notification:', error);
-      })
-  );
+      return self.registration.showNotification(title, options);
+    } catch (error) {
+      console.error('[SW v4.0] Error in push handler:', error);
+      // ALWAYS show SOMETHING to prevent Chrome's fallback
+      return self.registration.showNotification('JPCO Dashboard', {
+        body: 'You have a new notification',
+        icon: '/images/logo/logo-icon.svg',
+        badge: '/images/logo/logo-icon.svg',
+        tag: 'jpco-error-' + Date.now(),
+      });
+    }
+  })();
+
+  // CRITICAL: event.waitUntil() MUST be called with the showNotification promise
+  event.waitUntil(notificationPromise);
 });
 
 /**
  * Handle notification click events
  */
 self.addEventListener('notificationclick', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification clicked:', event.action);
+  console.log('[SW v4.0] Notification clicked:', event.action);
 
   event.notification.close();
 
-  // If user clicked "Dismiss", do nothing
   if (event.action === 'close') {
     return;
   }
 
   const urlToOpen = event.notification.data?.url || '/notifications';
-  console.log('[firebase-messaging-sw.js] Opening URL:', urlToOpen);
+  console.log('[SW v4.0] Opening URL:', urlToOpen);
 
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((windowClients) => {
-        // Try to find and focus an existing window with the same path
+        // Try to find and focus an existing window
         for (const client of windowClients) {
           try {
             const clientUrl = new URL(client.url);
@@ -169,7 +188,7 @@ self.addEventListener('notificationclick', (event) => {
               return client.focus();
             }
           } catch (e) {
-            // URL parsing failed, skip this client
+            // URL parsing failed, skip
           }
         }
 
@@ -184,14 +203,14 @@ self.addEventListener('notificationclick', (event) => {
         }
       })
       .catch((error) => {
-        console.error('[firebase-messaging-sw.js] Error handling click:', error);
+        console.error('[SW v4.0] Error handling click:', error);
       })
   );
 });
 
 /**
- * Handle notification close events (for analytics/tracking)
+ * Handle notification close events
  */
 self.addEventListener('notificationclose', (event) => {
-  console.log('[firebase-messaging-sw.js] Notification dismissed by user');
+  console.log('[SW v4.0] Notification dismissed');
 });
