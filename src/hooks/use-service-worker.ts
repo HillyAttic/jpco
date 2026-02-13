@@ -51,30 +51,41 @@ export function useServiceWorker() {
     try {
       // Check if firebase-messaging-sw.js is already registered
       const existingRegistrations = await navigator.serviceWorker.getRegistrations();
-      const firebaseSwRegistered = existingRegistrations.some(
+      const firebaseSwRegistration = existingRegistrations.find(
         reg => reg.active?.scriptURL.includes('firebase-messaging-sw.js')
       );
 
-      // If firebase-messaging-sw.js is already registered, don't unregister it
-      if (firebaseSwRegistered) {
+      // If firebase-messaging-sw.js is already registered, use it
+      if (firebaseSwRegistration) {
         console.log('[SW] firebase-messaging-sw.js already registered, skipping re-registration');
-        const registration = existingRegistrations.find(
-          reg => reg.active?.scriptURL.includes('firebase-messaging-sw.js')
-        );
         
-        if (registration) {
-          setState(prev => ({
-            ...prev,
-            isSupported: true,
-            isRegistered: true,
-            registration,
-            error: null
-          }));
-          
-          // Wait for service worker to be ready
-          await navigator.serviceWorker.ready;
-          console.log('[SW] Service worker is ready');
-        }
+        setState(prev => ({
+          ...prev,
+          isSupported: true,
+          isRegistered: true,
+          registration: firebaseSwRegistration,
+          error: null
+        }));
+        
+        // Wait for service worker to be ready
+        await navigator.serviceWorker.ready;
+        console.log('[SW] Service worker is ready');
+        
+        // Check for updates
+        firebaseSwRegistration.addEventListener('updatefound', () => {
+          const newWorker = firebaseSwRegistration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setState(prev => ({
+                  ...prev,
+                  updateAvailable: true
+                }));
+              }
+            });
+          }
+        });
+        
         return;
       }
 
