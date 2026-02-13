@@ -1,25 +1,32 @@
 // Firebase Cloud Messaging Service Worker
 // This file must be in the public folder and served from the root  
-// VERSION: 5.2 - Fixed duplicate and fallback notifications
+// VERSION: 5.3 - Fixed Chrome fallback notification on app open
+//
+// CRITICAL FIX: Chrome shows "Tap to copy URL" fallback if:
+// 1. A push event fires but showNotification() is NOT called
+// 2. Duplicate detection returns early without showing notification
+// 3. Any code path doesn't call showNotification()
+//
+// SOLUTION: ALWAYS call showNotification() in every code path
 //
 // ARCHITECTURE:
 // - Firebase messaging SDK is loaded (required for FCM token generation via getToken())
 // - onBackgroundMessage is NOT used (it's unreliable on Android Chrome)
 // - ALL notification display is handled by our custom 'push' event handler
 // - Every push event ALWAYS calls showNotification() to prevent Chrome's fallback
-// - Notifications are deduplicated by tag to prevent duplicates
+// - Duplicates are handled by updating the tag instead of skipping
 
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js');
 
 // Take control immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW v5.2] Installing...');
+  console.log('[SW v5.3] Installing...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW v5.2] Activating...');
+  console.log('[SW v5.3] Activating...');
   event.waitUntil(clients.claim());
 });
 
@@ -48,7 +55,7 @@ setInterval(() => {
 // IMPORTANT: Register onBackgroundMessage but do NOT display notification here
 // Our push handler below will display the notification
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW v5.2] onBackgroundMessage fired (ignored):', JSON.stringify(payload));
+  console.log('[SW v5.3] onBackgroundMessage fired (ignored):', JSON.stringify(payload));
   // Do nothing - let push handler display the notification
 });
 
@@ -84,18 +91,18 @@ function buildNotificationOptions(data) {
 /**
  * PUSH EVENT HANDLER - Main notification display logic
  * 
- * Chrome REQUIRES event.waitUntil(showNotification()) or it shows
+ * CRITICAL: Chrome REQUIRES event.waitUntil(showNotification()) or it shows
  * "Tap to copy the URL for this app" fallback.
  * 
- * Every code path MUST call showNotification().
+ * Every code path MUST call showNotification() - no exceptions!
  */
 self.addEventListener('push', (event) => {
-  console.log('[SW v5.2] ===== PUSH EVENT =====');
+  console.log('[SW v5.3] ===== PUSH EVENT =====');
 
   const notificationPromise = (async () => {
     try {
       if (!event.data) {
-        console.log('[SW v5.2] No push data');
+        console.log('[SW v5.3] No push data - showing default notification');
         return self.registration.showNotification('JPCO Dashboard', {
           body: 'You have a new notification',
           icon: '/images/logo/logo-icon.svg',
@@ -112,7 +119,7 @@ self.addEventListener('push', (event) => {
         payload = event.data.json();
       } catch (e) {
         const text = event.data.text();
-        console.log('[SW v5.2] Text payload:', text);
+        console.log('[SW v5.3] Text payload:', text);
         return self.registration.showNotification('JPCO Dashboard', {
           body: text || 'You have a new notification',
           icon: '/images/logo/logo-icon.svg',
@@ -123,7 +130,7 @@ self.addEventListener('push', (event) => {
         });
       }
 
-      console.log('[SW v5.2] Payload keys:', Object.keys(payload));
+      console.log('[SW v5.3] Payload keys:', Object.keys(payload));
 
       // Extract data from FCM message
       // Data-only: { data: { title, body, ... }, from: "..." }
@@ -143,21 +150,25 @@ self.addEventListener('push', (event) => {
       // Check for duplicate notification
       const notificationId = options.tag;
       if (shownNotifications.has(notificationId)) {
-        console.log('[SW v5.2] ⚠️ Duplicate notification prevented:', notificationId);
-        return; // Don't show duplicate
+        console.log('[SW v5.3] ⚠️ Duplicate notification detected:', notificationId);
+        // IMPORTANT: Still must call showNotification() to prevent Chrome fallback
+        // Just update the tag to make it unique
+        options.tag = notificationId + '-dup-' + Date.now();
+        console.log('[SW v5.3] 🔄 Showing with new tag:', options.tag);
       }
 
       // Mark as shown
       shownNotifications.add(notificationId);
 
-      console.log('[SW v5.2] 🔔 Title:', title);
-      console.log('[SW v5.2] 🔔 Body:', options.body);
-      console.log('[SW v5.2] 🔔 Tag:', options.tag);
+      console.log('[SW v5.3] 🔔 Title:', title);
+      console.log('[SW v5.3] 🔔 Body:', options.body);
+      console.log('[SW v5.3] 🔔 Tag:', options.tag);
 
       return self.registration.showNotification(title, options);
 
     } catch (error) {
-      console.error('[SW v5.2] Error:', error);
+      console.error('[SW v5.3] Error:', error);
+      // CRITICAL: Even on error, must show notification to prevent Chrome fallback
       return self.registration.showNotification('JPCO Dashboard', {
         body: 'You have a new notification',
         icon: '/images/logo/logo-icon.svg',
@@ -176,7 +187,7 @@ self.addEventListener('push', (event) => {
  * Notification click handler
  */
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW v5.2] Click:', event.action);
+  console.log('[SW v5.3] Click:', event.action);
   event.notification.close();
 
   if (event.action === 'close') return;
@@ -200,12 +211,12 @@ self.addEventListener('notificationclick', (event) => {
         }
         if (clients.openWindow) return clients.openWindow(urlToOpen);
       })
-      .catch((e) => console.error('[SW v5.2] Click error:', e))
+      .catch((e) => console.error('[SW v5.3] Click error:', e))
   );
 });
 
 self.addEventListener('notificationclose', () => {
-  console.log('[SW v5.2] Dismissed');
+  console.log('[SW v5.3] Dismissed');
 });
 
-console.log('[SW v5.2] Loaded');
+console.log('[SW v5.3] Loaded');
