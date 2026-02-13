@@ -49,14 +49,43 @@ export function useServiceWorker() {
     }
 
     try {
-      // CRITICAL FIX: Unregister ALL existing service workers first
-      // This prevents conflicts where sw.js or other SWs might be handling push events
+      // Check if firebase-messaging-sw.js is already registered
       const existingRegistrations = await navigator.serviceWorker.getRegistrations();
+      const firebaseSwRegistered = existingRegistrations.some(
+        reg => reg.active?.scriptURL.includes('firebase-messaging-sw.js')
+      );
+
+      // If firebase-messaging-sw.js is already registered, don't unregister it
+      if (firebaseSwRegistered) {
+        console.log('[SW] firebase-messaging-sw.js already registered, skipping re-registration');
+        const registration = existingRegistrations.find(
+          reg => reg.active?.scriptURL.includes('firebase-messaging-sw.js')
+        );
+        
+        if (registration) {
+          setState(prev => ({
+            ...prev,
+            isSupported: true,
+            isRegistered: true,
+            registration,
+            error: null
+          }));
+          
+          // Wait for service worker to be ready
+          await navigator.serviceWorker.ready;
+          console.log('[SW] Service worker is ready');
+        }
+        return;
+      }
+
+      // Only unregister OTHER service workers (not firebase-messaging-sw.js)
       console.log('[SW Fix] Found', existingRegistrations.length, 'existing service workers');
       
       for (const reg of existingRegistrations) {
-        console.log('[SW Fix] Unregistering SW:', reg.active?.scriptURL || reg.scope);
-        await reg.unregister();
+        if (reg.active && !reg.active.scriptURL.includes('firebase-messaging-sw.js')) {
+          console.log('[SW Fix] Unregistering conflicting SW:', reg.active.scriptURL);
+          await reg.unregister();
+        }
       }
 
       // Wait a bit for unregistration to complete
