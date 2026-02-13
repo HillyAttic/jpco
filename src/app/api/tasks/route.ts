@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { nonRecurringTaskService } from '@/services/nonrecurring-task.service';
+import { nonRecurringTaskAdminService } from '@/services/nonrecurring-task-admin.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
-import { roleManagementService } from '@/services/role-management.service';
+import { adminDb } from '@/lib/firebase-admin';
+import admin from '@/lib/firebase-admin';
 
 // Validation schema for task creation
 const createTaskSchema = z.object({
@@ -34,27 +35,28 @@ export async function GET(request: NextRequest) {
 
     const token = authHeader.split('Bearer ')[1];
     
-    // Decode JWT token to get user ID (without verification for now)
-    // In production, you should verify the token properly
-    let userId: string;
+    // Verify the Firebase token using Admin SDK
+    let decodedToken: admin.auth.DecodedIdToken;
     try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      userId = payload.user_id || payload.sub;
-      
-      if (!userId) {
-        return ErrorResponses.unauthorized();
-      }
+      decodedToken = await admin.auth().verifyIdToken(token);
     } catch (error) {
+      console.error('Token verification failed:', error);
       return ErrorResponses.unauthorized();
     }
 
-    // Get user profile to check role
-    const userProfile = await roleManagementService.getUserProfile(userId);
-    if (!userProfile) {
+    const userId = decodedToken.uid;
+
+    // Get user profile from Firestore using Admin SDK
+    const userDoc = await adminDb.collection('users').doc(userId).get();
+    
+    if (!userDoc.exists) {
+      console.error('User profile not found for:', userId);
       return ErrorResponses.unauthorized();
     }
 
-    const isAdminOrManager = userProfile.role === 'admin' || userProfile.role === 'manager';
+    const userProfile = userDoc.data();
+    const userRole = userProfile?.role || 'employee';
+    const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
 
     const { searchParams } = new URL(request.url);
     
@@ -67,7 +69,7 @@ export async function GET(request: NextRequest) {
     };
 
     // Fetch all tasks
-    let tasks = await nonRecurringTaskService.getAll(filters);
+    let tasks = await nonRecurringTaskAdminService.getAll(filters);
     
     // Filter tasks based on user role
     if (!isAdminOrManager) {
@@ -106,18 +108,16 @@ export async function POST(request: NextRequest) {
 
     const token = authHeader.split('Bearer ')[1];
     
-    // Decode JWT token to get user ID
-    let userId: string;
+    // Verify the Firebase token using Admin SDK
+    let decodedToken: admin.auth.DecodedIdToken;
     try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      userId = payload.user_id || payload.sub;
-      
-      if (!userId) {
-        return ErrorResponses.unauthorized();
-      }
+      decodedToken = await admin.auth().verifyIdToken(token);
     } catch (error) {
+      console.error('Token verification failed:', error);
       return ErrorResponses.unauthorized();
     }
+
+    const userId = decodedToken.uid;
 
     const body = await request.json();
 
@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
       createdBy: userId, // Store the creator's user ID
     };
     
-    const newTask = await nonRecurringTaskService.create(taskToCreate);
+    const newTask = await nonRecurringTaskAdminService.create(taskToCreate);
     
     // Send push notifications to assigned users
     if (taskData.assignedTo && taskData.assignedTo.length > 0) {
