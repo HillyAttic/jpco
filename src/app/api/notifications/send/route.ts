@@ -18,6 +18,13 @@ export async function POST(request: NextRequest) {
   try {
     const { userIds, title, body, data } = await request.json();
 
+    console.log('[Notification Send] Request received:', {
+      userIds,
+      title,
+      body,
+      dataKeys: data ? Object.keys(data) : [],
+    });
+
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       return NextResponse.json(
         { error: 'userIds array is required' },
@@ -38,11 +45,13 @@ export async function POST(request: NextRequest) {
     // Process all users in parallel for maximum speed
     const promises = userIds.map(async (userId: string) => {
       try {
+        console.log(`[Notification Send] Processing user: ${userId}`);
+        
         // Get user's FCM token
         const tokenDoc = await adminDb.collection('fcmTokens').doc(userId).get();
 
         if (!tokenDoc.exists) {
-          console.log(`No FCM token found for user ${userId}`);
+          console.log(`[Notification Send] ❌ No FCM token found for user ${userId}`);
           errors.push({ userId, error: 'No FCM token' });
 
           // Still store notification in Firestore (without sending push)
@@ -60,6 +69,7 @@ export async function POST(request: NextRequest) {
         }
 
         const fcmToken = tokenDoc.data()?.token;
+        console.log(`[Notification Send] ✅ FCM token found for user ${userId}`);
 
         // Send FCM and store in Firestore IN PARALLEL
         const [fcmResult, firestoreResult] = await Promise.allSettled([
@@ -103,7 +113,7 @@ export async function POST(request: NextRequest) {
         ]);
 
         if (fcmResult.status === 'fulfilled') {
-          console.log(`✅ FCM sent to ${userId} in ${Date.now() - startTime}ms`);
+          console.log(`[Notification Send] ✅ FCM sent to ${userId} in ${Date.now() - startTime}ms`);
           results.push({
             userId,
             messageId: fcmResult.value,
@@ -111,25 +121,25 @@ export async function POST(request: NextRequest) {
           });
         } else {
           const error = fcmResult.reason;
-          console.error(`❌ FCM failed for ${userId}:`, error.message);
+          console.error(`[Notification Send] ❌ FCM failed for ${userId}:`, error.message);
 
           // Handle invalid/expired tokens
           if (error.code === 'messaging/invalid-registration-token' ||
             error.code === 'messaging/registration-token-not-registered') {
             // Clean up expired token
             await adminDb.collection('fcmTokens').doc(userId).delete();
-            console.log(`🗑️ Cleaned up expired token for ${userId}`);
+            console.log(`[Notification Send] 🗑️ Cleaned up expired token for ${userId}`);
           }
 
           errors.push({ userId, error: error.message });
         }
 
         if (firestoreResult.status === 'rejected') {
-          console.error(`Firestore write failed for ${userId}:`, firestoreResult.reason);
+          console.error(`[Notification Send] Firestore write failed for ${userId}:`, firestoreResult.reason);
         }
 
       } catch (error: any) {
-        console.error(`Error processing notification for ${userId}:`, error);
+        console.error(`[Notification Send] Error processing notification for ${userId}:`, error);
         errors.push({ userId, error: error.message });
       }
     });
@@ -138,7 +148,7 @@ export async function POST(request: NextRequest) {
     await Promise.all(promises);
 
     const totalTime = Date.now() - startTime;
-    console.log(`📬 Notification batch completed in ${totalTime}ms (${results.length} sent, ${errors.length} errors)`);
+    console.log(`[Notification Send] 📬 Batch completed in ${totalTime}ms (${results.length} sent, ${errors.length} errors)`);
 
     return NextResponse.json(
       {
@@ -150,7 +160,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
   } catch (error: any) {
-    console.error('Error sending notifications:', error);
+    console.error('[Notification Send] Error sending notifications:', error);
     return NextResponse.json(
       { error: 'Failed to send notifications', details: error.message },
       { status: 500 }

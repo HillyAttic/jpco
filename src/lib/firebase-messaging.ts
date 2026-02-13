@@ -173,6 +173,8 @@ export async function requestNotificationPermissionMobile(): Promise<string | nu
 
 /**
  * Listen for foreground messages
+ * IMPORTANT: Only calls the callback, does NOT create duplicate browser notifications
+ * The service worker handles all notification display to prevent duplicates
  */
 export function onForegroundMessage(callback: (payload: any) => void) {
   if (!messaging) {
@@ -181,7 +183,7 @@ export function onForegroundMessage(callback: (payload: any) => void) {
   }
 
   return onMessage(messaging, (payload) => {
-    console.log('Foreground message received:', payload);
+    console.log('[Foreground] Message received:', payload);
 
     // With data-only messages, title/body are in payload.data
     // Fall back to payload.notification for backward compatibility
@@ -189,30 +191,10 @@ export function onForegroundMessage(callback: (payload: any) => void) {
     const notificationTitle = data.title || payload.notification?.title || 'New Notification';
     const notificationBody = data.body || payload.notification?.body || 'You have a new notification';
 
-    // Show browser notification for foreground messages
-    if (Notification.permission === 'granted') {
-      const notificationOptions = {
-        body: notificationBody,
-        icon: data.icon || payload.notification?.icon || '/images/logo/logo-icon.svg',
-        badge: '/images/logo/logo-icon.svg',
-        tag: data.notificationId || data.taskId || 'notification',
-        data: data,
-        requireInteraction: true,   // Keep visible until user interacts
-      } as NotificationOptions;
-
-      // Create browser notification
-      const notification = new Notification(notificationTitle, notificationOptions);
-
-      notification.onclick = () => {
-        window.focus();
-        if (data.url) {
-          window.location.href = data.url;
-        }
-        notification.close();
-      };
-    }
-
-    // Also call the callback for additional handling (like toast)
+    // DO NOT create browser notification here - let service worker handle it
+    // This prevents duplicate notifications (one from SW, one from here)
+    
+    // Only call the callback for UI updates (like updating notification badge)
     // Include extracted title/body for convenience
     callback({
       ...payload,

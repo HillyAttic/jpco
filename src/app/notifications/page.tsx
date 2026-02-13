@@ -186,16 +186,13 @@ export default function NotificationsPage() {
     if (!user) return;
 
     const unsubscribe = onForegroundMessage((payload) => {
-      console.log("Foreground message:", payload);
+      console.log("[Foreground] Message received:", payload);
 
-      // Show toast notification
-      toast.info(payload.notification?.body || "New notification", {
-        onClick: () => {
-          if (payload.data?.url) {
-            window.location.href = payload.data.url;
-          }
-        },
-      });
+      // Refresh notifications list to show the new notification
+      fetchNotifications();
+
+      // DO NOT show toast here - service worker already displayed the notification
+      // This prevents duplicate notifications
     });
 
     return unsubscribe;

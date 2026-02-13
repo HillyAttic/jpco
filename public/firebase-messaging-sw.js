@@ -1,24 +1,25 @@
 // Firebase Cloud Messaging Service Worker
 // This file must be in the public folder and served from the root  
-// VERSION: 5.1 - Reliable background notifications for Android PWA
+// VERSION: 5.2 - Fixed duplicate and fallback notifications
 //
 // ARCHITECTURE:
 // - Firebase messaging SDK is loaded (required for FCM token generation via getToken())
 // - onBackgroundMessage is NOT used (it's unreliable on Android Chrome)
 // - ALL notification display is handled by our custom 'push' event handler
 // - Every push event ALWAYS calls showNotification() to prevent Chrome's fallback
+// - Notifications are deduplicated by tag to prevent duplicates
 
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js');
 
 // Take control immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW v5.1] Installing...');
+  console.log('[SW v5.2] Installing...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW v5.1] Activating...');
+  console.log('[SW v5.2] Activating...');
   event.waitUntil(clients.claim());
 });
 
@@ -34,16 +35,21 @@ firebase.initializeApp({
 });
 
 // Initialize messaging - required for getToken() to work on client side
-// The SDK registers its own push handler, but we override notification display
 const messaging = firebase.messaging();
 
-// IMPORTANT: Register onBackgroundMessage but return FALSE to tell Firebase
-// SDK that we did NOT handle the notification display.
-// This prevents Firebase from "consuming" the push event silently.
+// Track shown notifications to prevent duplicates
+const shownNotifications = new Set();
+
+// Clean up old notification IDs every 5 minutes
+setInterval(() => {
+  shownNotifications.clear();
+}, 5 * 60 * 1000);
+
+// IMPORTANT: Register onBackgroundMessage but do NOT display notification here
+// Our push handler below will display the notification
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW v5.1] onBackgroundMessage fired:', JSON.stringify(payload));
-  // Return undefined/void - do NOT return a showNotification promise here
-  // Our push handler below will display the notification
+  console.log('[SW v5.2] onBackgroundMessage fired (ignored):', JSON.stringify(payload));
+  // Do nothing - let push handler display the notification
 });
 
 /**
@@ -84,12 +90,12 @@ function buildNotificationOptions(data) {
  * Every code path MUST call showNotification().
  */
 self.addEventListener('push', (event) => {
-  console.log('[SW v5.1] ===== PUSH EVENT =====');
+  console.log('[SW v5.2] ===== PUSH EVENT =====');
 
   const notificationPromise = (async () => {
     try {
       if (!event.data) {
-        console.log('[SW v5.1] No push data');
+        console.log('[SW v5.2] No push data');
         return self.registration.showNotification('JPCO Dashboard', {
           body: 'You have a new notification',
           icon: '/images/logo/logo-icon.svg',
@@ -106,7 +112,7 @@ self.addEventListener('push', (event) => {
         payload = event.data.json();
       } catch (e) {
         const text = event.data.text();
-        console.log('[SW v5.1] Text payload:', text);
+        console.log('[SW v5.2] Text payload:', text);
         return self.registration.showNotification('JPCO Dashboard', {
           body: text || 'You have a new notification',
           icon: '/images/logo/logo-icon.svg',
@@ -117,7 +123,7 @@ self.addEventListener('push', (event) => {
         });
       }
 
-      console.log('[SW v5.1] Payload keys:', Object.keys(payload));
+      console.log('[SW v5.2] Payload keys:', Object.keys(payload));
 
       // Extract data from FCM message
       // Data-only: { data: { title, body, ... }, from: "..." }
@@ -134,13 +140,24 @@ self.addEventListener('push', (event) => {
 
       const options = buildNotificationOptions(data);
 
-      console.log('[SW v5.1] 🔔 Title:', title);
-      console.log('[SW v5.1] 🔔 Body:', options.body);
+      // Check for duplicate notification
+      const notificationId = options.tag;
+      if (shownNotifications.has(notificationId)) {
+        console.log('[SW v5.2] ⚠️ Duplicate notification prevented:', notificationId);
+        return; // Don't show duplicate
+      }
+
+      // Mark as shown
+      shownNotifications.add(notificationId);
+
+      console.log('[SW v5.2] 🔔 Title:', title);
+      console.log('[SW v5.2] 🔔 Body:', options.body);
+      console.log('[SW v5.2] 🔔 Tag:', options.tag);
 
       return self.registration.showNotification(title, options);
 
     } catch (error) {
-      console.error('[SW v5.1] Error:', error);
+      console.error('[SW v5.2] Error:', error);
       return self.registration.showNotification('JPCO Dashboard', {
         body: 'You have a new notification',
         icon: '/images/logo/logo-icon.svg',
@@ -159,7 +176,7 @@ self.addEventListener('push', (event) => {
  * Notification click handler
  */
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW v5.1] Click:', event.action);
+  console.log('[SW v5.2] Click:', event.action);
   event.notification.close();
 
   if (event.action === 'close') return;
@@ -183,12 +200,12 @@ self.addEventListener('notificationclick', (event) => {
         }
         if (clients.openWindow) return clients.openWindow(urlToOpen);
       })
-      .catch((e) => console.error('[SW v5.1] Click error:', e))
+      .catch((e) => console.error('[SW v5.2] Click error:', e))
   );
 });
 
 self.addEventListener('notificationclose', () => {
-  console.log('[SW v5.1] Dismissed');
+  console.log('[SW v5.2] Dismissed');
 });
 
-console.log('[SW v5.1] Loaded');
+console.log('[SW v5.2] Loaded');

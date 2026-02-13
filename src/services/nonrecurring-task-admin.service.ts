@@ -139,4 +139,17 @@ export const nonRecurringTaskAdminService = {
   async delete(id: string): Promise<void> {
     await adminDb.collection('tasks').doc(id).delete();
   },
+
+  /**
+   * Toggle task completion status
+   */
+  async toggleComplete(id: string): Promise<NonRecurringTask> {
+    const task = await this.getById(id);
+    if (!task) {
+      throw new Error('Task not found');
+    }
+
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+    return this.update(id, { status: newStatus });
+  },
 };

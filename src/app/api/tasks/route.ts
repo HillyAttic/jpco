@@ -142,10 +142,12 @@ export async function POST(request: NextRequest) {
     
     const newTask = await nonRecurringTaskAdminService.create(taskToCreate);
     
-    // Send push notifications to assigned users
+    // Send push notifications to assigned users using Admin SDK
     if (taskData.assignedTo && taskData.assignedTo.length > 0) {
       try {
-        await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/send`, {
+        console.log(`Sending task assignment notifications to ${taskData.assignedTo.length} user(s)`);
+        
+        const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/send`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -161,6 +163,14 @@ export async function POST(request: NextRequest) {
             },
           }),
         });
+
+        if (!notificationResponse.ok) {
+          const errorData = await notificationResponse.json();
+          console.error('Failed to send notifications:', errorData);
+        } else {
+          const result = await notificationResponse.json();
+          console.log('Notifications sent successfully:', result);
+        }
       } catch (error) {
         console.error('Error sending task assignment notifications:', error);
         // Don't fail the task creation if notification fails
