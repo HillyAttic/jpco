@@ -58,11 +58,11 @@ export function createAdminService<T extends { id?: string }>(collectionName: st
         snapshot.forEach((doc: any) => {
           const data = doc.data();
           documents.push({
-            id: doc.id,
             ...data,
+            id: doc.id,
             createdAt: data.createdAt?.toDate?.() || data.createdAt,
             updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
-          } as T);
+          } as unknown as T);
         });
 
         return documents;
@@ -85,11 +85,11 @@ export function createAdminService<T extends { id?: string }>(collectionName: st
 
         const data = doc.data()!;
         return {
-          id: doc.id,
           ...data,
+          id: doc.id,
           createdAt: data.createdAt?.toDate?.() || data.createdAt,
           updatedAt: data.updatedAt?.toDate?.() || data.updatedAt,
-        } as T;
+        } as unknown as T;
       } catch (error) {
         console.error(`[AdminService:${collectionName}] Error in getById:`, error);
         throw error;
@@ -113,9 +113,9 @@ export function createAdminService<T extends { id?: string }>(collectionName: st
         console.log(`[AdminService:${collectionName}] Created document:`, docRef.id);
 
         return {
-          id: docRef.id,
           ...docData,
-        } as T;
+          id: docRef.id,
+        } as unknown as T;
       } catch (error) {
         console.error(`[AdminService:${collectionName}] Error in create:`, error);
         throw error;
