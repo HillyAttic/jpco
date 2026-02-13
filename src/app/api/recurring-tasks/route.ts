@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { recurringTaskService } from '@/services/recurring-task.service';
+import { recurringTaskAdminService, RecurringTask } from '@/services/recurring-task-admin.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
@@ -77,10 +77,18 @@ export async function GET(request: NextRequest) {
       return ErrorResponses.unauthorized();
     }
 
-    // Get user profile to check role
-    const { roleManagementService } = await import('@/services/role-management.service');
-    const userProfile = await roleManagementService.getUserProfile(userId);
-    if (!userProfile) {
+    // Get user profile to check role using Admin SDK
+    const { adminDb } = await import('@/lib/firebase-admin');
+    let userProfile: any;
+    try {
+      const userDoc = await adminDb.collection('users').doc(userId).get();
+      if (!userDoc.exists) {
+        console.error(`User profile not found for userId: ${userId}`);
+        return ErrorResponses.unauthorized();
+      }
+      userProfile = userDoc.data();
+    } catch (error) {
+      console.error('Error getting user profile:', error);
       return ErrorResponses.unauthorized();
     }
 
@@ -100,8 +108,8 @@ export async function GET(request: NextRequest) {
     // Check if this is a calendar view request
     const isCalendarView = searchParams.get('view') === 'calendar';
 
-    // Fetch all tasks
-    let tasks = await recurringTaskService.getAll(filters);
+    // Fetch all tasks using Admin SDK
+    let tasks = await recurringTaskAdminService.getAll(filters);
     
     console.log(`[Recurring Tasks API] Total tasks fetched: ${tasks.length}`);
     console.log(`[Recurring Tasks API] User Firebase Auth UID: ${userId}`);
@@ -113,24 +121,22 @@ export async function GET(request: NextRequest) {
     // Admin/Manager see all tasks in both calendar and list views
     // Team members see only their assigned tasks in both views
     if (!isAdminOrManager) {
-      const { teamService } = await import('@/services/team.service');
-      const { collection: firestoreCollection, query: firestoreQuery, where: firestoreWhere, getDocs: firestoreGetDocs } = await import('firebase/firestore');
-      const { db } = await import('@/lib/firebase');
+      const { teamAdminService } = await import('@/services/team-admin.service');
       
-      // OPTIMIZED: Batch all user ID lookups
+      // OPTIMIZED: Batch all user ID lookups using Admin SDK
       const userIds = new Set<string>([userId]); // Start with Auth UID
       
       console.log(`[Recurring Tasks API] User email: ${userProfile.email}`);
       
-      // Batch query for all user documents by email
+      // Batch query for all user documents by email using Admin SDK
       try {
         const [usersSnapshot, empSnapshot] = await Promise.all([
           // Check users collection
           (async () => {
             try {
-              const usersRef = firestoreCollection(db, 'users');
-              const emailQuery = firestoreQuery(usersRef, firestoreWhere('email', '==', userProfile.email));
-              return await firestoreGetDocs(emailQuery);
+              const usersRef = adminDb.collection('users');
+              const emailQuery = usersRef.where('email', '==', userProfile.email);
+              return await emailQuery.get();
             } catch (error) {
               console.error(`[Recurring Tasks API] Error finding user by email:`, error);
               return { docs: [] };
@@ -139,9 +145,9 @@ export async function GET(request: NextRequest) {
           // Check employees collection
           (async () => {
             try {
-              const employeesRef = firestoreCollection(db, 'employees');
-              const empEmailQuery = firestoreQuery(employeesRef, firestoreWhere('email', '==', userProfile.email));
-              return await firestoreGetDocs(empEmailQuery);
+              const employeesRef = adminDb.collection('employees');
+              const empEmailQuery = employeesRef.where('email', '==', userProfile.email);
+              return await empEmailQuery.get();
             } catch (error) {
               console.log(`[Recurring Tasks API] No employees collection found (this is normal)`);
               return { docs: [] };
@@ -149,12 +155,12 @@ export async function GET(request: NextRequest) {
           })()
         ]);
         
-        usersSnapshot.docs.forEach(doc => {
+        usersSnapshot.docs.forEach((doc: any) => {
           userIds.add(doc.id);
           console.log(`[Recurring Tasks API] Found user document by email: ${doc.id}`);
         });
         
-        empSnapshot.docs.forEach(doc => {
+        empSnapshot.docs.forEach((doc: any) => {
           userIds.add(doc.id);
           console.log(`[Recurring Tasks API] Found employee document by email: ${doc.id}`);
         });
@@ -165,7 +171,7 @@ export async function GET(request: NextRequest) {
       console.log(`[Recurring Tasks API] All possible user IDs:`, Array.from(userIds));
       
       // Get teams for ALL possible user IDs in parallel
-      const teamPromises = Array.from(userIds).map(id => teamService.getTeamsByMember(id));
+      const teamPromises = Array.from(userIds).map(id => teamAdminService.getTeamsByMember(id));
       const teamResults = await Promise.all(teamPromises);
       
       // Flatten and deduplicate teams
@@ -283,10 +289,12 @@ export async function POST(request: NextRequest) {
         ? (taskData.nextOccurrence instanceof Date ? taskData.nextOccurrence : new Date(taskData.nextOccurrence))
         : (taskData.startDate instanceof Date ? taskData.startDate : new Date(taskData.startDate)),
       createdBy: userId, // Store the creator's user ID
+      completionHistory: [], // Initialize empty completion history
+      isPaused: false, // Initialize as not paused
     };
     
     console.log('💾 [POST /api/recurring-tasks] Creating task in Firestore:', JSON.stringify(taskToCreate, null, 2));
-    const newTask = await recurringTaskService.create(taskToCreate);
+    const newTask = await recurringTaskAdminService.create(taskToCreate as any);
     console.log('✅ [POST /api/recurring-tasks] Task created successfully with ID:', newTask.id);
     console.log('🗺️ [POST /api/recurring-tasks] Saved team member mappings:', newTask.teamMemberMappings);
     

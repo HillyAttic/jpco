@@ -1,6 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Team, TeamMember } from '@/services/team.service';
 import { TeamFormData } from '@/lib/validation';
+import { auth } from '@/lib/firebase';
+
+/**
+ * Get authentication headers with Firebase token
+ */
+async function getAuthHeaders(): Promise<HeadersInit> {
+  const user = auth.currentUser;
+  if (!user) {
+    throw new Error('User not authenticated');
+  }
+  
+  const token = await user.getIdToken();
+  return {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${token}`,
+  };
+}
 
 interface UseTeamsFilters {
   status?: string;
@@ -68,7 +85,8 @@ export function useTeams(): UseTeamsReturn {
         params.append('search', currentFilters.search.trim());
       }
 
-      const response = await fetch(`/api/teams?${params.toString()}`);
+      const headers = await getAuthHeaders();
+      const response = await fetch(`/api/teams?${params.toString()}`, { headers });
       const result = await response.json();
 
       if (!response.ok) {
@@ -111,11 +129,10 @@ export function useTeams(): UseTeamsReturn {
     setTeams(prev => [optimisticTeam, ...prev]);
 
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch('/api/teams', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(data),
       });
 
@@ -155,11 +172,10 @@ export function useTeams(): UseTeamsReturn {
     ));
 
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`/api/teams/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(data),
       });
 
@@ -199,8 +215,10 @@ export function useTeams(): UseTeamsReturn {
     setTeams(prev => prev.filter(team => team.id !== id));
 
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`/api/teams/${id}`, {
         method: 'DELETE',
+        headers,
       });
 
       const result = await response.json();
@@ -238,11 +256,10 @@ export function useTeams(): UseTeamsReturn {
     ));
 
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`/api/teams/${teamId}/members`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify(member),
       });
 
@@ -286,8 +303,10 @@ export function useTeams(): UseTeamsReturn {
     ));
 
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`/api/teams/${teamId}/members/${memberId}`, {
         method: 'DELETE',
+        headers,
       });
 
       const result = await response.json();
@@ -335,11 +354,10 @@ export function useTeams(): UseTeamsReturn {
     ));
 
     try {
+      const headers = await getAuthHeaders();
       const response = await fetch(`/api/teams/${teamId}/members/${memberId}`, {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers,
         body: JSON.stringify({ role }),
       });
 

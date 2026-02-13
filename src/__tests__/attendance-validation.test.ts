@@ -59,8 +59,16 @@ describe('Attendance Validation Schemas', () => {
 
     it('should reject invalid longitude', () => {
       const invalidData = {
-        timestamp: new Date().toISOString(),
-        latitude: 40.7128,
-        longitude: 200, // Invalid longitude
-        accuracy: 10
+        timestamp: new Date(),
+        location: {
+          latitude: 40.7128,
+          longitude: 200 // Invalid: > 180
+        }
       };
+
+      const result = clockInSchema.safeParse(invalidData);
+      expect(result.success).toBe(false);
+    });
+
+  });
+});
