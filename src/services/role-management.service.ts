@@ -44,6 +44,18 @@ export class RoleManagementService {
 
       await updateDoc(userRef, updateData);
 
+      // CRITICAL FIX: Sync to Firebase Auth custom claims
+      // This ensures the role is reflected in the user's token
+      try {
+        const { setUserClaims } = await import('@/utils/sync-user-roles');
+        await setUserClaims(uid, role, roleConfig.permissions.map(p => p.id));
+        console.log(`Custom claims synced for user ${uid}`);
+      } catch (claimsError) {
+        console.error('Error syncing custom claims:', claimsError);
+        // Don't fail the whole operation if claims sync fails
+        // The Firestore trigger will handle it automatically
+      }
+
       // Log the role assignment
       if (assignedBy) {
         await this.logAuditEvent({
@@ -54,8 +66,6 @@ export class RoleManagementService {
         });
       }
 
-      // In a real implementation, you would also update Firebase custom claims
-      // This requires Firebase Admin SDK on the server side
       console.log(`Role ${role} assigned to user ${uid}`);
     } catch (error: any) {
       // Handle "No document to update" error gracefully
