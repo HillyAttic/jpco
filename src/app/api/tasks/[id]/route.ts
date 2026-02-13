@@ -3,6 +3,7 @@ import { nonRecurringTaskAdminService } from '@/services/nonrecurring-task-admin
 import { NonRecurringTask } from '@/services/nonrecurring-task.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
+import { sendNotification } from '@/lib/notifications/send-notification';
 
 // Validation schema for task update
 const updateTaskSchema = z.object({
@@ -99,7 +100,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     console.log('[API /api/tasks/[id]] Task updated:', id);
     
-    // Send notifications to newly assigned users
+    // Send notifications to newly assigned users directly (no fetch needed)
     if (taskData.assignedTo && taskData.assignedTo.length > 0) {
       try {
         // Get the original task to compare assignees
@@ -112,26 +113,28 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           );
           
           if (newlyAssigned.length > 0) {
-            await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/send`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
+            console.log(`[Task Update API] Sending notifications to ${newlyAssigned.length} newly assigned user(s):`, newlyAssigned);
+            
+            const result = await sendNotification({
+              userIds: newlyAssigned,
+              title: 'New Task Assigned',
+              body: `You have been assigned to task: ${updatedTask.title}`,
+              data: {
+                taskId: updatedTask.id,
+                url: '/tasks',
+                type: 'task_assigned',
               },
-              body: JSON.stringify({
-                userIds: newlyAssigned,
-                title: 'New Task Assigned',
-                body: `You have been assigned to task: ${updatedTask.title}`,
-                data: {
-                  taskId: updatedTask.id,
-                  url: '/tasks',
-                  type: 'task_assigned',
-                },
-              }),
+            });
+
+            console.log('[Task Update API] ✅ Notification result:', {
+              totalTime: `${result.totalTime}ms`,
+              sent: result.sent.length,
+              errors: result.errors.length,
             });
           }
         }
       } catch (error) {
-        console.error('Error sending task assignment notifications:', error);
+        console.error('[Task Update API] ❌ Error sending task assignment notifications:', error);
         // Don't fail the task update if notification fails
       }
     }

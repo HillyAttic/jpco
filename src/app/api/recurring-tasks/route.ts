@@ -16,7 +16,7 @@ const createRecurringTaskSchema = z.object({
   ]),
   endDate: z.union([
     z.string().refine((date) => !isNaN(Date.parse(date)), {
-      message: 'Invalid end date format',
+      message: 'Invalid end date format', 
     }),
     z.date()
   ]).optional(),
