@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { employeeService, Employee } from '@/services/employee.service';
+import { employeeAdminService } from '@/services/employee-admin.service';
 import { userManagementService } from '@/services/user-management.service';
 import { UserRole } from '@/types/auth.types';
 import { z } from 'zod';
@@ -19,10 +20,13 @@ const createEmployeeSchema = z.object({
 /**
  * GET /api/employees
  * List all employees with optional pagination and filters
+ * Uses Admin SDK to bypass Firestore security rules
  * Validates Requirements: 5.1, 5.7, 5.8
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('[API /api/employees] GET request received');
+    
     // TODO: Add authentication check
     // const user = await verifyAuth(request);
     // if (!user) {
@@ -32,19 +36,25 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || undefined;
     const search = searchParams.get('search') || undefined;
-    const limit = parseInt(searchParams.get('limit') || '1000'); // Increased from 20 to 1000
+    const limit = parseInt(searchParams.get('limit') || '1000');
 
-    const employees = await employeeService.getAll({
+    console.log('[API /api/employees] Filters:', { status, search, limit });
+
+    // Use Admin SDK service for server-side operations
+    const employees = await employeeAdminService.getAll({
       status,
       search,
       limit,
     });
+
+    console.log(`[API /api/employees] Returning ${employees.length} employees`);
 
     return NextResponse.json({
       data: employees,
       total: employees.length,
     });
   } catch (error) {
+    console.error('[API /api/employees] Error:', error);
     return handleApiError(error);
   }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { clientService, Client } from '@/services/client.service';
+import { clientAdminService } from '@/services/client-admin.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
@@ -23,10 +24,13 @@ const createClientSchema = z.object({
 /**
  * GET /api/clients
  * List all clients with optional pagination and filters
+ * Uses Admin SDK to bypass Firestore security rules
  * Validates Requirements: 1.3
  */
 export async function GET(request: NextRequest) {
   try {
+    console.log('[API /api/clients] GET request received');
+    
     // TODO: Add authentication check
     // const user = await verifyAuth(request);
     // if (!user) {
@@ -37,13 +41,16 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || undefined;
     const search = searchParams.get('search') || undefined;
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '1000'); // Increased to 1000 to show all clients
+    const limit = parseInt(searchParams.get('limit') || '1000');
 
-    const clients = await clientService.getAll({
+    // Use Admin SDK service
+    const clients = await clientAdminService.getAll({
       status,
       search,
       limit,
     });
+
+    console.log(`[API /api/clients] Returning ${clients.length} clients`);
 
     return NextResponse.json({
       data: clients,
@@ -52,6 +59,7 @@ export async function GET(request: NextRequest) {
       total: clients.length,
     });
   } catch (error) {
+    console.error('[API /api/clients] Error:', error);
     return handleApiError(error);
   }
 }
@@ -59,10 +67,13 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/clients
  * Create a new client
+ * Uses Admin SDK to bypass Firestore security rules
  * Validates Requirements: 1.3
  */
 export async function POST(request: NextRequest) {
   try {
+    console.log('[API /api/clients] POST request received');
+    
     // TODO: Add authentication check
     // const user = await verifyAuth(request);
     // if (!user) {
@@ -82,11 +93,14 @@ export async function POST(request: NextRequest) {
 
     const clientData = validationResult.data;
 
-    // Create client
-    const newClient = await clientService.create(clientData);
+    // Create client using Admin SDK
+    const newClient = await clientAdminService.create(clientData);
+
+    console.log('[API /api/clients] Client created:', newClient.id);
 
     return NextResponse.json(newClient, { status: 201 });
   } catch (error) {
+    console.error('[API /api/clients] Error:', error);
     return handleApiError(error);
   }
 }

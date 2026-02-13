@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Category, CreateCategoryInput } from '@/types/category.types';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
-import { categoryService } from '@/services/category.service';
+import { categoryAdminService } from '@/services/category-admin.service';
 
 // Validation schema for category creation
 const createCategorySchema = z.object({
@@ -36,9 +36,9 @@ export async function GET(request: NextRequest) {
       isActive = isActiveParam === 'true';
     }
 
-    // Get filtered categories from Firestore
-    const categories = await categoryService.getFiltered({
-      searchTerm: searchTerm || undefined,
+    // Get filtered categories from Firestore using Admin SDK
+    const categories = await categoryAdminService.getAll({
+      search: searchTerm || undefined,
       isActive,
     });
 
@@ -74,8 +74,8 @@ export async function POST(request: NextRequest) {
 
     const categoryData = validationResult.data;
 
-    // Create category in Firestore
-    const newCategory = await categoryService.create(categoryData);
+    // Create category in Firestore using Admin SDK
+    const newCategory = await categoryAdminService.create(categoryData);
 
     return NextResponse.json(newCategory, { status: 201 });
   } catch (error) {

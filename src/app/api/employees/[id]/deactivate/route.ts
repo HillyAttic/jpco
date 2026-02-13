@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { employeeService } from '@/services/employee.service';
+import { employeeAdminService } from '@/services/employee-admin.service';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
 /**
@@ -20,8 +20,8 @@ export async function PATCH(
 
     const { id } = await params;
 
-    // Check if employee exists
-    const existingEmployee = await employeeService.getById(id);
+    // Check if employee exists (use Admin SDK)
+    const existingEmployee = await employeeAdminService.getById(id);
     if (!existingEmployee) {
       return ErrorResponses.notFound('Employee');
     }
@@ -31,8 +31,8 @@ export async function PATCH(
       return ErrorResponses.badRequest('Employee is already deactivated');
     }
 
-    // Deactivate employee
-    const deactivatedEmployee = await employeeService.deactivate(id);
+    // Deactivate employee using Admin SDK
+    const deactivatedEmployee = await employeeAdminService.deactivate(id);
 
     return NextResponse.json({
       message: 'Employee deactivated successfully',

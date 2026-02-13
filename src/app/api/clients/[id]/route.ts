@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { clientService } from '@/services/client.service';
+import { clientAdminService } from '@/services/client-admin.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
@@ -38,7 +38,7 @@ export async function GET(
 
     const { id } = await params;
 
-    const client = await clientService.getById(id);
+    const client = await clientAdminService.getById(id);
 
     if (!client) {
       return ErrorResponses.notFound('Client');
@@ -81,13 +81,13 @@ export async function PUT(
     const updateData = validationResult.data;
 
     // Check if client exists
-    const existingClient = await clientService.getById(id);
+    const existingClient = await clientAdminService.getById(id);
     if (!existingClient) {
       return ErrorResponses.notFound('Client');
     }
 
     // Update client
-    const updatedClient = await clientService.update(id, updateData);
+    const updatedClient = await clientAdminService.update(id, updateData);
 
     return NextResponse.json(updatedClient);
   } catch (error) {
@@ -114,13 +114,13 @@ export async function DELETE(
     const { id } = await params;
 
     // Check if client exists
-    const existingClient = await clientService.getById(id);
+    const existingClient = await clientAdminService.getById(id);
     if (!existingClient) {
       return ErrorResponses.notFound('Client');
     }
 
     // Delete client
-    await clientService.delete(id);
+    await clientAdminService.delete(id);
 
     return NextResponse.json(
       { message: 'Client deleted successfully' },

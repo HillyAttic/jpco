@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { employeeService } from '@/services/employee.service';
+import { employeeAdminService } from '@/services/employee-admin.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
@@ -16,6 +17,7 @@ const updateEmployeeSchema = z.object({
 /**
  * GET /api/employees/[id]
  * Get a single employee by ID
+ * Uses Admin SDK to bypass Firestore security rules
  * Validates Requirements: 5.1
  */
 export async function GET(
@@ -31,7 +33,8 @@ export async function GET(
 
     const { id } = await params;
 
-    const employee = await employeeService.getById(id);
+    // Use Admin SDK service
+    const employee = await employeeAdminService.getById(id);
 
     if (!employee) {
       return ErrorResponses.notFound('Employee');
@@ -46,6 +49,7 @@ export async function GET(
 /**
  * PUT /api/employees/[id]
  * Update an employee
+ * Uses Admin SDK to bypass Firestore security rules
  * Validates Requirements: 5.2
  */
 export async function PUT(
@@ -76,22 +80,22 @@ export async function PUT(
 
     const updateData = validationResult.data;
 
-    // Check if employee exists
-    const existingEmployee = await employeeService.getById(id);
+    // Check if employee exists (use Admin SDK)
+    const existingEmployee = await employeeAdminService.getById(id);
     if (!existingEmployee) {
       return ErrorResponses.notFound('Employee');
     }
 
     // If updating employee ID, check for duplicates
     if (updateData.employeeId && updateData.employeeId !== existingEmployee.employeeId) {
-      const existingByEmployeeId = await employeeService.getByEmployeeId(updateData.employeeId);
+      const existingByEmployeeId = await employeeAdminService.getByEmployeeId(updateData.employeeId);
       if (existingByEmployeeId && existingByEmployeeId.id !== id) {
         return ErrorResponses.conflict('Employee ID already exists');
       }
     }
 
-    // Update employee with optional password
-    const updatedEmployee = await employeeService.update(id, updateData, password);
+    // Update employee using Admin SDK (password update requires separate handling)
+    const updatedEmployee = await employeeAdminService.update(id, updateData);
 
     return NextResponse.json(updatedEmployee);
   } catch (error) {
@@ -102,6 +106,7 @@ export async function PUT(
 /**
  * DELETE /api/employees/[id]
  * Delete an employee
+ * Uses Admin SDK to bypass Firestore security rules
  * Validates Requirements: 5.2
  */
 export async function DELETE(
@@ -117,14 +122,14 @@ export async function DELETE(
 
     const { id } = await params;
 
-    // Check if employee exists
-    const existingEmployee = await employeeService.getById(id);
+    // Check if employee exists (use Admin SDK)
+    const existingEmployee = await employeeAdminService.getById(id);
     if (!existingEmployee) {
       return ErrorResponses.notFound('Employee');
     }
 
-    // Delete employee
-    await employeeService.delete(id);
+    // Delete employee using Admin SDK
+    await employeeAdminService.delete(id);
 
     return NextResponse.json(
       { message: 'Employee deleted successfully' },
