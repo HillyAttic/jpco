@@ -83,12 +83,13 @@ export async function GET(request: NextRequest) {
     try {
       const userDoc = await adminDb.collection('users').doc(userId).get();
       if (!userDoc.exists) {
-        console.error(`User profile not found for userId: ${userId}`);
+        console.error(`[Recurring Tasks API] ❌ User profile not found for userId: ${userId}`);
         return ErrorResponses.unauthorized();
       }
       userProfile = userDoc.data();
+      console.log(`[Recurring Tasks API] ✅ User profile loaded for ${userId}, role: ${userProfile.role}`);
     } catch (error) {
-      console.error('Error getting user profile:', error);
+      console.error('[Recurring Tasks API] ❌ Error getting user profile:', error);
       return ErrorResponses.unauthorized();
     }
 

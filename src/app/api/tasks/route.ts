@@ -145,7 +145,7 @@ export async function POST(request: NextRequest) {
     // Send push notifications to assigned users using Admin SDK
     if (taskData.assignedTo && taskData.assignedTo.length > 0) {
       try {
-        console.log(`Sending task assignment notifications to ${taskData.assignedTo.length} user(s)`);
+        console.log(`[Task API] Sending notifications to ${taskData.assignedTo.length} user(s):`, taskData.assignedTo);
         
         const notificationResponse = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/notifications/send`, {
           method: 'POST',
@@ -166,13 +166,26 @@ export async function POST(request: NextRequest) {
 
         if (!notificationResponse.ok) {
           const errorData = await notificationResponse.json();
-          console.error('Failed to send notifications:', errorData);
+          console.error('[Task API] ❌ Failed to send notifications:', errorData);
         } else {
           const result = await notificationResponse.json();
-          console.log('Notifications sent successfully:', result);
+          console.log('[Task API] ✅ Notification result:', result);
+          
+          // Log which users received notifications and which didn't
+          if (result.sent && result.sent.length > 0) {
+            console.log('[Task API] ✅ Notifications sent to:', result.sent.map((s: any) => s.userId));
+          }
+          if (result.errors && result.errors.length > 0) {
+            console.log('[Task API] ⚠️ Notification errors:', result.errors);
+            result.errors.forEach((err: any) => {
+              if (err.error === 'No FCM token') {
+                console.log(`[Task API] ⚠️ User ${err.userId} needs to enable notifications at /notifications page`);
+              }
+            });
+          }
         }
       } catch (error) {
-        console.error('Error sending task assignment notifications:', error);
+        console.error('[Task API] ❌ Error sending task assignment notifications:', error);
         // Don't fail the task creation if notification fails
       }
     }

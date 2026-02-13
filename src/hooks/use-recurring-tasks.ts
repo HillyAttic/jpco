@@ -61,6 +61,13 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
    * Fetch recurring tasks from API
    */
   const fetchTasks = useCallback(async () => {
+    // Don't fetch if user is not authenticated
+    if (!auth.currentUser) {
+      console.log('[useRecurringTasks] User not authenticated, skipping fetch');
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -84,7 +91,7 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
     } catch (err) {
       const error = err instanceof Error ? err : new Error('Unknown error');
       setError(error);
-      console.error('Error fetching recurring tasks:', error);
+      console.error('[useRecurringTasks] Error fetching recurring tasks:', error);
     } finally {
       setLoading(false);
     }
@@ -105,6 +112,13 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
    */
   const createTask = useCallback(
     async (data: Omit<RecurringTask, 'id' | 'createdAt' | 'updatedAt' | 'completionHistory' | 'isPaused'>) => {
+      // Check authentication
+      if (!auth.currentUser) {
+        const error = new Error('User not authenticated');
+        setError(error);
+        throw error;
+      }
+
       // Generate temporary ID for optimistic update
       const tempId = `temp-${Date.now()}`;
       const optimisticTask: RecurringTask = {
@@ -144,6 +158,7 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
         
         const error = err instanceof Error ? err : new Error('Unknown error');
         setError(error);
+        console.error('[useRecurringTasks] Error creating task:', error);
         throw error;
       }
     },
