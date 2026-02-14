@@ -6,7 +6,7 @@
 // Lazy load Firestore
 export const getFirestore = async () => {
   const { getFirestore: getFirestoreSDK } = await import('firebase/firestore');
-  const { app } = await import('./firebase');
+  const { default: app } = await import('./firebase');
   return getFirestoreSDK(app);
 };
 
@@ -36,7 +36,7 @@ export const getFirestoreFunctions = async () => {
 // Lazy load Storage
 export const getStorage = async () => {
   const { getStorage: getStorageSDK } = await import('firebase/storage');
-  const { app } = await import('./firebase');
+  const { default: app } = await import('./firebase');
   return getStorageSDK(app);
 };
 
