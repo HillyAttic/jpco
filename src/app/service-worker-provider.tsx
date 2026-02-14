@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useServiceWorker } from '@/hooks/use-service-worker';
 import { useResponsive } from '@/hooks/use-responsive';
 import { TouchOptimizedButton } from '@/components/ui/touch-optimized-input';
+import { setupBFCacheHandling } from '@/lib/bfcache-helper';
 
 interface ServiceWorkerProviderProps {
   children: React.ReactNode;
@@ -22,6 +23,11 @@ export function ServiceWorkerProvider({ children }: ServiceWorkerProviderProps) 
   const { device, isTouchDevice } = useResponsive();
   const [showUpdateNotification, setShowUpdateNotification] = useState(false);
   const [showOfflineNotification, setShowOfflineNotification] = useState(false);
+
+  // Setup back/forward cache handling
+  useEffect(() => {
+    setupBFCacheHandling();
+  }, []);
 
   // Show update notification when available
   useEffect(() => {

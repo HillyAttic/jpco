@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - JPCO Dashboard</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      background: linear-gradient(135deg, #020d1a 0%, #0a1929 100%);
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 500px;
+    }
+
+    .icon {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 30px;
+      opacity: 0.8;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 700;
+      margin-bottom: 16px;
+      color: #ffffff;
+    }
+
+    p {
+      font-size: 16px;
+      line-height: 1.6;
+      color: #b0b8c1;
+      margin-bottom: 32px;
+    }
+
+    .button {
+      display: inline-block;
+      background: #5750F1;
+      color: #ffffff;
+      padding: 12px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 600;
+      transition: background 0.3s ease;
+    }
+
+    .button:hover {
+      background: #4640d1;
+    }
+
+    .status {
+      margin-top: 24px;
+      padding: 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      font-size: 14px;
+      color: #b0b8c1;
+    }
+
+    .online {
+      color: #10b981;
+    }
+
+    .offline {
+      color: #ef4444;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" fill="currentColor" opacity="0.3"/>
+      <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" fill="currentColor"/>
+    </svg>
+
+    <h1>You're Offline</h1>
+    <p>
+      It looks like you've lost your internet connection. Don't worry, you can still access cached content.
+      Once you're back online, everything will sync automatically.
+    </p>
+
+    <a href="/" class="button" onclick="window.location.reload(); return false;">
+      Try Again
+    </a>
+
+    <div class="status">
+      Connection Status: <span id="status" class="offline">Offline</span>
+    </div>
+  </div>
+
+  <script>
+    function updateOnlineStatus() {
+      const statusElement = document.getElementById('status');
+      if (navigator.onLine) {
+        statusElement.textContent = 'Online';
+        statusElement.className = 'online';
+        // Auto-reload when back online
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else {
+        statusElement.textContent = 'Offline';
+        statusElement.className = 'offline';
+      }
+    }
+
+    window.addEventListener('online', updateOnlineStatus);
+    window.addEventListener('offline', updateOnlineStatus);
+    updateOnlineStatus();
+  </script>
+</body>
+</html>

@@ -22,19 +22,32 @@ export const metadata: Metadata = {
   },
   description:
     "JPCO admin dashboard toolkit with 200+ templates, UI components, and integrations for fast dashboard development.",
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "JPCO Dashboard",
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#5750F1" },
+    { media: "(prefers-color-scheme: dark)", color: "#020d1a" },
+  ],
+  viewport: {
+    width: "device-width",
+    initialScale: 1,
+    maximumScale: 5,
+    userScalable: true,
+  },
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
-        <meta name="theme-color" content="#5750F1" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
-        <meta name="mobile-web-app-capable" content="yes" />
-        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="format-detection" content="telephone=no" />
-        <link rel="manifest" href="/manifest.json" />
+        {/* PWA meta tags are now handled by Next.js metadata */}
       </head>
       <body className="font-sans antialiased">
         <Providers>

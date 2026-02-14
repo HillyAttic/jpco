@@ -2,7 +2,7 @@
 
 import { useServiceWorker } from "@/hooks/use-service-worker";
 import { useResponsive } from "@/hooks/use-responsive";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -20,47 +20,9 @@ export function PWAInstallButton() {
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [showInstructions, setShowInstructions] = useState(false);
 
   useEffect(() => {
-    // Enhanced mobile detection
-    const detectMobile = () => {
-      // User agent detection
-      const userAgent = navigator.userAgent.toLowerCase();
-      const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-      
-      // Screen size detection
-      const isMobileScreen = window.innerWidth < 768;
-      
-      // Touch detection
-      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      
-      // Combined mobile detection
-      const isMobileDevice = isMobileUA || (isMobileScreen && isTouchDevice);
-      
-      // Check HTTPS requirement
-      const isHTTPS = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
-      
-      console.log('🔍 PWA Install Button - Mobile Detection:', {
-        userAgent: userAgent.substring(0, 50) + '...',
-        isMobileUA,
-        isMobileScreen,
-        isTouchDevice,
-        isMobileDevice,
-        screenWidth: window.innerWidth,
-        deviceType: device.type,
-        protocol: window.location.protocol,
-        isHTTPS,
-        hostname: window.location.hostname
-      });
-      
-      if (!isHTTPS) {
-        console.warn('⚠️ PWA requires HTTPS! Current protocol:', window.location.protocol);
-        console.warn('💡 Tip: Use ngrok or deploy to a hosting service with HTTPS');
-      }
-      
-      return isMobileDevice;
-    };
-
     // Detect iOS and Android
     const iOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const isAndroid = /android/i.test(navigator.userAgent);
@@ -68,17 +30,14 @@ export function PWAInstallButton() {
 
     // Check if app is already installed
     const checkIfInstalled = () => {
-      // Check if running in standalone mode (installed PWA)
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-      // Check if running in fullscreen mode
       const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
-      // Check for iOS standalone mode
       const isIOSStandalone = (window.navigator as any).standalone === true;
       
       const installed = isStandalone || isFullscreen || isIOSStandalone;
       setIsInstalled(installed);
       
-      console.log('Installation Status:', {
+      console.log('[PWA Install] Status:', {
         isStandalone,
         isFullscreen,
         isIOSStandalone,
@@ -94,7 +53,7 @@ export function PWAInstallButton() {
 
     // Listen for beforeinstallprompt event (Android/Chrome)
     const handleBeforeInstallPrompt = (e: Event) => {
-      console.log('✅ beforeinstallprompt event fired - PWA is installable!');
+      console.log('[PWA Install] beforeinstallprompt fired - PWA is installable!');
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
@@ -102,29 +61,16 @@ export function PWAInstallButton() {
 
     // Listen for app installed event
     const handleAppInstalled = () => {
-      console.log('appinstalled event fired');
+      console.log('[PWA Install] App installed successfully');
       setIsInstalled(true);
       setIsInstallable(false);
       setDeferredPrompt(null);
     };
 
-    // For mobile devices (iOS or Android), show install button if not installed
-    // Even if beforeinstallprompt hasn't fired yet, we'll show the button
-    // and provide manual instructions as fallback
-    if ((iOS || isAndroid || detectMobile()) && !installed) {
-      console.log('📱 Setting installable to true for mobile device');
-      console.log('📋 Button will show with fallback instructions if beforeinstallprompt doesn\'t fire');
+    // For mobile devices, show install button if not installed
+    if ((iOS || isAndroid) && !installed) {
+      console.log('[PWA Install] Mobile device detected - showing install button');
       setIsInstallable(true);
-    }
-
-    // Check if beforeinstallprompt is supported
-    const isHTTPS = window.location.protocol === 'https:' || window.location.hostname === 'localhost';
-    if (!isHTTPS) {
-      console.error('❌ PWA Installation blocked: HTTPS required!');
-      console.log('💡 Solutions:');
-      console.log('  1. Use ngrok: npx ngrok http 3000');
-      console.log('  2. Deploy to Vercel/Netlify');
-      console.log('  3. Test on localhost');
     }
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -134,143 +80,187 @@ export function PWAInstallButton() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
-  }, [device.type]);
+  }, []);
 
-  const handleInstallClick = async () => {
-    console.log('Install button clicked', { isIOS, hasDeferredPrompt: !!deferredPrompt });
+  const handleInstallClick = useCallback(async () => {
+    console.log('[PWA Install] Button clicked', { isIOS, hasDeferredPrompt: !!deferredPrompt });
     
     if (isIOS) {
-      // For iOS, show instructions since we can't trigger install programmatically
-      alert(
-        'To install this app on your iOS device:\n\n' +
-        '1. Tap the Share button (square with arrow)\n' +
-        '2. Scroll down and tap "Add to Home Screen"\n' +
-        '3. Tap "Add" to confirm'
-      );
+      setShowInstructions(true);
       return;
     }
 
-    // For Android/Chrome
-    if (!deferredPrompt) {
-      // If no deferred prompt, show manual installation instructions
-      console.log('No deferred prompt available, showing manual instructions');
-      alert(
-        'To install this app:\n\n' +
-        '1. Tap the menu button (⋮) in your browser\n' +
-        '2. Select "Install app"\n' +
-        '3. Follow the prompts to install\n\n' +
-        'Note: Make sure you\'re using Chrome or a compatible browser.'
-      );
-      return;
-    }
-
-    try {
-      console.log('Showing install prompt...');
-      // Show the install prompt (Android/Chrome)
-      await deferredPrompt.prompt();
-      
-      // Wait for the user to respond to the prompt
-      const { outcome } = await deferredPrompt.userChoice;
-      
-      console.log('User choice:', outcome);
-      
-      if (outcome === 'accepted') {
-        console.log('User accepted the install prompt');
-      } else {
-        console.log('User dismissed the install prompt');
+    // For Android/Chrome with deferred prompt
+    if (deferredPrompt) {
+      try {
+        console.log('[PWA Install] Showing install prompt...');
+        await deferredPrompt.prompt();
+        
+        const { outcome } = await deferredPrompt.userChoice;
+        console.log('[PWA Install] User choice:', outcome);
+        
+        if (outcome === 'accepted') {
+          console.log('[PWA Install] User accepted the install prompt');
+          setIsInstalled(true);
+        }
+        
+        setDeferredPrompt(null);
+        setIsInstallable(false);
+      } catch (error) {
+        console.error('[PWA Install] Error during installation:', error);
+        setShowInstructions(true);
       }
-      
-      // Clear the deferredPrompt
-      setDeferredPrompt(null);
-      setIsInstallable(false);
-    } catch (error) {
-      console.error('Error during PWA installation:', error);
-      // Fallback to manual instructions if prompt fails
-      alert(
-        'Unable to show install prompt automatically.\n\n' +
-        'To install manually:\n' +
-        '1. Tap the menu button (⋮) in your browser\n' +
-        '2. Select "Install app"\n' +
-        '3. Follow the prompts to install'
-      );
+    } else {
+      // No deferred prompt - show manual instructions
+      setShowInstructions(true);
     }
-  };
+  }, [isIOS, deferredPrompt]);
+
+  const closeInstructions = useCallback(() => {
+    setShowInstructions(false);
+  }, []);
 
   // Enhanced mobile detection for visibility
   const isMobileDevice = () => {
     const userAgent = navigator.userAgent.toLowerCase();
     const isMobileUA = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-    const isMobileScreen = window.innerWidth < 768;
-    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    const isMobileScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+    const isTouchDevice = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0);
     return isMobileUA || (isMobileScreen && isTouchDevice) || device.type === 'mobile';
   };
 
-  // Show on mobile devices when installable, not installed, and PWA is supported
+  // Don't show button if not mobile, not supported, not installable, or already installed
   if (!isMobileDevice() || !isSupported || !isInstallable || isInstalled) {
     return null;
   }
 
   return (
-    <button
-      onClick={handleInstallClick}
-      className={`
-        group rounded-full bg-gray-3 p-[5px] text-[#111928] outline-1 outline-primary 
-        focus-visible:outline dark:bg-[#020D1A] dark:text-current
-        hover:bg-gray-4 dark:hover:bg-[#FFFFFF1A] transition-colors
-        ${isTouchDevice ? 'min-h-[44px] min-w-[44px]' : 'min-h-[36px] min-w-[36px]'}
-      `}
-      aria-label="Install App"
-      title={isIOS ? "Add to Home Screen" : "Install JPCO Dashboard"}
-    >
-      <span className="sr-only">Install App</span>
-      <div className={`
-        flex items-center justify-center
-        ${isTouchDevice ? 'h-[34px] w-[34px]' : 'h-[26px] w-[26px]'}
-      `}>
-        {/* PWA Install Icon - Mobile with download arrow */}
-        <svg 
-          width="20" 
-          height="20" 
-          viewBox="0 0 24 24" 
-          fill="none"
-          className="text-current"
+    <>
+      <button
+        onClick={handleInstallClick}
+        className={`
+          group rounded-full bg-gray-3 p-[5px] text-[#111928] outline-1 outline-primary 
+          focus-visible:outline dark:bg-[#020D1A] dark:text-current
+          hover:bg-gray-4 dark:hover:bg-[#FFFFFF1A] transition-colors
+          ${isTouchDevice ? 'min-h-[44px] min-w-[44px]' : 'min-h-[36px] min-w-[36px]'}
+        `}
+        aria-label="Install App"
+        title={isIOS ? "Add to Home Screen" : "Install JPCO Dashboard"}
+      >
+        <span className="sr-only">Install App</span>
+        <div className={`
+          flex items-center justify-center
+          ${isTouchDevice ? 'h-[34px] w-[34px]' : 'h-[26px] w-[26px]'}
+        `}>
+          <svg 
+            width="20" 
+            height="20" 
+            viewBox="0 0 24 24" 
+            fill="none"
+            className="text-current"
+          >
+            <g clipPath="url(#clip0_11570_87998)">
+              <path 
+                d="M18 20.25V3.75C18 2.92157 17.3284 2.25 16.5 2.25L7.5 2.25C6.67157 2.25 6 2.92157 6 3.75L6 20.25C6 21.0784 6.67157 21.75 7.5 21.75H16.5C17.3284 21.75 18 21.0784 18 20.25Z" 
+                stroke="currentColor" 
+                strokeWidth="1.4" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+              <path 
+                d="M12 10.1055L12 17.6055" 
+                stroke="currentColor" 
+                strokeWidth="1.4" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+              <path 
+                d="M9.75 15.3555L12 17.6055L14.25 15.3555" 
+                stroke="currentColor" 
+                strokeWidth="1.4" 
+                strokeLinecap="round" 
+                strokeLinejoin="round"
+              />
+              <path 
+                d="M10.5 4.5H13.5" 
+                stroke="currentColor" 
+                strokeWidth="1.4" 
+                strokeLinecap="round"
+              />
+            </g>
+            <defs>
+              <clipPath id="clip0_11570_87998">
+                <rect width="24" height="24" fill="white"/>
+              </clipPath>
+            </defs>
+          </svg>
+        </div>
+      </button>
+
+      {/* Installation Instructions Modal */}
+      {showInstructions && (
+        <div 
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
+          onClick={closeInstructions}
         >
-          <g clipPath="url(#clip0_11570_87998)">
-            <path 
-              d="M18 20.25V3.75C18 2.92157 17.3284 2.25 16.5 2.25L7.5 2.25C6.67157 2.25 6 2.92157 6 3.75L6 20.25C6 21.0784 6.67157 21.75 7.5 21.75H16.5C17.3284 21.75 18 21.0784 18 20.25Z" 
-              stroke="currentColor" 
-              strokeWidth="1.4" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            />
-            <path 
-              d="M12 10.1055L12 17.6055" 
-              stroke="currentColor" 
-              strokeWidth="1.4" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            />
-            <path 
-              d="M9.75 15.3555L12 17.6055L14.25 15.3555" 
-              stroke="currentColor" 
-              strokeWidth="1.4" 
-              strokeLinecap="round" 
-              strokeLinejoin="round"
-            />
-            <path 
-              d="M10.5 4.5H13.5" 
-              stroke="currentColor" 
-              strokeWidth="1.4" 
-              strokeLinecap="round"
-            />
-          </g>
-          <defs>
-            <clipPath id="clip0_11570_87998">
-              <rect width="24" height="24" fill="white"/>
-            </clipPath>
-          </defs>
-        </svg>
-      </div>
-    </button>
+          <div 
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-md w-full p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Install JPCO Dashboard
+              </h3>
+              <button
+                onClick={closeInstructions}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                aria-label="Close"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4 text-sm text-gray-700 dark:text-gray-300">
+              {isIOS ? (
+                <>
+                  <p className="font-medium">Follow these steps to install on iOS:</p>
+                  <ol className="list-decimal list-inside space-y-2 pl-2">
+                    <li>Open this page in <strong>Safari</strong> browser</li>
+                    <li>Tap the <strong>Share</strong> button (square with arrow) at the bottom</li>
+                    <li>Scroll down and select <strong>"Add to Home Screen"</strong></li>
+                    <li>Choose a name for the app (or use default)</li>
+                    <li>Tap <strong>"Add"</strong> in the top-right corner</li>
+                    <li>The app icon will appear on your home screen</li>
+                  </ol>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium">Follow these steps to install on Android:</p>
+                  <ol className="list-decimal list-inside space-y-2 pl-2">
+                    <li>Open this page in <strong>Chrome</strong> browser</li>
+                    <li>Look for the <strong>"Add to Home screen"</strong> prompt at the bottom</li>
+                    <li>Tap <strong>"Install"</strong> or <strong>"Add to Home screen"</strong></li>
+                    <li>Confirm the installation when prompted</li>
+                    <li>The app icon will appear on your home screen</li>
+                  </ol>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-4">
+                    Note: If you don't see the install prompt, try accessing the page via HTTPS or check your browser settings.
+                  </p>
+                </>
+              )}
+            </div>
+
+            <button
+              onClick={closeInstructions}
+              className="mt-6 w-full bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Got it
+            </button>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

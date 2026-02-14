@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import { 
   collection, 
   query, 
@@ -15,11 +16,28 @@ import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { LocationMapModal } from '@/components/attendance/LocationMapModal';
-import { AttendanceExportModal } from '@/components/attendance/AttendanceExportModal';
-import { AttendanceCalendarModal } from '@/components/attendance/AttendanceCalendarModal';
-import { HolidayManagementModal } from '@/components/attendance/HolidayManagementModal';
 import { ManagerGuard } from '@/components/Auth/PermissionGuard';
+
+// Lazy load heavy modals
+const LocationMapModal = dynamic(() => import('@/components/attendance/LocationMapModal').then(mod => ({ default: mod.LocationMapModal })), {
+  loading: () => <div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>,
+  ssr: false
+});
+
+const AttendanceExportModal = dynamic(() => import('@/components/attendance/AttendanceExportModal').then(mod => ({ default: mod.AttendanceExportModal })), {
+  loading: () => <div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>,
+  ssr: false
+});
+
+const AttendanceCalendarModal = dynamic(() => import('@/components/attendance/AttendanceCalendarModal').then(mod => ({ default: mod.AttendanceCalendarModal })), {
+  loading: () => <div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>,
+  ssr: false
+});
+
+const HolidayManagementModal = dynamic(() => import('@/components/attendance/HolidayManagementModal').then(mod => ({ default: mod.HolidayManagementModal })), {
+  loading: () => <div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>,
+  ssr: false
+});
 import { 
   Clock, 
   MapPin, 

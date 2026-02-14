@@ -27,7 +27,16 @@ self.addEventListener('install', (event) => {
 
 self.addEventListener('activate', (event) => {
   console.log('[SW v5.3] Activating...');
-  event.waitUntil(clients.claim());
+  event.waitUntil(
+    (async () => {
+      // Enable navigation preload for better performance
+      if ('navigationPreload' in self.registration) {
+        await self.registration.navigationPreload.enable();
+      }
+      // Take control of all clients immediately
+      await clients.claim();
+    })()
+  );
 });
 
 // Initialize Firebase (required for FCM push subscription management)
