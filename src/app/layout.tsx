@@ -52,15 +52,6 @@ export default function RootLayout({ children }: PropsWithChildren) {
         <link rel="preconnect" href="https://firestore.googleapis.com" />
         <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
         <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
-        
-        {/* Inline critical CSS for above-the-fold content */}
-        <style dangerouslySetInnerHTML={{
-          __html: `
-            body { margin: 0; font-family: system-ui, -apple-system, sans-serif; }
-            .loading-skeleton { background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size: 200% 100%; animation: loading 1.5s ease-in-out infinite; }
-            @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-          `
-        }} />
       </head>
       <body className="font-sans antialiased">
         {/* Preload critical resources */}

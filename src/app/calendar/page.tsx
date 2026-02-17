@@ -57,12 +57,13 @@ export default function CalendarPage() {
       // Skip paused tasks
       if (recurringTask.isPaused) return;
 
-      // Calculate task start and end dates
-      const taskStartDate = new Date(recurringTask.startDate);
+      // For recurring tasks, use dueDate as the starting point for occurrences
+      // This ensures the calendar shows when tasks are actually due, not when they started
+      const taskDueDate = new Date(recurringTask.dueDate);
       const taskEndDate = recurringTask.endDate ? new Date(recurringTask.endDate) : calendarEndDate;
 
       // Only generate occurrences within the calendar range
-      const occurrenceStartDate = taskStartDate > calendarStartDate ? taskStartDate : calendarStartDate;
+      const occurrenceStartDate = taskDueDate > calendarStartDate ? taskDueDate : calendarStartDate;
       const occurrenceEndDate = taskEndDate < calendarEndDate ? taskEndDate : calendarEndDate;
 
       // Skip if task is completely outside the calendar range

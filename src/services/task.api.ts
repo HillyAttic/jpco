@@ -8,6 +8,8 @@ interface TaskFilters {
   priority?: TaskPriority;
   search?: string;
   category?: string;
+  limit?: number;
+  assignedTo?: string;
 }
 
 /**

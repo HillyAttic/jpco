@@ -18,7 +18,9 @@ import {
   ClockIcon, 
   CheckCircleIcon, 
   ExclamationTriangleIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  UserGroupIcon,
+  CalendarIcon
 } from '@heroicons/react/24/outline';
 import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
@@ -153,15 +155,52 @@ export default function DashboardPage() {
     
     const allTasks: DashboardTask[] = [
       ...(nonRecurringTasks || []),
-      ...(recurringTasks || []).map((task: RecurringTask) => ({
-        ...task,
-        isRecurring: true,
-        assignedTo: task.contactIds || [],
-      }))
+      ...(recurringTasks || []).map((task: RecurringTask) => {
+        // For recurring tasks, extract user IDs from teamMemberMappings
+        const assignedUserIds = task.teamMemberMappings?.map(mapping => mapping.userId) || [];
+        
+        return {
+          ...task,
+          isRecurring: true,
+          assignedTo: assignedUserIds,
+          // dueDate is already present in recurring tasks, no need to map
+        };
+      })
     ];
     
     return allTasks;
   }, [nonRecurringTasks, recurringTasks]);
+
+  // Load user names for createdBy and assignedTo fields
+  useEffect(() => {
+    const loadUserNames = async () => {
+      const userIds = new Set<string>();
+      
+      tasks.forEach(task => {
+        if (task.createdBy) userIds.add(task.createdBy);
+        if (task.assignedTo) {
+          task.assignedTo.forEach(id => userIds.add(id));
+        }
+      });
+
+      const names: Record<string, string> = {};
+      await Promise.all(
+        Array.from(userIds).map(async (userId) => {
+          if (!userNamesCache[userId]) {
+            names[userId] = await getUserName(userId);
+          }
+        })
+      );
+
+      if (Object.keys(names).length > 0) {
+        setUserNamesCache(prev => ({ ...prev, ...names }));
+      }
+    };
+
+    if (tasks.length > 0) {
+      loadUserNames();
+    }
+  }, [tasks]);
 
   // Helper to get user name from cache or fetch it
   const getCachedUserName = async (userId: string): Promise<string> => {
@@ -216,6 +255,78 @@ export default function DashboardPage() {
     ).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
   }, [tasks]);
 
+  // Calculate team performance data (memoized)
+  const teamPerformanceData = useMemo(() => {
+    const memberStats = new Map<string, { name: string; completed: number; inProgress: number }>();
+
+    tasks.forEach(task => {
+      if (task.assignedTo && task.assignedTo.length > 0) {
+        task.assignedTo.forEach(userId => {
+          const userName = userNamesCache[userId] || 'Loading...';
+          
+          if (!memberStats.has(userId)) {
+            memberStats.set(userId, { name: userName, completed: 0, inProgress: 0 });
+          }
+
+          const stats = memberStats.get(userId)!;
+          if (task.status === 'completed') {
+            stats.completed++;
+          } else if (task.status === 'in-progress') {
+            stats.inProgress++;
+          }
+        });
+      }
+    });
+
+    return Array.from(memberStats.values())
+      .map(stat => ({
+        name: stat.name,
+        tasksCompleted: stat.completed,
+        tasksInProgress: stat.inProgress
+      }))
+      .sort((a, b) => (b.tasksCompleted + b.tasksInProgress) - (a.tasksCompleted + a.tasksInProgress));
+  }, [tasks, userNamesCache]);
+
+  // Calculate weekly progress data (memoized)
+  const weeklyProgressData = useMemo(() => {
+    const now = new Date();
+    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const labels: string[] = [];
+    const created: number[] = [];
+    const completed: number[] = [];
+
+    // Get last 7 days
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const dayLabel = daysOfWeek[date.getDay()];
+      labels.push(dayLabel);
+
+      // Count tasks created on this day
+      const createdCount = tasks.filter(task => {
+        const taskDate = new Date(task.createdAt);
+        return taskDate >= date && taskDate < nextDate;
+      }).length;
+
+      // Count tasks completed on this day
+      const completedCount = tasks.filter(task => {
+        if (task.status !== 'completed' || !task.updatedAt) return false;
+        const taskDate = new Date(task.updatedAt);
+        return taskDate >= date && taskDate < nextDate;
+      }).length;
+
+      created.push(createdCount);
+      completed.push(completedCount);
+    }
+
+    return { labels, created, completed };
+  }, [tasks]);
+
   const todoTasks = useMemo(() => {
     return tasks.filter(task => task.status === 'pending')
       .sort((a, b) => {
@@ -248,6 +359,55 @@ export default function DashboardPage() {
   // Loading state
   const loading = tasksLoading || recurringLoading;
 
+  // Debug logging
+  console.log('[Dashboard] Render - showOverdueModal:', showOverdueModal);
+  console.log('[Dashboard] Render - overdueTasks count:', overdueTasks.length);
+  console.log('[Dashboard] Render - stats:', stats);
+
+  // Helper function to render recurring task action buttons
+  const renderRecurringTaskActions = (task: DashboardTask) => {
+    if (!task.isRecurring || !task.teamMemberMappings || task.teamMemberMappings.length === 0) {
+      return null;
+    }
+
+    const userMapping = user ? task.teamMemberMappings.find(m => m.userId === user.uid) : null;
+    const clientCount = task.contactIds?.length || 0;
+
+    return (
+      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
+        {/* Clients and Team Assigned Button */}
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            const mappingDetails = task.teamMemberMappings!
+              .map(m => `${m.userName}: ${m.clientIds.length} client(s)`)
+              .join('\n');
+            alert(`Task: ${task.title}\n\nTeam Member Assignments:\n${mappingDetails}\n\nTotal Clients: ${clientCount}`);
+          }}
+          className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded-md transition-colors flex items-center gap-1"
+        >
+          <UserGroupIcon className="w-4 h-4" />
+          Clients & Team ({task.teamMemberMappings.length})
+        </button>
+        
+        {/* Plan Button - Only show if user is assigned */}
+        {userMapping && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTaskForPlanning(task);
+              setShowPlanTaskModal(true);
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 rounded-md transition-colors flex items-center gap-1"
+          >
+            <CalendarIcon className="w-4 h-4" />
+            Plan Task
+          </button>
+        )}
+      </div>
+    );
+  };
+
   if (authLoading) {
     return (
       <div className="p-6">
@@ -279,68 +439,136 @@ export default function DashboardPage() {
   return (
     <div className="p-4 md:p-6 space-y-6">
       {/* Stats Cards - Critical, render immediately */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-4 2xl:gap-7.5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-5 2xl:gap-7.5">
         <SimpleStatCard
           title="Total Tasks"
           value={stats.total}
           icon={<ClipboardDocumentListIcon className="w-6 h-6" />}
-          onClick={() => setShowAllTasksModal(true)}
+          onClick={() => {
+            console.log('[Dashboard] Total Tasks clicked, opening modal');
+            setShowAllTasksModal(true);
+            openModal(); // Open modal context to hide header
+          }}
         />
         <SimpleStatCard
           title="Completed"
           value={stats.completed}
           icon={<CheckCircleIcon className="w-6 h-6" />}
-          onClick={() => setShowCompletedModal(true)}
+          onClick={() => {
+            setShowCompletedModal(true);
+            openModal();
+          }}
           color="green"
         />
         <SimpleStatCard
           title="In Progress"
           value={stats.inProgress}
           icon={<ClockIcon className="w-6 h-6" />}
-          onClick={() => setShowInProgressModal(true)}
+          onClick={() => {
+            setShowInProgressModal(true);
+            openModal();
+          }}
           color="orange"
         />
         <SimpleStatCard
           title="To Do"
           value={stats.todo}
           icon={<PlusCircleIcon className="w-6 h-6" />}
-          onClick={() => setShowTodoModal(true)}
+          onClick={() => {
+            setShowTodoModal(true);
+            openModal();
+          }}
           color="blue"
+        />
+        <SimpleStatCard
+          title="Overdue"
+          value={stats.overdue}
+          icon={<ExclamationTriangleIcon className="w-5 h-5" />}
+          onClick={() => {
+            console.log('[Dashboard] Overdue button clicked, count:', stats.overdue);
+            console.log('[Dashboard] Overdue tasks:', overdueTasks);
+            setShowOverdueModal(true);
+            openModal();
+          }}
+          color="red"
+          subtitle="Past due"
         />
       </div>
 
       {/* ✅ OPTIMIZATION: Charts load progressively */}
-      {shouldRenderCharts && canViewAllTasks && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          {/* TODO: WeeklyProgressChart needs data transformation
-          <ProgressiveHydration
-            delay={100}
-            priority="medium"
-            fallback={<SkeletonLoader className="h-64 w-full" />}
-          >
-            <Suspense fallback={<SkeletonLoader className="h-64 w-full" />}>
-              <WeeklyProgressChart data={tasks} />
-            </Suspense>
-          </ProgressiveHydration>
-          */}
-
+      {/* First Row: Task Distribution Chart and Quick Actions in 2-column grid for desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        {shouldRenderCharts && canViewAllTasks && (
           <ProgressiveHydration
             delay={200}
             priority="low"
             fallback={<SkeletonLoader className="h-64 w-full" />}
           >
             <Suspense fallback={<SkeletonLoader className="h-64 w-full" />}>
-              <TeamPerformanceChart teamMembers={[]} />
+              <TaskDistributionChart tasks={tasks} />
+            </Suspense>
+          </ProgressiveHydration>
+        )}
+
+        {/* Quick Actions */}
+        <QuickActions 
+          onCreateTask={() => setShowTaskTypeDialog(true)}
+          onViewTeam={() => router.push('/users')}
+          onManageProjects={() => router.push('/categories')}
+          onViewRoster={() => router.push('/roster')}
+          onViewReports={() => router.push('/reports')}
+          onViewAttendance={() => router.push('/attendance')}
+          isAdminOrManager={canViewAllTasks}
+        />
+      </div>
+
+      {/* Second Row: Upcoming Deadlines and Task Overview in 2-column grid for desktop */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+        {/* Upcoming Deadlines */}
+        <UpcomingDeadlines tasks={tasks} onTaskClick={(taskId) => {
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            router.push(`/tasks/${task.isRecurring ? 'recurring' : 'non-recurring'}`);
+          }
+        }} />
+
+        {/* Task Overview */}
+        <TaskOverview tasks={tasks.slice(0, 10)} onTaskClick={(taskId) => {
+          const task = tasks.find(t => t.id === taskId);
+          if (task) {
+            router.push(`/tasks/${task.isRecurring ? 'recurring' : 'non-recurring'}`);
+          }
+        }} />
+      </div>
+
+      {/* Third Row: Team Performance and Weekly Progress in 2-column grid for desktop */}
+      {shouldRenderCharts && canViewAllTasks && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
+          {/* Team Performance Chart */}
+          {teamPerformanceData.length > 0 && (
+            <ProgressiveHydration
+              delay={300}
+              priority="low"
+              fallback={<SkeletonLoader className="h-64 w-full" />}
+            >
+              <Suspense fallback={<SkeletonLoader className="h-64 w-full" />}>
+                <TeamPerformanceChart teamMembers={teamPerformanceData} />
+              </Suspense>
+            </ProgressiveHydration>
+          )}
+
+          {/* Weekly Progress Chart */}
+          <ProgressiveHydration
+            delay={350}
+            priority="low"
+            fallback={<SkeletonLoader className="h-64 w-full" />}
+          >
+            <Suspense fallback={<SkeletonLoader className="h-64 w-full" />}>
+              <WeeklyProgressChart data={weeklyProgressData} />
             </Suspense>
           </ProgressiveHydration>
         </div>
       )}
-
-      {/* Quick Actions */}
-      <QuickActions onCreateTask={() => setShowTaskTypeDialog(true)} />
-
-      {/* Task Overview */}
-      <TaskOverview tasks={tasks.slice(0, 10)} />
 
       {/* Modals - Only render when needed */}
       {showTaskTypeDialog && (
@@ -380,6 +608,651 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+
+      {/* All Tasks Modal */}
+      {showAllTasksModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            console.log('[Dashboard] Modal backdrop clicked, closing modal');
+            setShowAllTasksModal(false);
+            closeModal(); // Close modal context to show header
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-blue-600 rounded-lg flex-shrink-0">
+                    <ClipboardDocumentListIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
+                      All Tasks
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      <span className="hidden sm:inline">
+                        {tasks.length} total tasks • {stats.completed} completed • {stats.inProgress} in progress • {stats.todo} pending
+                      </span>
+                      <span className="sm:hidden truncate block">
+                        {tasks.length} total • {stats.completed} done • {stats.inProgress} active • {stats.todo} pending
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    console.log('[Dashboard] Close button clicked');
+                    setShowAllTasksModal(false);
+                    closeModal(); // Close modal context to show header
+                  }}
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Close modal"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+              {tasks.length === 0 ? (
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                  No tasks found
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {tasks.map((task) => {
+                    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+                    const now = new Date();
+                    const isOverdue = dueDate && dueDate < now && task.status !== 'completed';
+                    const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                    
+                    return (
+                      <div
+                        key={task.id}
+                        className={`p-4 border-2 rounded-lg transition-colors cursor-pointer hover:border-blue-300 ${
+                          task.status === 'pending' ? 'border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10' :
+                          task.status === 'in-progress' ? 'border-orange-200 bg-orange-50 dark:bg-orange-900/10' :
+                          'border-green-200 bg-green-50 dark:bg-green-900/10'
+                        }`}
+                        onClick={() => router.push(`/tasks/${task.isRecurring ? 'recurring' : 'non-recurring'}`)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
+                              </div>
+                              {dueDate && (
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <div className={`px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
+                                    isOverdue ? 'bg-red-600 text-white' :
+                                    daysUntilDue === 0 ? 'bg-orange-600 text-white' :
+                                    daysUntilDue === 1 ? 'bg-red-600 text-white' :
+                                    'bg-blue-600 text-white'
+                                  }`}>
+                                    {isOverdue ? `${Math.abs(daysUntilDue!)} days overdue` :
+                                     daysUntilDue === 0 ? 'Due today' :
+                                     daysUntilDue === 1 ? 'Due tomorrow' :
+                                     `${daysUntilDue} days`}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className={`px-2 py-0.5 rounded-full font-medium ${
+                                task.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                task.status === 'in-progress' ? 'bg-orange-100 text-orange-700' :
+                                'bg-green-100 text-green-700'
+                              }`}>
+                                {task.status === 'pending' ? 'Pending' : task.status === 'in-progress' ? 'In Progress' : 'Completed'}
+                              </span>
+                              <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium text-gray-600 dark:text-gray-400">
+                                {task.priority || 'medium'}
+                              </span>
+                              {dueDate && (
+                                <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                  <ClockIcon className="w-3.5 h-3.5" />
+                                  {dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                              {task.isRecurring && (
+                                <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
+                                  Recurring
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              {task.createdBy && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap overflow-hidden">
+                                  <span className="font-medium flex-shrink-0">Created By:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
+                                </span>
+                              )}
+                              {task.assignedTo && task.assignedTo.length > 0 && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
+                                  <span className="font-medium flex-shrink-0">Assigned To:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">
+                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            {renderRecurringTaskActions(task)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Completed Tasks Modal */}
+      {showCompletedModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowCompletedModal(false);
+            closeModal();
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between gap-2 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                  <div className="p-1.5 sm:p-2 bg-green-600 rounded-lg flex-shrink-0">
+                    <CheckCircleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white truncate">
+                      Completed Tasks
+                    </h3>
+                    <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
+                      <span className="truncate block">
+                        {completedTasks.length} completed {completedTasks.length === 1 ? 'task' : 'tasks'}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowCompletedModal(false);
+                    closeModal();
+                  }}
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+                  aria-label="Close modal"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5 sm:w-6 sm:h-6 text-gray-700 dark:text-gray-300">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+              {completedTasks.length === 0 ? (
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                  No completed tasks
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {completedTasks.map((task) => {
+                    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+                    
+                    return (
+                      <div
+                        key={task.id}
+                        className="p-4 border-2 rounded-lg transition-colors cursor-pointer hover:border-blue-300 border-green-200 bg-green-50 dark:bg-green-900/10"
+                        onClick={() => router.push(`/tasks/${task.isRecurring ? 'recurring' : 'non-recurring'}`)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className="px-2 py-0.5 rounded-full font-medium bg-green-100 text-green-700">
+                                Completed
+                              </span>
+                              <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium text-gray-600 dark:text-gray-400">
+                                {task.priority || 'medium'}
+                              </span>
+                              {dueDate && (
+                                <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                  <ClockIcon className="w-3.5 h-3.5" />
+                                  {dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                              {task.isRecurring && (
+                                <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
+                                  Recurring
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              {task.createdBy && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap overflow-hidden">
+                                  <span className="font-medium flex-shrink-0">Created By:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
+                                </span>
+                              )}
+                              {task.assignedTo && task.assignedTo.length > 0 && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
+                                  <span className="font-medium flex-shrink-0">Assigned To:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">
+                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            {renderRecurringTaskActions(task)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* In Progress Tasks Modal */}
+      {showInProgressModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowInProgressModal(false);
+            closeModal();
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <ClockIcon className="w-6 h-6 text-orange-600" />
+                  In Progress Tasks ({inProgressTasks.length})
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowInProgressModal(false);
+                    closeModal();
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+              {inProgressTasks.length === 0 ? (
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                  No tasks in progress
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {inProgressTasks.map((task) => {
+                    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+                    const now = new Date();
+                    const isOverdue = dueDate && dueDate < now;
+                    const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                    
+                    return (
+                      <div
+                        key={task.id}
+                        className="p-4 border-2 rounded-lg transition-colors cursor-pointer hover:border-blue-300 border-orange-200 bg-orange-50 dark:bg-orange-900/10"
+                        onClick={() => router.push(`/tasks/${task.isRecurring ? 'recurring' : 'non-recurring'}`)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
+                              </div>
+                              {dueDate && (
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <div className={`px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
+                                    isOverdue ? 'bg-red-600 text-white' :
+                                    daysUntilDue === 0 ? 'bg-orange-600 text-white' :
+                                    daysUntilDue === 1 ? 'bg-red-600 text-white' :
+                                    'bg-blue-600 text-white'
+                                  }`}>
+                                    {isOverdue ? `${Math.abs(daysUntilDue!)} days overdue` :
+                                     daysUntilDue === 0 ? 'Due today' :
+                                     daysUntilDue === 1 ? 'Due tomorrow' :
+                                     `${daysUntilDue} days`}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className="px-2 py-0.5 rounded-full font-medium bg-orange-100 text-orange-700">
+                                In Progress
+                              </span>
+                              <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium text-gray-600 dark:text-gray-400">
+                                {task.priority || 'medium'}
+                              </span>
+                              {dueDate && (
+                                <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                  <ClockIcon className="w-3.5 h-3.5" />
+                                  {dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                              {task.isRecurring && (
+                                <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
+                                  Recurring
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              {task.createdBy && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap overflow-hidden">
+                                  <span className="font-medium flex-shrink-0">Created By:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
+                                </span>
+                              )}
+                              {task.assignedTo && task.assignedTo.length > 0 && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
+                                  <span className="font-medium flex-shrink-0">Assigned To:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">
+                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            {renderRecurringTaskActions(task)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* To Do Tasks Modal */}
+      {showTodoModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            setShowTodoModal(false);
+            closeModal();
+          }}
+        >
+          <div 
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <PlusCircleIcon className="w-6 h-6 text-blue-600" />
+                  To Do Tasks ({todoTasks.length})
+                </h3>
+                <button
+                  onClick={() => {
+                    setShowTodoModal(false);
+                    closeModal();
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+              {todoTasks.length === 0 ? (
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                  No pending tasks
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {todoTasks.map((task) => {
+                    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+                    const now = new Date();
+                    const isOverdue = dueDate && dueDate < now;
+                    const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                    
+                    return (
+                      <div
+                        key={task.id}
+                        className="p-4 border-2 rounded-lg transition-colors cursor-pointer hover:border-blue-300 border-yellow-200 bg-yellow-50 dark:bg-yellow-900/10"
+                        onClick={() => router.push(`/tasks/${task.isRecurring ? 'recurring' : 'non-recurring'}`)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
+                              </div>
+                              {dueDate && (
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <div className={`px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
+                                    isOverdue ? 'bg-red-600 text-white' :
+                                    daysUntilDue === 0 ? 'bg-orange-600 text-white' :
+                                    daysUntilDue === 1 ? 'bg-red-600 text-white' :
+                                    'bg-blue-600 text-white'
+                                  }`}>
+                                    {isOverdue ? `${Math.abs(daysUntilDue!)} days overdue` :
+                                     daysUntilDue === 0 ? 'Due today' :
+                                     daysUntilDue === 1 ? 'Due tomorrow' :
+                                     `${daysUntilDue} days`}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className="px-2 py-0.5 rounded-full font-medium bg-yellow-100 text-yellow-700">
+                                Pending
+                              </span>
+                              <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium text-gray-600 dark:text-gray-400">
+                                {task.priority || 'medium'}
+                              </span>
+                              {dueDate && (
+                                <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                  <ClockIcon className="w-3.5 h-3.5" />
+                                  {dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                              {task.isRecurring && (
+                                <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
+                                  Recurring
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              {task.createdBy && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap overflow-hidden">
+                                  <span className="font-medium flex-shrink-0">Created By:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
+                                </span>
+                              )}
+                              {task.assignedTo && task.assignedTo.length > 0 && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
+                                  <span className="font-medium flex-shrink-0">Assigned To:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">
+                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            {renderRecurringTaskActions(task)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overdue Tasks Modal */}
+      {console.log('[Dashboard] Checking showOverdueModal before render:', showOverdueModal)}
+      {showOverdueModal && (
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => {
+            console.log('[Dashboard] Overdue modal backdrop clicked');
+            setShowOverdueModal(false);
+            closeModal();
+          }}
+        >
+          {console.log('[Dashboard] Overdue modal IS RENDERING')}
+          <div 
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            onClick={(e) => {
+              console.log('[Dashboard] Overdue modal content clicked');
+              e.stopPropagation();
+            }}
+          >
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                  Overdue Tasks ({overdueTasks.length})
+                </h3>
+                <button
+                  onClick={() => {
+                    console.log('[Dashboard] Overdue modal close button clicked');
+                    setShowOverdueModal(false);
+                    closeModal();
+                  }}
+                  className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+              {overdueTasks.length === 0 ? (
+                <p className="text-center text-gray-500 dark:text-gray-400 py-8">
+                  No overdue tasks
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {overdueTasks.map((task) => {
+                    const dueDate = task.dueDate ? new Date(task.dueDate) : null;
+                    const now = new Date();
+                    const daysOverdue = dueDate ? Math.ceil((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+                    
+                    return (
+                      <div
+                        key={task.id}
+                        className="p-4 border-2 rounded-lg transition-colors cursor-pointer hover:border-blue-300 border-red-200 bg-red-50 dark:bg-red-900/10"
+                        onClick={() => router.push(`/tasks/${task.isRecurring ? 'recurring' : 'non-recurring'}`)}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
+                              </div>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap bg-red-600 text-white">
+                                  {daysOverdue} days overdue
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex flex-wrap items-center gap-2 text-xs">
+                              <span className={`px-2 py-0.5 rounded-full font-medium ${
+                                task.status === 'pending' ? 'bg-yellow-100 text-yellow-700' :
+                                'bg-orange-100 text-orange-700'
+                              }`}>
+                                {task.status === 'pending' ? 'Pending' : 'In Progress'}
+                              </span>
+                              <span className="px-2 py-0.5 bg-white dark:bg-gray-dark rounded-full font-medium text-gray-600 dark:text-gray-400">
+                                {task.priority || 'medium'}
+                              </span>
+                              {dueDate && (
+                                <span className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                                  <ClockIcon className="w-3.5 h-3.5" />
+                                  {dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                </span>
+                              )}
+                              {task.isRecurring && (
+                                <span className="px-2 py-0.5 bg-blue-600 text-white rounded-full font-medium">
+                                  Recurring
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+                              {task.createdBy && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 whitespace-nowrap overflow-hidden">
+                                  <span className="font-medium flex-shrink-0">Created By:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
+                                </span>
+                              )}
+                              {task.assignedTo && task.assignedTo.length > 0 && (
+                                <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
+                                  <span className="font-medium flex-shrink-0">Assigned To:</span>
+                                  <span className="text-gray-900 dark:text-white truncate">
+                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                            {renderRecurringTaskActions(task)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Plan Task Modal */}
+      {showPlanTaskModal && selectedTaskForPlanning && (
+        <PlanTaskModal
+          isOpen={showPlanTaskModal}
+          onClose={() => {
+            setShowPlanTaskModal(false);
+            setSelectedTaskForPlanning(null);
+          }}
+          assignedClientIds={
+            selectedTaskForPlanning.teamMemberMappings
+              ?.find(m => m.userId === user?.uid)
+              ?.clientIds || []
+          }
+          userId={user?.uid || ''}
+          userName={userProfile?.name || userProfile?.displayName || user?.email || 'Unknown User'}
+          taskTitle={selectedTaskForPlanning.title}
+          recurringTaskId={selectedTaskForPlanning.id}
+        />
+      )}
     </div>
   );
 }
+
+

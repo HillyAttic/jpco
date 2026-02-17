@@ -78,9 +78,9 @@ export class CacheService {
    */
   private getFromMemory<T>(key: string): T | null {
     const entry = MEMORY_CACHE.get(key);
-    if (this.isValid(entry)) {
+    if (this.isValid(entry ?? null)) {
       console.log(`[Cache] Memory HIT: ${key}`);
-      return entry.data;
+      return entry!.data;
     }
     if (entry) {
       MEMORY_CACHE.delete(key);

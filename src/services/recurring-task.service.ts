@@ -28,9 +28,8 @@ export interface RecurringTask {
   contactIds: string[]; // Array of contact IDs
   categoryId?: string; // Category ID
   recurrencePattern: 'monthly' | 'quarterly' | 'half-yearly' | 'yearly';
-  nextOccurrence: Date;
+  dueDate: Date; // Next due date (replaces nextOccurrence)
   startDate: Date;
-  endDate?: Date;
   completionHistory: CompletionRecord[];
   isPaused: boolean;
   teamId?: string; // Team ID

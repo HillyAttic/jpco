@@ -6,31 +6,31 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        USER VISITS PAGE                      │
+│                        USER VISITS PAGE                     │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    React Component Loads                     │
-│                                                              │
+│                    React Component Loads                    │
+│                                                             │
 │  useEffect(() => {                                          │
-│    const data = await service.getAll(); // NO CACHE!       │
+│    const data = await service.getAll(); // NO CACHE!        │
 │  }, []);                                                    │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                  Firebase Service Layer                      │
-│                                                              │
-│  forceServerFetch: true  // BYPASSES CACHE!                │
+│                  Firebase Service Layer                     │
+│                                                             │
+│  forceServerFetch: true  // BYPASSES CACHE!                 │
 │  NO LIMITS - Fetches ALL documents                          │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      FIRESTORE DATABASE                      │
-│                                                              │
-│  ⚠️  Reads ALL documents (100-500 reads per page)          │
+│                      FIRESTORE DATABASE                     │
+│                                                             │
+│  ⚠️  Reads ALL documents (100-500 reads per page)           │
 │  ⚠️  Every single page load                                 │
 │  ⚠️  No caching whatsoever                                  │
 └─────────────────────────────────────────────────────────────┘
@@ -44,22 +44,22 @@ Result: 400 reads per dashboard visit × 87 visits/day = 35,000 reads
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        USER VISITS PAGE                      │
+│                        USER VISITS PAGE                     │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    React Component Loads                     │
-│                                                              │
+│                    React Component Loads                    │
+│                                                             │
 │  useEffect(() => {                                          │
-│    const data = await optimizedService.get(userId);        │
+│    const data = await optimizedService.get(userId);         │
 │  }, []);                                                    │
 └─────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                    CACHE LAYER (NEW!)                        │
-│                                                              │
+│                    CACHE LAYER (NEW!)                       │
+│                                                             │
 │  1. Check Memory Cache (0ms)          ✅ HIT? Return!      │
 │  2. Check IndexedDB (5ms)             ✅ HIT? Return!      │
 │  3. Check localStorage (2ms)          ✅ HIT? Return!      │
@@ -68,8 +68,8 @@ Result: 400 reads per dashboard visit × 87 visits/day = 35,000 reads
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│              Optimized Firebase Service Layer                │
-│                                                              │
+│              Optimized Firebase Service Layer               │
+│                                                             │
 │  ✅ forceServerFetch: false (uses cache)                    │
 │  ✅ LIMITS applied (only fetch what's needed)               │
 │  ✅ User-specific queries (not ALL data)                    │
@@ -77,8 +77,8 @@ Result: 400 reads per dashboard visit × 87 visits/day = 35,000 reads
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────┐
-│                      FIRESTORE DATABASE                      │
-│                                                              │
+│                      FIRESTORE DATABASE                     │
+│                                                             │
 │  ✅ Reads only NEW/CHANGED documents                        │
 │  ✅ Cached data served from local                           │
 │  ✅ 90% reduction in reads                                  │
@@ -152,7 +152,7 @@ Level 5: Firestore Server (Slow - 200-500ms)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    FEATURE BREAKDOWN                         │
+│                    FEATURE BREAKDOWN                        │
 └─────────────────────────────────────────────────────────────┘
 
 Dashboard:

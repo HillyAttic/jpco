@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { recurringTaskService } from '@/services/recurring-task.service';
+import { recurringTaskAdminService } from '@/services/recurring-task-admin.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
@@ -9,7 +9,7 @@ const updateRecurringTaskSchema = z.object({
   description: z.string().max(1000).optional(),
   dueDate: z.union([
     z.string().refine((date) => !isNaN(Date.parse(date)), {
-      message: 'Invalid date format',
+      message: 'Invalid due date format',
     }),
     z.date()
   ]).optional(),
@@ -17,18 +17,6 @@ const updateRecurringTaskSchema = z.object({
   startDate: z.union([
     z.string().refine((date) => !isNaN(Date.parse(date)), {
       message: 'Invalid start date format',
-    }),
-    z.date()
-  ]).optional(),
-  endDate: z.union([
-    z.string().refine((date) => !isNaN(Date.parse(date)), {
-      message: 'Invalid end date format',
-    }),
-    z.date()
-  ]).optional(),
-  nextOccurrence: z.union([
-    z.string().refine((date) => !isNaN(Date.parse(date)), {
-      message: 'Invalid next occurrence date format',
     }),
     z.date()
   ]).optional(),
@@ -62,7 +50,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // }
 
     const { id } = await params;
-    const task = await recurringTaskService.getById(id);
+    const task = await recurringTaskAdminService.getById(id);
     
     if (!task) {
       return ErrorResponses.notFound('Recurring task');
@@ -114,22 +102,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (taskData.startDate) {
       taskToUpdate.startDate = taskData.startDate instanceof Date ? taskData.startDate : new Date(taskData.startDate);
     }
-    if (taskData.endDate) {
-      taskToUpdate.endDate = taskData.endDate instanceof Date ? taskData.endDate : new Date(taskData.endDate);
-    }
-    if (taskData.nextOccurrence) {
-      taskToUpdate.nextOccurrence = taskData.nextOccurrence instanceof Date ? taskData.nextOccurrence : new Date(taskData.nextOccurrence);
-    }
-
-    // Validate end date is after start date if both are provided
-    if (taskToUpdate.endDate && taskToUpdate.startDate && taskToUpdate.endDate <= taskToUpdate.startDate) {
-      return ErrorResponses.badRequest('End date must be after start date', {
-        endDate: ['End date must be after start date'],
-      });
-    }
     
     console.log(`💾 [PUT /api/recurring-tasks/${id}] Updating task in Firestore:`, JSON.stringify(taskToUpdate, null, 2));
-    const updatedTask = await recurringTaskService.update(id, taskToUpdate);
+    const updatedTask = await recurringTaskAdminService.update(id, taskToUpdate);
     
     if (!updatedTask) {
       console.error(`❌ [PUT /api/recurring-tasks/${id}] Task not found`);
@@ -139,7 +114,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     console.log(`✅ [PUT /api/recurring-tasks/${id}] Task updated successfully`);
     console.log(`🗺️ [PUT /api/recurring-tasks/${id}] Saved team member mappings:`, updatedTask.teamMemberMappings);
     
-    return NextResponse.json(updatedTask, { status: 200 });
+    // Serialize dates for JSON response
+    const serializedTask = {
+      ...updatedTask,
+      startDate: updatedTask.startDate ? ((updatedTask.startDate as any).toDate ? (updatedTask.startDate as any).toDate().toISOString() : new Date(updatedTask.startDate).toISOString()) : null,
+      dueDate: updatedTask.dueDate ? ((updatedTask.dueDate as any).toDate ? (updatedTask.dueDate as any).toDate().toISOString() : new Date(updatedTask.dueDate).toISOString()) : null,
+      createdAt: updatedTask.createdAt ? ((updatedTask.createdAt as any).toDate ? (updatedTask.createdAt as any).toDate().toISOString() : new Date(updatedTask.createdAt).toISOString()) : null,
+      updatedAt: updatedTask.updatedAt ? ((updatedTask.updatedAt as any).toDate ? (updatedTask.updatedAt as any).toDate().toISOString() : new Date(updatedTask.updatedAt).toISOString()) : null,
+    };
+    
+    return NextResponse.json(serializedTask, { status: 200 });
   } catch (error) {
     console.error(`❌ [PUT /api/recurring-tasks] Error:`, error);
     return handleApiError(error);
@@ -165,12 +149,14 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
     // Get delete option: 'all' or 'stop' (default: 'all')
     const deleteOption = searchParams.get('option') || 'all';
     
+    console.log(`[DELETE Recurring Task] ID: ${id}, Option: ${deleteOption}`);
+    
     if (deleteOption === 'stop') {
-      // Stop recurrence by setting end date to now
-      await recurringTaskService.update(id, {
-        endDate: new Date(),
+      // Stop recurrence by setting isPaused to true
+      // Note: endDate is not part of the RecurringTask type, so we just pause it
+      await recurringTaskAdminService.update(id, {
         isPaused: true,
-      });
+      } as any);
       
       return NextResponse.json(
         { message: 'Recurring task stopped successfully' },
@@ -178,7 +164,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       );
     } else {
       // Delete all future occurrences
-      await recurringTaskService.delete(id);
+      await recurringTaskAdminService.delete(id);
       
       return NextResponse.json(
         { message: 'Recurring task deleted successfully' },
@@ -186,6 +172,7 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
       );
     }
   } catch (error) {
+    console.error('[DELETE Recurring Task] Error:', error);
     return handleApiError(error);
   }
 }

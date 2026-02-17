@@ -34,20 +34,10 @@ const recurringTaskFormSchema = z.object({
     message: 'Invalid recurrence pattern' 
   }),
   startDate: z.string().min(1, 'Start date is required'),
-  endDate: z.string().optional(),
+  dueDate: z.string().optional(),
   teamId: z.string().optional(),
   requiresArn: z.boolean().optional(),
-}).refine(
-  (data) => {
-    // Validate end date is after start date
-    if (!data.endDate) return true;
-    return new Date(data.endDate) > new Date(data.startDate);
-  },
-  { 
-    message: 'End date must be after start date', 
-    path: ['endDate'] 
-  }
-);
+});
 
 type RecurringTaskFormData = z.infer<typeof recurringTaskFormSchema>;
 
@@ -102,7 +92,7 @@ export function RecurringTaskModal({
       categoryId: '',
       recurrencePattern: 'monthly',
       startDate: '',
-      endDate: '',
+      dueDate: '',
       teamId: '',
       requiresArn: false,
     },
@@ -245,13 +235,24 @@ export function RecurringTaskModal({
     console.log('🔄 [RecurringTaskModal] Task prop changed:', task);
     
     if (task) {
+      // Helper function to safely format dates
+      const formatDateForInput = (date: any): string => {
+        if (!date) return '';
+        try {
+          // Handle Firestore Timestamp objects
+          const dateObj = date.toDate ? date.toDate() : new Date(date);
+          // Check if date is valid
+          if (isNaN(dateObj.getTime())) return '';
+          return dateObj.toISOString().split('T')[0];
+        } catch (error) {
+          console.error('Error formatting date:', error);
+          return '';
+        }
+      };
+
       // Format dates for input fields
-      const formattedStartDate = task.startDate
-        ? new Date(task.startDate).toISOString().split('T')[0]
-        : '';
-      const formattedEndDate = task.endDate
-        ? new Date(task.endDate).toISOString().split('T')[0]
-        : '';
+      const formattedStartDate = formatDateForInput(task.startDate);
+      const formattedDueDate = formatDateForInput(task.dueDate);
       
       reset({
         title: task.title,
@@ -262,7 +263,7 @@ export function RecurringTaskModal({
         categoryId: task.categoryId || '',
         recurrencePattern: task.recurrencePattern,
         startDate: formattedStartDate,
-        endDate: formattedEndDate,
+        dueDate: formattedDueDate,
         teamId: task.teamId || '',
         requiresArn: task.requiresArn || false,
       });
@@ -299,7 +300,7 @@ export function RecurringTaskModal({
         categoryId: '',
         recurrencePattern: 'monthly',
         startDate: formattedToday,
-        endDate: '',
+        dueDate: '',
         teamId: '',
         requiresArn: false,
       });
@@ -669,19 +670,19 @@ export function RecurringTaskModal({
               )}
             </div>
 
-            {/* End Date - Requirement 3.2 */}
+            {/* Due Date - Optional */}
             <div>
-              <Label htmlFor="endDate">End Date (Optional)</Label>
+              <Label htmlFor="dueDate">Due Date (Optional)</Label>
               <input
-                id="endDate"
+                id="dueDate"
                 type="date"
-                {...register('endDate')}
+                {...register('dueDate')}
                 min={startDate || getMinDate()}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
               />
-              {errors.endDate && (
-                <p className="text-sm text-red-600 mt-1">{errors.endDate.message}</p>
+              {errors.dueDate && (
+                <p className="text-sm text-red-600 mt-1">{errors.dueDate.message}</p>
               )}
             </div>
           </div>

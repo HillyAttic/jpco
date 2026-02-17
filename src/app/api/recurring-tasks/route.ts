@@ -14,15 +14,9 @@ const createRecurringTaskSchema = z.object({
     }),
     z.date()
   ]),
-  endDate: z.union([
+  dueDate: z.union([
     z.string().refine((date) => !isNaN(Date.parse(date)), {
-      message: 'Invalid end date format', 
-    }),
-    z.date()
-  ]).optional(),
-  nextOccurrence: z.union([
-    z.string().refine((date) => !isNaN(Date.parse(date)), {
-      message: 'Invalid next occurrence date format',
+      message: 'Invalid due date format',
     }),
     z.date()
   ]).optional(),
@@ -37,15 +31,7 @@ const createRecurringTaskSchema = z.object({
     clientIds: z.array(z.string()),
   })).optional(),
   requiresArn: z.boolean().optional(),
-}).refine(
-  (data) => {
-    if (!data.endDate) return true;
-    const endDate = data.endDate instanceof Date ? data.endDate : new Date(data.endDate);
-    const startDate = data.startDate instanceof Date ? data.startDate : new Date(data.startDate);
-    return endDate > startDate;
-  },
-  { message: 'End date must be after start date', path: ['endDate'] }
-);
+});
 
 /**
  * GET /api/recurring-tasks
@@ -229,7 +215,16 @@ export async function GET(request: NextRequest) {
       console.log(`[Recurring Tasks API] Admin/Manager ${userId} viewing all recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);
     }
     
-    return NextResponse.json(tasks, { status: 200 });
+    // Serialize dates to ISO strings for JSON response
+    const serializedTasks = tasks.map(task => ({
+      ...task,
+      startDate: task.startDate ? (task.startDate.toDate ? task.startDate.toDate().toISOString() : new Date(task.startDate).toISOString()) : null,
+      dueDate: task.dueDate ? (task.dueDate.toDate ? task.dueDate.toDate().toISOString() : new Date(task.dueDate).toISOString()) : null,
+      createdAt: task.createdAt ? (task.createdAt.toDate ? task.createdAt.toDate().toISOString() : new Date(task.createdAt).toISOString()) : null,
+      updatedAt: task.updatedAt ? (task.updatedAt.toDate ? task.updatedAt.toDate().toISOString() : new Date(task.updatedAt).toISOString()) : null,
+    }));
+    
+    return NextResponse.json(serializedTasks, { status: 200 });
   } catch (error) {
     return handleApiError(error);
   }
@@ -280,15 +275,27 @@ export async function POST(request: NextRequest) {
     console.log('✅ [POST /api/recurring-tasks] Validation passed');
     console.log('🗺️ [POST /api/recurring-tasks] Team member mappings:', taskData.teamMemberMappings);
 
+    // Calculate the due date based on start date and current date
+    const startDate = taskData.startDate instanceof Date ? taskData.startDate : new Date(taskData.startDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // If start date is in the past or today, calculate the next due date from today
+    let dueDate = startDate;
+    if (startDate <= today) {
+      const { calculateNextOccurrence } = await import('@/utils/recurrence-scheduler');
+      dueDate = calculateNextOccurrence(today, taskData.recurrencePattern);
+    }
+
     // Convert date strings to Date objects and add createdBy
     const taskToCreate = {
       ...taskData,
       description: taskData.description || '',
-      startDate: taskData.startDate instanceof Date ? taskData.startDate : new Date(taskData.startDate),
-      endDate: taskData.endDate ? (taskData.endDate instanceof Date ? taskData.endDate : new Date(taskData.endDate)) : undefined,
-      nextOccurrence: taskData.nextOccurrence 
-        ? (taskData.nextOccurrence instanceof Date ? taskData.nextOccurrence : new Date(taskData.nextOccurrence))
-        : (taskData.startDate instanceof Date ? taskData.startDate : new Date(taskData.startDate)),
+      startDate: startDate,
+      dueDate: taskData.dueDate 
+        ? (taskData.dueDate instanceof Date ? taskData.dueDate : new Date(taskData.dueDate))
+        : dueDate,
       createdBy: userId, // Store the creator's user ID
       completionHistory: [], // Initialize empty completion history
       isPaused: false, // Initialize as not paused
@@ -299,7 +306,16 @@ export async function POST(request: NextRequest) {
     console.log('✅ [POST /api/recurring-tasks] Task created successfully with ID:', newTask.id);
     console.log('🗺️ [POST /api/recurring-tasks] Saved team member mappings:', newTask.teamMemberMappings);
     
-    return NextResponse.json(newTask, { status: 201 });
+    // Serialize dates for JSON response
+    const serializedTask = {
+      ...newTask,
+      startDate: newTask.startDate ? (newTask.startDate.toDate ? newTask.startDate.toDate().toISOString() : new Date(newTask.startDate).toISOString()) : null,
+      dueDate: newTask.dueDate ? (newTask.dueDate.toDate ? newTask.dueDate.toDate().toISOString() : new Date(newTask.dueDate).toISOString()) : null,
+      createdAt: newTask.createdAt ? (newTask.createdAt.toDate ? newTask.createdAt.toDate().toISOString() : new Date(newTask.createdAt).toISOString()) : null,
+      updatedAt: newTask.updatedAt ? (newTask.updatedAt.toDate ? newTask.updatedAt.toDate().toISOString() : new Date(newTask.updatedAt).toISOString()) : null,
+    };
+    
+    return NextResponse.json(serializedTask, { status: 201 });
   } catch (error) {
     console.error('❌ [POST /api/recurring-tasks] Error:', error);
     return handleApiError(error);

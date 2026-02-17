@@ -253,7 +253,7 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to delete recurring task');
+          throw new Error(errorData.message || errorData.error || 'Failed to delete recurring task');
         }
 
         // If stopped, refresh to get updated task from server

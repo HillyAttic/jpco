@@ -49,16 +49,24 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   // Fetch roster stats when month changes
   useEffect(() => {
     const fetchRosterStats = async () => {
-      if (!canViewRosterStats) return;
+      if (!canViewRosterStats) {
+        console.log('[Calendar] User cannot view roster stats (not admin/manager)');
+        return;
+      }
       
       try {
         setLoadingStats(true);
         const user = auth.currentUser;
-        if (!user) return;
+        if (!user) {
+          console.log('[Calendar] No authenticated user');
+          return;
+        }
 
         const token = await user.getIdToken();
         const month = currentDate.getMonth() + 1;
         const year = currentDate.getFullYear();
+
+        console.log('[Calendar] Fetching roster stats for:', { month, year });
 
         const response = await fetch(
           `/api/roster/daily-stats?month=${month}&year=${year}`,
@@ -71,10 +79,13 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
 
         if (response.ok) {
           const data = await response.json();
+          console.log('[Calendar] Roster stats received:', data);
           setRosterStats(data.stats || {});
+        } else {
+          console.error('[Calendar] Failed to fetch roster stats:', response.status, response.statusText);
         }
       } catch (error) {
-        console.error('Error fetching roster stats:', error);
+        console.error('[Calendar] Error fetching roster stats:', error);
       } finally {
         setLoadingStats(false);
       }
@@ -234,6 +245,8 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   const renderRosterStatsBar = (day: Date) => {
     const dayNumber = day.getDate();
     const stats = rosterStats[dayNumber];
+    
+    console.log('[Calendar] Rendering stats bar for day:', dayNumber, 'stats:', stats);
     
     if (!stats || stats.total === 0) return null;
 

@@ -34,7 +34,7 @@ export function QuickActions({
   onViewAttendance,
   isAdminOrManager = false,
 }: QuickActionsProps) {
-  const baseActions = [
+  const actions = [
     {
       label: 'Create Task',
       icon: <PlusCircleIcon className="w-5 h-5" />,
@@ -52,10 +52,7 @@ export function QuickActions({
       icon: <FolderIcon className="w-5 h-5" />,
       onClick: onManageProjects,
       color: 'bg-indigo-600 hover:bg-indigo-700'
-    }
-  ];
-
-  const adminActions = [
+    },
     {
       label: 'Roster',
       icon: <CalendarDaysIcon className="w-5 h-5" />,
@@ -75,8 +72,6 @@ export function QuickActions({
       color: 'bg-pink-600 hover:bg-pink-700'
     }
   ];
-
-  const actions = isAdminOrManager ? [...baseActions, ...adminActions] : baseActions;
 
   return (
     <Card>

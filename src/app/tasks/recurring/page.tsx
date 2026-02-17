@@ -109,6 +109,20 @@ export default function RecurringTasksPage() {
             .filter((id: string) => id.length > 0)
         : [];
 
+      // Calculate the next occurrence based on start date and current date
+      const startDate = new Date(data.startDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+      startDate.setHours(0, 0, 0, 0); // Reset time to start of day
+      
+      // If start date is in the past or today, calculate the next occurrence from today
+      let dueDate = startDate;
+      if (startDate <= today && !selectedTask?.id) {
+        // For new tasks, if start date is today or in the past, calculate next occurrence
+        const { calculateNextOccurrence } = await import('@/utils/recurrence-scheduler');
+        dueDate = calculateNextOccurrence(today, data.recurrencePattern as any);
+      }
+
       const taskData = {
         title: data.title,
         description: data.description,
@@ -117,9 +131,8 @@ export default function RecurringTasksPage() {
         contactIds: contactIdsArray,
         categoryId: data.categoryId || undefined,
         recurrencePattern: data.recurrencePattern,
-        startDate: new Date(data.startDate),
-        endDate: data.endDate ? new Date(data.endDate) : undefined,
-        nextOccurrence: new Date(data.startDate), // Initial next occurrence is start date
+        startDate: startDate,
+        dueDate: data.dueDate ? new Date(data.dueDate) : (selectedTask?.id ? undefined : dueDate),
         teamId: data.teamId || undefined,
         teamMemberMappings: data.teamMemberMappings || undefined, // Include team member mappings
         requiresArn: data.requiresArn || false, // Include ARN requirement

@@ -42,7 +42,7 @@ export function RecurringTaskCard({
   onSelect
 }: RecurringTaskCardProps) {
   // Check if task is overdue
-  const isOverdue = task.status !== 'completed' && new Date(task.nextOccurrence) < new Date();
+  const isOverdue = task.status !== 'completed' && new Date(task.dueDate) < new Date();
   
   // Get priority badge variant and color
   const getPriorityVariant = (priority: string): 'success' | 'warning' | 'danger' => {
@@ -103,11 +103,11 @@ export function RecurringTaskCard({
 
   // Calculate completion rate - Requirement 3.9
   const calculateCompletionRate = (): number => {
-    if (!task.startDate || !task.nextOccurrence) return 0;
+    if (!task.startDate || !task.dueDate) return 0;
     
     const totalCycles = calculateTotalCycles(
       task.startDate,
-      task.nextOccurrence,
+      task.dueDate,
       task.recurrencePattern
     );
     
@@ -231,7 +231,7 @@ export function RecurringTaskCard({
           <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
             <CalendarIcon className="w-4 h-4 flex-shrink-0" />
             <span className={isOverdue && !task.isPaused ? 'text-red-600 font-medium' : ''}>
-              Next: {formatDate(task.nextOccurrence)}
+              Next: {formatDate(task.dueDate)}
             </span>
           </div>
 
@@ -290,7 +290,7 @@ export function RecurringTaskCard({
             />
           </div>
           <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-            {task.completionHistory.length} of {calculateTotalCycles(task.startDate, task.nextOccurrence, task.recurrencePattern)} cycles completed
+            {task.completionHistory.length} of {calculateTotalCycles(task.startDate, task.dueDate, task.recurrencePattern)} cycles completed
           </div>
         </div>
 

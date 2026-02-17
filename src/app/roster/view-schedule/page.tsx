@@ -51,9 +51,9 @@ export default function ViewSchedulePage() {
   // Helper function to get Excel cell color classes
   const getExcelCellColorClass = (task: RosterEntry): string => {
     const color = getTaskColor(task);
-    if (color === 'green') return 'bg-green-100 hover:bg-green-200';
-    if (color === 'yellow') return 'bg-yellow-500 hover:bg-yellow-600';
-    return 'bg-orange-500 hover:bg-orange-600';
+    if (color === 'green') return 'bg-green-200 hover:bg-green-300';
+    if (color === 'yellow') return 'bg-yellow-200 hover:bg-yellow-300';
+    return 'bg-orange-200 hover:bg-orange-300';
   };
 
   useEffect(() => {
@@ -494,7 +494,7 @@ export default function ViewSchedulePage() {
                       return (
                         <td 
                           key={day} 
-                          className="border border-gray-300 dark:border-gray-600 bg-green-100"
+                          className="border border-gray-300 dark:border-gray-600 bg-green-200"
                           style={{ width: '40px', minWidth: '40px', maxWidth: '40px', height: '40px', padding: '0' }}
                         ></td>
                       );
@@ -569,15 +569,15 @@ export default function ViewSchedulePage() {
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Task Duration Legend</h3>
           <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-100 border border-gray-300 dark:border-gray-600 rounded"></div>
+              <div className="w-4 h-4 bg-green-200 border border-green-300 rounded"></div>
               <span>No task assigned</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-500 border border-yellow-600 rounded"></div>
+              <div className="w-4 h-4 bg-yellow-200 border border-yellow-300 rounded"></div>
               <span>Task: Less than 8 hours</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-orange-500 border border-orange-600 rounded"></div>
+              <div className="w-4 h-4 bg-orange-200 border border-orange-300 rounded"></div>
               <span>Task: 8 hours or more</span>
             </div>
           </div>

@@ -28,9 +28,8 @@ export interface RecurringTask {
   contactIds: string[]; // Array of contact IDs
   categoryId?: string; // Category ID
   recurrencePattern: 'monthly' | 'quarterly' | 'half-yearly' | 'yearly';
-  nextOccurrence: Date;
+  dueDate: Date; // Next due date (replaces nextOccurrence)
   startDate: Date;
-  endDate?: Date;
   completionHistory: CompletionRecord[];
   isPaused: boolean;
   teamId?: string; // Team ID
@@ -115,9 +114,9 @@ export const recurringTaskAdminService = {
       options.limit = filters.limit;
     }
 
-    // Add default ordering
+    // Add default ordering by dueDate
     options.orderBy = {
-      field: 'nextOccurrence',
+      field: 'dueDate',
       direction: 'asc' as const,
     };
 
@@ -153,7 +152,7 @@ export const recurringTaskAdminService = {
   /**
    * Complete a cycle and schedule next occurrence
    */
-  async completeCycle(id: string, completedBy: string): Promise<RecurringTask> {
+  async completeCycle(id: string, completedBy: string, arnNumber?: string, arnName?: string): Promise<RecurringTask> {
     const task = await baseService.getById(id);
     if (!task) {
       throw new Error('Task not found');
@@ -163,28 +162,21 @@ export const recurringTaskAdminService = {
     const newCompletionRecord: CompletionRecord = {
       date: new Date(),
       completedBy,
+      arnNumber,
+      arnName,
     };
 
     const updatedHistory = [...task.completionHistory, newCompletionRecord];
 
-    // Calculate next occurrence
-    const nextOccurrence = calculateNextOccurrence(
-      task.nextOccurrence,
+    // Calculate next occurrence from current dueDate
+    const nextDueDate = calculateNextOccurrence(
+      task.dueDate,
       task.recurrencePattern
     );
 
-    // Check if next occurrence is beyond end date
-    if (task.endDate && nextOccurrence > task.endDate) {
-      // Mark as completed and don't schedule next
-      return await baseService.update(id, {
-        status: 'completed',
-        completionHistory: updatedHistory,
-      });
-    }
-
-    // Update task with new occurrence and history
+    // Update task with new due date and history
     return await baseService.update(id, {
-      nextOccurrence,
+      dueDate: nextDueDate,
       completionHistory: updatedHistory,
       status: 'pending',
     });
@@ -201,7 +193,7 @@ export const recurringTaskAdminService = {
 
     const totalCycles = this.calculateTotalCycles(
       task.startDate,
-      task.nextOccurrence,
+      task.dueDate,
       task.recurrencePattern
     );
 

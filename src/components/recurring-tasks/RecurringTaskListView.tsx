@@ -56,13 +56,22 @@ export function RecurringTaskListView({
     }
   };
 
-  const formatDate = (date?: Date) => {
+  const formatDate = (date?: Date | any) => {
     if (!date) return 'N/A';
-    return new Date(date).toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+    try {
+      // Handle Firestore Timestamp objects
+      const dateObj = date.toDate ? date.toDate() : new Date(date);
+      // Check if date is valid
+      if (isNaN(dateObj.getTime())) return 'N/A';
+      return dateObj.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      });
+    } catch (error) {
+      console.error('Error formatting date:', error);
+      return 'N/A';
+    }
   };
 
   return (
@@ -76,7 +85,7 @@ export function RecurringTaskListView({
           <div className="col-span-2">Pattern</div>
           <div className="col-span-1">Status</div>
           <div className="col-span-1">Priority</div>
-          <div className="col-span-2">Next Occurrence</div>
+          <div className="col-span-2">Due Date</div>
           <div className="col-span-2">{canManageTasks ? 'Actions' : 'Team'}</div>
         </div>
 
@@ -137,10 +146,10 @@ export function RecurringTaskListView({
                 </Badge>
               </div>
 
-              {/* Next Occurrence */}
+              {/* Due Date */}
               <div className="col-span-2">
                 <div className="text-gray-700 dark:text-gray-300 flex items-center">
-                  {formatDate(task.nextOccurrence)}
+                  {formatDate(task.dueDate)}
                 </div>
               </div>
 
@@ -188,10 +197,14 @@ export function RecurringTaskListView({
                   <div className="text-gray-700 dark:text-gray-300">
                     {task.teamId && teamNames[task.teamId] ? (
                       <span className="text-sm font-medium">{teamNames[task.teamId]}</span>
+                    ) : task.teamMemberMappings && task.teamMemberMappings.length > 0 ? (
+                      <span className="text-sm font-medium">
+                        {task.teamMemberMappings.length} member{task.teamMemberMappings.length > 1 ? 's' : ''} assigned
+                      </span>
                     ) : task.teamId ? (
                       <span className="text-sm text-gray-500 dark:text-gray-400">Team ID: {task.teamId}</span>
                     ) : (
-                      <span className="text-sm text-gray-400 dark:text-gray-500 dark:text-gray-400 italic">No team assigned</span>
+                      <span className="text-sm text-gray-400 dark:text-gray-500 italic">No team assigned</span>
                     )}
                   </div>
                 )}
@@ -248,9 +261,9 @@ export function RecurringTaskListView({
                 </span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-500 dark:text-gray-400">Next Occurrence:</span>
+                <span className="text-gray-500 dark:text-gray-400">Due Date:</span>
                 <span className="text-gray-900 dark:text-white font-medium">
-                  {formatDate(task.nextOccurrence)}
+                  {formatDate(task.dueDate)}
                 </span>
               </div>
               {!canManageTasks && (
@@ -259,10 +272,12 @@ export function RecurringTaskListView({
                   <span className="text-gray-900 dark:text-white font-medium">
                     {task.teamId && teamNames[task.teamId] ? (
                       teamNames[task.teamId]
+                    ) : task.teamMemberMappings && task.teamMemberMappings.length > 0 ? (
+                      `${task.teamMemberMappings.length} member${task.teamMemberMappings.length > 1 ? 's' : ''} assigned`
                     ) : task.teamId ? (
                       <span className="text-gray-500 dark:text-gray-400">Team ID: {task.teamId}</span>
                     ) : (
-                      <span className="text-gray-400 dark:text-gray-500 dark:text-gray-400 italic">No team assigned</span>
+                      <span className="text-gray-400 dark:text-gray-500 italic">No team assigned</span>
                     )}
                   </span>
                 </div>

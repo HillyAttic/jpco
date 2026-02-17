@@ -1,48 +1,22 @@
 /**
  * Optimized Firebase initialization with lazy loading and caching
  * Prevents blocking the main thread during critical render path
+ * Uses the existing Firebase instance from firebase.ts to avoid duplicate initialization
  */
 
-let firebaseApp: any = null;
-let firebaseAuth: any = null;
-let firebaseDb: any = null;
-let initPromise: Promise<void> | null = null;
+import app, { auth, db } from './firebase';
+
+let initialized = false;
 
 /**
  * Initialize Firebase lazily - only when actually needed
  * Uses singleton pattern to prevent multiple initializations
  */
 export async function initializeFirebaseLazy() {
-  if (initPromise) return initPromise;
-  
-  initPromise = (async () => {
-    if (firebaseApp) return;
-    
-    const { initializeApp } = await import('firebase/app');
-    const { getAuth, GoogleAuthProvider } = await import('firebase/auth');
-    const { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } = await import('firebase/firestore');
-    
-    const firebaseConfig = {
-      apiKey: "AIzaSyBkxT1xMRCj2iAoig87tBkFXSGcoZyuQDw",
-      authDomain: "jpcopanel.firebaseapp.com",
-      projectId: "jpcopanel",
-      storageBucket: "jpcopanel.firebasestorage.app",
-      messagingSenderId: "492450530050",
-      appId: "1:492450530050:web:174cf5cec2a9bdaeb8381b",
-      measurementId: "G-GNT1N7174R"
-    };
-    
-    firebaseApp = initializeApp(firebaseConfig);
-    firebaseAuth = getAuth(firebaseApp);
-    firebaseDb = initializeFirestore(firebaseApp, {
-      experimentalForceLongPolling: true,
-      localCache: persistentLocalCache({
-        tabManager: persistentMultipleTabManager(),
-      }),
-    });
-  })();
-  
-  return initPromise;
+  if (initialized) return;
+  initialized = true;
+  // Firebase is already initialized in firebase.ts
+  return Promise.resolve();
 }
 
 /**
@@ -50,7 +24,7 @@ export async function initializeFirebaseLazy() {
  */
 export async function getAuthLazy() {
   await initializeFirebaseLazy();
-  return firebaseAuth;
+  return auth;
 }
 
 /**
@@ -58,7 +32,7 @@ export async function getAuthLazy() {
  */
 export async function getDbLazy() {
   await initializeFirebaseLazy();
-  return firebaseDb;
+  return db;
 }
 
 /**
@@ -66,7 +40,7 @@ export async function getDbLazy() {
  */
 export async function getAppLazy() {
   await initializeFirebaseLazy();
-  return firebaseApp;
+  return app;
 }
 
 /**

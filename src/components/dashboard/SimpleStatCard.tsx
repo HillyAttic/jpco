@@ -12,6 +12,7 @@ interface SimpleStatCardProps {
   icon: React.ReactNode;
   onClick?: () => void;
   color?: 'blue' | 'green' | 'orange' | 'red' | 'purple';
+  subtitle?: string;
 }
 
 const colorMap = {
@@ -43,6 +44,7 @@ export function SimpleStatCard({
   icon,
   onClick,
   color = 'blue',
+  subtitle,
 }: SimpleStatCardProps) {
   const colors = colorMap[color];
   
@@ -50,7 +52,7 @@ export function SimpleStatCard({
     <StatCard
       title={title}
       value={value}
-      subtitle={onClick ? 'Click to view details' : ''}
+      subtitle={subtitle || (onClick ? 'Click to view details' : '')}
       icon={icon}
       iconBgColor={colors.iconBgColor}
       iconColor={colors.iconColor}
