@@ -3,7 +3,121 @@ const nextConfig = {
   // Enable experimental optimizations
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['lucide-react', '@heroicons/react', 'react-apexcharts'],
+    optimizePackageImports: [
+      'lucide-react',
+      '@heroicons/react',
+      'react-apexcharts',
+      'date-fns',
+      'dayjs',
+      '@radix-ui/react-dialog',
+      'react-hook-form',
+      '@hookform/resolvers',
+    ],
+  },
+  
+  // Production optimizations
+  reactStrictMode: true,
+  
+  // Optimize bundle splitting - MORE AGGRESSIVE
+  webpack: (config, { isServer, dev }) => {
+    if (!isServer && !dev) {
+      // More aggressive code splitting
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'deterministic',
+        runtimeChunk: 'single',
+        splitChunks: {
+          chunks: 'all',
+          maxInitialRequests: 25,
+          minSize: 20000,
+          maxSize: 244000, // Split chunks larger than 244KB
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // Framework chunk (React, React-DOM, Scheduler)
+            framework: {
+              name: 'framework',
+              test: /[\\/]node_modules[\\/](react|react-dom|scheduler)[\\/]/,
+              priority: 40,
+              enforce: true,
+            },
+            // Firebase - split into smaller chunks
+            firebaseApp: {
+              name: 'firebase-app',
+              test: /[\\/]node_modules[\\/](@firebase\/app|firebase\/app)[\\/]/,
+              priority: 39,
+              enforce: true,
+            },
+            firebaseFirestore: {
+              name: 'firebase-firestore',
+              test: /[\\/]node_modules[\\/](@firebase\/firestore|firebase\/firestore)[\\/]/,
+              priority: 38,
+              enforce: true,
+            },
+            firebaseAuth: {
+              name: 'firebase-auth',
+              test: /[\\/]node_modules[\\/](@firebase\/auth|firebase\/auth)[\\/]/,
+              priority: 37,
+              enforce: true,
+            },
+            // Charts - separate chunk
+            charts: {
+              name: 'charts',
+              test: /[\\/]node_modules[\\/](apexcharts|react-apexcharts)[\\/]/,
+              priority: 35,
+              enforce: true,
+            },
+            // UI libraries
+            radixUI: {
+              name: 'radix-ui',
+              test: /[\\/]node_modules[\\/]@radix-ui[\\/]/,
+              priority: 30,
+              enforce: true,
+            },
+            heroicons: {
+              name: 'heroicons',
+              test: /[\\/]node_modules[\\/]@heroicons[\\/]/,
+              priority: 29,
+              enforce: true,
+            },
+            // Form libraries
+            forms: {
+              name: 'forms',
+              test: /[\\/]node_modules[\\/](react-hook-form|@hookform)[\\/]/,
+              priority: 28,
+              enforce: true,
+            },
+            // Date libraries
+            dates: {
+              name: 'dates',
+              test: /[\\/]node_modules[\\/](date-fns|dayjs|flatpickr)[\\/]/,
+              priority: 27,
+              enforce: true,
+            },
+            // Common vendor chunk for remaining node_modules
+            vendor: {
+              name: 'vendor',
+              test: /[\\/]node_modules[\\/]/,
+              priority: 10,
+              minChunks: 1,
+              reuseExistingChunk: true,
+            },
+            // Common code used across pages
+            common: {
+              name: 'common',
+              minChunks: 2,
+              priority: 5,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
+          },
+        },
+      };
+      
+      // Minimize bundle size
+      config.optimization.minimize = true;
+    }
+    return config;
   },
   
   // Optimize images
@@ -55,9 +169,11 @@ const nextConfig = {
   
   // Turbopack configuration (empty to silence warning)
   turbopack: {},
-  // Ensure service worker and manifest are accessible
+  
+  // Performance headers for caching, compression, and security
   async headers() {
     return [
+      // Service Worker files
       {
         source: '/sw.js',
         headers: [
@@ -94,6 +210,70 @@ const nextConfig = {
           {
             key: 'Content-Type',
             value: 'application/manifest+json',
+          },
+        ],
+      },
+      // Static assets - aggressive caching
+      {
+        source: '/_next/static/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/images/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Performance and security headers for all pages
+      {
+        source: '/:path*',
+        headers: [
+          {
+            key: 'X-DNS-Prefetch-Control',
+            value: 'on',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
+          },
+        ],
+      },
+      // Preconnect hints for critical origins
+      {
+        source: '/',
+        headers: [
+          {
+            key: 'Link',
+            value: '<https://firestore.googleapis.com>; rel=preconnect, <https://identitytoolkit.googleapis.com>; rel=preconnect',
+          },
+        ],
+      },
+      {
+        source: '/dashboard',
+        headers: [
+          {
+            key: 'Link',
+            value: '<https://firestore.googleapis.com>; rel=preconnect, <https://identitytoolkit.googleapis.com>; rel=preconnect',
           },
         ],
       },

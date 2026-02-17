@@ -11,7 +11,11 @@
     "test:watch": "jest --watch",
     "test:firebase": "tsx scripts/test-firebase-connection.ts",
     "optimize:images": "node scripts/optimize-images.js",
-    "analyze": "ANALYZE=true next build"
+    "analyze": "cross-env ANALYZE=true next build",
+    "perf:audit": "node scripts/performance-audit.js",
+    "perf:lighthouse": "lighthouse http://localhost:3000 --view --preset=desktop",
+    "perf:bundle": "npm run build && npx source-map-explorer '.next/static/**/*.js'",
+    "perf:test": "npm run build && npm start & sleep 5 && npm run perf:lighthouse"
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",

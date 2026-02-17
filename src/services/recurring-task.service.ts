@@ -61,7 +61,7 @@ export const recurringTaskService = {
   }): Promise<RecurringTask[]> {
     const options: QueryOptions & { forceServerFetch?: boolean } = {
       filters: [],
-      forceServerFetch: true, // Always fetch from server to avoid cache issues
+      forceServerFetch: false, // OPTIMIZED: Use cache to reduce reads
     };
 
     // Add status filter

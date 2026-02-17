@@ -1,128 +1,85 @@
-import { useEffect, useRef, useCallback } from 'react';
-
-interface WorkerMessage {
-  type: string;
-  data?: any;
-}
-
-interface WorkerResponse {
-  type: string;
-  result?: any;
-  error?: string;
-}
-
 /**
- * Hook to use Web Workers for heavy computations
+ * Web Worker Hook
+ * Offloads heavy computations to background thread
+ * Prevents main thread blocking
  */
-export function useWebWorker(workerPath: string) {
+
+import { useEffect, useRef, useState } from 'react';
+
+export function useWebWorker<T, R>(
+  workerFunction: (data: T) => R
+): [(data: T) => Promise<R>, boolean, Error | null] {
   const workerRef = useRef<Worker | null>(null);
-  const callbacksRef = useRef<Map<string, (response: WorkerResponse) => void>>(new Map());
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    // Only create worker in browser
-    if (typeof window === 'undefined') return;
-
-    // Create worker
-    try {
-      workerRef.current = new Worker(workerPath);
-
-      // Handle messages from worker
-      workerRef.current.onmessage = (event: MessageEvent<WorkerResponse>) => {
-        const { type, result, error } = event.data;
-
-        // Find and call the appropriate callback
-        const callback = callbacksRef.current.get(type);
-        if (callback) {
-          callback(event.data);
-          callbacksRef.current.delete(type);
+    // Create worker from function
+    const workerCode = `
+      self.onmessage = function(e) {
+        try {
+          const result = (${workerFunction.toString()})(e.data);
+          self.postMessage({ result });
+        } catch (error) {
+          self.postMessage({ error: error.message });
         }
       };
+    `;
 
-      workerRef.current.onerror = (error) => {
-        console.error('[WebWorker] Error:', error);
-      };
-    } catch (error) {
-      console.error('[WebWorker] Failed to create worker:', error);
-    }
+    const blob = new Blob([workerCode], { type: 'application/javascript' });
+    const workerUrl = URL.createObjectURL(blob);
+    workerRef.current = new Worker(workerUrl);
 
-    // Cleanup
     return () => {
       if (workerRef.current) {
         workerRef.current.terminate();
-        workerRef.current = null;
+        URL.revokeObjectURL(workerUrl);
       }
     };
-  }, [workerPath]);
+  }, [workerFunction]);
 
-  /**
-   * Post message to worker
-   */
-  const postMessage = useCallback((message: WorkerMessage, callback?: (response: WorkerResponse) => void) => {
-    if (!workerRef.current) {
-      console.warn('[WebWorker] Worker not initialized');
-      return;
-    }
-
-    // Register callback if provided
-    if (callback) {
-      const responseType = `${message.type}_COMPLETE`;
-      callbacksRef.current.set(responseType, callback);
-      callbacksRef.current.set('ERROR', callback);
-    }
-
-    // Post message to worker
-    workerRef.current.postMessage(message);
-  }, []);
-
-  /**
-   * Process data with promise-based API
-   */
-  const processData = useCallback(<T = any>(type: string, data: any): Promise<T> => {
+  const execute = (data: T): Promise<R> => {
     return new Promise((resolve, reject) => {
-      postMessage({ type, data }, (response) => {
-        if (response.type === 'ERROR') {
-          reject(new Error(response.error));
-        } else {
-          resolve(response.result as T);
-        }
-      });
-    });
-  }, [postMessage]);
+      if (!workerRef.current) {
+        reject(new Error('Worker not initialized'));
+        return;
+      }
 
-  return {
-    postMessage,
-    processData,
-    isSupported: typeof Worker !== 'undefined',
+      setLoading(true);
+      setError(null);
+
+      workerRef.current.onmessage = (e) => {
+        setLoading(false);
+        if (e.data.error) {
+          const err = new Error(e.data.error);
+          setError(err);
+          reject(err);
+        } else {
+          resolve(e.data.result);
+        }
+      };
+
+      workerRef.current.onerror = (e) => {
+        setLoading(false);
+        const err = new Error(e.message);
+        setError(err);
+        reject(err);
+      };
+
+      workerRef.current.postMessage(data);
+    });
   };
+
+  return [execute, loading, error];
 }
 
 /**
- * Hook specifically for data processing worker
+ * Example usage:
+ * 
+ * const [processData, loading, error] = useWebWorker((data: number[]) => {
+ *   // Heavy computation
+ *   return data.map(n => n * 2).reduce((a, b) => a + b, 0);
+ * });
+ * 
+ * const result = await processData([1, 2, 3, 4, 5]);
  */
-export function useDataProcessorWorker() {
-  const { processData, isSupported } = useWebWorker('/workers/data-processor.worker.js');
-
-  const processAttendanceData = useCallback((records: any[]) => {
-    return processData('PROCESS_ATTENDANCE_DATA', { records });
-  }, [processData]);
-
-  const calculateStatistics = useCallback((records: any[], groupBy: string) => {
-    return processData('CALCULATE_STATISTICS', { records, groupBy });
-  }, [processData]);
-
-  const filterLargeDataset = useCallback((records: any[], filters: any) => {
-    return processData('FILTER_LARGE_DATASET', { records, filters });
-  }, [processData]);
-
-  const sortData = useCallback((records: any[], sortBy: string, sortOrder: 'asc' | 'desc') => {
-    return processData('SORT_DATA', { records, sortBy, sortOrder });
-  }, [processData]);
-
-  return {
-    processAttendanceData,
-    calculateStatistics,
-    filterLargeDataset,
-    sortData,
-    isSupported,
-  };
-}
