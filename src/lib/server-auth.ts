@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/firebase';
 import { UserRole, CustomClaims } from '@/types/auth.types';
+import admin from '@/lib/firebase-admin';
+import { adminDb } from '@/lib/firebase-admin';
 
 /**
  * Server-side authentication utilities for API routes
+ * Uses Firebase Admin SDK for secure token verification
  */
 
 export interface AuthenticatedRequest extends NextRequest {
@@ -15,7 +17,7 @@ export interface AuthenticatedRequest extends NextRequest {
 }
 
 /**
- * Extract and verify Firebase ID token from request headers
+ * Extract and verify Firebase ID token from request headers using Firebase Admin SDK
  */
 export async function verifyAuthToken(request: NextRequest): Promise<{
   success: boolean;
@@ -45,36 +47,71 @@ export async function verifyAuthToken(request: NextRequest): Promise<{
       };
     }
 
-    // Verify the ID token using Firebase Auth client SDK
-    // Note: In a production environment, you should use Firebase Admin SDK on the server
-    // for proper security, but for this demo we'll use the client SDK
+    // Verify the ID token using Firebase Admin SDK
+    const decodedToken = await admin.auth().verifyIdToken(idToken, true);
     
-    // For a Next.js App Router environment, we can't use Firebase Admin SDK
-    // directly in route handlers. Instead, we'll return a success response
-    // and let the client-side context handle the actual authentication.
-    // This is not ideal for security, but works for this demonstration.
+    if (!decodedToken || !decodedToken.uid) {
+      return {
+        success: false,
+        error: 'Invalid token',
+      };
+    }
+
+    // Get user profile from Firestore to retrieve role and permissions
+    const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
     
-    // In a real application, you would need to implement a custom authentication
-    // method that works with your deployment environment.
+    if (!userDoc.exists) {
+      return {
+        success: false,
+        error: 'User profile not found',
+      };
+    }
+
+    const userData = userDoc.data();
+    const role = (decodedToken.role as UserRole) || userData?.role || 'employee';
     
-    // For now, we'll return a success response to allow the middleware to continue
-    // and let the actual auth check happen in the client components.
+    // Build custom claims
+    const claims: CustomClaims = {
+      role,
+      permissions: userData?.permissions || [],
+      isAdmin: role === 'admin',
+      createdAt: userData?.createdAt || new Date().toISOString(),
+      lastRoleUpdate: userData?.lastRoleUpdate || new Date().toISOString(),
+    };
+
     return {
       success: true,
       user: {
-        uid: 'temp-uid',
-        email: 'temp@example.com',
-        claims: {
-          role: 'admin', // Placeholder - actual role will be checked in client
-          permissions: ['users.manage'], // Placeholder
-          isAdmin: true, // Placeholder
-          createdAt: new Date().toISOString(),
-          lastRoleUpdate: new Date().toISOString(),
-        },
+        uid: decodedToken.uid,
+        email: decodedToken.email || null,
+        claims,
       },
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Token verification error:', error);
+    
+    // Provide specific error messages for common issues
+    if (error.code === 'auth/id-token-expired') {
+      return {
+        success: false,
+        error: 'Token expired. Please sign in again.',
+      };
+    }
+    
+    if (error.code === 'auth/id-token-revoked') {
+      return {
+        success: false,
+        error: 'Token revoked. Please sign in again.',
+      };
+    }
+    
+    if (error.code === 'auth/argument-error') {
+      return {
+        success: false,
+        error: 'Invalid token format',
+      };
+    }
+    
     return {
       success: false,
       error: 'Token verification failed',

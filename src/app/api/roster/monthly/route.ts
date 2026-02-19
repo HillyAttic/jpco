@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { rosterService } from '@/services/roster.service';
+import { rosterAdminService } from '@/services/roster-admin.service';
+import { ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * GET /api/roster/monthly
@@ -7,17 +8,18 @@ import { rosterService } from '@/services/roster.service';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
     }
 
-    // Note: Role-based access control should be implemented in production
-    // For now, we'll allow any authenticated user to access this endpoint
-    // The frontend will handle role-based rendering
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
 
-    // Get query parameters
     const searchParams = request.nextUrl.searchParams;
     const month = searchParams.get('month');
     const year = searchParams.get('year');
@@ -29,8 +31,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get monthly roster view
-    const monthlyView = await rosterService.getMonthlyRosterView(
+    const monthlyView = await rosterAdminService.getMonthlyRosterView(
       parseInt(month),
       parseInt(year)
     );

@@ -27,6 +27,20 @@ const updateTaskSchema = z.object({
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
     console.log('[API /api/tasks/[id]] GET request received');
     
     // TODO: Add authentication check
@@ -58,6 +72,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
     console.log('[API /api/tasks/[id]] PUT request received');
     
     // TODO: Add authentication check
@@ -154,6 +182,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  */
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
     console.log('[API /api/tasks/[id]] DELETE request received');
     
     // TODO: Add authentication check

@@ -34,6 +34,11 @@ export function QuickActions({
   onViewAttendance,
   isAdminOrManager = false,
 }: QuickActionsProps) {
+  // Only show Quick Actions to admin/manager roles
+  if (!isAdminOrManager) {
+    return null;
+  }
+
   const actions = [
     {
       label: 'Create Task',

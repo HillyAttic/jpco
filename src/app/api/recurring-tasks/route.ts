@@ -41,48 +41,37 @@ const createRecurringTaskSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token from header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    
-    // Decode JWT token to get user ID (without verification for now)
-    // In production, you should verify the token properly
-    let userId: string;
-    try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      userId = payload.user_id || payload.sub;
-      
-      if (!userId) {
-        return ErrorResponses.unauthorized();
-      }
-    } catch (error) {
-      return ErrorResponses.unauthorized();
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
     }
 
-    // Get user profile to check role using Admin SDK
+    const userId = authResult.user.uid;
+    const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
     const { adminDb } = await import('@/lib/firebase-admin');
-    let userProfile: any;
+
+    // Get user profile for email (needed for team member lookup)
+    let userProfile: any = { email: authResult.user.email, role: userRole };
     try {
       const userDoc = await adminDb.collection('users').doc(userId).get();
-      if (!userDoc.exists) {
-        console.error(`[Recurring Tasks API] ❌ User profile not found for userId: ${userId}`);
-        return ErrorResponses.unauthorized();
+      if (userDoc.exists) {
+        userProfile = { ...userProfile, ...userDoc.data() };
       }
-      userProfile = userDoc.data();
-      console.log(`[Recurring Tasks API] ✅ User profile loaded for ${userId}, role: ${userProfile.role}`);
     } catch (error) {
-      console.error('[Recurring Tasks API] ❌ Error getting user profile:', error);
-      return ErrorResponses.unauthorized();
+      console.error('[Recurring Tasks API] Error getting user profile:', error);
     }
 
-    const isAdminOrManager = userProfile.role === 'admin' || userProfile.role === 'manager';
-
     const { searchParams } = new URL(request.url);
-    
+
     const filters = {
       status: searchParams.get('status') || undefined,
       priority: searchParams.get('priority') || undefined,
@@ -91,30 +80,30 @@ export async function GET(request: NextRequest) {
       isPaused: searchParams.get('isPaused') === 'true' ? true : searchParams.get('isPaused') === 'false' ? false : undefined,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
     };
-    
+
     // Check if this is a calendar view request
     const isCalendarView = searchParams.get('view') === 'calendar';
 
     // Fetch all tasks using Admin SDK
     let tasks = await recurringTaskAdminService.getAll(filters);
-    
+
     console.log(`[Recurring Tasks API] Total tasks fetched: ${tasks.length}`);
     console.log(`[Recurring Tasks API] User Firebase Auth UID: ${userId}`);
     console.log(`[Recurring Tasks API] User role: ${userProfile.role}`);
     console.log(`[Recurring Tasks API] Is Admin/Manager: ${isAdminOrManager}`);
     console.log(`[Recurring Tasks API] Is Calendar View: ${isCalendarView}`);
-    
+
     // Filter tasks based on user role
     // Admin/Manager see all tasks in both calendar and list views
     // Team members see only their assigned tasks in both views
     if (!isAdminOrManager) {
       const { teamAdminService } = await import('@/services/team-admin.service');
-      
+
       // OPTIMIZED: Batch all user ID lookups using Admin SDK
       const userIds = new Set<string>([userId]); // Start with Auth UID
-      
+
       console.log(`[Recurring Tasks API] User email: ${userProfile.email}`);
-      
+
       // Batch query for all user documents by email using Admin SDK
       try {
         const [usersSnapshot, empSnapshot] = await Promise.all([
@@ -141,12 +130,12 @@ export async function GET(request: NextRequest) {
             }
           })()
         ]);
-        
+
         usersSnapshot.docs.forEach((doc: any) => {
           userIds.add(doc.id);
           console.log(`[Recurring Tasks API] Found user document by email: ${doc.id}`);
         });
-        
+
         empSnapshot.docs.forEach((doc: any) => {
           userIds.add(doc.id);
           console.log(`[Recurring Tasks API] Found employee document by email: ${doc.id}`);
@@ -154,13 +143,13 @@ export async function GET(request: NextRequest) {
       } catch (error) {
         console.error(`[Recurring Tasks API] Error in batch user lookup:`, error);
       }
-      
+
       console.log(`[Recurring Tasks API] All possible user IDs:`, Array.from(userIds));
-      
+
       // Get teams for ALL possible user IDs in parallel
       const teamPromises = Array.from(userIds).map(id => teamAdminService.getTeamsByMember(id));
       const teamResults = await Promise.all(teamPromises);
-      
+
       // Flatten and deduplicate teams
       const userTeams: any[] = [];
       const seenTeamIds = new Set<string>();
@@ -172,30 +161,30 @@ export async function GET(request: NextRequest) {
           }
         });
       });
-      
+
       const userTeamIds = Array.from(seenTeamIds);
-      
+
       console.log(`[Recurring Tasks API] User teams:`, userTeams.map(t => ({ id: t.id, name: t.name })));
       console.log(`[Recurring Tasks API] User team IDs:`, userTeamIds);
-      
+
       // Employees see tasks that are:
       // 1. Directly assigned to them (in contactIds), OR
       // 2. Assigned to a team they are a member of, OR
       // 3. Assigned to them via team member mappings
       tasks = tasks.filter(task => {
         // Check if task is directly assigned to user (check all possible user IDs)
-        const isDirectlyAssigned = task.contactIds && 
-          Array.isArray(task.contactIds) && 
+        const isDirectlyAssigned = task.contactIds &&
+          Array.isArray(task.contactIds) &&
           Array.from(userIds).some(id => task.contactIds.includes(id));
-        
+
         // Check if task is assigned to a team the user is a member of
         const isTeamAssigned = task.teamId && userTeamIds.includes(task.teamId);
-        
+
         // Check if task has team member mappings for this user
-        const isMappedToUser = task.teamMemberMappings && 
+        const isMappedToUser = task.teamMemberMappings &&
           Array.isArray(task.teamMemberMappings) &&
           task.teamMemberMappings.some(mapping => Array.from(userIds).includes(mapping.userId));
-        
+
         console.log(`[Recurring Tasks API] Task "${task.title}":`, {
           taskId: task.id,
           teamId: task.teamId,
@@ -206,24 +195,24 @@ export async function GET(request: NextRequest) {
           isMappedToUser,
           willShow: isDirectlyAssigned || isTeamAssigned || isMappedToUser
         });
-        
+
         return isDirectlyAssigned || isTeamAssigned || isMappedToUser;
       });
-      
+
       console.log(`[Recurring Tasks API] Team member ${userId} filtered recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);
     } else {
       console.log(`[Recurring Tasks API] Admin/Manager ${userId} viewing all recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);
     }
-    
+
     // Serialize dates to ISO strings for JSON response
     const serializedTasks = tasks.map(task => ({
       ...task,
-      startDate: task.startDate ? (task.startDate.toDate ? task.startDate.toDate().toISOString() : new Date(task.startDate).toISOString()) : null,
-      dueDate: task.dueDate ? (task.dueDate.toDate ? task.dueDate.toDate().toISOString() : new Date(task.dueDate).toISOString()) : null,
-      createdAt: task.createdAt ? (task.createdAt.toDate ? task.createdAt.toDate().toISOString() : new Date(task.createdAt).toISOString()) : null,
-      updatedAt: task.updatedAt ? (task.updatedAt.toDate ? task.updatedAt.toDate().toISOString() : new Date(task.updatedAt).toISOString()) : null,
+      startDate: task.startDate ? ((task.startDate as any).toDate ? (task.startDate as any).toDate().toISOString() : new Date(task.startDate as any).toISOString()) : null,
+      dueDate: task.dueDate ? ((task.dueDate as any).toDate ? (task.dueDate as any).toDate().toISOString() : new Date(task.dueDate as any).toISOString()) : null,
+      createdAt: task.createdAt ? ((task.createdAt as any).toDate ? (task.createdAt as any).toDate().toISOString() : new Date(task.createdAt as any).toISOString()) : null,
+      updatedAt: task.updatedAt ? ((task.updatedAt as any).toDate ? (task.updatedAt as any).toDate().toISOString() : new Date(task.updatedAt as any).toISOString()) : null,
     }));
-    
+
     return NextResponse.json(serializedTasks, { status: 200 });
   } catch (error) {
     return handleApiError(error);
@@ -237,26 +226,21 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get auth token from header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    
-    // Decode JWT token to get user ID
-    let userId: string;
-    try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      userId = payload.user_id || payload.sub;
-      
-      if (!userId) {
-        return ErrorResponses.unauthorized();
-      }
-    } catch (error) {
-      return ErrorResponses.unauthorized();
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
     }
+
+    const userId = authResult.user.uid;
 
     const body = await request.json();
     console.log('📥 [POST /api/recurring-tasks] Received body:', JSON.stringify(body, null, 2));
@@ -280,7 +264,7 @@ export async function POST(request: NextRequest) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     startDate.setHours(0, 0, 0, 0);
-    
+
     // If start date is in the past or today, calculate the next due date from today
     let dueDate = startDate;
     if (startDate <= today) {
@@ -293,28 +277,28 @@ export async function POST(request: NextRequest) {
       ...taskData,
       description: taskData.description || '',
       startDate: startDate,
-      dueDate: taskData.dueDate 
+      dueDate: taskData.dueDate
         ? (taskData.dueDate instanceof Date ? taskData.dueDate : new Date(taskData.dueDate))
         : dueDate,
       createdBy: userId, // Store the creator's user ID
       completionHistory: [], // Initialize empty completion history
       isPaused: false, // Initialize as not paused
     };
-    
+
     console.log('💾 [POST /api/recurring-tasks] Creating task in Firestore:', JSON.stringify(taskToCreate, null, 2));
     const newTask = await recurringTaskAdminService.create(taskToCreate as any);
     console.log('✅ [POST /api/recurring-tasks] Task created successfully with ID:', newTask.id);
     console.log('🗺️ [POST /api/recurring-tasks] Saved team member mappings:', newTask.teamMemberMappings);
-    
+
     // Serialize dates for JSON response
     const serializedTask = {
       ...newTask,
-      startDate: newTask.startDate ? (newTask.startDate.toDate ? newTask.startDate.toDate().toISOString() : new Date(newTask.startDate).toISOString()) : null,
-      dueDate: newTask.dueDate ? (newTask.dueDate.toDate ? newTask.dueDate.toDate().toISOString() : new Date(newTask.dueDate).toISOString()) : null,
-      createdAt: newTask.createdAt ? (newTask.createdAt.toDate ? newTask.createdAt.toDate().toISOString() : new Date(newTask.createdAt).toISOString()) : null,
-      updatedAt: newTask.updatedAt ? (newTask.updatedAt.toDate ? newTask.updatedAt.toDate().toISOString() : new Date(newTask.updatedAt).toISOString()) : null,
+      startDate: newTask.startDate ? ((newTask.startDate as any).toDate ? (newTask.startDate as any).toDate().toISOString() : new Date(newTask.startDate as any).toISOString()) : null,
+      dueDate: newTask.dueDate ? ((newTask.dueDate as any).toDate ? (newTask.dueDate as any).toDate().toISOString() : new Date(newTask.dueDate as any).toISOString()) : null,
+      createdAt: newTask.createdAt ? ((newTask.createdAt as any).toDate ? (newTask.createdAt as any).toDate().toISOString() : new Date(newTask.createdAt as any).toISOString()) : null,
+      updatedAt: newTask.updatedAt ? ((newTask.updatedAt as any).toDate ? (newTask.updatedAt as any).toDate().toISOString() : new Date(newTask.updatedAt as any).toISOString()) : null,
     };
-    
+
     return NextResponse.json(serializedTask, { status: 201 });
   } catch (error) {
     console.error('❌ [POST /api/recurring-tasks] Error:', error);

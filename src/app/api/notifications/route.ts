@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * GET /api/notifications?userId=xxx
@@ -10,6 +11,20 @@ import { adminDb } from '@/lib/firebase-admin';
  */
 export async function GET(request: NextRequest) {
     try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
+
         const userId = request.nextUrl.searchParams.get('userId');
 
         if (!userId) {
@@ -103,6 +118,20 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
     try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
+
         const { action, notificationId, userId } = await request.json();
 
         if (action === 'markAsRead' && notificationId) {

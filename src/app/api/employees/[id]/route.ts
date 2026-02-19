@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { employeeService } from '@/services/employee.service';
 import { employeeAdminService } from '@/services/employee-admin.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
@@ -25,11 +24,20 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
 
     const { id } = await params;
 
@@ -57,11 +65,19 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
 
     const { id } = await params;
     const body = await request.json();
@@ -114,11 +130,20 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
 
     const { id } = await params;
 

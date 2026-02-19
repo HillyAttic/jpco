@@ -1,33 +1,37 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
-import { categoryService } from '@/services/category.service';
+import { adminDb } from '@/lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
-// Validation schema for toggle request
 const toggleSchema = z.object({
   isActive: z.boolean(),
 });
 
 /**
  * PATCH /api/categories/[id]/toggle
- * Toggle category active status in Firestore
- * Validates Requirements: 6.7
+ * Toggle category active status using Admin SDK
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can toggle categories');
+    }
 
     const { id } = await params;
     const body = await request.json();
 
-    // Validate request body
     const validationResult = toggleSchema.safeParse(body);
     if (!validationResult.success) {
       return ErrorResponses.badRequest(
@@ -38,16 +42,16 @@ export async function PATCH(
 
     const { isActive } = validationResult.data;
 
-    // Check if category exists
-    const existingCategory = await categoryService.getById(id);
-    if (!existingCategory) {
+    const docRef = adminDb.collection('categories').doc(id);
+    const existing = await docRef.get();
+    if (!existing.exists) {
       return ErrorResponses.notFound('Category');
     }
 
-    // Toggle category status in Firestore
-    const updatedCategory = await categoryService.toggleStatus(id, isActive);
+    await docRef.update({ isActive, updatedAt: Timestamp.now() });
+    const updated = await docRef.get();
 
-    return NextResponse.json(updatedCategory);
+    return NextResponse.json({ id: updated.id, ...updated.data() });
   } catch (error) {
     return handleApiError(error);
   }

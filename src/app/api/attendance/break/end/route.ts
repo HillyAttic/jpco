@@ -1,18 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { attendanceService } from '@/services/attendance.service';
+import { attendanceAdminService } from '@/services/attendance-admin.service';
+import { ErrorResponses } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest) {
   try {
-    // Check authentication
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Authentication required' },
-        { status: 401 }
-      );
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
     }
 
-    // Parse request body
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
+
     const body = await request.json();
     const { recordId } = body;
 
@@ -23,18 +26,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // End break
-    const record = await attendanceService.endBreak(recordId);
+    const record = await attendanceAdminService.endBreak(recordId);
 
     return NextResponse.json(record, { status: 200 });
   } catch (error: any) {
     console.error('End break error:', error);
-
     return NextResponse.json(
-      {
-        error: 'Internal Server Error',
-        message: error.message || 'Failed to end break',
-      },
+      { error: 'Internal Server Error', message: error.message || 'Failed to end break' },
       { status: 500 }
     );
   }

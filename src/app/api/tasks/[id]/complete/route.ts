@@ -13,6 +13,20 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
+
     console.log('[API /api/tasks/[id]/complete] PATCH request received');
     
     // TODO: Add authentication check

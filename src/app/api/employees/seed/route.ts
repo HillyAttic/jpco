@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { seedEmployees } from '@/scripts/seed-employees';
+import { ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * POST /api/employees/seed
@@ -8,6 +9,20 @@ import { seedEmployees } from '@/scripts/seed-employees';
  */
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (userRole !== 'admin') {
+      return ErrorResponses.forbidden('Admin access required');
+    }
+
     const result = await seedEmployees();
     
     return NextResponse.json(result, { status: 201 });

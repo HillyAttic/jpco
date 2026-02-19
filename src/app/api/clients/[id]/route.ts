@@ -30,6 +30,20 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
     // TODO: Add authentication check
     // const user = await verifyAuth(request);
     // if (!user) {
@@ -60,6 +74,20 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
     // TODO: Add authentication check
     // const user = await verifyAuth(request);
     // if (!user) {
@@ -105,6 +133,20 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
     // TODO: Add authentication check
     // const user = await verifyAuth(request);
     // if (!user) {

@@ -1,20 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { shiftService } from '@/services/shift.service';
+import { shiftAdminService } from '@/services/shift-admin.service';
+import { ErrorResponses } from '@/lib/api-error-handler';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Authentication required' },
-        { status: 401 }
-      );
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
     }
 
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can assign shifts');
+    }
+
+    const { id } = await params;
     const body = await request.json();
     const { employeeId } = body;
 
@@ -25,12 +30,9 @@ export async function POST(
       );
     }
 
-    await shiftService.assignShiftToEmployee(id, employeeId);
+    await shiftAdminService.assignShiftToEmployee(id, employeeId);
 
-    return NextResponse.json(
-      { message: 'Shift assigned successfully' },
-      { status: 200 }
-    );
+    return NextResponse.json({ message: 'Shift assigned successfully' }, { status: 200 });
   } catch (error: any) {
     console.error('Assign shift error:', error);
     return NextResponse.json(

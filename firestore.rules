@@ -28,6 +28,16 @@ service cloud.firestore {
     function isEmployee() {
       return isAuthenticated() && (getUserRole() == 'admin' || getUserRole() == 'manager' || getUserRole() == 'employee');
     }
+    
+    // Validate that user is not escalating their own privileges
+    function isNotPrivilegeEscalation() {
+      return !request.resource.data.keys().hasAny(['role', 'permissions', 'isAdmin']);
+    }
+    
+    // Validate that the request is not modifying protected fields
+    function isNotModifyingProtectedFields() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['createdAt', 'createdBy']);
+    }
 
     // ============================================================================
     // COLLECTION RULES
@@ -35,48 +45,82 @@ service cloud.firestore {
 
     // USERS (Profiles)
     match /users/{userId} {
+      // Anyone authenticated can read user profiles (for team member lookups)
       allow read: if isAuthenticated();
-      allow write: if isAdmin() || (isAuthenticated() && request.auth.uid == userId);
+      
+      // Users can update their own profile (except role/permissions)
+      allow update: if isAuthenticated() && 
+                      request.auth.uid == userId && 
+                      isNotPrivilegeEscalation() &&
+                      isNotModifyingProtectedFields();
+      
+      // Only admins can create users or modify roles
+      allow create, delete: if isAdmin();
+      
+      // Admins can update any user including roles
+      allow update: if isAdmin();
     }
     
     // FCM TOKENS
     match /fcmTokens/{userId} {
-      allow read, write: if isAuthenticated() && (request.auth.uid == userId || isAdmin());
+      // Users can only access their own FCM tokens
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Admins can read all tokens (for debugging)
+      allow read: if isAdmin();
     }
 
     // ROSTERS
     match /rosters/{rosterId} {
+      // Users can read their own rosters, managers can read all
       allow read: if isAuthenticated() && (resource.data.userId == request.auth.uid || isManager());
+      
+      // Users can create their own rosters, managers can create for anyone
       allow create: if isAuthenticated() && (request.resource.data.userId == request.auth.uid || isManager());
+      
+      // Users can update/delete their own rosters, managers can modify all
       allow update, delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isManager());
     }
 
     // REPORTS & TASK COMPLETIONS
     match /task-completions/{completionId} {
+      // Only managers can access task completion reports
       allow read, write: if isManager();
     }
 
     // RECURRING TASKS
     match /recurring-tasks/{taskId} {
+      // All employees can read recurring tasks
       allow read: if isEmployee();
+      
+      // Only managers can create, update, or delete recurring tasks
       allow write: if isManager();
     }
 
     // CLIENTS
     match /clients/{clientId} {
+      // All employees can read clients
       allow read: if isEmployee();
+      
+      // Only managers can create, update, or delete clients
       allow write: if isManager();
     }
 
     // TEAMS
     match /teams/{teamId} {
+      // All employees can read teams
       allow read: if isEmployee();
+      
+      // Only managers can create, update, or delete teams
       allow write: if isManager();
     }
 
     // CATEGORIES
     match /categories/{categoryId} {
+      // All employees can read categories
       allow read: if isEmployee();
+      
+      // Only managers can create, update, or delete categories
       allow write: if isManager();
     }
 
@@ -88,15 +132,25 @@ service cloud.firestore {
         isManager() || 
         (isEmployee() && request.auth.uid in resource.data.assignedTo)
       );
+      
       // Only managers can create/update/delete tasks
       allow create, update, delete: if isManager();
     }
 
     // MY TASKS (List & Tasks)
     match /my_task_lists/{listId} {
+      // Users can only access their own task lists
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can create their own task lists
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can update their own task lists
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      request.resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own task lists, admins can delete any
       allow delete: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || 
         isAdmin()
@@ -104,9 +158,18 @@ service cloud.firestore {
     }
 
     match /my_tasks/{taskId} {
+      // Users can only access their own tasks
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can create their own tasks
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can update their own tasks
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      request.resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own tasks, admins can delete any
       allow delete: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || 
         isAdmin()
@@ -115,9 +178,18 @@ service cloud.firestore {
 
     // KANBAN BUSINESSES
     match /kanban_businesses/{businessId} {
+      // Users can only access their own businesses
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can create their own businesses
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can update their own businesses
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      request.resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own businesses, admins can delete any
       allow delete: if isAuthenticated() && (
         resource.data.userId == request.auth.uid || 
         isAdmin()
@@ -126,53 +198,142 @@ service cloud.firestore {
 
     // KANBAN TASKS
     match /kanban_tasks/{taskId} {
-      allow read, write: if isAuthenticated();
+      // All authenticated users can read kanban tasks
+      allow read: if isAuthenticated();
+      
+      // Users can create kanban tasks
+      allow create: if isAuthenticated();
+      
+      // Users can update kanban tasks they created or are assigned to
+      allow update: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        request.auth.uid in resource.data.get('assignedTo', [])
+      );
+      
+      // Users can delete their own tasks, admins can delete any
+      allow delete: if isAuthenticated() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
     }
 
-    // ACTIVITIES
+    // ACTIVITIES (Audit Log)
     match /activities/{activityId} {
+      // All authenticated users can read activities
       allow read: if isAuthenticated();
+      
+      // All authenticated users can create activity logs
       allow create: if isAuthenticated();
+      
+      // Only admins can update or delete activity logs
       allow update, delete: if isAdmin();
     }
 
     // ATTENDANCE RECORDS
     match /attendance-records/{recordId} {
-      allow read: if isAuthenticated() && (resource.data.employeeId == request.auth.uid || isManager());
+      // Users can read their own records, managers can read all
+      allow read: if isAuthenticated() && (
+        resource.data.employeeId == request.auth.uid || 
+        isManager()
+      );
+      
+      // Users can create their own attendance records
       allow create: if isAuthenticated() && request.resource.data.employeeId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.employeeId == request.auth.uid || isManager());
+      
+      // Users can update their own records, managers can update all
+      allow update: if isAuthenticated() && (
+        resource.data.employeeId == request.auth.uid || 
+        isManager()
+      );
+      
+      // Only managers can delete attendance records
       allow delete: if isManager();
     }
 
-    // LEAVE REQUESTS (Added based on your indexes)
+    // LEAVE REQUESTS
     match /leave-requests/{requestId} {
-      allow read: if isAuthenticated() && (resource.data.employeeId == request.auth.uid || isManager());
+      // Users can read their own requests, managers can read all
+      allow read: if isAuthenticated() && (
+        resource.data.employeeId == request.auth.uid || 
+        isManager()
+      );
+      
+      // Users can create their own leave requests
       allow create: if isAuthenticated() && request.resource.data.employeeId == request.auth.uid;
-      allow update: if isAuthenticated() && (resource.data.employeeId == request.auth.uid || isManager());
-      allow delete: if isManager(); 
+      
+      // Users can update their own pending requests, managers can update all
+      allow update: if isAuthenticated() && (
+        (resource.data.employeeId == request.auth.uid && resource.data.status == 'pending') ||
+        isManager()
+      );
+      
+      // Only managers can delete leave requests
+      allow delete: if isManager();
     }
 
     // LEAVE TYPES
     match /leave-types/{typeId} {
+      // All authenticated users can read leave types
       allow read: if isAuthenticated();
+      
+      // Only managers can create, update, or delete leave types
       allow write: if isManager();
     }
 
     // NOTIFICATIONS
     match /notifications/{notificationId} {
+      // Users can only access their own notifications
       allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // System can create notifications for users
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
-      allow update, delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() && 
+                      resource.data.userId == request.auth.uid &&
+                      request.resource.data.userId == request.auth.uid;
+      
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
 
     // AUDIT LOGS
     match /audit_logs/{logId} {
+      // Only managers can read audit logs
       allow read: if isManager();
+      
+      // All authenticated users can create audit logs
       allow create: if isAuthenticated();
-      allow delete: if false;
+      
+      // Audit logs cannot be modified or deleted
+      allow update, delete: if false;
     }
 
-    // CATCH ALL
+    // MANAGER HIERARCHIES
+    match /manager-hierarchies/{hierarchyId} {
+      // Managers can read their own hierarchy, admins can read all
+      allow read: if isAuthenticated() && (
+        resource.data.managerId == request.auth.uid || 
+        isAdmin()
+      );
+      
+      // Only admins can create, update, or delete manager hierarchies
+      allow write: if isAdmin();
+    }
+
+    // CLIENT VISITS
+    match /client-visits/{visitId} {
+      // Only admins can read client visits
+      allow read: if isAdmin();
+      
+      // System can create client visits (via API)
+      allow create: if isAuthenticated();
+      
+      // Only admins can update or delete client visits
+      allow update, delete: if isAdmin();
+    }
+
+    // CATCH ALL - Deny everything else
     match /{document=**} {
       allow read, write: if false;
     }

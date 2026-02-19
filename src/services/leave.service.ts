@@ -1,151 +1,24 @@
 /**
- * Leave Service
- * Handles all leave-related Firebase operations
+ * Leave Management Service
  */
 
 import { createFirebaseService, QueryOptions } from './firebase.service';
-import {
-  LeaveRequest,
-  LeaveBalance,
-  LeaveType,
-  LeaveFilters,
-  LeaveRequestFormData,
-  LeaveTypeFormData,
-} from '@/types/attendance.types';
-import { calculateDaysBetween } from '@/utils/time-calculations';
-import { Timestamp } from 'firebase/firestore';
+import { LeaveRequest, LeaveFilters, LeaveStats, LeaveStatus } from '@/types/leave.types';
 
-// Create Firebase service instances
-const leaveRequestService = createFirebaseService<LeaveRequest>('leave-requests');
-const leaveTypeService = createFirebaseService<LeaveType>('leave-types');
+const leaveFirebaseService = createFirebaseService<LeaveRequest>('leave-requests');
 
-/**
- * Leave Service API
- */
 export const leaveService = {
-  // ==================== Leave Requests ====================
-
   /**
-   * Create a new leave request
+   * Get all leave requests with filters
    */
-  async createLeaveRequest(
-    data: LeaveRequestFormData & { employeeId: string; employeeName: string }
-  ): Promise<LeaveRequest> {
-    // Get leave type details
-    const leaveType = await this.getLeaveType(data.leaveTypeId);
-    if (!leaveType) {
-      throw new Error('Leave type not found');
-    }
-
-    // Calculate duration
-    const duration = calculateDaysBetween(data.startDate, data.endDate);
-    const adjustedDuration = data.halfDay ? duration - 0.5 : duration;
-
-    // Check leave balance
-    const balance = await this.getLeaveBalance(data.employeeId, data.leaveTypeId);
-    if (balance && adjustedDuration > balance.remainingDays) {
-      console.warn('Leave request exceeds available balance');
-    }
-
-    const request: Omit<LeaveRequest, 'id'> = {
-      employeeId: data.employeeId,
-      employeeName: data.employeeName,
-      leaveTypeId: data.leaveTypeId,
-      leaveTypeName: leaveType.name,
-      startDate: data.startDate,
-      endDate: data.endDate,
-      duration: adjustedDuration,
-      reason: data.reason,
-      status: leaveType.requiresApproval ? 'pending' : 'approved',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    return leaveRequestService.create(request);
-  },
-
-  /**
-   * Update a leave request
-   */
-  async updateLeaveRequest(
-    id: string,
-    data: Partial<LeaveRequestFormData>
-  ): Promise<LeaveRequest> {
-    const request = await leaveRequestService.getById(id);
-    if (!request) {
-      throw new Error('Leave request not found');
-    }
-
-    if (request.status !== 'pending') {
-      throw new Error('Can only update pending leave requests');
-    }
-
-    const updates: Partial<LeaveRequest> = {};
-
-    if (data.startDate || data.endDate) {
-      const startDate = data.startDate || request.startDate;
-      const endDate = data.endDate || request.endDate;
-      updates.startDate = startDate;
-      updates.endDate = endDate;
-      updates.duration = calculateDaysBetween(startDate, endDate);
-    }
-
-    if (data.reason) {
-      updates.reason = data.reason;
-    }
-
-    if (data.leaveTypeId) {
-      const leaveType = await this.getLeaveType(data.leaveTypeId);
-      if (!leaveType) {
-        throw new Error('Leave type not found');
-      }
-      updates.leaveTypeId = data.leaveTypeId;
-      updates.leaveTypeName = leaveType.name;
-    }
-
-    return leaveRequestService.update(id, updates);
-  },
-
-  /**
-   * Cancel a leave request
-   */
-  async cancelLeaveRequest(id: string): Promise<void> {
-    const request = await leaveRequestService.getById(id);
-    if (!request) {
-      throw new Error('Leave request not found');
-    }
-
-    if (request.status === 'approved') {
-      // Restore leave balance
-      await this.adjustLeaveBalance(
-        request.employeeId,
-        request.leaveTypeId,
-        request.duration
-      );
-    }
-
-    await leaveRequestService.update(id, { status: 'cancelled' });
-  },
-
-  /**
-   * Get leave requests with filters
-   */
-  async getLeaveRequests(filters: LeaveFilters): Promise<LeaveRequest[]> {
+  async getAll(filters?: LeaveFilters): Promise<LeaveRequest[]> {
     const options: QueryOptions = {
       filters: [],
+      orderByField: 'createdAt',
+      orderDirection: 'desc',
     };
 
-    // Add employee filter
-    if (filters.employeeId) {
-      options.filters!.push({
-        field: 'employeeId',
-        operator: '==',
-        value: filters.employeeId,
-      });
-    }
-
-    // Add status filter
-    if (filters.status) {
+    if (filters?.status) {
       options.filters!.push({
         field: 'status',
         operator: '==',
@@ -153,317 +26,126 @@ export const leaveService = {
       });
     }
 
-    // Add leave type filter
-    if (filters.leaveTypeId) {
+    if (filters?.employeeId) {
       options.filters!.push({
-        field: 'leaveTypeId',
+        field: 'employeeId',
         operator: '==',
-        value: filters.leaveTypeId,
+        value: filters.employeeId,
       });
     }
 
-    // Add date range filters
-    if (filters.startDate) {
+    if (filters?.leaveType) {
       options.filters!.push({
-        field: 'startDate',
-        operator: '>=',
-        value: Timestamp.fromDate(filters.startDate),
+        field: 'leaveType',
+        operator: '==',
+        value: filters.leaveType,
       });
     }
 
-    if (filters.endDate) {
-      options.filters!.push({
-        field: 'endDate',
-        operator: '<=',
-        value: Timestamp.fromDate(filters.endDate),
-      });
+    if (filters?.limit) {
+      options.pagination = {
+        pageSize: filters.limit,
+      };
     }
 
-    // Add default ordering
-    options.orderByField = 'createdAt';
-    options.orderDirection = 'desc';
+    let requests = await leaveFirebaseService.getAll(options);
 
-    return leaveRequestService.getAll(options);
+    // Client-side search filter
+    if (filters?.search) {
+      const searchLower = filters.search.toLowerCase();
+      requests = requests.filter(req =>
+        req.employeeName.toLowerCase().includes(searchLower) ||
+        req.employeeEmail.toLowerCase().includes(searchLower) ||
+        req.reason.toLowerCase().includes(searchLower)
+      );
+    }
+
+    return requests;
   },
 
   /**
-   * Get pending leave requests for a manager
+   * Get leave request by ID
    */
-  async getPendingLeaveRequests(managerId: string): Promise<LeaveRequest[]> {
-    // This would need to integrate with employee service to get team members
-    // For now, return all pending requests
-    return this.getLeaveRequests({ status: 'pending' });
+  async getById(id: string): Promise<LeaveRequest | null> {
+    return await leaveFirebaseService.getById(id);
   },
 
-  // ==================== Leave Approval ====================
+  /**
+   * Create a new leave request
+   */
+  async create(data: Omit<LeaveRequest, 'id' | 'createdAt' | 'updatedAt'>): Promise<LeaveRequest> {
+    // Calculate total days
+    const start = new Date(data.startDate);
+    const end = new Date(data.endDate);
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+    const leaveRequest = {
+      ...data,
+      totalDays,
+      status: 'pending' as LeaveStatus,
+    };
+
+    return await leaveFirebaseService.create(leaveRequest);
+  },
 
   /**
-   * Approve a leave request
+   * Update leave request
    */
-  async approveLeaveRequest(id: string, approverId: string): Promise<LeaveRequest> {
-    const request = await leaveRequestService.getById(id);
-    if (!request) {
-      throw new Error('Leave request not found');
-    }
+  async update(id: string, data: Partial<LeaveRequest>): Promise<void> {
+    await leaveFirebaseService.update(id, data);
+  },
 
-    if (request.status !== 'pending') {
-      throw new Error('Can only approve pending leave requests');
-    }
-
-    // Update leave balance
-    await this.adjustLeaveBalance(
-      request.employeeId,
-      request.leaveTypeId,
-      -request.duration
-    );
-
-    return leaveRequestService.update(id, {
+  /**
+   * Approve leave request
+   */
+  async approve(id: string, approverId: string, approverName: string): Promise<void> {
+    await leaveFirebaseService.update(id, {
       status: 'approved',
       approvedBy: approverId,
+      approverName,
       approvedAt: new Date(),
     });
   },
 
   /**
-   * Reject a leave request
+   * Reject leave request
    */
-  async rejectLeaveRequest(
-    id: string,
-    approverId: string,
-    reason: string
-  ): Promise<LeaveRequest> {
-    const request = await leaveRequestService.getById(id);
-    if (!request) {
-      throw new Error('Leave request not found');
-    }
-
-    if (request.status !== 'pending') {
-      throw new Error('Can only reject pending leave requests');
-    }
-
-    return leaveRequestService.update(id, {
+  async reject(id: string, approverId: string, approverName: string, reason: string): Promise<void> {
+    await leaveFirebaseService.update(id, {
       status: 'rejected',
       approvedBy: approverId,
+      approverName,
       approvedAt: new Date(),
       rejectionReason: reason,
     });
   },
 
   /**
-   * Revoke an approved leave request
+   * Delete leave request
    */
-  async revokeLeaveRequest(id: string, reason: string): Promise<LeaveRequest> {
-    const request = await leaveRequestService.getById(id);
-    if (!request) {
-      throw new Error('Leave request not found');
-    }
-
-    if (request.status !== 'approved') {
-      throw new Error('Can only revoke approved leave requests');
-    }
-
-    // Restore leave balance
-    await this.adjustLeaveBalance(
-      request.employeeId,
-      request.leaveTypeId,
-      request.duration
-    );
-
-    return leaveRequestService.update(id, {
-      status: 'cancelled',
-      rejectionReason: reason,
-    });
-  },
-
-  // ==================== Leave Balances ====================
-
-  /**
-   * Get leave balances for an employee
-   */
-  async getLeaveBalances(employeeId: string): Promise<LeaveBalance[]> {
-    // In a real implementation, this would query a subcollection
-    // For now, return mock data based on leave types
-    const leaveTypes = await this.getLeaveTypes();
-    
-    return leaveTypes.map((type) => ({
-      leaveTypeId: type.id!,
-      leaveTypeName: type.name,
-      totalDays: type.maxDaysPerYear,
-      usedDays: 0,
-      remainingDays: type.maxDaysPerYear,
-      accrualRate: type.accrualRate,
-      updatedAt: new Date(),
-    }));
+  async delete(id: string): Promise<void> {
+    await leaveFirebaseService.delete(id);
   },
 
   /**
-   * Get leave balance for a specific leave type
+   * Get leave statistics
    */
-  async getLeaveBalance(
-    employeeId: string,
-    leaveTypeId: string
-  ): Promise<LeaveBalance | null> {
-    const balances = await this.getLeaveBalances(employeeId);
-    return balances.find((b) => b.leaveTypeId === leaveTypeId) || null;
-  },
+  async getStats(filters?: LeaveFilters): Promise<LeaveStats> {
+    const requests = await this.getAll(filters);
 
-  /**
-   * Adjust leave balance
-   */
-  async adjustLeaveBalance(
-    employeeId: string,
-    leaveTypeId: string,
-    adjustment: number
-  ): Promise<LeaveBalance> {
-    const balance = await this.getLeaveBalance(employeeId, leaveTypeId);
-    if (!balance) {
-      throw new Error('Leave balance not found');
-    }
-
-    const newUsedDays = balance.usedDays - adjustment;
-    const newRemainingDays = balance.totalDays - newUsedDays;
-
-    // In a real implementation, this would update the subcollection
     return {
-      ...balance,
-      usedDays: newUsedDays,
-      remainingDays: newRemainingDays,
-      updatedAt: new Date(),
+      totalRequests: requests.length,
+      pending: requests.filter(r => r.status === 'pending').length,
+      approved: requests.filter(r => r.status === 'approved').length,
+      rejected: requests.filter(r => r.status === 'rejected').length,
     };
   },
 
   /**
-   * Initialize leave balances for a new employee
+   * Get employee leave requests
    */
-  async initializeLeaveBalances(
-    employeeId: string,
-    hireDate: Date
-  ): Promise<LeaveBalance[]> {
-    const leaveTypes = await this.getLeaveTypes();
-    const balances: LeaveBalance[] = [];
-
-    for (const type of leaveTypes) {
-      // Calculate prorated balance based on hire date
-      const monthsEmployed = Math.max(
-        1,
-        Math.floor(
-          (Date.now() - hireDate.getTime()) / (1000 * 60 * 60 * 24 * 30)
-        )
-      );
-      const proratedDays = Math.min(
-        type.maxDaysPerYear,
-        type.accrualRate * monthsEmployed
-      );
-
-      balances.push({
-        leaveTypeId: type.id!,
-        leaveTypeName: type.name,
-        totalDays: proratedDays,
-        usedDays: 0,
-        remainingDays: proratedDays,
-        accrualRate: type.accrualRate,
-        lastAccrualDate: new Date(),
-        updatedAt: new Date(),
-      });
-    }
-
-    return balances;
-  },
-
-  // ==================== Leave Types ====================
-
-  /**
-   * Get all leave types
-   */
-  async getLeaveTypes(): Promise<LeaveType[]> {
-    return leaveTypeService.getAll({
-      filters: [{ field: 'isActive', operator: '==', value: true }],
-      orderByField: 'name',
-      orderDirection: 'asc',
-    });
-  },
-
-  /**
-   * Get a leave type by ID
-   */
-  async getLeaveType(id: string): Promise<LeaveType | null> {
-    return leaveTypeService.getById(id);
-  },
-
-  /**
-   * Create a new leave type
-   */
-  async createLeaveType(data: LeaveTypeFormData): Promise<LeaveType> {
-    // Check if code already exists
-    const existing = await leaveTypeService.getAll({
-      filters: [{ field: 'code', operator: '==', value: data.code.toUpperCase() }],
-    });
-
-    if (existing.length > 0) {
-      throw new Error('Leave type code already exists');
-    }
-
-    const leaveType: Omit<LeaveType, 'id'> = {
-      ...data,
-      code: data.code.toUpperCase(),
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    return leaveTypeService.create(leaveType);
-  },
-
-  /**
-   * Update a leave type
-   */
-  async updateLeaveType(
-    id: string,
-    data: Partial<LeaveTypeFormData>
-  ): Promise<LeaveType> {
-    const updates: Partial<LeaveType> = {
-      ...data,
-    };
-
-    if (data.code) {
-      updates.code = data.code.toUpperCase();
-    }
-
-    return leaveTypeService.update(id, updates);
-  },
-
-  /**
-   * Deactivate a leave type
-   */
-  async deactivateLeaveType(id: string): Promise<LeaveType> {
-    return leaveTypeService.update(id, { isActive: false });
-  },
-
-  /**
-   * Check for overlapping leave requests
-   */
-  async checkLeaveOverlap(
-    employeeId: string,
-    startDate: Date,
-    endDate: Date,
-    excludeRequestId?: string
-  ): Promise<LeaveRequest[]> {
-    const allRequests = await this.getLeaveRequests({
-      employeeId,
-      status: 'approved',
-    });
-
-    return allRequests.filter((request) => {
-      if (excludeRequestId && request.id === excludeRequestId) {
-        return false;
-      }
-
-      // Check for date overlap
-      return (
-        (startDate >= request.startDate && startDate <= request.endDate) ||
-        (endDate >= request.startDate && endDate <= request.endDate) ||
-        (startDate <= request.startDate && endDate >= request.endDate)
-      );
-    });
+  async getEmployeeRequests(employeeId: string): Promise<LeaveRequest[]> {
+    return await this.getAll({ employeeId });
   },
 };

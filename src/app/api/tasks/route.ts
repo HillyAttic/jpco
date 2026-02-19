@@ -28,35 +28,16 @@ const createTaskSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token from header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return ErrorResponses.unauthorized();
-    }
-
-    const token = authHeader.split('Bearer ')[1];
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
     
-    // Verify the Firebase token using Admin SDK
-    let decodedToken: admin.auth.DecodedIdToken;
-    try {
-      decodedToken = await admin.auth().verifyIdToken(token);
-    } catch (error) {
-      console.error('Token verification failed:', error);
+    if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
 
-    const userId = decodedToken.uid;
-
-    // Get user profile from Firestore using Admin SDK
-    const userDoc = await adminDb.collection('users').doc(userId).get();
-    
-    if (!userDoc.exists) {
-      console.error('User profile not found for:', userId);
-      return ErrorResponses.unauthorized();
-    }
-
-    const userProfile = userDoc.data();
-    const userRole = userProfile?.role || 'employee';
+    const userId = authResult.user.uid;
+    const userRole = authResult.user.claims.role;
     const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
 
     const { searchParams } = new URL(request.url);
@@ -101,24 +82,21 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get auth token from header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return ErrorResponses.unauthorized();
-    }
-
-    const token = authHeader.split('Bearer ')[1];
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
     
-    // Verify the Firebase token using Admin SDK
-    let decodedToken: admin.auth.DecodedIdToken;
-    try {
-      decodedToken = await admin.auth().verifyIdToken(token);
-    } catch (error) {
-      console.error('Token verification failed:', error);
+    if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
 
-    const userId = decodedToken.uid;
+    // Check role-based permissions (managers can create tasks)
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can create tasks');
+    }
+
+    const userId = authResult.user.uid;
 
     const body = await request.json();
 

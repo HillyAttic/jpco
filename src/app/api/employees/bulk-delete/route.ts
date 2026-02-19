@@ -1,17 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { employeeService } from '@/services/employee.service';
-import { handleApiError } from '@/lib/api-error-handler';
+import { employeeAdminService } from '@/services/employee-admin.service';
+import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * POST /api/employees/bulk-delete
- * Delete multiple employees
- * 
- * Note: This will only delete from Firestore users collection.
- * Firebase Auth users cannot be deleted from client-side SDK.
- * You would need Firebase Admin SDK for that.
+ * Delete multiple employees using Admin SDK
  */
 export async function POST(request: NextRequest) {
   try {
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (userRole !== 'admin') {
+      return ErrorResponses.forbidden('Admin access required');
+    }
+
     const body = await request.json();
     const { employeeIds } = body;
 
@@ -30,10 +38,10 @@ export async function POST(request: NextRequest) {
       failed: [] as { id: string; error: string }[],
     };
 
-    // Delete employees one by one
+    // Delete employees one by one using Admin SDK
     for (const id of employeeIds) {
       try {
-        await employeeService.delete(id);
+        await employeeAdminService.delete(id);
         results.success.push(id);
         console.log(`✓ Deleted employee: ${id}`);
       } catch (error) {

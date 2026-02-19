@@ -40,14 +40,23 @@ const updateRecurringTaskSchema = z.object({
  * GET /api/recurring-tasks/[id]
  * Fetch a single recurring task by ID
  * Validates Requirements: 3.1
+ * Requires: Employee role or higher
  */
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role - employees and above can view tasks
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions to view tasks');
+    }
 
     const { id } = await params;
     const task = await recurringTaskAdminService.getById(id);
@@ -66,14 +75,23 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
  * PUT /api/recurring-tasks/[id]
  * Update a recurring task
  * Validates Requirements: 3.2, 3.8
+ * Requires: Manager role or higher
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role - only managers and admins can update tasks
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can update tasks');
+    }
 
     const { id } = await params;
     const body = await request.json();
@@ -134,14 +152,23 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
  * DELETE /api/recurring-tasks/[id]
  * Delete a recurring task with options
  * Validates Requirements: 3.10
+ * Requires: Manager role or higher
  */
 export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role - only managers and admins can delete tasks
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can delete tasks');
+    }
 
     const { id } = await params;
     const { searchParams } = new URL(request.url);

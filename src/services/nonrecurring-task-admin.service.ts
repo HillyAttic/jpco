@@ -5,6 +5,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { NonRecurringTask } from './nonrecurring-task.service';
+import { Comment } from '@/types/task.types';
 
 /**
  * Non-Recurring Task Admin Service API
@@ -72,7 +73,7 @@ export const nonRecurringTaskAdminService = {
    */
   async getById(id: string): Promise<NonRecurringTask | null> {
     const doc = await adminDb.collection('tasks').doc(id).get();
-    
+
     if (!doc.exists) {
       return null;
     }
@@ -124,7 +125,7 @@ export const nonRecurringTaskAdminService = {
     };
 
     await adminDb.collection('tasks').doc(id).update(updateData);
-    
+
     const updated = await this.getById(id);
     if (!updated) {
       throw new Error('Task not found after update');
@@ -151,5 +152,55 @@ export const nonRecurringTaskAdminService = {
 
     const newStatus = task.status === 'completed' ? 'pending' : 'completed';
     return this.update(id, { status: newStatus });
+  },
+
+  /**
+   * Add a comment to a task
+   */
+  async addComment(taskId: string, comment: Omit<Comment, 'id' | 'taskId' | 'createdAt'>): Promise<Comment> {
+    const taskRef = adminDb.collection('tasks').doc(taskId);
+    const taskDoc = await taskRef.get();
+
+    if (!taskDoc.exists) {
+      throw new Error('Task not found');
+    }
+
+    const commentData = {
+      ...comment,
+      taskId,
+      createdAt: new Date(),
+    };
+
+    const commentRef = await taskRef.collection('comments').add(commentData);
+
+    // Update comment count on task (optional, but good for UI)
+    // await taskRef.update({ 
+    //   commentCount: admin.firestore.FieldValue.increment(1) 
+    // });
+
+    return {
+      id: commentRef.id,
+      ...commentData,
+    };
+  },
+
+  /**
+   * Get comments for a task
+   */
+  async getComments(taskId: string): Promise<Comment[]> {
+    const commentsSnapshot = await adminDb
+      .collection('tasks')
+      .doc(taskId)
+      .collection('comments')
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    return commentsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      taskId,
+      author: doc.data().author,
+      content: doc.data().content,
+      createdAt: doc.data().createdAt?.toDate() || new Date(),
+    }));
   },
 };

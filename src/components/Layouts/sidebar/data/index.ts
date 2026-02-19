@@ -114,6 +114,39 @@ export const NAV_DATA = [
         items: [],
         requiresRole: ['admin', 'manager'], // Only managers and admins can see this
       },
+    ],
+  },
+  {
+    label: "ADMIN",
+    items: [
+      {
+        title: "Leave Approvals",
+        url: "/admin/leave-approvals",
+        icon: Icons.CheckCircleIcon,
+        items: [],
+        requiresRole: ['admin', 'manager'], // Only managers and admins can approve leaves
+      },
+      {
+        title: "Attendance Roster",
+        url: "/admin/attendance-roster",
+        icon: Icons.Calendar,
+        items: [],
+        requiresRole: ['admin'], // Only admins can view full attendance roster
+      },
+      {
+        title: "Client Visits",
+        url: "/admin/client-visits",
+        icon: Icons.MapPinIcon,
+        items: [],
+        requiresRole: ['admin'], // Only admins can view client visits
+      },
+      {
+        title: "Manager Hierarchy",
+        url: "/admin/manager-hierarchy",
+        icon: Icons.UsersIcon,
+        items: [],
+        requiresRole: ['admin'], // Only admins can manage hierarchies
+      },
 
       // Authentication menu item hidden - users can access auth pages directly via URL if needed
       // {

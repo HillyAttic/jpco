@@ -54,6 +54,7 @@ function initAdmin() {
 
 export const adminApp = initAdmin();
 export const adminDb = admin.firestore(adminApp);
+export const adminAuth = admin.auth(adminApp);
 export const adminMessaging = admin.messaging(adminApp);
 
 export default admin;

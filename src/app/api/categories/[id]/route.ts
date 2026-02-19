@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
-import { categoryService } from '@/services/category.service';
+import { adminDb } from '@/lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
 // Validation schema for category update
 const updateCategorySchema = z.object({
@@ -14,28 +15,33 @@ const updateCategorySchema = z.object({
 
 /**
  * GET /api/categories/[id]
- * Get a single category by ID from Firestore
- * Validates Requirements: 6.7
+ * Get a single category by ID using Admin SDK
  */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
 
     const { id } = await params;
-    const category = await categoryService.getById(id);
+    const doc = await adminDb.collection('categories').doc(id).get();
 
-    if (!category) {
+    if (!doc.exists) {
       return ErrorResponses.notFound('Category');
     }
 
-    return NextResponse.json(category);
+    return NextResponse.json({ id: doc.id, ...doc.data() });
   } catch (error) {
     return handleApiError(error);
   }
@@ -43,24 +49,28 @@ export async function GET(
 
 /**
  * PUT /api/categories/[id]
- * Update a category in Firestore
- * Validates Requirements: 6.7
+ * Update a category using Admin SDK
  */
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can update categories');
+    }
 
     const { id } = await params;
     const body = await request.json();
 
-    // Validate request body
     const validationResult = updateCategorySchema.safeParse(body);
     if (!validationResult.success) {
       return ErrorResponses.badRequest(
@@ -69,16 +79,16 @@ export async function PUT(
       );
     }
 
-    // Check if category exists
-    const existingCategory = await categoryService.getById(id);
-    if (!existingCategory) {
+    const docRef = adminDb.collection('categories').doc(id);
+    const existing = await docRef.get();
+    if (!existing.exists) {
       return ErrorResponses.notFound('Category');
     }
 
-    // Update category in Firestore
-    const updatedCategory = await categoryService.update(id, validationResult.data);
+    await docRef.update({ ...validationResult.data, updatedAt: Timestamp.now() });
+    const updated = await docRef.get();
 
-    return NextResponse.json(updatedCategory);
+    return NextResponse.json({ id: updated.id, ...updated.data() });
   } catch (error) {
     return handleApiError(error);
   }
@@ -86,30 +96,34 @@ export async function PUT(
 
 /**
  * DELETE /api/categories/[id]
- * Delete a category from Firestore
- * Validates Requirements: 6.7
+ * Delete a category using Admin SDK
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can delete categories');
+    }
 
     const { id } = await params;
-    
-    // Check if category exists
-    const existingCategory = await categoryService.getById(id);
-    if (!existingCategory) {
+
+    const docRef = adminDb.collection('categories').doc(id);
+    const existing = await docRef.get();
+    if (!existing.exists) {
       return ErrorResponses.notFound('Category');
     }
 
-    // Delete category from Firestore
-    await categoryService.delete(id);
+    await docRef.delete();
 
     return NextResponse.json({ message: 'Category deleted successfully' });
   } catch (error) {

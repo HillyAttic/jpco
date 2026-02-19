@@ -41,23 +41,11 @@ const nextConfig = {
               priority: 40,
               enforce: true,
             },
-            // Firebase - split into smaller chunks
-            firebaseApp: {
-              name: 'firebase-app',
-              test: /[\\/]node_modules[\\/](@firebase\/app|firebase\/app)[\\/]/,
+            // Firebase - single chunk to avoid missing dependencies
+            firebase: {
+              name: 'firebase',
+              test: /[\\/]node_modules[\\/](@firebase|firebase)[\\/]/,
               priority: 39,
-              enforce: true,
-            },
-            firebaseFirestore: {
-              name: 'firebase-firestore',
-              test: /[\\/]node_modules[\\/](@firebase\/firestore|firebase\/firestore)[\\/]/,
-              priority: 38,
-              enforce: true,
-            },
-            firebaseAuth: {
-              name: 'firebase-auth',
-              test: /[\\/]node_modules[\\/](@firebase\/auth|firebase\/auth)[\\/]/,
-              priority: 37,
               enforce: true,
             },
             // Charts - separate chunk

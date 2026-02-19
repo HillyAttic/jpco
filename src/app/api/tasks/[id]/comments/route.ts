@@ -1,71 +1,63 @@
-import { NextRequest } from 'next/server';
-import { taskService } from '@/services/task.service';
-import { Comment } from '@/types/task.types';
+import { NextRequest, NextResponse } from 'next/server';
+import { nonRecurringTaskAdminService } from '@/services/nonrecurring-task-admin.service';
+import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
     const { id } = await params;
-    const comments = taskService.getCommentsByTaskId(id);
-    
-    return new Response(JSON.stringify(comments), {
-      status: 200,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    const comments = await nonRecurringTaskAdminService.getComments(id);
+
+    return NextResponse.json(comments);
   } catch (error) {
-    console.error('Error fetching comments:', error);
-    return new Response(JSON.stringify({ error: 'Failed to fetch comments' }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    return handleApiError(error);
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    // Allow any authenticated user (admin, manager, employee) to comment
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
+
     const { id } = await params;
-    const commentData = await request.json();
-    
-    // Validate required fields
-    if (!commentData.author || !commentData.content) {
-      return new Response(JSON.stringify({ error: 'Author and content are required' }), {
-        status: 400,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+    const body = await request.json();
+
+    if (!body.content || typeof body.content !== 'string' || !body.content.trim()) {
+      return ErrorResponses.badRequest('Content is required');
     }
-    
-    const newComment = taskService.addComment(id, {
-      author: commentData.author,
-      content: commentData.content,
+
+    // Use display name from auth token if author is not provided or to enforce identity
+    const authorName = authResult.user.name || authResult.user.email || 'Unknown User';
+
+    const newComment = await nonRecurringTaskAdminService.addComment(id, {
+      author: authorName,
+      content: body.content.trim(),
     });
-    
-    if (!newComment) {
-      return new Response(JSON.stringify({ error: 'Task not found' }), {
-        status: 404,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-    }
-    
-    return new Response(JSON.stringify(newComment), {
-      status: 201,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+
+    return NextResponse.json(newComment, { status: 201 });
   } catch (error) {
-    console.error('Error adding comment:', error);
-    return new Response(JSON.stringify({ error: 'Failed to add comment' }), {
-      status: 500,
-      headers: {
-        'Content-Type': 'application/json',
-      },
-    });
+    return handleApiError(error);
   }
 }

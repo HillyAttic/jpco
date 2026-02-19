@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { handleApiError } from '@/lib/api-error-handler';
-import { categoryService } from '@/services/category.service';
+import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
+import { adminDb } from '@/lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 import { CreateCategoryInput } from '@/types/category.types';
 
 const initialCategories: CreateCategoryInput[] = [
@@ -64,15 +65,27 @@ const initialCategories: CreateCategoryInput[] = [
 
 /**
  * POST /api/categories/seed
- * Seed initial categories in Firestore
- * This endpoint is for development/setup purposes
+ * Seed initial categories in Firestore using Admin SDK
  */
 export async function POST(request: NextRequest) {
   try {
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (userRole !== 'admin') {
+      return ErrorResponses.forbidden('Admin access required');
+    }
+
     // Check if categories already exist
-    const existingCategories = await categoryService.getAll();
-    
-    if (existingCategories.length > 0) {
+    const existingSnapshot = await adminDb.collection('categories').get();
+
+    if (!existingSnapshot.empty) {
+      const existingCategories = existingSnapshot.docs.map(d => ({ id: d.id, ...d.data() }));
       return NextResponse.json({
         message: `Found ${existingCategories.length} existing categories. Skipping seed.`,
         existingCount: existingCategories.length,
@@ -86,8 +99,15 @@ export async function POST(request: NextRequest) {
 
     for (const categoryData of initialCategories) {
       try {
-        const category = await categoryService.create(categoryData);
-        createdCategories.push(category);
+        const now = Timestamp.now();
+        const docRef = await adminDb.collection('categories').add({
+          ...categoryData,
+          taskCount: 0,
+          createdAt: now,
+          updatedAt: now,
+        });
+        const created = await docRef.get();
+        createdCategories.push({ id: created.id, ...created.data() });
       } catch (error) {
         errors.push({
           category: categoryData.name,
@@ -102,7 +122,6 @@ export async function POST(request: NextRequest) {
       categories: createdCategories,
       errors: errors.length > 0 ? errors : undefined,
     }, { status: 201 });
-
   } catch (error) {
     return handleApiError(error);
   }

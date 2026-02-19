@@ -1,44 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { teamService } from '@/services/team.service';
+import { teamAdminService } from '@/services/team-admin.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
-// Schema for updating member role
 const updateMemberRoleSchema = z.object({
   role: z.string().min(1, 'Role is required'),
 });
 
 /**
  * DELETE /api/teams/[id]/members/[memberId] - Remove a member from a team
- * Validates Requirements: 4.6
  */
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can remove team members');
+    }
 
     const { id, memberId } = await params;
-    
-    // Check if team exists
-    const existingTeam = await teamService.getById(id);
+
+    const existingTeam = await teamAdminService.getById(id);
     if (!existingTeam) {
       return ErrorResponses.notFound('Team');
     }
 
-    // Check if member exists in team
-    const memberExists = existingTeam.members.some(member => member.id === memberId);
+    const memberExists = existingTeam.members.some((m: any) => m.id === memberId);
     if (!memberExists) {
       return ErrorResponses.notFound('Member not found in team');
     }
 
-    // Remove the member from the team
-    const updatedTeam = await teamService.removeMember(id, memberId);
+    const updatedTeam = await teamAdminService.removeMember(id, memberId);
 
     return NextResponse.json({
       success: true,
@@ -52,23 +53,27 @@ export async function DELETE(
 
 /**
  * PATCH /api/teams/[id]/members/[memberId] - Update a member's role
- * Validates Requirements: 4.5, 4.6
  */
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; memberId: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can update member roles');
+    }
 
     const { id, memberId } = await params;
     const body = await request.json();
 
-    // Validate the request body
     const validationResult = updateMemberRoleSchema.safeParse(body);
     if (!validationResult.success) {
       return ErrorResponses.badRequest(
@@ -79,20 +84,17 @@ export async function PATCH(
 
     const { role } = validationResult.data;
 
-    // Check if team exists
-    const existingTeam = await teamService.getById(id);
+    const existingTeam = await teamAdminService.getById(id);
     if (!existingTeam) {
       return ErrorResponses.notFound('Team');
     }
 
-    // Check if member exists in team
-    const memberExists = existingTeam.members.some(member => member.id === memberId);
+    const memberExists = existingTeam.members.some((m: any) => m.id === memberId);
     if (!memberExists) {
       return ErrorResponses.notFound('Member not found in team');
     }
 
-    // Update the member's role
-    const updatedTeam = await teamService.updateMemberRole(id, memberId, role.trim());
+    const updatedTeam = await teamAdminService.updateMemberRole(id, memberId, role.trim());
 
     return NextResponse.json({
       success: true,

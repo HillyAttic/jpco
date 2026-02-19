@@ -34,7 +34,7 @@ export const employeeAdminService = {
   }): Promise<Employee[]> {
     try {
       console.log('[EmployeeAdminService] Fetching employees from users collection');
-      
+
       let query = adminDb.collection('users');
 
       // Add status filter if provided
@@ -44,7 +44,7 @@ export const employeeAdminService = {
 
       const snapshot = await query.get();
       console.log(`[EmployeeAdminService] Found ${snapshot.size} users`);
-      
+
       let employees: Employee[] = [];
 
       snapshot.forEach((doc) => {
@@ -175,7 +175,7 @@ export const employeeAdminService = {
     data: Partial<Omit<Employee, 'id'>>
   ): Promise<Employee> {
     console.log('[EmployeeAdminService] Updating employee:', id);
-    
+
     try {
       const userRef = adminDb.collection('users').doc(id);
       const userDoc = await userRef.get();
@@ -223,8 +223,69 @@ export const employeeAdminService = {
   },
 
   /**
-   * Delete an employee
+   * Create a new employee using Firebase Admin Auth + Firestore
    */
+  async create(
+    data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>,
+    password: string
+  ): Promise<Employee> {
+    const { adminAuth } = await import('@/lib/firebase-admin');
+    const { Timestamp } = await import('firebase-admin/firestore');
+
+    // Check if employee ID already exists
+    const existing = await this.getByEmployeeId(data.employeeId);
+    if (existing) {
+      throw new Error('Employee ID already exists');
+    }
+
+    // Check if email already exists in Firestore
+    const emailSnapshot = await adminDb.collection('users').where('email', '==', data.email).limit(1).get();
+    if (!emailSnapshot.empty) {
+      throw new Error('Email already exists');
+    }
+
+    // Create user in Firebase Auth
+    const userRole = this.mapEmployeeRoleToUserRole(data.role);
+    const userRecord = await adminAuth.createUser({
+      email: data.email,
+      password,
+      displayName: data.name,
+      phoneNumber: data.phone || undefined,
+    });
+
+    const now = Timestamp.now();
+
+    // Create user document in Firestore
+    await adminDb.collection('users').doc(userRecord.uid).set({
+      uid: userRecord.uid,
+      email: data.email,
+      displayName: data.name,
+      phoneNumber: data.phone || '',
+      role: userRole,
+      employeeId: data.employeeId,
+      status: data.status,
+      isActive: data.status === 'active',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Set custom claims
+    await adminAuth.setCustomUserClaims(userRecord.uid, { role: userRole });
+
+    return {
+      id: userRecord.uid,
+      employeeId: data.employeeId,
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      role: data.role,
+      status: data.status,
+      createdAt: now.toDate(),
+      updatedAt: now.toDate(),
+    };
+  },
+
+
   async delete(id: string): Promise<void> {
     try {
       await adminDb.collection('users').doc(id).delete();

@@ -54,25 +54,6 @@ export default function RootLayout({ children }: PropsWithChildren) {
         <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
       </head>
       <body className="font-sans antialiased">
-        {/* Preload critical resources */}
-        <Script
-          id="preload-firebase"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              if ('requestIdleCallback' in window) {
-                requestIdleCallback(() => {
-                  const link = document.createElement('link');
-                  link.rel = 'preload';
-                  link.as = 'script';
-                  link.href = '/_next/static/chunks/firebase.js';
-                  document.head.appendChild(link);
-                }, { timeout: 2000 });
-              }
-            `
-          }}
-        />
-        
         <Providers>
           <ServiceWorkerProvider>
             {/* Skip to main content link for keyboard navigation */}

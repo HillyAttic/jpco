@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { shiftService } from '@/services/shift.service';
+import { shiftAdminService } from '@/services/shift-admin.service';
 import { shiftSchema } from '@/lib/attendance-validation';
+import { ErrorResponses } from '@/lib/api-error-handler';
 
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Authentication required' },
-        { status: 401 }
-      );
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
     }
 
-    const shifts = await shiftService.getShifts();
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
+
+    const shifts = await shiftAdminService.getShifts();
     return NextResponse.json(shifts, { status: 200 });
   } catch (error: any) {
     console.error('Get shifts error:', error);
@@ -25,18 +30,22 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Authentication required' },
-        { status: 401 }
-      );
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can create shifts');
     }
 
     const body = await request.json();
     const validatedData = shiftSchema.parse(body);
 
-    const shift = await shiftService.createShift(validatedData);
+    const shift = await shiftAdminService.createShift(validatedData);
 
     return NextResponse.json(shift, { status: 201 });
   } catch (error: any) {

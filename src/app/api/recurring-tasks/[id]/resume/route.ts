@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { recurringTaskService } from '@/services/recurring-task.service';
+import { recurringTaskAdminService } from '@/services/recurring-task-admin.service';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
 /**
@@ -12,23 +12,31 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
 
     const { id } = await params;
-    
-    const updatedTask = await recurringTaskService.resume(id);
-    
+
+    const updatedTask = await recurringTaskAdminService.resume(id);
+
     return NextResponse.json(updatedTask, { status: 200 });
   } catch (error) {
     // Check if it's a "not found" error
     if (error instanceof Error && error.message === 'Task not found') {
       return ErrorResponses.notFound('Recurring task');
     }
-    
+
     return handleApiError(error);
   }
 }

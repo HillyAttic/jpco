@@ -207,16 +207,15 @@ export function onForegroundMessage(callback: (payload: any) => void) {
   });
 }
 
+import { authenticatedFetch } from '@/lib/api-client';
+
 /**
  * Save FCM token to Firestore for the user
  */
 export async function saveFCMToken(userId: string, token: string): Promise<boolean> {
   try {
-    const response = await fetch('/api/notifications/fcm-token', {
+    const response = await authenticatedFetch('/api/notifications/fcm-token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ userId, token }),
     });
 
@@ -237,11 +236,8 @@ export async function saveFCMToken(userId: string, token: string): Promise<boole
  */
 export async function deleteFCMToken(userId: string): Promise<boolean> {
   try {
-    const response = await fetch('/api/notifications/fcm-token', {
+    const response = await authenticatedFetch('/api/notifications/fcm-token', {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ userId }),
     });
 

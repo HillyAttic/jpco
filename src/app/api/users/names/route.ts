@@ -1,35 +1,36 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { employeeService } from '@/services/employee.service';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * GET /api/users/names
  * Get a map of user IDs to display names
- * Used for displaying user names in task lists and other components
+ * Uses Admin SDK to bypass Firestore security rules.
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token from header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
 
-    // Fetch all employees
-    const employees = await employeeService.getAll();
-    
-    // Create a map of user ID to name
+    const { adminDb } = await import('@/lib/firebase-admin');
+
+    // Fetch all users from the users collection
+    const snapshot = await adminDb.collection('users').get();
     const nameMap: Record<string, string> = {};
-    employees.forEach(emp => {
-      if (emp.id) {
-        nameMap[emp.id] = emp.name || emp.email || 'Unknown User';
-      }
-      // Also map by employeeId in case tasks reference that
-      if (emp.employeeId && emp.employeeId !== emp.id) {
-        nameMap[emp.employeeId] = emp.name || emp.email || 'Unknown User';
+
+    snapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      const name = data.displayName || data.name || data.email || 'Unknown User';
+      nameMap[doc.id] = name;
+      // Also map by employeeId if present
+      if (data.employeeId && data.employeeId !== doc.id) {
+        nameMap[data.employeeId] = name;
       }
     });
-    
+
     return NextResponse.json(nameMap, { status: 200 });
   } catch (error) {
     return handleApiError(error);

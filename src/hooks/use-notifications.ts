@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthEnhanced } from './use-auth-enhanced';
+import { authenticatedFetch } from '@/lib/api-client';
 
 export interface AppNotification {
   id: string;
@@ -34,7 +35,7 @@ export function useNotifications() {
     }
 
     try {
-      const response = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`);
+      const response = await authenticatedFetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`);
       if (!response.ok) {
         console.error('Failed to fetch notifications:', response.statusText);
         setLoading(false);
@@ -79,9 +80,8 @@ export function useNotifications() {
   // Mark notification as read via API
   const markAsRead = useCallback(async (notificationId: string) => {
     try {
-      await fetch('/api/notifications', {
+      await authenticatedFetch('/api/notifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'markAsRead', notificationId }),
       });
 
@@ -100,9 +100,8 @@ export function useNotifications() {
     if (!user?.uid) return;
 
     try {
-      await fetch('/api/notifications', {
+      await authenticatedFetch('/api/notifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'markAllAsRead', userId: user.uid }),
       });
 
@@ -117,9 +116,8 @@ export function useNotifications() {
   // Delete notification via API
   const deleteNotification = useCallback(async (notificationId: string) => {
     try {
-      await fetch('/api/notifications', {
+      await authenticatedFetch('/api/notifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete', notificationId }),
       });
 

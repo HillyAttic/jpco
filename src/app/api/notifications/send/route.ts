@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendNotification } from '@/lib/notifications/send-notification';
+import { ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * POST /api/notifications/send
@@ -14,6 +15,20 @@ import { sendNotification } from '@/lib/notifications/send-notification';
  */
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+    
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
     const { userIds, title, body, data } = await request.json();
 
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {

@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { employeeService, Employee } from '@/services/employee.service';
 import { employeeAdminService } from '@/services/employee-admin.service';
-import { userManagementService } from '@/services/user-management.service';
-import { UserRole } from '@/types/auth.types';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
@@ -25,8 +22,22 @@ const createEmployeeSchema = z.object({
  */
 export async function GET(request: NextRequest) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
     console.log('[API /api/employees] GET request received');
-    
+
     // TODO: Add authentication check
     // const user = await verifyAuth(request);
     // if (!user) {
@@ -66,8 +77,22 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Verify authentication
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    // Check role-based permissions
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    }
+
     const body = await request.json();
-    
+
     console.log('=== EMPLOYEE CREATE REQUEST ===');
     console.log('Employee ID:', body.employeeId);
     console.log('Email:', body.email);
@@ -85,24 +110,24 @@ export async function POST(request: NextRequest) {
     const employeeData = validationResult.data;
 
     // Extract password from the data
-    const { password, ...employeeWithoutPassword} = employeeData;
+    const { password, ...employeeWithoutPassword } = employeeData;
 
-    // Create employee
-    console.log('Calling employeeService.create...');
-    const newEmployee = await employeeService.create(employeeWithoutPassword, password);
+    // Create employee using Admin SDK
+    console.log('Calling employeeAdminService.create...');
+    const newEmployee = await employeeAdminService.create(employeeWithoutPassword, password || '');
     console.log('Employee created successfully:', newEmployee.id);
 
     return NextResponse.json(newEmployee, { status: 201 });
   } catch (error) {
     console.error('=== EMPLOYEE CREATE ERROR ===');
     console.error('Error message:', error instanceof Error ? error.message : String(error));
-    
+
     // Handle Firebase auth errors
     if (error instanceof Error) {
       if (error.message.includes('auth/email-already-in-use') || error.message.includes('Email already exists')) {
         return ErrorResponses.conflict('Email already exists. This employee may have already been imported.');
       }
-      
+
       if (error.message === 'Employee ID already exists') {
         return ErrorResponses.conflict('Employee ID already exists');
       }

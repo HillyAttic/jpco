@@ -1,34 +1,42 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { attendanceService } from '@/services/attendance.service';
+import { attendanceAdminService } from '@/services/attendance-admin.service';
 import { clockInDataSchema } from '@/lib/attendance-validation';
-import { auth } from '@/lib/firebase';
+import { ErrorResponses } from '@/lib/api-error-handler';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get current user from auth (simplified - in production, verify JWT token)
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: 'Unauthorized', message: 'Authentication required' },
-        { status: 401 }
-      );
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
     }
 
-    // Parse request body
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
+
     const body = await request.json();
 
-    // Validate input
     const validatedData = clockInDataSchema.parse({
-      ...body,
+      employeeId: body.employeeId || authResult.user.uid,
       timestamp: new Date(body.timestamp || Date.now()),
+      location: body.location,
+      notes: body.notes,
     });
 
-    // Clock in the employee
-    const record = await attendanceService.clockIn({
+    const record = await attendanceAdminService.clockIn({
       ...validatedData,
-      employeeId: body.employeeId,
-      employeeName: body.employeeName,
+      employeeName: body.employeeName || authResult.user.email || '',
     });
+
+    if (!record) {
+      return NextResponse.json(
+        { error: 'Already clocked in', message: 'Employee has already clocked in today' },
+        { status: 409 }
+      );
+    }
 
     return NextResponse.json(record, { status: 201 });
   } catch (error: any) {
@@ -36,20 +44,13 @@ export async function POST(request: NextRequest) {
 
     if (error.name === 'ZodError') {
       return NextResponse.json(
-        {
-          error: 'Validation Error',
-          message: 'Invalid input data',
-          details: error.errors,
-        },
+        { error: 'Validation Error', message: 'Invalid input data', details: error.errors },
         { status: 400 }
       );
     }
 
     return NextResponse.json(
-      {
-        error: 'Internal Server Error',
-        message: error.message || 'Failed to clock in',
-      },
+      { error: 'Internal Server Error', message: error.message || 'Failed to clock in' },
       { status: 500 }
     );
   }

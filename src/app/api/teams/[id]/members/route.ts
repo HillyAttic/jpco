@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { teamService } from '@/services/team.service';
+import { teamAdminService } from '@/services/team-admin.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
-// Schema for adding a member
 const addMemberSchema = z.object({
   id: z.string().min(1, 'Member ID is required'),
   name: z.string().min(1, 'Member name is required'),
@@ -13,23 +12,27 @@ const addMemberSchema = z.object({
 
 /**
  * POST /api/teams/[id]/members - Add a member to a team
- * Validates Requirements: 4.5
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
+    }
+
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can add team members');
+    }
 
     const { id } = await params;
     const body = await request.json();
 
-    // Validate the request body
     const validationResult = addMemberSchema.safeParse(body);
     if (!validationResult.success) {
       return ErrorResponses.badRequest(
@@ -40,14 +43,12 @@ export async function POST(
 
     const validatedData = validationResult.data;
 
-    // Check if team exists
-    const existingTeam = await teamService.getById(id);
+    const existingTeam = await teamAdminService.getById(id);
     if (!existingTeam) {
       return ErrorResponses.notFound('Team');
     }
 
-    // Add the member to the team
-    const updatedTeam = await teamService.addMember(id, {
+    const updatedTeam = await teamAdminService.addMember(id, {
       id: validatedData.id,
       name: validatedData.name,
       avatar: validatedData.avatar,
@@ -60,11 +61,9 @@ export async function POST(
       message: 'Member added to team successfully',
     });
   } catch (error) {
-    // Handle specific service errors
     if (error instanceof Error && error.message === 'Member already exists in team') {
       return ErrorResponses.conflict('Member already exists in team');
     }
-
     return handleApiError(error);
   }
 }

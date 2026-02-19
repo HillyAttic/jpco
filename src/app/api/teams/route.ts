@@ -1,41 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { teamAdminService } from '@/services/team-admin.service';
-import { employeeService } from '@/services/employee.service';
 import { teamSchema } from '@/lib/validation';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * GET /api/teams - List teams with optional filters
- * Supports filtering by status, department, and search
- * Validates Requirements: 4.2, 4.9
  */
 export async function GET(request: NextRequest) {
   try {
-    // Get auth token from header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    
-    // Decode JWT token to get user ID (basic validation)
-    let userId: string;
-    try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      userId = payload.user_id || payload.sub;
-      
-      if (!userId) {
-        return ErrorResponses.unauthorized();
-      }
-    } catch (error) {
-      return ErrorResponses.unauthorized();
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
     }
-
-    console.log(`[Teams API] User ${userId} fetching teams`);
 
     const { searchParams } = new URL(request.url);
-    
+
     const filters = {
       status: searchParams.get('status') || undefined,
       department: searchParams.get('department') || undefined,
@@ -43,18 +29,13 @@ export async function GET(request: NextRequest) {
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
     };
 
-    // Remove undefined values
     const cleanFilters = Object.fromEntries(
       Object.entries(filters).filter(([_, value]) => value !== undefined)
     );
 
     const teams = await teamAdminService.getAll(cleanFilters);
 
-    return NextResponse.json({
-      success: true,
-      data: teams,
-      count: teams.length,
-    });
+    return NextResponse.json({ success: true, data: teams, count: teams.length });
   } catch (error) {
     return handleApiError(error);
   }
@@ -62,36 +43,23 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/teams - Create a new team
- * Validates Requirements: 4.2
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get auth token from header
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
 
-    const token = authHeader.split('Bearer ')[1];
-    
-    // Decode JWT token to get user ID
-    let userId: string;
-    try {
-      const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-      userId = payload.user_id || payload.sub;
-      
-      if (!userId) {
-        return ErrorResponses.unauthorized();
-      }
-    } catch (error) {
-      return ErrorResponses.unauthorized();
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can create teams');
     }
-
-    console.log(`[Teams API] User ${userId} creating team`);
 
     const body = await request.json();
 
-    // Validate the request body
     const validationResult = teamSchema.safeParse(body);
     if (!validationResult.success) {
       return ErrorResponses.badRequest(
@@ -102,47 +70,42 @@ export async function POST(request: NextRequest) {
 
     const validatedData = validationResult.data;
 
-    // Get leader name if leaderId is provided
+    // Use Admin SDK to look up employee names
+    const { adminDb } = await import('@/lib/firebase-admin');
+
     let leaderName = '';
     if (validatedData.leaderId) {
-      const leader = await employeeService.getById(validatedData.leaderId);
-      if (leader) {
-        leaderName = leader.name;
+      const leaderDoc = await adminDb.collection('employees').doc(validatedData.leaderId).get();
+      if (leaderDoc.exists) {
+        leaderName = leaderDoc.data()!.name || '';
       }
     }
 
-    // Get member details if memberIds are provided
     const members = [];
     if (validatedData.memberIds && validatedData.memberIds.length > 0) {
       for (const memberId of validatedData.memberIds) {
-        const employee = await employeeService.getById(memberId);
-        if (employee) {
-          members.push({
-            id: employee.id!,
-            name: employee.name,
-            avatar: undefined,
-            role: employee.role,
-          });
+        const empDoc = await adminDb.collection('employees').doc(memberId).get();
+        if (empDoc.exists) {
+          const emp = empDoc.data()!;
+          members.push({ id: memberId, name: emp.name, avatar: undefined, role: emp.role });
         }
       }
     }
 
-    // Create the team using Admin SDK
     const team = await teamAdminService.create({
       name: validatedData.name,
       description: validatedData.description || '',
       leaderId: validatedData.leaderId,
-      leaderName: leaderName,
+      leaderName,
       memberIds: validatedData.memberIds || [],
-      members: members,
+      members,
       status: validatedData.status || 'active',
     });
 
-    return NextResponse.json({
-      success: true,
-      data: team,
-      message: 'Team created successfully',
-    }, { status: 201 });
+    return NextResponse.json(
+      { success: true, data: team, message: 'Team created successfully' },
+      { status: 201 }
+    );
   } catch (error) {
     return handleApiError(error);
   }

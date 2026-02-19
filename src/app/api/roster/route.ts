@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { rosterService } from '@/services/roster.service';
+import { rosterAdminService } from '@/services/roster-admin.service';
+import { ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * GET /api/roster
@@ -7,26 +8,24 @@ import { rosterService } from '@/services/roster.service';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
     }
 
-    // Get query parameters
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
+    }
+
     const searchParams = request.nextUrl.searchParams;
-    const userId = searchParams.get('userId');
-    const month = searchParams.get('month');
-    const year = searchParams.get('year');
+    const userId = searchParams.get('userId') || undefined;
+    const month = searchParams.get('month') ? parseInt(searchParams.get('month')!) : undefined;
+    const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined;
 
-    // Build filters
-    const filters: any = {};
-    if (userId) filters.userId = userId;
-    if (month) filters.month = parseInt(month);
-    if (year) filters.year = parseInt(year);
-
-    // Get roster entries
-    const entries = await rosterService.getRosterEntries(filters);
+    const entries = await rosterAdminService.getRosterEntries({ userId, month, year });
 
     return NextResponse.json(entries);
   } catch (error: any) {
@@ -44,25 +43,25 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
     }
 
-    // Get request body
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can create roster entries');
+    }
+
     const body = await request.json();
 
-    // Validate required fields
     if (!body.userId || !body.userName) {
-      return NextResponse.json(
-        { error: 'Missing required fields' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Determine task type and validate accordingly
-    const taskType = body.taskType || 'multi'; // Default to multi for backward compatibility
+    const taskType = body.taskType || 'multi';
 
     if (taskType === 'multi') {
       if (!body.activityName || !body.startDate || !body.endDate) {
@@ -80,12 +79,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Create roster entry
-    const entryData: any = {
-      taskType,
-      userId: body.userId,
-      userName: body.userName,
-    };
+    const entryData: any = { taskType, userId: body.userId, userName: body.userName };
 
     if (taskType === 'multi') {
       entryData.activityName = body.activityName;
@@ -103,7 +97,7 @@ export async function POST(request: NextRequest) {
       entryData.timeEnd = new Date(body.timeEnd);
     }
 
-    const entry = await rosterService.createRosterEntry(entryData);
+    const entry = await rosterAdminService.createRosterEntry(entryData);
 
     return NextResponse.json(entry, { status: 201 });
   } catch (error: any) {
@@ -121,23 +115,24 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
     }
 
-    // Get request body
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can update roster entries');
+    }
+
     const body = await request.json();
 
     if (!body.id) {
-      return NextResponse.json(
-        { error: 'Missing roster entry ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing roster entry ID' }, { status: 400 });
     }
 
-    // Update roster entry
     const updates: any = {};
     if (body.activityName) updates.activityName = body.activityName;
     if (body.startDate) updates.startDate = new Date(body.startDate);
@@ -146,7 +141,7 @@ export async function PUT(request: NextRequest) {
     if (body.year) updates.year = body.year;
     if (body.notes !== undefined) updates.notes = body.notes;
 
-    const entry = await rosterService.updateRosterEntry(body.id, updates);
+    const entry = await rosterAdminService.updateRosterEntry(body.id, updates);
 
     return NextResponse.json(entry);
   } catch (error: any) {
@@ -164,25 +159,26 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    // Verify authentication
-    const authHeader = request.headers.get('Authorization');
-    if (!authHeader) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { verifyAuthToken } = await import('@/lib/server-auth');
+    const authResult = await verifyAuthToken(request);
+
+    if (!authResult.success || !authResult.user) {
+      return ErrorResponses.unauthorized();
     }
 
-    // Get query parameters
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only managers and admins can delete roster entries');
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json(
-        { error: 'Missing roster entry ID' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Missing roster entry ID' }, { status: 400 });
     }
 
-    // Delete roster entry
-    await rosterService.deleteRosterEntry(id);
+    await rosterAdminService.deleteRosterEntry(id);
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
