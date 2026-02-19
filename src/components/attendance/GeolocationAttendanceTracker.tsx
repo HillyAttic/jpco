@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { attendanceService } from '@/services/attendance.service';
+import { apiPost } from '@/lib/api-client';
 import { 
   Clock, 
   MapPin, 
@@ -106,23 +107,12 @@ export function GeolocationAttendanceTracker() {
   const cleanupDuplicateRecordsForUser = async (employeeId: string) => {
     console.log('Attempting to cleanup duplicate records for:', employeeId);
     try {
-      const response = await fetch('/api/attendance/cleanup-duplicates', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ employeeId }),
-      });
-      
-      console.log('Cleanup API response status:', response.status);
-      
-      if (response.ok) {
-        console.log('Duplicate records cleanup initiated');
-      } else {
-        console.error('Cleanup API failed:', await response.text());
-      }
-    } catch (error) {
-      console.error('Error cleaning up duplicate records:', error);
+      // Use authenticated API call instead of direct fetch
+      await apiPost('/api/attendance/cleanup-duplicates', { employeeId });
+      console.log('Duplicate records cleanup initiated');
+    } catch (error: any) {
+      console.error('Cleanup API failed:', error.message);
+      // Don't show error to user since this is a background operation
     }
   };
 

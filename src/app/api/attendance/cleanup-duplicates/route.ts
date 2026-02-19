@@ -12,10 +12,9 @@ export async function POST(request: NextRequest) {
     }
 
     const userRole = authResult.user.claims.role;
-    if (userRole !== 'admin') {
-      return ErrorResponses.forbidden('Admin access required');
-    }
-
+    const userId = authResult.user.uid;
+    
+    // Allow employees to clean up their own records, admins can clean up any records
     const { employeeId } = await request.json();
 
     if (!employeeId) {
@@ -23,6 +22,16 @@ export async function POST(request: NextRequest) {
         { error: 'Bad Request', message: 'Employee ID is required' },
         { status: 400 }
       );
+    }
+
+    // Check permissions: employees can only clean their own records
+    if (userRole === 'employee' && employeeId !== userId) {
+      return ErrorResponses.forbidden('Employees can only clean up their own records');
+    }
+    
+    // Admins and managers can clean up any records
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Insufficient permissions');
     }
 
     console.log('Cleaning up duplicate records for employee:', employeeId);

@@ -14,6 +14,7 @@ import { toast } from 'react-toastify';
 
 export default function AttendancePage() {
   const { user, userProfile, loading: authLoading, isManager, isAdmin } = useEnhancedAuth();
+  const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
 
   // Leave State
   const [showLeaveModal, setShowLeaveModal] = useState(false);
@@ -25,6 +26,15 @@ export default function AttendancePage() {
   const [loadingLeaves, setLoadingLeaves] = useState(false);
   const [processingId, setProcessingId] = useState<string | null>(null);
 
+  // Auto-open leave modal if query parameter is present
+  useEffect(() => {
+    if (searchParams?.get('openLeaveModal') === 'true') {
+      setShowLeaveModal(true);
+      // Clean up URL
+      window.history.replaceState({}, '', '/attendance');
+    }
+  }, [searchParams]);
+
   const fetchData = useCallback(async () => {
     if (!user) return;
 
@@ -32,7 +42,9 @@ export default function AttendancePage() {
       setLoadingLeaves(true);
 
       // Fetch leave types
+      console.log('Fetching leave types...');
       const types = await leaveService.getLeaveTypes();
+      console.log('Leave types received:', types);
       setLeaveTypes(types);
 
       // Fetch balances
@@ -302,7 +314,7 @@ export default function AttendancePage() {
               <div className="space-y-4">
                 {myLeaves.map((request) => (
                   <div key={request.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
-                    <div>
+                    <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <span className="font-medium text-lg">{request.leaveTypeName}</span>
                         {getStatusBadge(request.status)}
@@ -312,6 +324,19 @@ export default function AttendancePage() {
                         {request.startDate instanceof Date ? request.startDate.toLocaleDateString() : new Date(request.startDate).toLocaleDateString()} - {request.endDate instanceof Date ? request.endDate.toLocaleDateString() : new Date(request.endDate).toLocaleDateString()}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">Duration: {request.duration} days</p>
+                      
+                      {/* Show rejection reason if rejected */}
+                      {request.status === 'rejected' && request.rejectionReason && (
+                        <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                          <div className="flex items-start gap-2">
+                            <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">Admin Remarks:</p>
+                              <p className="text-sm text-red-700 dark:text-red-400">{request.rejectionReason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     {request.status === 'pending' && (
                       <Button

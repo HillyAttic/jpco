@@ -93,6 +93,12 @@ export const NAV_DATA = [
         ],
       },
       {
+        title: "Apply Leave",
+        url: "/attendance?openLeaveModal=true",
+        icon: Icons.Calendar,
+        items: [],
+      },
+      {
         title: "Roster",
         icon: Icons.Calendar,
         items: [

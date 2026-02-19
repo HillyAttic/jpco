@@ -280,6 +280,28 @@ service cloud.firestore {
       allow write: if isManager();
     }
 
+    // LEAVE BALANCES
+    match /leave-balances/{balanceId} {
+      // Users can read their own leave balances, managers can read all
+      allow read: if isAuthenticated() && 
+        (resource.data.employeeId == request.auth.uid || isManager());
+      
+      // Only managers can create or update leave balances
+      allow create, update: if isManager();
+      
+      // Only managers can delete leave balances
+      allow delete: if isManager();
+    }
+
+    // HOLIDAYS
+    match /holidays/{holidayId} {
+      // All authenticated users can read holidays (for calendar display)
+      allow read: if isAuthenticated();
+      
+      // Only managers can create, update, or delete holidays
+      allow create, update, delete: if isManager();
+    }
+
     // NOTIFICATIONS
     match /notifications/{notificationId} {
       // Users can only access their own notifications

@@ -155,7 +155,26 @@ export function Sidebar() {
             "custom-scrollbar mt-6 flex-1 overflow-y-auto pr-3",
             "md:mt-10"
           )}>
-            {NAV_DATA.map((section) => (
+            {NAV_DATA.map((section) => {
+              // Filter items based on role and mobile visibility
+              const visibleItems = section.items.filter((item: any) => {
+                // Filter out items hidden on mobile
+                if (isMobile && item.hideOnMobile) {
+                  return false;
+                }
+                // Filter out items that require specific roles
+                if (item.requiresRole) {
+                  return hasRole(item.requiresRole);
+                }
+                return true;
+              });
+
+              // Don't render the section if there are no visible items
+              if (visibleItems.length === 0) {
+                return null;
+              }
+
+              return (
               <div key={section.label} className="mb-6">
                 {/* Section header */}
                 <h2 className={cn(
@@ -167,19 +186,7 @@ export function Sidebar() {
 
                 <nav role="navigation" aria-label={section.label}>
                   <ul className="space-y-2">
-                    {section.items
-                      .filter((item: any) => {
-                        // Filter out items hidden on mobile
-                        if (isMobile && item.hideOnMobile) {
-                          return false;
-                        }
-                        // Filter out items that require specific roles
-                        if (item.requiresRole) {
-                          return hasRole(item.requiresRole);
-                        }
-                        return true;
-                      })
-                      .map((item) => {
+                    {visibleItems.map((item) => {
                         // Filter subitems based on role requirements
                         const filteredSubItems = item.items.filter((subItem: any) => {
                           if (subItem.requiresRole) {
@@ -288,7 +295,8 @@ export function Sidebar() {
                   </ul>
                 </nav>
               </div>
-            ))}
+            );
+            })}
           </div>
         </div>
       </aside>

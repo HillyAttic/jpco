@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Calendar, Plus, Trash2, Loader2 } from 'lucide-react';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface Holiday {
@@ -38,13 +38,37 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
       const q = query(collection(db, 'holidays'), orderBy('date', 'asc'));
       const snapshot = await getDocs(q);
       
-      const holidayList: Holiday[] = snapshot.docs.map(doc => ({
-        id: doc.id,
-        date: doc.data().date,
-        name: doc.data().name,
-        description: doc.data().description,
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-      }));
+      const holidayList: Holiday[] = snapshot.docs.map(doc => {
+        const data = doc.data();
+        let dateStr = '';
+        
+        // Convert Timestamp to YYYY-MM-DD string for consistent display
+        if (data.date && typeof data.date.toDate === 'function') {
+          const dateObj = data.date.toDate();
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          dateStr = `${year}-${month}-${day}`;
+        } else if (typeof data.date === 'string') {
+          // Handle legacy string dates
+          dateStr = data.date;
+        } else if (data.date && typeof data.date.seconds !== 'undefined') {
+          // Handle Timestamp object with seconds
+          const dateObj = new Date(data.date.seconds * 1000);
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          dateStr = `${year}-${month}-${day}`;
+        }
+        
+        return {
+          id: doc.id,
+          date: dateStr,
+          name: data.name,
+          description: data.description,
+          createdAt: data.createdAt?.toDate() || new Date(),
+        };
+      });
       
       setHolidays(holidayList);
     } catch (error) {
@@ -74,11 +98,14 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
 
     setSaving(true);
     try {
+      // Convert string date to Timestamp for proper Firestore querying
+      const dateObj = new Date(holidayDate + 'T00:00:00');
+      
       await addDoc(collection(db, 'holidays'), {
-        date: holidayDate,
+        date: Timestamp.fromDate(dateObj),
         name: holidayName.trim(),
         description: holidayDescription.trim() || '',
-        createdAt: new Date(),
+        createdAt: Timestamp.now(),
       });
 
       // Reset form
@@ -114,9 +141,9 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
     }
   };
 
-  // Format date for display
-  const formatDate = (dateStr: string) => {
-    const date = new Date(dateStr + 'T00:00:00');
+  // Format date for display (dateValue is now always a YYYY-MM-DD string)
+  const formatDate = (dateValue: string) => {
+    const date = new Date(dateValue + 'T00:00:00');
     return date.toLocaleDateString('en-US', { 
       weekday: 'short',
       year: 'numeric', 

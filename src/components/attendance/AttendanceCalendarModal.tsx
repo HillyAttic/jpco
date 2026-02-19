@@ -17,10 +17,12 @@ interface AttendanceCalendarModalProps {
 
 interface DayStatus {
   date: Date;
-  status: 'present' | 'absent' | 'leave' | 'upcoming' | 'holiday';
+  status: 'present' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'half-day' | 'upcoming' | 'holiday';
   clockIn?: Date;
   clockOut?: Date;
   duration?: string;
+  leaveType?: 'full' | 'half';
+  leaveStatus?: 'approved' | 'pending' | 'rejected';
 }
 
 interface Holiday {
@@ -196,8 +198,12 @@ export function AttendanceCalendarModal({
         return 'bg-green-500';
       case 'absent':
         return 'bg-red-500';
-      case 'leave':
-        return 'bg-yellow-500';
+      case 'approved-leave':
+        return 'bg-green-300';
+      case 'unapproved-leave':
+        return 'bg-red-500';
+      case 'half-day':
+        return 'bg-green-300';
       case 'upcoming':
         return 'bg-white border-2 border-gray-300';
       case 'holiday':
@@ -214,8 +220,12 @@ export function AttendanceCalendarModal({
         return 'bg-green-500 border-green-600';
       case 'absent':
         return 'bg-red-500 border-red-600';
-      case 'leave':
-        return 'bg-yellow-500 border-yellow-600';
+      case 'approved-leave':
+        return 'bg-green-300 border-green-400';
+      case 'unapproved-leave':
+        return 'bg-red-500 border-red-600';
+      case 'half-day':
+        return 'bg-green-300 border-green-400';
       case 'upcoming':
         return 'bg-white border-gray-200';
       case 'holiday':
@@ -361,12 +371,12 @@ export function AttendanceCalendarModal({
               <div className="text-2xl font-bold text-red-700">{stats.absent}</div>
             </div>
 
-            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-1">
-                <Circle className="w-3 h-3 fill-yellow-500 text-yellow-500" />
-                <span className="text-xs font-medium text-yellow-900">Leaves</span>
+                <Circle className="w-3 h-3 fill-green-300 text-green-300" />
+                <span className="text-xs font-medium text-green-900">Approved Leave</span>
               </div>
-              <div className="text-2xl font-bold text-yellow-700">{stats.leaves}</div>
+              <div className="text-2xl font-bold text-green-700">{stats.leaves}</div>
             </div>
 
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
@@ -419,7 +429,9 @@ export function AttendanceCalendarModal({
                       <div className={`text-xs sm:text-sm font-medium mb-1 sm:mb-2 ${
                         status.status === 'present' ? 'text-white' :
                         status.status === 'absent' ? 'text-white' :
-                        status.status === 'leave' ? 'text-white' :
+                        status.status === 'approved-leave' ? 'text-gray-700' :
+                        status.status === 'unapproved-leave' ? 'text-white' :
+                        status.status === 'half-day' ? 'text-gray-700' :
                         status.status === 'holiday' ? 'text-white' :
                         'text-gray-700'
                       }`}>
@@ -468,8 +480,16 @@ export function AttendanceCalendarModal({
               <span className="text-gray-700 dark:text-gray-300">Absent</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-yellow-500 border border-yellow-600"></div>
-              <span className="text-gray-700 dark:text-gray-300">Leave</span>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-300 border border-green-400"></div>
+              <span className="text-gray-700 dark:text-gray-300">Approved Leave</span>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-300 border border-green-400"></div>
+              <span className="text-gray-700 dark:text-gray-300">Half Day</span>
+            </div>
+            <div className="flex items-center gap-1 sm:gap-2">
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 border border-red-600"></div>
+              <span className="text-gray-700 dark:text-gray-300">Unapproved Leave</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
               <div className="w-3 h-3 sm:w-4 sm:h-4 bg-white dark:bg-gray-dark border-2 border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center">
