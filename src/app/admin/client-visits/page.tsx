@@ -1,251 +1,308 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ClientVisit, ClientVisitStats } from '@/types/client-visit.types';
 import { toast } from 'react-toastify';
+import { MagnifyingGlassIcon, CalendarIcon, UserIcon } from '@heroicons/react/24/outline';
+
+interface VisitRecord {
+  date: string;
+  employeeName: string;
+  employeeId: string;
+  startTime: string;
+  endTime: string;
+  taskTitle: string;
+}
+
+interface MonthlyVisits {
+  month: string;
+  monthName: string;
+  visits: VisitRecord[];
+  totalVisits: number;
+}
+
+interface ClientMonthlyReport {
+  clientId: string;
+  clientName: string;
+  monthlyData: MonthlyVisits[];
+  totalVisits: number;
+}
 
 export default function ClientVisitsPage() {
-  const [visits, setVisits] = useState<ClientVisit[]>([]);
-  const [stats, setStats] = useState<ClientVisitStats | null>(null);
+  const [clientReports, setClientReports] = useState<ClientMonthlyReport[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState({
-    clientId: '',
-    employeeId: '',
-    startDate: '',
-    endDate: '',
-    search: '',
-  });
+  const [searchTerm, setSearchTerm] = useState('');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
+  const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    fetchVisits();
-    fetchStats();
+    fetchClientReports();
   }, []);
 
-  const fetchVisits = async () => {
+  const fetchClientReports = async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
-      if (filters.clientId) params.append('clientId', filters.clientId);
-      if (filters.employeeId) params.append('employeeId', filters.employeeId);
-      if (filters.startDate) params.append('startDate', filters.startDate);
-      if (filters.endDate) params.append('endDate', filters.endDate);
-      if (filters.search) params.append('search', filters.search);
+      if (searchTerm) params.append('search', searchTerm);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
 
-      // Import authenticated fetch helper
       const { authenticatedFetch } = await import('@/lib/api-client');
-      const response = await authenticatedFetch(`/api/client-visits?${params.toString()}`);
+      const response = await authenticatedFetch(`/api/client-visits/monthly-report?${params.toString()}`);
+      
       if (response.ok) {
         const data = await response.json();
-        setVisits(data);
+        setClientReports(data.clients || []);
+      } else {
+        toast.error('Failed to load client visit reports');
       }
     } catch (error) {
-      console.error('Error fetching visits:', error);
-      toast.error('Failed to load client visits');
+      console.error('Error fetching client reports:', error);
+      toast.error('Failed to load client visit reports');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      const params = new URLSearchParams();
-      if (filters.startDate) params.append('startDate', filters.startDate);
-      if (filters.endDate) params.append('endDate', filters.endDate);
+  const handleSearch = () => {
+    fetchClientReports();
+  };
 
-      // Import authenticated fetch helper
-      const { authenticatedFetch } = await import('@/lib/api-client');
-      const response = await authenticatedFetch(`/api/client-visits/stats?${params.toString()}`);
-      if (response.ok) {
-        const data = await response.json();
-        setStats(data);
-      }
-    } catch (error) {
-      console.error('Error fetching stats:', error);
+  const handleClear = () => {
+    setSearchTerm('');
+    setStartDate('');
+    setEndDate('');
+    setTimeout(() => fetchClientReports(), 100);
+  };
+
+  const toggleClient = (clientId: string) => {
+    const newExpanded = new Set(expandedClients);
+    if (newExpanded.has(clientId)) {
+      newExpanded.delete(clientId);
+    } else {
+      newExpanded.add(clientId);
     }
+    setExpandedClients(newExpanded);
   };
 
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
+  const toggleMonth = (key: string) => {
+    const newExpanded = new Set(expandedMonths);
+    if (newExpanded.has(key)) {
+      newExpanded.delete(key);
+    } else {
+      newExpanded.add(key);
+    }
+    setExpandedMonths(newExpanded);
   };
 
-  const applyFilters = () => {
-    fetchVisits();
-    fetchStats();
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      clientId: '',
-      employeeId: '',
-      startDate: '',
-      endDate: '',
-      search: '',
-    });
-    setTimeout(() => {
-      fetchVisits();
-      fetchStats();
-    }, 100);
-  };
+  const totalVisitsAcrossClients = clientReports.reduce((sum, client) => sum + client.totalVisits, 0);
 
   return (
-    <div className="p-6">
+    <div className="p-6 max-w-7xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Client Visits</h1>
-        <p className="text-gray-600 dark:text-gray-400">Track employee visits to client locations</p>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Client Visit Reports</h1>
+        <p className="text-gray-600 dark:text-gray-400">Monthly visit reports organized by client</p>
       </div>
 
-      {/* Statistics Cards */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <div className="text-3xl font-bold text-blue-600">{stats.totalVisits}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Total Visits</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <div className="text-3xl font-bold text-green-600">{stats.uniqueClients}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Unique Clients</div>
-          </div>
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <div className="text-3xl font-bold text-purple-600">{stats.uniqueEmployees}</div>
-            <div className="text-sm text-gray-600 dark:text-gray-400">Active Employees</div>
-          </div>
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+          <div className="text-3xl font-bold text-blue-600">{clientReports.length}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">Total Clients</div>
         </div>
-      )}
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+          <div className="text-3xl font-bold text-green-600">{totalVisitsAcrossClients}</div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">Total Visits</div>
+        </div>
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
+          <div className="text-3xl font-bold text-purple-600">
+            {clientReports.reduce((sum, c) => sum + c.monthlyData.length, 0)}
+          </div>
+          <div className="text-sm text-gray-600 dark:text-gray-400">Active Months</div>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow mb-6">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <div className="relative">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
+              placeholder="Search client name..."
+            />
+          </div>
           <input
             type="date"
-            value={filters.startDate}
-            onChange={(e) => handleFilterChange('startDate', e.target.value)}
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
             placeholder="Start Date"
           />
           <input
             type="date"
-            value={filters.endDate}
-            onChange={(e) => handleFilterChange('endDate', e.target.value)}
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
             placeholder="End Date"
-          />
-          <input
-            type="text"
-            value={filters.search}
-            onChange={(e) => handleFilterChange('search', e.target.value)}
-            className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
-            placeholder="Search client or employee..."
           />
         </div>
         <div className="flex gap-2">
           <button
-            onClick={applyFilters}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            onClick={handleSearch}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
           >
-            Apply Filters
+            Search
           </button>
           <button
-            onClick={clearFilters}
-            className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+            onClick={handleClear}
+            className="px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition"
           >
             Clear
           </button>
         </div>
       </div>
 
-      {/* Visits Table */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        {loading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          </div>
-        ) : visits.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No client visits found
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Client</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Employee</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Task</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">ARN</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {visits.map((visit) => (
-                  <tr key={visit.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                      {new Date(visit.visitDate).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900 dark:text-white">{visit.clientName}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="font-medium text-gray-900 dark:text-white">{visit.employeeName}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs truncate">
-                      {visit.taskTitle}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        visit.taskType === 'recurring' 
-                          ? 'bg-blue-100 text-blue-800' 
-                          : 'bg-gray-100 text-gray-800'
-                      }`}>
-                        {visit.taskType}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                      {visit.arnNumber ? (
-                        <div>
-                          <div>{visit.arnNumber}</div>
-                          {visit.arnName && <div className="text-xs text-gray-500">{visit.arnName}</div>}
-                        </div>
-                      ) : (
-                        <span className="text-gray-400">N/A</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Top Clients & Employees */}
-      {stats && (stats.visitsByClient.length > 0 || stats.visitsByEmployee.length > 0) && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6">
-          {/* Top Clients */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Top Clients by Visits</h3>
-            <div className="space-y-3">
-              {stats.visitsByClient.slice(0, 5).map((client, idx) => (
-                <div key={idx} className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{client.clientName}</span>
-                  <span className="text-sm font-medium text-blue-600">{client.count} visits</span>
+      {/* Client Reports */}
+      {loading ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600 dark:text-gray-400">Loading client reports...</p>
+        </div>
+      ) : clientReports.length === 0 ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-12 text-center">
+          <p className="text-gray-500 dark:text-gray-400">No client visits found</p>
+          {searchTerm && (
+            <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
+              Try adjusting your search criteria
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {clientReports.map((client) => (
+            <div
+              key={client.clientId}
+              className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"
+            >
+              {/* Client Header */}
+              <button
+                onClick={() => toggleClient(client.clientId)}
+                className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-700 transition"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900 rounded-full flex items-center justify-center">
+                    <span className="text-blue-600 dark:text-blue-300 font-semibold text-lg">
+                      {client.clientName.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="text-left">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      {client.clientName}
+                    </h3>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {client.totalVisits} total visit{client.totalVisits !== 1 ? 's' : ''} across {client.monthlyData.length} month{client.monthlyData.length !== 1 ? 's' : ''}
+                    </p>
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
+                <svg
+                  className={`w-5 h-5 text-gray-400 transition-transform ${
+                    expandedClients.has(client.clientId) ? 'rotate-180' : ''
+                  }`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
 
-          {/* Top Employees */}
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Top Employees by Visits</h3>
-            <div className="space-y-3">
-              {stats.visitsByEmployee.slice(0, 5).map((employee, idx) => (
-                <div key={idx} className="flex justify-between items-center">
-                  <span className="text-sm text-gray-700 dark:text-gray-300">{employee.employeeName}</span>
-                  <span className="text-sm font-medium text-green-600">{employee.count} visits</span>
+              {/* Monthly Data */}
+              {expandedClients.has(client.clientId) && (
+                <div className="border-t border-gray-200 dark:border-gray-700">
+                  {client.monthlyData.map((monthData) => {
+                    const monthKey = `${client.clientId}-${monthData.month}`;
+                    return (
+                      <div key={monthData.month} className="border-b border-gray-200 dark:border-gray-700 last:border-b-0">
+                        {/* Month Header */}
+                        <button
+                          onClick={() => toggleMonth(monthKey)}
+                          className="w-full px-6 py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-750 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                        >
+                          <div className="flex items-center gap-2">
+                            <CalendarIcon className="h-5 w-5 text-gray-400" />
+                            <span className="font-medium text-gray-900 dark:text-white">
+                              {monthData.monthName}
+                            </span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              ({monthData.totalVisits} visit{monthData.totalVisits !== 1 ? 's' : ''})
+                            </span>
+                          </div>
+                          <svg
+                            className={`w-4 h-4 text-gray-400 transition-transform ${
+                              expandedMonths.has(monthKey) ? 'rotate-180' : ''
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                          </svg>
+                        </button>
+
+                        {/* Visit Records */}
+                        {expandedMonths.has(monthKey) && (
+                          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {monthData.visits.map((visit, idx) => (
+                              <div
+                                key={idx}
+                                className="px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-750 transition"
+                              >
+                                <div className="flex flex-wrap items-center gap-4">
+                                  <div className="flex-1 min-w-[120px]">
+                                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                                      {new Date(visit.date).toLocaleDateString('en-US', {
+                                        weekday: 'short',
+                                        month: 'short',
+                                        day: 'numeric'
+                                      })}
+                                    </div>
+                                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                                      {visit.startTime} - {visit.endTime}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex-1 min-w-[150px]">
+                                    <div className="flex items-center gap-2">
+                                      <UserIcon className="h-4 w-4 text-gray-400" />
+                                      <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                        {visit.employeeName}
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="flex-1 min-w-[200px]">
+                                    <div className="text-sm text-gray-700 dark:text-gray-300">
+                                      {visit.taskTitle}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              )}
             </div>
-          </div>
+          ))}
         </div>
       )}
     </div>

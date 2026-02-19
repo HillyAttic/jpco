@@ -43,17 +43,17 @@ export default function ViewSchedulePage() {
   // Helper function to get color classes based on task duration
   const getTaskColorClass = (task: RosterEntry): string => {
     const color = getTaskColor(task);
-    if (color === 'green') return 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200';
-    if (color === 'yellow') return 'bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-200';
-    return 'bg-orange-100 text-orange-800 border-orange-300 hover:bg-orange-200';
+    if (color === 'green') return 'bg-emerald-100 text-emerald-800 border-emerald-400 hover:bg-emerald-200';
+    if (color === 'yellow') return 'bg-amber-100 text-amber-800 border-amber-400 hover:bg-amber-200';
+    return 'bg-orange-100 text-orange-800 border-orange-400 hover:bg-orange-200';
   };
 
   // Helper function to get Excel cell color classes
   const getExcelCellColorClass = (task: RosterEntry): string => {
     const color = getTaskColor(task);
-    if (color === 'green') return 'bg-green-200 hover:bg-green-300';
-    if (color === 'yellow') return 'bg-yellow-200 hover:bg-yellow-300';
-    return 'bg-orange-200 hover:bg-orange-300';
+    if (color === 'green') return 'bg-emerald-400 hover:bg-emerald-500';
+    if (color === 'yellow') return 'bg-amber-400 hover:bg-amber-500';
+    return 'bg-orange-600 hover:bg-orange-700';
   };
 
   useEffect(() => {
@@ -490,11 +490,11 @@ export default function ViewSchedulePage() {
                       // This day is part of a spanning activity, skip rendering
                       return null;
                     } else {
-                      // Empty day - show green background to indicate no task assigned
+                      // Empty day - show vibrant green background to indicate no task assigned
                       return (
                         <td 
                           key={day} 
-                          className="border border-gray-300 dark:border-gray-600 bg-green-200"
+                          className="border border-gray-300 dark:border-gray-600 bg-emerald-400"
                           style={{ width: '40px', minWidth: '40px', maxWidth: '40px', height: '40px', padding: '0' }}
                         ></td>
                       );
@@ -569,15 +569,15 @@ export default function ViewSchedulePage() {
           <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Task Duration Legend</h3>
           <div className="flex flex-wrap gap-4 text-sm text-gray-600 dark:text-gray-400">
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-green-200 border border-green-300 rounded"></div>
+              <div className="w-4 h-4 bg-emerald-400 border border-emerald-500 rounded"></div>
               <span>No task assigned</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-yellow-200 border border-yellow-300 rounded"></div>
+              <div className="w-4 h-4 bg-amber-400 border border-amber-500 rounded"></div>
               <span>Task: Less than 8 hours</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-4 h-4 bg-orange-200 border border-orange-300 rounded"></div>
+              <div className="w-4 h-4 bg-orange-600 border border-orange-700 rounded"></div>
               <span>Task: 8 hours or more</span>
             </div>
           </div>
