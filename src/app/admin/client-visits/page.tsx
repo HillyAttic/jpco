@@ -11,6 +11,7 @@ interface VisitRecord {
   startTime: string;
   endTime: string;
   taskTitle: string;
+  taskType?: 'recurring' | 'non-recurring';
 }
 
 interface MonthlyVisits {
@@ -273,7 +274,7 @@ export default function ClientVisitsPage() {
                                       })}
                                     </div>
                                     <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {visit.startTime} - {visit.endTime}
+                                      {visit.startTime !== '-' ? `${visit.startTime} - ${visit.endTime}` : 'No time set'}
                                     </div>
                                   </div>
 
@@ -287,8 +288,19 @@ export default function ClientVisitsPage() {
                                   </div>
 
                                   <div className="flex-1 min-w-[200px]">
-                                    <div className="text-sm text-gray-700 dark:text-gray-300">
-                                      {visit.taskTitle}
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                                        {visit.taskTitle}
+                                      </span>
+                                      {visit.taskType && (
+                                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                                          visit.taskType === 'recurring'
+                                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300'
+                                            : 'bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300'
+                                        }`}>
+                                          {visit.taskType === 'recurring' ? 'Recurring' : 'Non-Recurring'}
+                                        </span>
+                                      )}
                                     </div>
                                   </div>
                                 </div>

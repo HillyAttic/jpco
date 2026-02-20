@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Authenticate the request
     const authResult = await verifyAuthToken(request);
     if (!authResult.success || !authResult.user) {
-      return ErrorResponses.unauthorized(authResult.error);
+      return ErrorResponses.unauthorized();
     }
 
     // Get query parameters

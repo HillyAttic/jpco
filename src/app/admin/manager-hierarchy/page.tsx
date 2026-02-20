@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ManagerHierarchy, EmployeeInfo } from '@/types/manager-hierarchy.types';
 import { toast } from 'react-toastify';
+import { useModal } from '@/contexts/modal-context';
 
 export default function ManagerHierarchyPage() {
   const [hierarchies, setHierarchies] = useState<ManagerHierarchy[]>([]);
@@ -12,6 +13,7 @@ export default function ManagerHierarchyPage() {
   const [showModal, setShowModal] = useState(false);
   const [selectedManager, setSelectedManager] = useState('');
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const { openModal, closeModal } = useModal();
 
   useEffect(() => {
     fetchData();
@@ -72,6 +74,7 @@ export default function ManagerHierarchyPage() {
       if (response.ok) {
         toast.success('Manager hierarchy saved successfully');
         setShowModal(false);
+        closeModal();
         setSelectedManager('');
         setSelectedEmployees([]);
         fetchData();
@@ -88,6 +91,7 @@ export default function ManagerHierarchyPage() {
     setSelectedManager(hierarchy.managerId);
     setSelectedEmployees(hierarchy.employeeIds);
     setShowModal(true);
+    openModal();
   };
 
   const handleDelete = async (managerId: string) => {
@@ -135,6 +139,7 @@ export default function ManagerHierarchyPage() {
             setSelectedManager('');
             setSelectedEmployees([]);
             setShowModal(true);
+            openModal();
           }}
           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
         >
@@ -262,6 +267,7 @@ export default function ManagerHierarchyPage() {
               <button
                 onClick={() => {
                   setShowModal(false);
+                  closeModal();
                   setSelectedManager('');
                   setSelectedEmployees([]);
                 }}

@@ -8,6 +8,7 @@ interface VisitRecord {
   startTime: string;
   endTime: string;
   taskTitle: string;
+  taskType?: 'recurring' | 'non-recurring';
 }
 
 interface MonthlyVisits {
@@ -27,6 +28,7 @@ interface ClientMonthlyReport {
 /**
  * GET /api/client-visits/monthly-report
  * Get client-wise monthly visit reports
+ * Shows ONLY clients marked using "Plan Task" button (roster entries)
  */
 export async function GET(request: NextRequest) {
   try {
@@ -50,6 +52,21 @@ export async function GET(request: NextRequest) {
     // Import services
     const { rosterAdminService } = await import('@/services/roster-admin.service');
     const { clientAdminService } = await import('@/services/client-admin.service');
+    const { adminDb } = await import('@/lib/firebase-admin');
+
+    // Get all recurring tasks with teamMemberMappings (these are the ones with Plan Task button)
+    const recurringTasksSnapshot = await adminDb.collection('recurring-tasks').get();
+    const recurringTasksWithMappings = new Set<string>();
+    
+    recurringTasksSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      // Only include tasks that have teamMemberMappings (these show the Plan Task button)
+      if (data.teamMemberMappings && Array.isArray(data.teamMemberMappings) && data.teamMemberMappings.length > 0) {
+        recurringTasksWithMappings.add(data.title);
+      }
+    });
+
+    console.log('[Client Visits] Recurring tasks with Plan Task button:', Array.from(recurringTasksWithMappings));
 
     // Get all clients
     const allClients = await clientAdminService.getAll();
@@ -63,7 +80,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ clients: [] });
     }
 
-    // Get roster entries
+    // Create a set of filtered client IDs for quick lookup
+    const filteredClientIds = new Set(filteredClients.map(c => c.id!));
+    // Create a client name map
+    const clientNameMap = new Map(allClients.map(c => [c.id!, c.name]));
+
+    // ========== 1. Get roster entries (recurring task visits) ==========
     const rosterFilters: any = {};
     if (startDate) {
       rosterFilters.startDate = new Date(startDate);
@@ -74,38 +96,61 @@ export async function GET(request: NextRequest) {
 
     const allRosterEntries = await rosterAdminService.getRosterEntries(rosterFilters);
     
-    // Filter for client-based visits only
-    const clientVisits = allRosterEntries.filter(
-      entry => entry.taskType === 'single' && entry.clientId
+    // Filter for client-based visits only (from recurring tasks - Plan Task button)
+    // Only include roster entries where taskDetail matches a recurring task with teamMemberMappings
+    const rosterClientVisits = allRosterEntries.filter(
+      entry => entry.taskType === 'single' && 
+               entry.clientId && 
+               entry.taskDetail &&
+               recurringTasksWithMappings.has(entry.taskDetail)
     );
 
-    // Build client-wise monthly reports
+    console.log('[Client Visits] Total roster entries:', allRosterEntries.length);
+    console.log('[Client Visits] Filtered roster entries (Plan Task only):', rosterClientVisits.length);
+
+    // ========== 3. Build unified client-wise monthly reports ==========
+    // Use a map to collect all visit records per client
+    const clientVisitRecordsMap = new Map<string, VisitRecord[]>();
+
+    // Add roster-based visits (from Plan Task button only)
+    for (const entry of rosterClientVisits) {
+      if (!entry.clientId || !filteredClientIds.has(entry.clientId)) continue;
+
+      if (!clientVisitRecordsMap.has(entry.clientId)) {
+        clientVisitRecordsMap.set(entry.clientId, []);
+      }
+
+      const date = entry.taskDate || formatDate(entry.timeStart!);
+      clientVisitRecordsMap.get(entry.clientId)!.push({
+        date,
+        employeeName: entry.userName,
+        employeeId: entry.userId,
+        startTime: formatTime(entry.timeStart!),
+        endTime: formatTime(entry.timeEnd!),
+        taskTitle: entry.taskDetail || 'Visit',
+        taskType: 'recurring',
+      });
+    }
+
+    // ========== 4. Build the monthly report structure ==========
     const clientReports: ClientMonthlyReport[] = [];
 
     for (const client of filteredClients) {
-      const clientEntries = clientVisits.filter(e => e.clientId === client.id);
+      const visitRecords = clientVisitRecordsMap.get(client.id!) || [];
       
-      if (clientEntries.length === 0) continue;
+      if (visitRecords.length === 0) continue;
 
       // Group by month
       const monthlyMap = new Map<string, VisitRecord[]>();
 
-      for (const entry of clientEntries) {
-        const date = entry.taskDate || formatDate(entry.timeStart!);
-        const monthKey = date.substring(0, 7); // "2026-02"
+      for (const visit of visitRecords) {
+        const monthKey = visit.date.substring(0, 7); // "2026-02"
 
         if (!monthlyMap.has(monthKey)) {
           monthlyMap.set(monthKey, []);
         }
 
-        monthlyMap.get(monthKey)!.push({
-          date,
-          employeeName: entry.userName,
-          employeeId: entry.userId,
-          startTime: formatTime(entry.timeStart!),
-          endTime: formatTime(entry.timeEnd!),
-          taskTitle: entry.taskDetail || 'Visit'
-        });
+        monthlyMap.get(monthKey)!.push(visit);
       }
 
       // Convert to monthly data array
@@ -132,7 +177,7 @@ export async function GET(request: NextRequest) {
       // Sort months in descending order (newest first)
       monthlyData.sort((a, b) => b.month.localeCompare(a.month));
 
-      const totalVisits = clientEntries.length;
+      const totalVisits = visitRecords.length;
 
       clientReports.push({
         clientId: client.id!,
