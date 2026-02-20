@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Employee } from '@/services/employee.service';
+import { auth } from '@/lib/firebase';
 
 interface UseEmployeesOptions {
   initialFetch?: boolean;
@@ -41,12 +42,24 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
     setError(null);
 
     try {
+      const user = auth.currentUser;
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
+      const token = await user.getIdToken();
+
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       if (statusFilter) params.append('status', statusFilter);
       if (departmentFilter) params.append('department', departmentFilter);
 
-      const response = await fetch(`/api/employees?${params.toString()}`);
+      const response = await fetch(`/api/employees?${params.toString()}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
       if (!response.ok) {
         throw new Error('Failed to fetch employees');
@@ -91,9 +104,17 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
       setEmployees((prev) => [optimisticEmployee, ...prev]);
 
       try {
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const token = await user.getIdToken();
+
         const response = await fetch('/api/employees', {
           method: 'POST',
           headers: {
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -146,9 +167,17 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
       );
 
       try {
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const token = await user.getIdToken();
+
         const response = await fetch(`/api/employees/${id}`, {
           method: 'PUT',
           headers: {
+            'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
@@ -198,8 +227,18 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
       setEmployees((prev) => prev.filter((employee) => employee.id !== id));
 
       try {
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const token = await user.getIdToken();
+
         const response = await fetch(`/api/employees/${id}`, {
           method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
         });
 
         if (!response.ok) {
@@ -240,8 +279,19 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
       );
 
       try {
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
+
+        const token = await user.getIdToken();
+
         const response = await fetch(`/api/employees/${id}/deactivate`, {
           method: 'PATCH',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
         });
 
         if (!response.ok) {
