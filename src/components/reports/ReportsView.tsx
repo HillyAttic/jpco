@@ -8,6 +8,7 @@ import { XMarkIcon, CheckIcon, XCircleIcon, UserGroupIcon, ArrowDownTrayIcon } f
 import { isFuture, isToday, startOfMonth } from 'date-fns';
 import { useModal } from '@/contexts/modal-context';
 import { exportToPDF, exportToExcel, exportSummaryToPDF, exportSummaryToExcel } from '@/utils/report-export.utils';
+import { auth } from '@/lib/firebase';
 
 interface TaskReport {
   task: RecurringTask;
@@ -43,10 +44,30 @@ export function ReportsView() {
       setLoading(true);
       console.log('Reports: Loading data...');
 
-      const [tasksData, clientsData] = await Promise.all([
-        recurringTaskService.getAll(),
+      // Fetch tasks from API instead of direct Firebase access
+      const user = auth.currentUser;
+      if (!user) {
+        console.error('Reports: User not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      const token = await user.getIdToken();
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+
+      const [tasksResponse, clientsData] = await Promise.all([
+        fetch('/api/recurring-tasks', { headers }),
         clientService.getAll(),
       ]);
+
+      if (!tasksResponse.ok) {
+        throw new Error(`Failed to fetch tasks: ${tasksResponse.statusText}`);
+      }
+
+      const tasksData = await tasksResponse.json();
       setTasks(tasksData);
       setClients(clientsData);
 
@@ -58,14 +79,22 @@ export function ReportsView() {
       // Load completions for all tasks
       const completionsMap = new Map<string, ClientTaskCompletion[]>();
       await Promise.all(
-        tasksData.map(async (task) => {
+        tasksData.map(async (task: RecurringTask) => {
           if (task.id) {
-            const taskCompletions = await taskCompletionService.getByTaskId(task.id);
-            completionsMap.set(task.id, taskCompletions);
-            console.log(`Reports: Loaded completions for task ${task.title}`, {
-              taskId: task.id,
-              completionsCount: taskCompletions.length
-            });
+            // Fetch completions from API instead of direct Firebase access
+            const completionsResponse = await fetch(`/api/task-completions?recurringTaskId=${task.id}`, { headers });
+            
+            if (completionsResponse.ok) {
+              const taskCompletions = await completionsResponse.json();
+              completionsMap.set(task.id, taskCompletions);
+              console.log(`Reports: Loaded completions for task ${task.title}`, {
+                taskId: task.id,
+                completionsCount: taskCompletions.length
+              });
+            } else {
+              console.error(`Reports: Failed to load completions for task ${task.id}`);
+              completionsMap.set(task.id, []);
+            }
           }
         })
       );
@@ -147,30 +176,49 @@ export function ReportsView() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-dark rounded-lg shadow overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50 dark:bg-gray-800">
-              <tr>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Task Name
-                </th>
-                <th className="hidden md:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Recurrence
-                </th>
-                <th className="hidden lg:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Total Clients
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Completion
-                </th>
-                <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200">
-              {tasks.map((task) => {
+      {tasks.length === 0 ? (
+        <div className="bg-white dark:bg-gray-dark rounded-lg shadow p-12 text-center">
+          <div className="flex flex-col items-center justify-center">
+            <svg className="w-16 h-16 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Recurring Tasks Found</h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Create recurring tasks to track completion reports across your clients.
+            </p>
+            <button
+              onClick={() => window.location.href = '/recurring-tasks'}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Go to Recurring Tasks
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="bg-white dark:bg-gray-dark rounded-lg shadow overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Task Name
+                  </th>
+                  <th className="hidden md:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Recurrence
+                  </th>
+                  <th className="hidden lg:table-cell px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Total Clients
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Completion
+                  </th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200">
+                {tasks.map((task) => {
                 const hasTeamMemberMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
 
                 // Get clients based on task type
@@ -256,10 +304,11 @@ export function ReportsView() {
                   </tr>
                 );
               })}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+          </div>
         </div>
-      </div>
+      )}
 
       {isModalOpen && selectedTask && (
         <TaskReportModal
@@ -541,8 +590,8 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TeamMemb
                   key={report.userId}
                   onClick={() => setSelectedMemberId(selectedMemberId === report.userId ? null : report.userId)}
                   className={`p-3 sm:p-4 rounded-lg border-2 transition-all text-left ${selectedMemberId === report.userId
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 bg-white hover:border-blue-300'
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-gray-200 bg-white hover:border-blue-300'
                     }`}
                 >
                   <div className="flex items-center justify-between mb-2">

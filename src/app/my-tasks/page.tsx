@@ -14,7 +14,7 @@ import { PlusIcon, TrashIcon, CheckIcon } from '@heroicons/react/24/outline';
  * - userId (Ascending) + order (Ascending)
  * 
  * Collection: my_tasks
- * - listId (Ascending) + order (Ascending)
+ * - listId (Ascending) + userId (Ascending) + order (Ascending)
  * - userId (Ascending) + order (Ascending)
  */
 
@@ -88,8 +88,9 @@ export default function MyTasksPage() {
 
     const handleDeleteList = async (listId: string) => {
         if (!confirm('Delete this list and all its tasks?')) return;
+        if (!user) return;
         try {
-            await myTasksService.deleteTaskList(listId);
+            await myTasksService.deleteTaskList(listId, user.uid);
             setTaskLists(taskLists.filter(l => l.id !== listId));
             setTasks(tasks.filter(t => t.listId !== listId));
             if (selectedListId === listId) {

@@ -12,6 +12,12 @@ interface VisitRecord {
   endTime: string;
   taskTitle: string;
   taskType?: 'recurring' | 'non-recurring';
+  attendanceStatus?: 'present' | 'absent' | 'incomplete' | 'no-data';
+  attendanceDetails?: {
+    clockIn?: string;
+    clockOut?: string;
+    totalHours?: number;
+  };
 }
 
 interface MonthlyVisits {
@@ -98,6 +104,37 @@ export default function ClientVisitsPage() {
   };
 
   const totalVisitsAcrossClients = clientReports.reduce((sum, client) => sum + client.totalVisits, 0);
+
+  const getAttendanceStatusBadge = (status?: string) => {
+    switch (status) {
+      case 'present':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+            ✓ Present
+          </span>
+        );
+      case 'absent':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
+            ✗ Absent
+          </span>
+        );
+      case 'incomplete':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900 dark:text-yellow-300">
+            ⚠ Incomplete
+          </span>
+        );
+      case 'no-data':
+        return (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+            - Scheduled
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -300,6 +337,27 @@ export default function ClientVisitsPage() {
                                         }`}>
                                           {visit.taskType === 'recurring' ? 'Recurring' : 'Non-Recurring'}
                                         </span>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  <div className="flex-1 min-w-[150px]">
+                                    <div className="flex flex-col gap-1">
+                                      {getAttendanceStatusBadge(visit.attendanceStatus)}
+                                      {visit.attendanceDetails && (
+                                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                                          {visit.attendanceDetails.clockIn && (
+                                            <div>In: {visit.attendanceDetails.clockIn}</div>
+                                          )}
+                                          {visit.attendanceDetails.clockOut && (
+                                            <div>Out: {visit.attendanceDetails.clockOut}</div>
+                                          )}
+                                          {visit.attendanceDetails.totalHours !== undefined && (
+                                            <div className="font-medium text-gray-600 dark:text-gray-300">
+                                              {visit.attendanceDetails.totalHours.toFixed(2)}h worked
+                                            </div>
+                                          )}
+                                        </div>
                                       )}
                                     </div>
                                   </div>

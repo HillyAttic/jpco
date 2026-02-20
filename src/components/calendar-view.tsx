@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Task } from '@/types/task.types';
-import { 
+import {
   ChevronLeftIcon,
   ChevronRightIcon,
   CalendarDaysIcon,
@@ -12,7 +12,8 @@ import { RecurringTaskClientModal } from '@/components/recurring-tasks/Recurring
 import { RecurringTask } from '@/services/recurring-task.service';
 import { useModal } from '@/contexts/modal-context';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
-import { auth } from '@/lib/firebase';
+import { auth } from '@/lib/firebase';  
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface CalendarTask extends Task {
   isRecurring?: boolean;
@@ -53,7 +54,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
         console.log('[Calendar] User cannot view roster stats (not admin/manager)');
         return;
       }
-      
+
       try {
         setLoadingStats(true);
         const user = auth.currentUser;
@@ -101,17 +102,17 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
     const firstDayOfMonth = new Date(year, month, 1).getDay();
 
     const days = [];
-    
+
     // Add empty cells for days before the first day of the month
     for (let i = 0; i < firstDayOfMonth; i++) {
       days.push(null);
     }
-    
+
     // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(new Date(year, month, day));
     }
-    
+
     return days;
   }, []);
 
@@ -147,34 +148,34 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   };
 
   const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
     });
   };
 
   const handleTaskClick = async (task: CalendarTask, e: React.MouseEvent, taskDate?: Date) => {
     e.stopPropagation();
-    
+
     // If it's a recurring task, open the client modal
     if (task.isRecurring && task.recurringTaskId) {
       setSelectedTask(task);
-      
+
       // Fetch the full recurring task to get contactIds and team member mappings
       try {
-        const response = await fetch(`/api/recurring-tasks/${task.recurringTaskId}`);
+        const response = await authenticatedFetch(`/api/recurring-tasks/${task.recurringTaskId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch recurring task');
         }
         const recurringTask = await response.json();
         setFullRecurringTask(recurringTask);
-        
+
         // Collect all client IDs from both contactIds and team member mappings
         const contactIds = recurringTask.contactIds || [];
         const teamMemberMappings = recurringTask.teamMemberMappings || [];
-        
+
         // Get all unique client IDs from team member mappings
         const mappedClientIds = new Set<string>();
         teamMemberMappings.forEach((mapping: any) => {
@@ -182,10 +183,10 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
             mapping.clientIds.forEach((clientId: string) => mappedClientIds.add(clientId));
           }
         });
-        
+
         // Combine contactIds and mapped client IDs
         const allClientIds = [...new Set([...contactIds, ...Array.from(mappedClientIds)])];
-        
+
         console.log('[Calendar] Loading clients for task:', {
           taskId: recurringTask.id,
           taskTitle: recurringTask.title,
@@ -194,24 +195,24 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           mappedClientIds: mappedClientIds.size,
           totalClientIds: allClientIds.length
         });
-        
+
         // Fetch only the clients assigned to this task (either directly or via team member mappings)
         if (allClientIds.length > 0) {
-          const clientsResponse = await fetch('/api/clients');
+          const clientsResponse = await authenticatedFetch('/api/clients');
           const clientsData = await clientsResponse.json();
           const allClients = clientsData.data || [];
-          
+
           // Filter to only show assigned clients
-          const assignedClients = allClients.filter((client: any) => 
+          const assignedClients = allClients.filter((client: any) =>
             allClientIds.includes(client.id)
           );
-          
+
           console.log('[Calendar] Loaded clients:', {
             totalClients: allClients.length,
             assignedClients: assignedClients.length,
             clientNames: assignedClients.map((c: any) => c.name)
           });
-          
+
           setClients(assignedClients);
         } else {
           console.log('[Calendar] No clients assigned to task');
@@ -222,7 +223,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
         setClients([]);
         setFullRecurringTask(null);
       }
-      
+
       setIsClientModalOpen(true);
       openModal(); // Hide header when modal opens
     } else if (onTaskClick) {
@@ -245,9 +246,9 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   const renderRosterStatsBar = (day: Date) => {
     const dayNumber = day.getDate();
     const stats = rosterStats[dayNumber];
-    
+
     console.log('[Calendar] Rendering stats bar for day:', dayNumber, 'stats:', stats);
-    
+
     if (!stats || stats.total === 0) return null;
 
     const { orange, yellow, green, total } = stats;
@@ -256,7 +257,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
     const greenPercent = (green / total) * 100;
 
     return (
-      <div 
+      <div
         className="mt-auto pt-1"
         title={`${orange} employees with 8+ hour tasks, ${yellow} with <8 hour tasks, ${green} with no tasks`}
       >
@@ -361,11 +362,11 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
         <div className="grid grid-cols-7 gap-1">
           {days.map((day, index) => {
             const dayTasks = day ? getTasksForDate(day) : [];
-            const isToday = day && 
+            const isToday = day &&
               day.getDate() === new Date().getDate() &&
               day.getMonth() === new Date().getMonth() &&
               day.getFullYear() === new Date().getFullYear();
-            const isSelected = selectedDate && day && 
+            const isSelected = selectedDate && day &&
               day.getDate() === selectedDate.getDate() &&
               day.getMonth() === selectedDate.getMonth() &&
               day.getFullYear() === selectedDate.getFullYear();
@@ -373,18 +374,15 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
             return (
               <div
                 key={index}
-                className={`min-h-24 p-1 border rounded flex flex-col ${
-                  day ? 'border-gray-200 hover:bg-gray-50 cursor-pointer' : 'border-transparent'
-                } ${isToday ? 'bg-blue-50 border-blue-300' : ''} ${
-                  isSelected ? 'bg-blue-100 border-blue-400' : ''
-                }`}
+                className={`min-h-24 p-1 border rounded flex flex-col ${day ? 'border-gray-200 hover:bg-gray-50 cursor-pointer' : 'border-transparent'
+                  } ${isToday ? 'bg-blue-50 border-blue-300' : ''} ${isSelected ? 'bg-blue-100 border-blue-400' : ''
+                  }`}
                 onClick={() => day && setSelectedDate(day)}
               >
                 {day ? (
                   <>
-                    <div className={`text-sm font-medium ${
-                      isToday ? 'text-blue-700' : 'text-gray-900'
-                    }`}>
+                    <div className={`text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-900'
+                      }`}>
                       {day.getDate()}
                     </div>
                     <div className="mt-1 space-y-1 max-h-20 overflow-y-auto flex-1">
@@ -392,12 +390,11 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                         <div
                           key={task.id}
                           onClick={(e) => handleTaskClick(task, e, day)}
-                          className={`text-xs p-1 rounded truncate flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${
-                            task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                            task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-green-100 text-green-800'
-                          }`}
+                          className={`text-xs p-1 rounded truncate flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
+                              task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
+                                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                  'bg-green-100 text-green-800'
+                            }`}
                           title={`${task.title}${task.isRecurring ? ` (${task.recurrencePattern})` : ''}`}
                         >
                           {task.isRecurring && (
@@ -431,8 +428,8 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
             {getTasksForDate(selectedDate).length > 0 ? (
               <div className="space-y-2">
                 {getTasksForDate(selectedDate).map(task => (
-                  <div 
-                    key={task.id} 
+                  <div
+                    key={task.id}
                     className="p-3 bg-white dark:bg-gray-dark rounded border cursor-pointer hover:bg-gray-50 dark:bg-gray-800 transition-colors"
                     onClick={(e) => handleTaskClick(task, e, selectedDate)}
                   >
@@ -451,11 +448,10 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
                           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{task.description}</p>
                         )}
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ml-2 ${
-                        task.status === 'completed' ? 'bg-green-100 text-green-800' :
-                        task.status === 'in-progress' ? 'bg-orange-100 text-orange-800' :
-                        'bg-yellow-100 text-yellow-800'
-                      }`}>
+                      <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ml-2 ${task.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          task.status === 'in-progress' ? 'bg-orange-100 text-orange-800' :
+                            'bg-yellow-100 text-yellow-800'
+                        }`}>
                         {task.status.replace('-', ' ')}
                       </span>
                     </div>

@@ -110,24 +110,26 @@ export const myTasksService = {
         }
     },
 
-    async deleteTaskList(listId: string): Promise<void> {
+    async deleteTaskList(listId: string, userId: string): Promise<void> {
         try {
-            const batch = writeBatch(db);
-
-            // Delete the list itself
-            const listRef = doc(db, TASK_LISTS_COLLECTION, listId);
-            batch.delete(listRef);
-
-            // Delete all tasks under this list
+            // First, get all tasks for this list that belong to the user
             const tasksRef = collection(db, TASKS_COLLECTION);
-            const q = query(tasksRef, where('listId', '==', listId));
+            const q = query(
+                tasksRef, 
+                where('listId', '==', listId),
+                where('userId', '==', userId)
+            );
             const snapshot = await getDocs(q);
 
-            snapshot.docs.forEach((docSnap) => {
-                batch.delete(docSnap.ref);
-            });
+            // Delete tasks individually to ensure proper permission checks
+            const deletePromises = snapshot.docs.map(docSnap => 
+                deleteDoc(docSnap.ref)
+            );
+            await Promise.all(deletePromises);
 
-            await batch.commit();
+            // Finally, delete the list itself
+            const listRef = doc(db, TASK_LISTS_COLLECTION, listId);
+            await deleteDoc(listRef);
         } catch (error) {
             console.error('Error deleting task list:', error);
             throw error;

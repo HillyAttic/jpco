@@ -36,6 +36,8 @@ import { UpcomingDeadlines } from '@/components/dashboard/UpcomingDeadlines';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { QuickActions } from '@/components/dashboard/QuickActions';
 import { PlanTaskModal } from '@/components/dashboard/PlanTaskModal';
+import { ClientListModal } from '@/components/dashboard/ClientListModal';
+import { TeamMembersModal } from '@/components/dashboard/TeamMembersModal';
 import { useRouter } from 'next/navigation';
 import { ProgressiveHydration, SkeletonLoader } from '@/components/ProgressiveHydration';
 import { useOptimizedFetch, batchFetch } from '@/hooks/use-optimized-fetch';
@@ -110,6 +112,10 @@ export default function DashboardPage() {
   const [selectedTaskForPlanning, setSelectedTaskForPlanning] = useState<DashboardTask | null>(null);
   const [userNamesCache, setUserNamesCache] = useState<Record<string, string>>({});
   const [clientNamesCache, setClientNamesCache] = useState<Record<string, string>>({});
+  const [showClientListModal, setShowClientListModal] = useState(false);
+  const [selectedTaskForClients, setSelectedTaskForClients] = useState<DashboardTask | null>(null);
+  const [showTeamMembersModal, setShowTeamMembersModal] = useState(false);
+  const [selectedTaskForTeam, setSelectedTaskForTeam] = useState<DashboardTask | null>(null);
 
   // Check if user is admin or manager
   const canViewAllTasks = isAdmin || isManager;
@@ -359,46 +365,89 @@ export default function DashboardPage() {
   // Loading state
   const loading = tasksLoading || recurringLoading;
 
-  // Debug logging
-  console.log('[Dashboard] Render - showOverdueModal:', showOverdueModal);
-  console.log('[Dashboard] Render - overdueTasks count:', overdueTasks.length);
-  console.log('[Dashboard] Render - stats:', stats);
-
   // Helper function to render recurring task action buttons
   const renderRecurringTaskActions = (task: DashboardTask) => {
-    if (!task.isRecurring || !task.teamMemberMappings || task.teamMemberMappings.length === 0) {
+    if (!task.isRecurring) {
       return null;
     }
 
-    const userMapping = user ? task.teamMemberMappings.find(m => m.userId === user.uid) : null;
-    const clientCount = task.contactIds?.length || 0;
+    const hasTeamMemberMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
+    const hasTeamId = task.teamId && task.teamId.trim() !== '';
+    const userMapping = user ? task.teamMemberMappings?.find(m => m.userId === user.uid) : null;
+    
+    // Get client count and IDs based on user role and assignment
+    let clientCount = 0;
+    let clientIds: string[] = [];
+    
+    if (hasTeamMemberMapping && userMapping) {
+      // For team member mapped tasks, show only user's assigned clients
+      clientCount = userMapping.clientIds.length;
+      clientIds = userMapping.clientIds;
+    } else if (!hasTeamMemberMapping && !hasTeamId) {
+      // For regular tasks (no team assignment), show all contactIds
+      clientCount = task.contactIds?.length || 0;
+      clientIds = task.contactIds || [];
+    } else if (hasTeamId && canViewAllTasks) {
+      // For tasks assigned via teamId, admin/manager can see all clients
+      clientCount = task.contactIds?.length || 0;
+      clientIds = task.contactIds || [];
+    }
+
+    // Don't show any buttons if user has no clients assigned and is not admin/manager
+    if (clientCount === 0 && !canViewAllTasks) {
+      return null;
+    }
+
+    // Don't show buttons section at all if there are no buttons to show
+    const hasClientsButton = clientCount > 0;
+    const hasTeamButton = canViewAllTasks && (hasTeamMemberMapping || hasTeamId); // Show team button for admin/manager when task has team member mappings OR teamId
+    const hasPlanButton = (userMapping || (!hasTeamMemberMapping && !hasTeamId)) && clientCount > 0; // Show Plan button only if user is mapped OR task has no team assignment
+
+    if (!hasClientsButton && !hasTeamButton && !hasPlanButton) {
+      return null;
+    }
 
     return (
       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
-        {/* Clients and Team Assigned Button */}
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            const mappingDetails = task.teamMemberMappings!
-              .map(m => `${m.userName}: ${m.clientIds.length} client(s)`)
-              .join('\n');
-            alert(`Task: ${task.title}\n\nTeam Member Assignments:\n${mappingDetails}\n\nTotal Clients: ${clientCount}`);
-          }}
-          className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded-md transition-colors flex items-center gap-1"
-        >
-          <UserGroupIcon className="w-4 h-4" />
-          Clients & Team ({task.teamMemberMappings.length})
-        </button>
+        {/* Clients Button - Show client count for user's assigned clients */}
+        {hasClientsButton && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTaskForClients(task);
+              setShowClientListModal(true);
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
+          >
+            <UserGroupIcon className="w-4 h-4" />
+            Clients ({clientCount})
+          </button>
+        )}
         
-        {/* Plan Button - Only show if user is assigned */}
-        {userMapping && (
+        {/* Team Button - Show for admin/manager when task has team member mappings or teamId */}
+        {hasTeamButton && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTaskForTeam(task);
+              setShowTeamMembersModal(true);
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
+          >
+            <UserGroupIcon className="w-4 h-4" />
+            Team {hasTeamMemberMapping ? `(${task.teamMemberMappings?.length || 0})` : ''}
+          </button>
+        )}
+        
+        {/* Plan Button - Show if user is assigned and has clients */}
+        {hasPlanButton && (
           <button
             onClick={(e) => {
               e.stopPropagation();
               setSelectedTaskForPlanning(task);
               setShowPlanTaskModal(true);
             }}
-            className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 rounded-md transition-colors flex items-center gap-1"
+            className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
           >
             <CalendarIcon className="w-4 h-4" />
             Plan Task
@@ -406,6 +455,25 @@ export default function DashboardPage() {
         )}
       </div>
     );
+  };
+
+  // Helper function to render assigned to text based on user role
+  const renderAssignedTo = (task: DashboardTask) => {
+    if (!task.assignedTo || task.assignedTo.length === 0) {
+      return null;
+    }
+
+    // Admin/Manager see all assigned users
+    if (canViewAllTasks) {
+      return task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ');
+    }
+
+    // Employees only see their own name if they're assigned
+    if (user && task.assignedTo.includes(user.uid)) {
+      return userNamesCache[user.uid] || 'You';
+    }
+
+    return null;
   };
 
   if (authLoading) {
@@ -445,7 +513,6 @@ export default function DashboardPage() {
           value={stats.total}
           icon={<ClipboardDocumentListIcon className="w-6 h-6" />}
           onClick={() => {
-            console.log('[Dashboard] Total Tasks clicked, opening modal');
             setShowAllTasksModal(true);
             openModal(); // Open modal context to hide header
           }}
@@ -485,8 +552,6 @@ export default function DashboardPage() {
           value={stats.overdue}
           icon={<ExclamationTriangleIcon className="w-5 h-5" />}
           onClick={() => {
-            console.log('[Dashboard] Overdue button clicked, count:', stats.overdue);
-            console.log('[Dashboard] Overdue tasks:', overdueTasks);
             setShowOverdueModal(true);
             openModal();
           }}
@@ -614,7 +679,6 @@ export default function DashboardPage() {
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => {
-            console.log('[Dashboard] Modal backdrop clicked, closing modal');
             setShowAllTasksModal(false);
             closeModal(); // Close modal context to show header
           }}
@@ -645,7 +709,6 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={() => {
-                    console.log('[Dashboard] Close button clicked');
                     setShowAllTasksModal(false);
                     closeModal(); // Close modal context to show header
                   }}
@@ -733,11 +796,11 @@ export default function DashboardPage() {
                                   <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
                                 </span>
                               )}
-                              {task.assignedTo && task.assignedTo.length > 0 && (
+                              {task.assignedTo && task.assignedTo.length > 0 && renderAssignedTo(task) && (
                                 <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
                                   <span className="font-medium flex-shrink-0">Assigned To:</span>
                                   <span className="text-gray-900 dark:text-white truncate">
-                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                    {renderAssignedTo(task)}
                                   </span>
                                 </span>
                               )}
@@ -848,11 +911,11 @@ export default function DashboardPage() {
                                   <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
                                 </span>
                               )}
-                              {task.assignedTo && task.assignedTo.length > 0 && (
+                              {task.assignedTo && task.assignedTo.length > 0 && renderAssignedTo(task) && (
                                 <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
                                   <span className="font-medium flex-shrink-0">Assigned To:</span>
                                   <span className="text-gray-900 dark:text-white truncate">
-                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                    {renderAssignedTo(task)}
                                   </span>
                                 </span>
                               )}
@@ -969,11 +1032,11 @@ export default function DashboardPage() {
                                   <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
                                 </span>
                               )}
-                              {task.assignedTo && task.assignedTo.length > 0 && (
+                              {task.assignedTo && task.assignedTo.length > 0 && renderAssignedTo(task) && (
                                 <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
                                   <span className="font-medium flex-shrink-0">Assigned To:</span>
                                   <span className="text-gray-900 dark:text-white truncate">
-                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                    {renderAssignedTo(task)}
                                   </span>
                                 </span>
                               )}
@@ -1090,11 +1153,11 @@ export default function DashboardPage() {
                                   <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
                                 </span>
                               )}
-                              {task.assignedTo && task.assignedTo.length > 0 && (
+                              {task.assignedTo && task.assignedTo.length > 0 && renderAssignedTo(task) && (
                                 <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
                                   <span className="font-medium flex-shrink-0">Assigned To:</span>
                                   <span className="text-gray-900 dark:text-white truncate">
-                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                    {renderAssignedTo(task)}
                                   </span>
                                 </span>
                               )}
@@ -1113,21 +1176,17 @@ export default function DashboardPage() {
       )}
 
       {/* Overdue Tasks Modal */}
-      {console.log('[Dashboard] Checking showOverdueModal before render:', showOverdueModal)}
       {showOverdueModal && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => {
-            console.log('[Dashboard] Overdue modal backdrop clicked');
             setShowOverdueModal(false);
             closeModal();
           }}
         >
-          {console.log('[Dashboard] Overdue modal IS RENDERING')}
           <div 
             className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => {
-              console.log('[Dashboard] Overdue modal content clicked');
               e.stopPropagation();
             }}
           >
@@ -1139,7 +1198,6 @@ export default function DashboardPage() {
                 </h3>
                 <button
                   onClick={() => {
-                    console.log('[Dashboard] Overdue modal close button clicked');
                     setShowOverdueModal(false);
                     closeModal();
                   }}
@@ -1210,11 +1268,11 @@ export default function DashboardPage() {
                                   <span className="text-gray-900 dark:text-white truncate">{userNamesCache[task.createdBy] || 'Loading...'}</span>
                                 </span>
                               )}
-                              {task.assignedTo && task.assignedTo.length > 0 && (
+                              {task.assignedTo && task.assignedTo.length > 0 && renderAssignedTo(task) && (
                                 <span className="flex items-center gap-0.5 sm:gap-1 min-w-0 overflow-hidden whitespace-nowrap">
                                   <span className="font-medium flex-shrink-0">Assigned To:</span>
                                   <span className="text-gray-900 dark:text-white truncate">
-                                    {task.assignedTo.map(id => userNamesCache[id] || 'Loading...').join(', ')}
+                                    {renderAssignedTo(task)}
                                   </span>
                                 </span>
                               )}
@@ -1249,6 +1307,43 @@ export default function DashboardPage() {
           userName={userProfile?.name || userProfile?.displayName || user?.email || 'Unknown User'}
           taskTitle={selectedTaskForPlanning.title}
           recurringTaskId={selectedTaskForPlanning.id}
+        />
+      )}
+
+      {/* Client List Modal */}
+      {showClientListModal && selectedTaskForClients && (
+        <ClientListModal
+          isOpen={showClientListModal}
+          onClose={() => {
+            setShowClientListModal(false);
+            setSelectedTaskForClients(null);
+          }}
+          taskTitle={selectedTaskForClients.title}
+          clientIds={
+            selectedTaskForClients.teamMemberMappings && user
+              ? selectedTaskForClients.teamMemberMappings.find(m => m.userId === user.uid)?.clientIds || selectedTaskForClients.contactIds || []
+              : selectedTaskForClients.contactIds || []
+          }
+          isTeamMemberMapping={!!selectedTaskForClients.teamMemberMappings && selectedTaskForClients.teamMemberMappings.length > 0}
+          teamMemberName={
+            selectedTaskForClients.teamMemberMappings && user
+              ? selectedTaskForClients.teamMemberMappings.find(m => m.userId === user.uid)?.userName
+              : undefined
+          }
+        />
+      )}
+
+      {/* Team Members Modal */}
+      {showTeamMembersModal && selectedTaskForTeam && (
+        <TeamMembersModal
+          isOpen={showTeamMembersModal}
+          onClose={() => {
+            setShowTeamMembersModal(false);
+            setSelectedTaskForTeam(null);
+          }}
+          taskTitle={selectedTaskForTeam.title}
+          teamMembers={selectedTaskForTeam.teamMemberMappings || []}
+          teamId={selectedTaskForTeam.teamId}
         />
       )}
     </div>

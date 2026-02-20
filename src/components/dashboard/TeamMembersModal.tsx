@@ -1,0 +1,228 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { teamService, Team } from '@/services/team.service';
+
+interface TeamMember {
+  userId: string;
+  userName: string;
+  clientIds: string[];
+}
+
+interface TeamMembersModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  taskTitle: string;
+  teamMembers?: TeamMember[];
+  teamId?: string;
+}
+
+/**
+ * TeamMembersModal Component
+ * Displays team members assigned to a task with their client counts
+ * Supports both teamMemberMappings and teamId
+ */
+export function TeamMembersModal({
+  isOpen,
+  onClose,
+  taskTitle,
+  teamMembers = [],
+  teamId,
+}: TeamMembersModalProps) {
+  const [team, setTeam] = useState<Team | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const loadTeam = async () => {
+      if (!isOpen || !teamId) return;
+
+      setLoading(true);
+      try {
+        const teamData = await teamService.getById(teamId);
+        setTeam(teamData);
+      } catch (error) {
+        console.error('Error loading team:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadTeam();
+  }, [isOpen, teamId]);
+
+  if (!isOpen) return null;
+
+  // Determine which data to display
+  const hasTeamMemberMappings = teamMembers && teamMembers.length > 0;
+  const hasTeamId = teamId && team;
+
+  const totalClients = hasTeamMemberMappings 
+    ? teamMembers.reduce((sum, member) => sum + member.clientIds.length, 0)
+    : 0;
+
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      <div className="flex items-center justify-center min-h-screen px-4 py-4 sm:py-8">
+        <div 
+          className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" 
+          onClick={onClose}
+        ></div>
+
+        <div className="inline-block w-full max-w-2xl overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-dark rounded-lg shadow-xl relative z-10 max-h-[85vh] flex flex-col">
+          {/* Header - Fixed */}
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <UserGroupIcon className="w-6 h-6 text-purple-600" />
+                  {hasTeamId ? 'Team Information' : 'Team Members'}
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  {taskTitle}
+                </p>
+              </div>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                aria-label="Close modal"
+              >
+                <XMarkIcon className="w-6 h-6" />
+              </button>
+            </div>
+          </div>
+
+          {/* Content - Scrollable */}
+          <div className="px-6 py-4 overflow-y-auto flex-1">
+            {loading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+              </div>
+            ) : hasTeamMemberMappings ? (
+              // Show team member mappings with client counts
+              <div className="space-y-3">
+                {teamMembers.map((member) => (
+                  <div
+                    key={member.userId}
+                    className="p-4 border-2 border-gray-200 dark:border-gray-700 rounded-lg hover:border-purple-300 dark:hover:border-purple-600 transition-colors bg-white dark:bg-gray-800"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="flex-shrink-0">
+                          <div className="w-12 h-12 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                            <span className="text-purple-600 dark:text-purple-400 font-semibold text-lg">
+                              {member.userName.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h4 className="font-semibold text-gray-900 dark:text-white truncate">
+                            {member.userName}
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {member.clientIds.length} client{member.clientIds.length !== 1 ? 's' : ''} assigned
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <div className="px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-sm font-semibold">
+                          {member.clientIds.length}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : hasTeamId ? (
+              // Show team information
+              <div className="space-y-4">
+                <div className="p-4 border-2 border-purple-200 dark:border-purple-700 rounded-lg bg-purple-50 dark:bg-purple-900/10">
+                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
+                    {team.name}
+                  </h4>
+                  {team.description && (
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      {team.description}
+                    </p>
+                  )}
+                  {team.leaderName && (
+                    <div className="flex items-center gap-2 text-sm">
+                      <span className="font-medium text-gray-700 dark:text-gray-300">Team Leader:</span>
+                      <span className="text-purple-600 dark:text-purple-400">{team.leaderName}</span>
+                    </div>
+                  )}
+                </div>
+
+                {team.members && team.members.length > 0 && (
+                  <div>
+                    <h5 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
+                      Team Members ({team.members.length})
+                    </h5>
+                    <div className="space-y-2">
+                      {team.members.map((member) => (
+                        <div
+                          key={member.id}
+                          className="p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-purple-300 dark:hover:border-purple-600 transition-colors bg-white dark:bg-gray-800"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="flex-shrink-0">
+                              <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                                <span className="text-purple-600 dark:text-purple-400 font-semibold">
+                                  {member.name.charAt(0).toUpperCase()}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h6 className="font-medium text-gray-900 dark:text-white truncate">
+                                {member.name}
+                              </h6>
+                              <p className="text-xs text-gray-500 dark:text-gray-400">
+                                {member.role}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="text-center py-12">
+                <UserGroupIcon className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500 dark:text-gray-400">No team information available</p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer - Fixed */}
+          <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                {hasTeamMemberMappings ? (
+                  <>
+                    <span className="font-semibold text-gray-900 dark:text-white">{teamMembers.length}</span> team member{teamMembers.length !== 1 ? 's' : ''}
+                    <span className="mx-2">•</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">{totalClients}</span> total client{totalClients !== 1 ? 's' : ''}
+                  </>
+                ) : hasTeamId ? (
+                  <>
+                    <span className="font-semibold text-gray-900 dark:text-white">{team?.members?.length || 0}</span> team member{(team?.members?.length || 0) !== 1 ? 's' : ''}
+                  </>
+                ) : (
+                  <span>No team data</span>
+                )}
+              </div>
+              <button
+                onClick={onClose}
+                className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

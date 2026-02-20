@@ -5,6 +5,7 @@ import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { taskCompletionService } from '@/services/task-completion.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
+import { auth } from '@/lib/firebase';
 
 interface Client {
   id: string;
@@ -134,10 +135,28 @@ export function RecurringTaskClientModal({
         arnDataMap.set(client.id, new Map());
       });
 
-      // Load completion data from Firestore
-      const taskCompletions = await taskCompletionService.getByTaskId(task.id);
+      // Load completion data from API instead of direct Firebase access
+      const user = auth.currentUser;
+      if (!user) {
+        console.error('User not authenticated');
+        setLoading(false);
+        return;
+      }
+
+      const token = await user.getIdToken();
+      const response = await fetch(`/api/task-completions?recurringTaskId=${task.id}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch completions: ${response.statusText}`);
+      }
+
+      const taskCompletions = await response.json();
       
-      taskCompletions.forEach(completion => {
+      taskCompletions.forEach((completion: any) => {
         if (completion.isCompleted) {
           const clientMonths = completions.get(completion.clientId) || new Set<string>();
           clientMonths.add(completion.monthKey);
@@ -321,10 +340,33 @@ export function RecurringTaskClientModal({
         userId: user.uid
       });
 
-      // Save to Firestore
-      await taskCompletionService.bulkUpdate(task.id, updates, user.uid);
+      // Save to API instead of direct Firebase access
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) {
+        throw new Error('Not authenticated');
+      }
+
+      const response = await fetch('/api/task-completions', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          recurringTaskId: task.id,
+          completions: updates,
+          completedBy: user.uid,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: response.statusText }));
+        console.error('API Error Response:', errorData);
+        throw new Error(`Failed to save completions: ${errorData.error || response.statusText}`);
+      }
       
-      console.log('Completions saved successfully');
+      const result = await response.json();
+      console.log('Completions saved successfully:', result);
       
       onClose();
     } catch (error) {

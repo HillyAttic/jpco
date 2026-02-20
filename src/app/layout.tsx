@@ -32,16 +32,17 @@ export const metadata: Metadata = {
   formatDetection: {
     telephone: false,
   },
+};
+
+export const viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#5750F1" },
     { media: "(prefers-color-scheme: dark)", color: "#020d1a" },
   ],
-  viewport: {
-    width: "device-width",
-    initialScale: 1,
-    maximumScale: 5,
-    userScalable: true,
-  },
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
 };
 
 export default function RootLayout({ children }: PropsWithChildren) {
@@ -57,8 +58,8 @@ export default function RootLayout({ children }: PropsWithChildren) {
         <Providers>
           <ServiceWorkerProvider>
             {/* Skip to main content link for keyboard navigation */}
-            <a 
-              href="#main-content" 
+            <a
+              href="#main-content"
               className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 z-[9999] bg-primary text-white px-4 py-2 rounded-md text-sm font-medium"
             >
               Skip to main content

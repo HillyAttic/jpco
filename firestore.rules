@@ -31,7 +31,7 @@ service cloud.firestore {
     
     // Validate that user is not escalating their own privileges
     function isNotPrivilegeEscalation() {
-      return !request.resource.data.keys().hasAny(['role', 'permissions', 'isAdmin']);
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role', 'permissions', 'isAdmin']);
     }
     
     // Validate that the request is not modifying protected fields

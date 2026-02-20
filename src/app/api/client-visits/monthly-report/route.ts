@@ -9,6 +9,12 @@ interface VisitRecord {
   endTime: string;
   taskTitle: string;
   taskType?: 'recurring' | 'non-recurring';
+  attendanceStatus?: 'present' | 'absent' | 'incomplete' | 'no-data';
+  attendanceDetails?: {
+    clockIn?: string;
+    clockOut?: string;
+    totalHours?: number;
+  };
 }
 
 interface MonthlyVisits {
@@ -53,6 +59,7 @@ export async function GET(request: NextRequest) {
     const { rosterAdminService } = await import('@/services/roster-admin.service');
     const { clientAdminService } = await import('@/services/client-admin.service');
     const { adminDb } = await import('@/lib/firebase-admin');
+    const { Timestamp } = await import('firebase-admin/firestore');
 
     // Get all recurring tasks with teamMemberMappings (these are the ones with Plan Task button)
     const recurringTasksSnapshot = await adminDb.collection('recurring-tasks').get();
@@ -108,6 +115,79 @@ export async function GET(request: NextRequest) {
     console.log('[Client Visits] Total roster entries:', allRosterEntries.length);
     console.log('[Client Visits] Filtered roster entries (Plan Task only):', rosterClientVisits.length);
 
+    // ========== 2. Fetch attendance records for all employees and dates ==========
+    const attendanceMap = new Map<string, any>(); // key: "employeeId-YYYY-MM-DD"
+    
+    if (rosterClientVisits.length > 0) {
+      // Get unique employee IDs and date range
+      const employeeIds = [...new Set(rosterClientVisits.map(v => v.userId))];
+      
+      // Determine date range for attendance query
+      let minDate = new Date();
+      let maxDate = new Date(0);
+      
+      for (const visit of rosterClientVisits) {
+        const visitDate = visit.taskDate ? new Date(visit.taskDate) : visit.timeStart;
+        if (visitDate) {
+          if (visitDate < minDate) minDate = visitDate;
+          if (visitDate > maxDate) maxDate = visitDate;
+        }
+      }
+      
+      // Fetch attendance records for all employees in the date range
+      const attendanceSnapshot = await adminDb
+        .collection('attendance-records')
+        .where('employeeId', 'in', employeeIds.slice(0, 10)) // Firestore 'in' limit is 10
+        .where('clockIn', '>=', Timestamp.fromDate(minDate))
+        .where('clockIn', '<=', Timestamp.fromDate(new Date(maxDate.getTime() + 24 * 60 * 60 * 1000)))
+        .get();
+      
+      // If more than 10 employees, fetch in batches
+      if (employeeIds.length > 10) {
+        for (let i = 10; i < employeeIds.length; i += 10) {
+          const batch = employeeIds.slice(i, i + 10);
+          const batchSnapshot = await adminDb
+            .collection('attendance-records')
+            .where('employeeId', 'in', batch)
+            .where('clockIn', '>=', Timestamp.fromDate(minDate))
+            .where('clockIn', '<=', Timestamp.fromDate(new Date(maxDate.getTime() + 24 * 60 * 60 * 1000)))
+            .get();
+          
+          batchSnapshot.docs.forEach(doc => {
+            const data = doc.data();
+            const clockIn = data.clockIn?.toDate();
+            if (clockIn) {
+              const dateKey = formatDate(clockIn);
+              const key = `${data.employeeId}-${dateKey}`;
+              attendanceMap.set(key, {
+                clockIn: data.clockIn?.toDate(),
+                clockOut: data.clockOut?.toDate(),
+                totalHours: data.totalHours || 0,
+                status: data.status,
+              });
+            }
+          });
+        }
+      }
+      
+      attendanceSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const clockIn = data.clockIn?.toDate();
+        if (clockIn) {
+          const dateKey = formatDate(clockIn);
+          const key = `${data.employeeId}-${dateKey}`;
+          attendanceMap.set(key, {
+            clockIn: data.clockIn?.toDate(),
+            clockOut: data.clockOut?.toDate(),
+            totalHours: data.totalHours || 0,
+            status: data.status,
+          });
+        }
+      });
+      
+      console.log('[Client Visits] Fetched attendance records:', attendanceMap.size);
+    }
+
     // ========== 3. Build unified client-wise monthly reports ==========
     // Use a map to collect all visit records per client
     const clientVisitRecordsMap = new Map<string, VisitRecord[]>();
@@ -121,6 +201,40 @@ export async function GET(request: NextRequest) {
       }
 
       const date = entry.taskDate || formatDate(entry.timeStart!);
+      
+      // Check attendance for this employee on this date
+      const attendanceKey = `${entry.userId}-${date}`;
+      const attendance = attendanceMap.get(attendanceKey);
+      
+      let attendanceStatus: 'present' | 'absent' | 'incomplete' | 'no-data' = 'no-data';
+      let attendanceDetails: any = undefined;
+      
+      if (attendance) {
+        if (attendance.clockOut) {
+          attendanceStatus = 'present';
+          attendanceDetails = {
+            clockIn: formatTime(attendance.clockIn),
+            clockOut: formatTime(attendance.clockOut),
+            totalHours: attendance.totalHours,
+          };
+        } else if (attendance.clockIn) {
+          attendanceStatus = 'incomplete';
+          attendanceDetails = {
+            clockIn: formatTime(attendance.clockIn),
+          };
+        }
+      } else {
+        // Check if the visit date is in the past
+        const visitDate = new Date(date);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        visitDate.setHours(0, 0, 0, 0);
+        
+        if (visitDate < today) {
+          attendanceStatus = 'absent';
+        }
+      }
+      
       clientVisitRecordsMap.get(entry.clientId)!.push({
         date,
         employeeName: entry.userName,
@@ -129,6 +243,8 @@ export async function GET(request: NextRequest) {
         endTime: formatTime(entry.timeEnd!),
         taskTitle: entry.taskDetail || 'Visit',
         taskType: 'recurring',
+        attendanceStatus,
+        attendanceDetails,
       });
     }
 
