@@ -49,7 +49,7 @@ export async function POST(
     }
 
     // Use display name from auth token if author is not provided or to enforce identity
-    const authorName = authResult.user.name || authResult.user.email || 'Unknown User';
+    const authorName = authResult.user.email || 'Unknown User';
 
     const newComment = await nonRecurringTaskAdminService.addComment(id, {
       author: authorName,

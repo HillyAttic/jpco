@@ -203,8 +203,8 @@ class DashboardOptimizedService {
       const now = new Date();
       const overdueTasks = allUserTasks.filter(t => {
         if (t.status === 'completed') return false;
-        const dueDate = ('dueDate' in t && t.dueDate) ? new Date(t.dueDate) : 
-                       ('nextOccurrence' in t && t.nextOccurrence) ? new Date(t.nextOccurrence) : null;
+        const dueDate = ('dueDate' in t && t.dueDate) ? new Date(t.dueDate as any) : 
+                       ('nextOccurrence' in t && t.nextOccurrence) ? new Date(t.nextOccurrence as any) : null;
         return dueDate && dueDate < now;
       }).length;
 
@@ -274,8 +274,8 @@ class DashboardOptimizedService {
       const now = new Date();
       const overdueTasks = allTasks.filter(t => {
         if (t.status === 'completed') return false;
-        const dueDate = ('dueDate' in t && t.dueDate) ? new Date(t.dueDate) : 
-                       ('nextOccurrence' in t && t.nextOccurrence) ? new Date(t.nextOccurrence) : null;
+        const dueDate = ('dueDate' in t && t.dueDate) ? new Date(t.dueDate as any) : 
+                       ('nextOccurrence' in t && t.nextOccurrence) ? new Date(t.nextOccurrence as any) : null;
         return dueDate && dueDate < now;
       }).length;
 

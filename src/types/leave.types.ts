@@ -2,7 +2,7 @@
  * Leave Management Types
  */
 
-export type LeaveStatus = 'pending' | 'approved' | 'rejected';
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
 export type LeaveType = 'sick' | 'casual' | 'vacation' | 'personal' | 'other';
 
 export interface LeaveRequest {

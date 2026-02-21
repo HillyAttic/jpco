@@ -60,6 +60,7 @@ interface DashboardTask extends Task {
   isRecurring?: boolean;
   recurrencePattern?: string;
   teamId?: string;
+  contactIds?: string[]; // For recurring tasks
   teamMemberMappings?: Array<{
     userId: string;
     userName: string;
@@ -570,7 +571,12 @@ export default function DashboardPage() {
             fallback={<SkeletonLoader className="h-64 w-full" />}
           >
             <Suspense fallback={<SkeletonLoader className="h-64 w-full" />}>
-              <TaskDistributionChart tasks={tasks} />
+              <TaskDistributionChart 
+                completed={stats.completed}
+                inProgress={stats.inProgress}
+                todo={stats.todo}
+                total={stats.total}
+              />
             </Suspense>
           </ProgressiveHydration>
         )}
@@ -1304,7 +1310,7 @@ export default function DashboardPage() {
               ?.clientIds || []
           }
           userId={user?.uid || ''}
-          userName={userProfile?.name || userProfile?.displayName || user?.email || 'Unknown User'}
+          userName={userProfile?.displayName || user?.email || 'Unknown User'}
           taskTitle={selectedTaskForPlanning.title}
           recurringTaskId={selectedTaskForPlanning.id}
         />

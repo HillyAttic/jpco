@@ -33,6 +33,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const data = doc.data()!;
     const leaveRequest = {
       id: doc.id,
+      employeeId: data.employeeId,
       ...data,
       startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
       endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,

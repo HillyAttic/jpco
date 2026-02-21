@@ -283,7 +283,7 @@ export function AttendanceCalendarModal({
       
       if (status.status === 'present') present++;
       else if (status.status === 'absent') absent++;
-      else if (status.status === 'leave') leaves++;
+      else if (status.status === 'approved-leave' || status.status === 'unapproved-leave') leaves++;
     }
 
     const attendanceRate = workingDays > 0 ? Math.round((present / workingDays) * 100) : 0;

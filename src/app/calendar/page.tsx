@@ -60,7 +60,7 @@ export default function CalendarPage() {
       // For recurring tasks, use dueDate as the starting point for occurrences
       // This ensures the calendar shows when tasks are actually due, not when they started
       const taskDueDate = new Date(recurringTask.dueDate);
-      const taskEndDate = recurringTask.endDate ? new Date(recurringTask.endDate) : calendarEndDate;
+      const taskEndDate = calendarEndDate; // Recurring tasks don't have an end date
 
       // Only generate occurrences within the calendar range
       const occurrenceStartDate = taskDueDate > calendarStartDate ? taskDueDate : calendarStartDate;
@@ -218,11 +218,11 @@ export default function CalendarPage() {
 
       const fetchLeaves = async () => {
         if (!currentUser) return [];
-        // Only fetch approved leaves
-        return await leaveService.getLeaveRequests({
+        // Fetch all leave requests and filter for approved ones
+        const allLeaves = await leaveService.getLeaveRequests({
           employeeId: currentUser.uid,
-          status: 'approved'
         });
+        return allLeaves.filter(leave => leave.status === 'approved');
       };
 
       const [nonRecurringTasksData, recurringTasksData, leaveRequestsData] = await Promise.all([

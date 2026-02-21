@@ -1,6 +1,21 @@
 import { auth } from '@/lib/firebase';
 
 /**
+ * Wait for Firebase auth to be ready
+ */
+async function waitForAuth(maxWaitMs: number = 5000): Promise<void> {
+  const startTime = Date.now();
+  
+  while (!auth.currentUser && (Date.now() - startTime) < maxWaitMs) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  
+  if (!auth.currentUser) {
+    throw new Error('User not authenticated - auth timeout');
+  }
+}
+
+/**
  * Make authenticated API requests
  * Automatically adds Firebase ID token to Authorization header
  */
@@ -9,6 +24,9 @@ export async function authenticatedFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   try {
+    // Wait for auth to be ready
+    await waitForAuth();
+    
     const user = auth.currentUser;
     
     if (!user) {

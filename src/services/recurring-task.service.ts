@@ -107,7 +107,7 @@ export const recurringTaskService = {
     }
 
     // Add default ordering
-    options.orderByField = 'nextOccurrence';
+    options.orderByField = 'dueDate';
     options.orderDirection = 'asc';
 
     let tasks = await recurringTaskFirebaseService.getAll(options);
@@ -194,22 +194,13 @@ export const recurringTaskService = {
 
     // Calculate next occurrence
     const nextOccurrence = calculateNextOccurrence(
-      task.nextOccurrence,
+      task.dueDate,
       task.recurrencePattern
     );
 
-    // Check if next occurrence is beyond end date
-    if (task.endDate && nextOccurrence > task.endDate) {
-      // Mark as completed and don't schedule next
-      return recurringTaskFirebaseService.update(id, {
-        status: 'completed',
-        completionHistory: updatedHistory,
-      });
-    }
-
     // Update task with new occurrence and history
     return recurringTaskFirebaseService.update(id, {
-      nextOccurrence,
+      dueDate: nextOccurrence,
       completionHistory: updatedHistory,
       status: 'pending',
     });
@@ -226,7 +217,7 @@ export const recurringTaskService = {
 
     const totalCycles = this.calculateTotalCycles(
       task.startDate,
-      task.nextOccurrence,
+      task.dueDate,
       task.recurrencePattern
     );
 

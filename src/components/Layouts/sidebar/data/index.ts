@@ -130,7 +130,7 @@ export const NAV_DATA = [
         url: "/admin/leave-approvals",
         icon: Icons.CheckCircleIcon,
         items: [],
-        requiresRole: ['admin', 'manager'], // Only managers and admins can approve leaves
+        requiresRole: ['admin'], // Only admins can approve leaves
       },
       {
         title: "Attendance Roster",

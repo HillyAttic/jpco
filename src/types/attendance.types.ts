@@ -94,6 +94,7 @@ export interface LeaveType {
 
 // Leave Balance
 export interface LeaveBalance {
+  id?: string;
   leaveTypeId: string;
   leaveTypeName: string;
   totalDays: number;

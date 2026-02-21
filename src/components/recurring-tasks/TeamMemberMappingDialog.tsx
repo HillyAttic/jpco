@@ -6,6 +6,7 @@ import Select from '@/components/ui/select';
 import { Client, clientService } from '@/services/client.service';
 import { UserProfile } from '@/types/auth.types';
 import { UserManagementService } from '@/services/user-management.service';
+import { authenticatedFetch } from '@/lib/api-client';
 import { XMarkIcon, UserIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
 import { TeamMemberMapping } from '@/services/recurring-task.service';
 
@@ -30,19 +31,34 @@ export function TeamMemberMappingDialog({
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
 
-  // Load users and clients
+  // Load users and clients (filtered by manager hierarchy)
   useEffect(() => {
     const loadData = async () => {
       setLoadingUsers(true);
       setLoadingClients(true);
       
       try {
-        const [usersResult, clientsResult] = await Promise.all([
-          UserManagementService.getInstance().getAllUsers({ isActive: true }),
+        // Use the new API that respects manager hierarchy for users with authentication
+        const [usersResponse, clientsResult] = await Promise.all([
+          authenticatedFetch('/api/manager-hierarchy/my-employees'),
           clientService.getAll({ status: 'active', limit: 1000 }),
         ]);
         
-        setUsers(usersResult.users);
+        if (!usersResponse.ok) {
+          throw new Error('Failed to fetch users');
+        }
+        
+        const usersData = await usersResponse.json();
+        
+        // Convert to UserProfile format
+        const userProfiles: UserProfile[] = usersData.map((user: any) => ({
+          uid: user.id,
+          email: user.email,
+          displayName: user.name,
+          role: user.role,
+        }));
+        
+        setUsers(userProfiles);
         setClients(clientsResult);
       } catch (error) {
         console.error('Error loading data:', error);

@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(completions);
   } catch (error) {
-    return handleApiError(error, 'Failed to fetch task completions');
+    return handleApiError(error);
   }
 }
 
@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(completion, { status: 201 });
   } catch (error) {
-    return handleApiError(error, 'Failed to create/update task completion');
+    return handleApiError(error);
   }
 }
 
@@ -140,7 +140,7 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ success: true, results });
   } catch (error) {
     console.error('[Task Completions API] Bulk update error:', error);
-    return handleApiError(error, 'Failed to bulk update task completions');
+    return handleApiError(error);
   }
 }
 
@@ -170,6 +170,6 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    return handleApiError(error, 'Failed to delete task completion');
+    return handleApiError(error);
   }
 }

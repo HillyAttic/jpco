@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { verifyAuthToken } from '@/lib/server-auth';
-import { ErrorResponses } from '@/lib/api-error-handler';
+import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * GET /api/holidays
@@ -80,6 +80,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(holidays);
   } catch (error) {
     console.error('Error fetching holidays:', error);
-    return ErrorResponses.internalError('Failed to fetch holidays');
+    return handleApiError(error);
   }
 }

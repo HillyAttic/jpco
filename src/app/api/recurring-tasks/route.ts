@@ -94,9 +94,52 @@ export async function GET(request: NextRequest) {
     console.log(`[Recurring Tasks API] Is Calendar View: ${isCalendarView}`);
 
     // Filter tasks based on user role
-    // Admin/Manager see all tasks in both calendar and list views
-    // Team members see only their assigned tasks in both views
-    if (!isAdminOrManager) {
+    // Admin sees all tasks
+    // Managers see only tasks they created or tasks assigned to their team members
+    // Employees see only their assigned tasks
+    if (userRole === 'manager') {
+      // Managers see tasks they created OR tasks assigned to their managed employees
+      const { adminDb } = await import('@/lib/firebase-admin');
+      
+      // Get employees managed by this manager
+      const hierarchySnapshot = await adminDb
+        .collection('manager-hierarchies')
+        .where('managerId', '==', userId)
+        .limit(1)
+        .get();
+      
+      const managedEmployeeIds = new Set<string>();
+      if (!hierarchySnapshot.empty) {
+        const hierarchy = hierarchySnapshot.docs[0].data();
+        (hierarchy.employeeIds || []).forEach((id: string) => managedEmployeeIds.add(id));
+      }
+      
+      console.log(`[Recurring Tasks API] Manager ${userId} manages ${managedEmployeeIds.size} employees`);
+      
+      // Filter tasks: created by manager OR assigned to managed employees
+      tasks = tasks.filter(task => {
+        // Check if task was created by this manager
+        const isCreatedByManager = task.createdBy === userId;
+        
+        // Check if task is assigned to any managed employee
+        const isAssignedToManagedEmployee = task.teamMemberMappings &&
+          Array.isArray(task.teamMemberMappings) &&
+          task.teamMemberMappings.some(mapping => managedEmployeeIds.has(mapping.userId));
+        
+        console.log(`[Recurring Tasks API] Task "${task.title}":`, {
+          taskId: task.id,
+          createdBy: task.createdBy,
+          isCreatedByManager,
+          isAssignedToManagedEmployee,
+          willShow: isCreatedByManager || isAssignedToManagedEmployee
+        });
+        
+        return isCreatedByManager || isAssignedToManagedEmployee;
+      });
+      
+      console.log(`[Recurring Tasks API] Manager ${userId} filtered tasks: ${tasks.length}`);
+    } else if (userRole === 'employee') {
+      // Employees see only their assigned tasks
       const { teamAdminService } = await import('@/services/team-admin.service');
 
       // OPTIMIZED: Batch all user ID lookups using Admin SDK
@@ -200,8 +243,8 @@ export async function GET(request: NextRequest) {
       });
 
       console.log(`[Recurring Tasks API] Team member ${userId} filtered recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);
-    } else {
-      console.log(`[Recurring Tasks API] Admin/Manager ${userId} viewing all recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);
+    } else if (userRole === 'admin') {
+      console.log(`[Recurring Tasks API] Admin ${userId} viewing all recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);
     }
 
     // Serialize dates to ISO strings for JSON response

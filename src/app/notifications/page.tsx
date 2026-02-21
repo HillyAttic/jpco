@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Bell, BellOff, Check, X } from "lucide-react";
 import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
+import { authenticatedFetch } from "@/lib/api-client";
 import {
   requestNotificationPermission,
   requestNotificationPermissionMobile,
@@ -206,7 +207,7 @@ export default function NotificationsPage() {
     }
 
     try {
-      const response = await fetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`);
+      const response = await authenticatedFetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`);
       if (!response.ok) {
         const errorData = await response.json();
         console.error('Failed to fetch notifications:', errorData);
@@ -235,9 +236,8 @@ export default function NotificationsPage() {
   // Mark notification as read
   const markAsRead = async (notificationId: string) => {
     try {
-      await fetch('/api/notifications', {
+      await authenticatedFetch('/api/notifications', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'markAsRead', notificationId }),
       });
 

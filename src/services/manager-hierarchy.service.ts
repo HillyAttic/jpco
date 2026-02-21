@@ -67,15 +67,17 @@ export const managerHierarchyService = {
   ): Promise<ManagerHierarchy> {
     // Get employee details
     const allEmployees = await employeeService.getAll();
-    const employees: EmployeeInfo[] = employeeIds
+    const employees = employeeIds
       .map(id => {
         const emp = allEmployees.find(e => e.id === id);
-        return emp ? {
+        if (!emp) return null;
+        const info: EmployeeInfo = {
           id: emp.id!,
           name: emp.name,
           email: emp.email,
           department: emp.role,
-        } : null;
+        };
+        return info;
       })
       .filter((e): e is EmployeeInfo => e !== null);
 
@@ -115,15 +117,17 @@ export const managerHierarchyService = {
     
     // Get employee details
     const allEmployees = await employeeService.getAll();
-    const employees: EmployeeInfo[] = updatedEmployeeIds
+    const employees = updatedEmployeeIds
       .map(id => {
         const emp = allEmployees.find(e => e.id === id);
-        return emp ? {
+        if (!emp) return null;
+        const info: EmployeeInfo = {
           id: emp.id!,
           name: emp.name,
           email: emp.email,
           department: emp.role,
-        } : null;
+        };
+        return info;
       })
       .filter((e): e is EmployeeInfo => e !== null);
 
@@ -146,15 +150,17 @@ export const managerHierarchyService = {
     
     // Get employee details
     const allEmployees = await employeeService.getAll();
-    const employees: EmployeeInfo[] = updatedEmployeeIds
+    const employees = updatedEmployeeIds
       .map(id => {
         const emp = allEmployees.find(e => e.id === id);
-        return emp ? {
+        if (!emp) return null;
+        const info: EmployeeInfo = {
           id: emp.id!,
           name: emp.name,
           email: emp.email,
           department: emp.role,
-        } : null;
+        };
+        return info;
       })
       .filter((e): e is EmployeeInfo => e !== null);
 

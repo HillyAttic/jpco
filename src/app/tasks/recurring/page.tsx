@@ -132,7 +132,7 @@ export default function RecurringTasksPage() {
         categoryId: data.categoryId || undefined,
         recurrencePattern: data.recurrencePattern,
         startDate: startDate,
-        dueDate: data.dueDate ? new Date(data.dueDate) : (selectedTask?.id ? undefined : dueDate),
+        dueDate: data.dueDate ? new Date(data.dueDate) : (selectedTask?.dueDate || dueDate),
         teamId: data.teamId || undefined,
         teamMemberMappings: data.teamMemberMappings || undefined, // Include team member mappings
         requiresArn: data.requiresArn || false, // Include ARN requirement

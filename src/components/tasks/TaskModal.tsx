@@ -6,6 +6,7 @@ import { Task } from '@/types/task.types';
 import { Employee, employeeService } from '@/services/employee.service';
 import { Category, categoryService } from '@/services/category.service';
 import { Client, clientService } from '@/services/client.service';
+import { authenticatedFetch } from '@/lib/api-client';
 import {
   Dialog,
   DialogContent,
@@ -85,13 +86,29 @@ export function TaskModal({
     },
   });
 
-  // Load employees for assignment
+  // Load employees for assignment (filtered by manager hierarchy)
   useEffect(() => {
     const loadEmployees = async () => {
       setLoadingEmployees(true);
       try {
-        const activeEmployees = await employeeService.getAll({ status: 'active', limit: 1000 });
-        setEmployees(activeEmployees);
+        // Use the new API that respects manager hierarchy with authentication
+        const response = await authenticatedFetch('/api/manager-hierarchy/my-employees');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.error('Failed to fetch employees:', response.status, errorData);
+          throw new Error(`Failed to fetch employees: ${response.status}`);
+        }
+        const employeesData = await response.json();
+        
+        // Convert API response to Employee format
+        const formattedEmployees: Employee[] = employeesData.map((emp: any) => ({
+          id: emp.id,
+          name: emp.name,
+          email: emp.email,
+          role: emp.role,
+        }));
+        
+        setEmployees(formattedEmployees);
       } catch (error) {
         console.error('Error loading employees:', error);
         setEmployees([]);
