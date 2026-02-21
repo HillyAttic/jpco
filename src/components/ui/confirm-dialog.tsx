@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Button } from './button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from './dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './dialog';
 
 interface ConfirmDialogProps {
   title: string;
@@ -28,9 +28,9 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>{message}</DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          <p className="text-gray-700 dark:text-gray-300">{message}</p>
         </div>
         
         <div className="flex justify-end space-x-3">

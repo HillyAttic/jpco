@@ -37,14 +37,7 @@ export function PWAInstallButton() {
       const installed = isStandalone || isFullscreen || isIOSStandalone;
       setIsInstalled(installed);
       
-      console.log('[PWA Install] Status:', {
-        isStandalone,
-        isFullscreen,
-        isIOSStandalone,
-        installed,
-        isAndroid,
-        iOS
-      });
+      // Reduced logging for cleaner console
       
       return installed;
     };
@@ -53,7 +46,6 @@ export function PWAInstallButton() {
 
     // Listen for beforeinstallprompt event (Android/Chrome)
     const handleBeforeInstallPrompt = (e: Event) => {
-      console.log('[PWA Install] beforeinstallprompt fired - PWA is installable!');
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
@@ -61,7 +53,6 @@ export function PWAInstallButton() {
 
     // Listen for app installed event
     const handleAppInstalled = () => {
-      console.log('[PWA Install] App installed successfully');
       setIsInstalled(true);
       setIsInstallable(false);
       setDeferredPrompt(null);
@@ -69,7 +60,6 @@ export function PWAInstallButton() {
 
     // For mobile devices, show install button if not installed
     if ((iOS || isAndroid) && !installed) {
-      console.log('[PWA Install] Mobile device detected - showing install button');
       setIsInstallable(true);
     }
 

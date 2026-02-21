@@ -47,7 +47,7 @@ export const viewport = {
 
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         {/* Preconnect to critical origins */}
         <link rel="preconnect" href="https://firestore.googleapis.com" />

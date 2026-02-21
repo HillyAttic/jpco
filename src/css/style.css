@@ -742,6 +742,21 @@ img {
     transform: scale(0.95);
     transition: transform 0.1s ease;
   }
+  
+  /* Touch-friendly button sizes */
+  button,
+  a,
+  input[type="checkbox"],
+  input[type="radio"] {
+    min-width: 44px;
+    min-height: 44px;
+  }
+  
+  /* Override for rounded-full buttons to ensure touch-friendly size */
+  .rounded-full {
+    min-width: 44px;
+    min-height: 44px;
+  }
 }
 
 /* High DPI display optimizations */

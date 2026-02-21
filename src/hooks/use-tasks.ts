@@ -3,6 +3,7 @@ import { NonRecurringTask } from '@/services/nonrecurring-task.service';
 import { activityService } from '@/services/activity.service';
 import { auth, db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface UseTasksOptions {
   initialFetch?: boolean;
@@ -57,20 +58,6 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
   const [filters, setFilters] = useState<TaskFilters>({});
 
   /**
-   * Helper function to get authentication token
-   */
-  const getAuthToken = async (): Promise<string> => {
-    const { auth } = await import('@/lib/firebase');
-    const user = auth.currentUser;
-    
-    if (!user) {
-      throw new Error('User not authenticated');
-    }
-
-    return await user.getIdToken();
-  };
-
-  /**
    * Fetch tasks from API with authentication
    */
   const fetchTasks = useCallback(async () => {
@@ -78,19 +65,13 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
     setError(null);
 
     try {
-      const token = await getAuthToken();
-
       const params = new URLSearchParams();
       if (searchQuery) params.append('search', searchQuery);
       if (filters.status) params.append('status', filters.status);
       if (filters.priority) params.append('priority', filters.priority);
       if (filters.category) params.append('category', filters.category);
 
-      const response = await fetch(`/api/tasks?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      });
+      const response = await authenticatedFetch(`/api/tasks?${params.toString()}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch tasks');
@@ -122,8 +103,6 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
    */
   const createTask = useCallback(
     async (data: Omit<NonRecurringTask, 'id' | 'createdAt' | 'updatedAt'>) => {
-      const token = await getAuthToken();
-
       // Generate temporary ID for optimistic update
       const tempId = `temp-${Date.now()}`;
       const optimisticTask: NonRecurringTask = {
@@ -137,12 +116,8 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
       setTasks((prev) => [optimisticTask, ...prev]);
 
       try {
-        const response = await fetch('/api/tasks', {
+        const response = await authenticatedFetch('/api/tasks', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
           body: JSON.stringify(data),
         });
 
@@ -206,11 +181,8 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
       );
 
       try {
-        const response = await fetch(`/api/tasks/${id}`, {
+        const response = await authenticatedFetch(`/api/tasks/${id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(data),
         });
 
@@ -271,7 +243,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
       setTasks((prev) => prev.filter((task) => task.id !== id));
 
       try {
-        const response = await fetch(`/api/tasks/${id}`, {
+        const response = await authenticatedFetch(`/api/tasks/${id}`, {
           method: 'DELETE',
         });
 
@@ -330,7 +302,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
       );
 
       try {
-        const response = await fetch(`/api/tasks/${id}/complete`, {
+        const response = await authenticatedFetch(`/api/tasks/${id}/complete`, {
           method: 'PATCH',
         });
 

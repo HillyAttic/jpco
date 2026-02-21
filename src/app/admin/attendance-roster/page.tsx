@@ -66,7 +66,6 @@ export default function AttendanceRosterPage() {
         : Array.isArray(employeesRaw?.data)
           ? employeesRaw.data
           : [];
-      console.log('[AttendanceRoster] employees fetched:', employeesData.length);
 
       // Fetch attendance records for the month
       const startDate = new Date(year, month, 1);
@@ -94,21 +93,12 @@ export default function AttendanceRosterPage() {
           : [];
 
       // Fetch holidays using API (Admin SDK on server-side)
-      console.log('[AttendanceRoster] Fetching holidays from API...');
       const holidaysRes = await authenticatedFetch('/api/holidays');
       const holidaysData = holidaysRes.ok ? await holidaysRes.json() : [];
-      console.log('[AttendanceRoster] Total holidays fetched:', holidaysData.length);
       
       const holidays = new Set<string>();
       
       holidaysData.forEach((holiday: any) => {
-        console.log('[AttendanceRoster] Processing holiday:', {
-          id: holiday.id,
-          name: holiday.name,
-          date: holiday.date,
-          dateType: typeof holiday.date,
-        });
-        
         if (holiday.date) {
           // API returns ISO string, convert to YYYY-MM-DD
           const holidayDate = new Date(holiday.date);
@@ -116,14 +106,9 @@ export default function AttendanceRosterPage() {
           const month = String(holidayDate.getMonth() + 1).padStart(2, '0');
           const day = String(holidayDate.getDate()).padStart(2, '0');
           const formattedDate = `${year}-${month}-${day}`;
-          
-          console.log('[AttendanceRoster] ✅ Adding holiday to Set:', formattedDate, '(', holiday.name, ')');
           holidays.add(formattedDate);
         }
       });
-      
-      console.log('[AttendanceRoster] 📋 Final holidays Set:', Array.from(holidays));
-      console.log('[AttendanceRoster] 📅 Viewing month:', month + 1, 'year:', year);
 
       // Build attendance roster
       const daysInMonth = new Date(year, month + 1, 0).getDate();
@@ -152,18 +137,7 @@ export default function AttendanceRosterPage() {
           // Check if it's a holiday
           const isHoliday = holidays.has(dateStr);
           
-          // Enhanced debugging for specific dates
-          if (day === 20 || day === 21) {
-            console.log(`[AttendanceRoster] 🔍 Checking day ${day}:`, {
-              dateStr: dateStr,
-              isSunday: isSunday,
-              isHoliday: isHoliday,
-              holidaysSetSize: holidays.size,
-              holidaysSetContents: Array.from(holidays),
-              exactMatch: holidays.has(dateStr),
-              dateStrType: typeof dateStr
-            });
-          }
+          // Debugging removed to reduce console noise
 
           // Check attendance
           const attendance = attendanceData.find(
@@ -190,13 +164,6 @@ export default function AttendanceRosterPage() {
           if (isSunday || isHoliday) {
             status = 'holiday';
             holidayCount++;
-            if (day === 20 || day === 21) {
-              console.log(`[AttendanceRoster] ✅ Setting day ${day} to HOLIDAY status`, {
-                isSunday,
-                isHoliday,
-                dateStr
-              });
-            }
           } else if (approvedLeave) {
             if (approvedLeave.leaveType === 'half-day') {
               status = 'half-day';
