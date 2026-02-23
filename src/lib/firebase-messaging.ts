@@ -2,6 +2,7 @@
 
 import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging';
 import app from './firebase';
+import { registerServiceWorker, isServiceWorkerActive } from './register-sw';
 
 let messaging: Messaging | null = null;
 
@@ -30,12 +31,23 @@ export const getFCMToken = async (): Promise<string | null> => {
       return null;
     }
 
-    // Check if service worker is registered
-    const registration = await navigator.serviceWorker.ready;
+    // CRITICAL FIX: Explicitly register service worker FIRST
+    console.log('[FCM] Registering service worker...');
+    const registration = await registerServiceWorker();
+    
     if (!registration) {
-      console.warn('[FCM] Service worker not registered');
+      console.error('[FCM] ❌ Failed to register service worker');
       return null;
     }
+
+    // Verify service worker is active
+    const isActive = await isServiceWorkerActive();
+    if (!isActive) {
+      console.error('[FCM] ❌ Service worker not active');
+      return null;
+    }
+
+    console.log('[FCM] ✅ Service worker ready');
 
     // Request notification permission
     const permission = await Notification.requestPermission();
@@ -44,21 +56,22 @@ export const getFCMToken = async (): Promise<string | null> => {
       return null;
     }
 
-    // Get FCM token
+    // Get FCM token with explicit service worker registration
+    console.log('[FCM] Requesting FCM token...');
     const token = await getToken(messagingInstance, {
       vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
       serviceWorkerRegistration: registration,
     });
 
     if (token) {
-      console.log('[FCM] Token obtained:', token.substring(0, 20) + '...');
+      console.log('[FCM] ✅ Token obtained:', token.substring(0, 20) + '...');
       return token;
     } else {
-      console.warn('[FCM] No token available');
+      console.warn('[FCM] ❌ No token available');
       return null;
     }
   } catch (error) {
-    console.error('[FCM] Error getting token:', error);
+    console.error('[FCM] ❌ Error getting token:', error);
     return null;
   }
 };

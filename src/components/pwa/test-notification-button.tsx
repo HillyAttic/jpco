@@ -23,37 +23,29 @@ export function TestNotificationButton() {
     setMessage(null);
 
     try {
-      // Create a test notification using the notification service
-      const response = await fetch('/api/fcm/send-notification', {
+      // Use the new test notification endpoint
+      const response = await fetch('/api/test-notification', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           userId: user.uid,
-          title: 'Test Notification',
-          body: 'This is a test notification from JPCO Dashboard',
-          data: {
-            url: '/notifications',
-            type: 'test',
-          },
         }),
       });
 
-      if (response.ok) {
-        setMessage({ type: 'success', text: 'Test notification sent!' });
-        
-        // Also show a browser notification immediately
-        if (Notification.permission === 'granted') {
-          new Notification('Test Notification', {
-            body: 'This is a test notification from JPCO Dashboard',
-            icon: '/images/logo/logo-icon.svg',
-            badge: '/images/logo/logo-icon.svg',
-            tag: 'test-' + Date.now(),
-          });
-        }
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setMessage({ 
+          type: 'success', 
+          text: `✅ Sent in ${result.deliveryTime}! Check your device (even if locked/closed).` 
+        });
       } else {
-        setMessage({ type: 'error', text: 'Failed to send test notification' });
+        setMessage({ 
+          type: 'error', 
+          text: result.message || 'Failed to send test notification' 
+        });
       }
     } catch (error) {
       console.error('Error sending test notification:', error);
@@ -61,8 +53,8 @@ export function TestNotificationButton() {
     } finally {
       setIsSending(false);
       
-      // Clear message after 3 seconds
-      setTimeout(() => setMessage(null), 3000);
+      // Clear message after 5 seconds (longer to read the message)
+      setTimeout(() => setMessage(null), 5000);
     }
   };
 

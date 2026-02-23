@@ -84,14 +84,10 @@ export async function sendNotification(
       // Send FCM and store in Firestore IN PARALLEL
       const [fcmResult, firestoreResult] = await Promise.allSettled([
         // 1. Send FCM push notification directly
-        // CRITICAL: Use BOTH notification AND data payloads for maximum compatibility
-        // - notification: Ensures Android/iOS show notification even if app is killed
-        // - data: Allows service worker to customize display when app is in background
+        // CRITICAL FIX: Use data-only payload for web (service worker handles display)
+        // This ensures notifications work when app is closed/locked on Android
         adminMessaging.send({
-          notification: {
-            title: title,
-            body: body,
-          },
+          // Data payload - service worker will display this
           data: {
             title: title,
             body: body,
@@ -100,40 +96,39 @@ export async function sendNotification(
             url: data?.url || '/notifications',
             type: data?.type || 'general',
             taskId: data?.taskId || '',
+            notificationId: `jpco-${Date.now()}`,
             timestamp: Date.now().toString(),
           },
           token: fcmToken,
+          
+          // Web push configuration (Chrome, Firefox, Edge)
           webpush: {
             headers: {
               Urgency: 'high',
-              TTL: '86400',
-            },
-            notification: {
-              title: title,
-              body: body,
-              icon: '/images/logo/logo-icon.svg',
-              badge: '/images/logo/logo-icon.svg',
-              requireInteraction: true,
-              vibrate: [300, 100, 300, 100, 300],
+              TTL: '86400', // 24 hours
             },
             fcmOptions: {
               link: data?.url || '/notifications',
             },
           },
+          
+          // Android configuration
           android: {
-            priority: 'high',
-            notification: {
+            priority: 'high' as const,
+            // Use data-only for Android to ensure service worker handles it
+            data: {
               title: title,
               body: body,
               icon: '/images/logo/logo-icon.svg',
-              sound: 'default',
-              clickAction: data?.url || '/notifications',
-              channelId: 'default',
+              click_action: data?.url || '/notifications',
             },
           },
+          
+          // iOS configuration (requires notification payload)
           apns: {
             headers: {
               'apns-priority': '10',
+              'apns-push-type': 'alert',
             },
             payload: {
               aps: {
@@ -143,7 +138,12 @@ export async function sendNotification(
                 },
                 sound: 'default',
                 badge: 1,
+                'mutable-content': 1,
               },
+              // Custom data for iOS
+              url: data?.url || '/notifications',
+              type: data?.type || 'general',
+              taskId: data?.taskId || '',
             },
           },
         }),
