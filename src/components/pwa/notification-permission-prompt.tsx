@@ -4,14 +4,20 @@ import { useState } from 'react';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { TouchOptimizedButton } from '@/components/ui/touch-optimized-input';
 import { useResponsive } from '@/hooks/use-responsive';
+import { useAuth } from '@/contexts/auth.context';
 
 export function NotificationPermissionPrompt() {
+  const { currentUser } = useAuth();
   const { isSupported, permission, isLoading, requestPermission, isEnabled } = usePushNotifications();
   const { isTouchDevice } = useResponsive();
   const [isVisible, setIsVisible] = useState(true);
 
-  // Don't show if not supported, already granted, or user dismissed
-  if (!isSupported || permission === 'granted' || permission === 'denied' || !isVisible) {
+  // Don't show if:
+  // - User is not signed in (CRITICAL FIX)
+  // - Not supported
+  // - Already granted or denied
+  // - User dismissed
+  if (!currentUser || !isSupported || permission === 'granted' || permission === 'denied' || !isVisible) {
     return null;
   }
 
