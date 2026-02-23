@@ -332,8 +332,10 @@ export function useOfflineAPI() {
       if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
         try {
           const registration = await navigator.serviceWorker.ready;
-          await registration.sync.register('sync-offline-requests');
-          console.log('[Offline API] Background sync registered');
+          if ('sync' in registration) {
+            await (registration as any).sync.register('sync-offline-requests');
+            console.log('[Offline API] Background sync registered');
+          }
         } catch (error) {
           console.error('[Offline API] Background sync registration failed:', error);
         }

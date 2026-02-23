@@ -119,3 +119,75 @@ export const deleteFCMToken = async (userId: string) => {
     return false;
   }
 };
+
+// Helper function to check if device is mobile
+export const isMobileDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+};
+
+// Helper function to check if device is iOS
+export const isIOSDevice = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return /iPhone|iPad|iPod/i.test(navigator.userAgent);
+};
+
+// Helper function to check if running as standalone PWA
+export const isStandalonePWA = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(display-mode: standalone)').matches || 
+         (window.navigator as any).standalone === true;
+};
+
+// Helper function to get iOS version
+export const getIOSVersion = (): number | null => {
+  if (typeof window === 'undefined' || !isIOSDevice()) return null;
+  const match = navigator.userAgent.match(/OS (\d+)_/);
+  return match ? parseInt(match[1], 10) : null;
+};
+
+// Request notification permission (desktop/web)
+export const requestNotificationPermission = async (): Promise<string | null> => {
+  try {
+    if (!('Notification' in window)) {
+      console.warn('[FCM] Notifications not supported');
+      return null;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      return await getFCMToken();
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[FCM] Error requesting permission:', error);
+    return null;
+  }
+};
+
+// Request notification permission for mobile devices
+export const requestNotificationPermissionMobile = async (): Promise<string | null> => {
+  try {
+    if (!('Notification' in window)) {
+      console.warn('[FCM] Notifications not supported');
+      return null;
+    }
+
+    // For iOS, check if running as PWA
+    if (isIOSDevice() && !isStandalonePWA()) {
+      console.warn('[FCM] iOS requires PWA to be installed for notifications');
+      return null;
+    }
+
+    const permission = await Notification.requestPermission();
+    if (permission === 'granted') {
+      return await getFCMToken();
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('[FCM] Error requesting mobile permission:', error);
+    return null;
+  }
+};

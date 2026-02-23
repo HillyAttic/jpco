@@ -14,9 +14,13 @@ export function useBackgroundSync() {
 
     try {
       const registration = await navigator.serviceWorker.ready;
-      await registration.sync.register(tag);
-      console.log('[Background Sync] Registered:', tag);
-      return true;
+      // Type assertion for Background Sync API
+      if ('sync' in registration) {
+        await (registration as any).sync.register(tag);
+        console.log('[Background Sync] Registered:', tag);
+        return true;
+      }
+      return false;
     } catch (error) {
       console.error('[Background Sync] Registration failed:', error);
       return false;

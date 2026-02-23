@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { TouchOptimizedButton } from '@/components/ui/touch-optimized-input';
 import { useResponsive } from '@/hooks/use-responsive';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
-import { useAuth } from '@/contexts/AuthContext';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 export function TestNotificationButton() {
   const { isTouchDevice } = useResponsive();
   const { isEnabled } = usePushNotifications();
-  const { user } = useAuth();
+  const { user } = useEnhancedAuth();
   const [isSending, setIsSending] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 

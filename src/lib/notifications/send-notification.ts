@@ -83,8 +83,15 @@ export async function sendNotification(
 
       // Send FCM and store in Firestore IN PARALLEL
       const [fcmResult, firestoreResult] = await Promise.allSettled([
-        // 1. Send FCM push notification directly (DATA-ONLY for service worker control)
+        // 1. Send FCM push notification directly
+        // CRITICAL: Use BOTH notification AND data payloads for maximum compatibility
+        // - notification: Ensures Android/iOS show notification even if app is killed
+        // - data: Allows service worker to customize display when app is in background
         adminMessaging.send({
+          notification: {
+            title: title,
+            body: body,
+          },
           data: {
             title: title,
             body: body,
@@ -101,8 +108,42 @@ export async function sendNotification(
               Urgency: 'high',
               TTL: '86400',
             },
+            notification: {
+              title: title,
+              body: body,
+              icon: '/images/logo/logo-icon.svg',
+              badge: '/images/logo/logo-icon.svg',
+              requireInteraction: true,
+              vibrate: [300, 100, 300, 100, 300],
+            },
             fcmOptions: {
               link: data?.url || '/notifications',
+            },
+          },
+          android: {
+            priority: 'high',
+            notification: {
+              title: title,
+              body: body,
+              icon: '/images/logo/logo-icon.svg',
+              sound: 'default',
+              clickAction: data?.url || '/notifications',
+              channelId: 'default',
+            },
+          },
+          apns: {
+            headers: {
+              'apns-priority': '10',
+            },
+            payload: {
+              aps: {
+                alert: {
+                  title: title,
+                  body: body,
+                },
+                sound: 'default',
+                badge: 1,
+              },
             },
           },
         }),

@@ -27,7 +27,7 @@ export async function PATCH(
     
     if (!authResult.success || !authResult.user) {
       console.error('[API /api/tasks/[id]/complete] Authentication failed:', authResult.error);
-      return ErrorResponses.unauthorized(authResult.error);
+      return ErrorResponses.unauthorized();
     }
 
     // Check role-based permissions
