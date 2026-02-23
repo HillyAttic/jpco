@@ -133,7 +133,7 @@ export const NAV_DATA = [
         requiresRole: ['admin'], // Only admins can approve leaves
       },
       {
-        title: "Attendance Roster",
+        title: "Attendance Sheet",
         url: "/admin/attendance-roster",
         icon: Icons.Calendar,
         items: [],

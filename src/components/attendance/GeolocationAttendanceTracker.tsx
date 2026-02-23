@@ -51,6 +51,7 @@ export function GeolocationAttendanceTracker() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [permissionStatus, setPermissionStatus] = useState<'granted' | 'denied' | 'prompt' | 'unknown'>('unknown');
+  const [showLocationDeniedModal, setShowLocationDeniedModal] = useState(false);
   
   // Check if we're running in a secure context (HTTPS)
   const isSecureContext = typeof window !== 'undefined' ? window.isSecureContext : true;
@@ -183,6 +184,9 @@ export function GeolocationAttendanceTracker() {
         // Clear error when permission is granted
         if (result.state === 'granted') {
           setError('');
+          setShowLocationDeniedModal(false); // Hide modal when permission granted
+        } else if (result.state === 'denied') {
+          setShowLocationDeniedModal(true); // Show modal when permission denied
         }
       });
     } catch (err) {
@@ -250,6 +254,7 @@ export function GeolocationAttendanceTracker() {
           switch (error.code) {
             case error.PERMISSION_DENIED:
               setPermissionStatus('denied');
+              setShowLocationDeniedModal(true); // Show persistent modal
               errorMessage = 'Location access denied. Please enable location permissions in your browser settings and refresh the page.';
               break;
             case error.POSITION_UNAVAILABLE:
@@ -688,6 +693,104 @@ export function GeolocationAttendanceTracker() {
           </Button>
         </div>
       </CardContent>
+
+      {/* Persistent Location Denied Modal */}
+      {showLocationDeniedModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-red-100 dark:bg-red-900/30 p-3 rounded-full">
+                <MapPin className="h-6 w-6 text-red-600" />
+              </div>
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">Location Access Required</h3>
+            </div>
+            
+            <div className="space-y-4 mb-6">
+              <p className="text-gray-700 dark:text-gray-300">
+                To use attendance tracking, you need to enable location access.
+              </p>
+              
+              {/* Mobile Instructions */}
+              {isMobileDevice() && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    📱 Mobile Device Instructions:
+                  </p>
+                  <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2 list-decimal pl-4">
+                    <li>Go to your device Settings</li>
+                    <li>Enable Location services</li>
+                    <li>Return to this page and tap "I've Enabled Location"</li>
+                  </ol>
+                  <div className="mt-3 p-2 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-300 dark:border-yellow-700 rounded">
+                    <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                      <strong>Note:</strong> You may need to close and reopen your browser after changing settings.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
+              {/* Desktop Instructions */}
+              {!isMobileDevice() && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <p className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    💻 Desktop Browser Instructions:
+                  </p>
+                  <ol className="text-sm text-blue-800 dark:text-blue-200 space-y-2 list-decimal pl-4">
+                    <li>Click the tune (settings) icon in your browser's address bar</li>
+                    <li>Find "Location" in the permissions list</li>
+                    <li>Change it from "Block" to "Allow"</li>
+                    <li>Click "I've Enabled Location" below</li>
+                  </ol>
+                  
+                  {/* Visual reference images */}
+                  <div className="mt-3 p-2 bg-white dark:bg-gray-900 rounded border border-blue-300 dark:border-blue-700">
+                    <p className="text-xs text-blue-900 dark:text-blue-100 font-medium mb-2">Visual Guide:</p>
+                    <div className="space-y-2">
+                      <img 
+                        src="/images/icons/tune_icon_chrome.webp" 
+                        alt="Step 1: Click the lock icon in browser address bar"
+                        className="w-full rounded border border-gray-200 dark:border-gray-700"
+                      />
+                      <img 
+                        src="/images/icons/location_allow.jpg" 
+                        alt="Step 2: Allow location access"
+                        className="w-full rounded border border-gray-200 dark:border-gray-700"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-3">
+              <Button
+                onClick={async () => {
+                  setShowLocationDeniedModal(false);
+                  setError('');
+                  await checkLocationPermission();
+                  // Try to get location again
+                  try {
+                    await getCurrentLocation();
+                    setError('');
+                  } catch (err: any) {
+                    setError(err.message);
+                    // If still denied, show modal again after a short delay
+                    setTimeout(() => {
+                      if (permissionStatus === 'denied') {
+                        setShowLocationDeniedModal(true);
+                      }
+                    }, 1000);
+                  }
+                }}
+                className="flex-1"
+              >
+                <RotateCcw className="mr-2 h-4 w-4" />
+                I've Enabled Location
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </Card>
   );
 }

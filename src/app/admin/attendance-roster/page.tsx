@@ -221,9 +221,9 @@ export default function AttendanceRosterPage() {
     switch (status) {
       case 'present': return 'bg-green-500';
       case 'absent': return 'bg-red-500';
-      case 'approved-leave': return 'bg-green-300';
+      case 'approved-leave': return 'bg-purple-500';
       case 'unapproved-leave': return 'bg-red-500';
-      case 'half-day': return 'bg-green-300';
+      case 'half-day': return 'bg-orange-500';
       case 'holiday': return 'bg-blue-500';
       case 'pending': return 'bg-gray-300';
       default: return 'bg-gray-300';
@@ -248,7 +248,7 @@ export default function AttendanceRosterPage() {
   return (
     <div className="p-6">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance Roster</h1>
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Attendance Sheet</h1>
         <p className="text-gray-600 dark:text-gray-400">Monthly attendance overview for all employees</p>
       </div>
 
@@ -297,11 +297,11 @@ export default function AttendanceRosterPage() {
           <span className="text-sm text-gray-700 dark:text-gray-300">Absent</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-300 rounded"></div>
+          <div className="w-4 h-4 bg-purple-500 rounded"></div>
           <span className="text-sm text-gray-700 dark:text-gray-300">Approved Leave</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-300 rounded"></div>
+          <div className="w-4 h-4 bg-orange-500 rounded"></div>
           <span className="text-sm text-gray-700 dark:text-gray-300">Half Day</span>
         </div>
         <div className="flex items-center gap-2">
@@ -363,7 +363,7 @@ export default function AttendanceRosterPage() {
                       </td>
                     ))}
                     <td className="px-4 py-3">
-                      <div className="text-xs flex flex-wrap gap-x-3 gap-y-1">
+                      <div className="text-xs flex flex-nowrap gap-x-3 gap-y-1">
                         <span className="text-green-600">P: {employee.stats.present}</span>
                         <span className="text-red-600">A: {employee.stats.absent}</span>
                         <span className="text-green-600">AL: {employee.stats.approvedLeave}</span>
