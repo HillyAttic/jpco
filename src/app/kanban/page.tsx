@@ -113,6 +113,16 @@ export default function KanbanPage() {
     }
   };
 
+  const handleTaskDelete = async (taskId: string) => {
+    try {
+      await kanbanService.deleteTask(taskId);
+      setAllTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
+    } catch (err) {
+      console.error('Error deleting task:', err);
+      alert('Failed to delete task. Please try again.');
+    }
+  };
+
   const handleAddBusiness = async (businessData: Omit<Business, 'id' | 'createdAt'>) => {
     if (!user) return;
 
@@ -266,6 +276,7 @@ export default function KanbanPage() {
             tasks={currentTasks}
             onTaskUpdate={handleTaskUpdate}
             onTaskAdd={handleTaskAdd}
+            onTaskDelete={handleTaskDelete}
           />
         </div>
       </div>

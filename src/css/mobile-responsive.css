@@ -11,11 +11,11 @@ body.modal-open header {
 /* Base Mobile Optimizations */
 @media (max-width: 768px) {
   /* Ensure proper touch targets (minimum 44x44px) */
-  button,
-  a,
-  input,
-  select,
-  textarea {
+  button:not(.no-min-size),
+  a:not(.no-min-size),
+  input:not(.no-min-size),
+  select:not(.no-min-size),
+  textarea:not(.no-min-size) {
     min-height: 44px;
     min-width: 44px;
   }
@@ -176,13 +176,14 @@ body.modal-open header {
 
 /* Touch Device Optimizations */
 @media (hover: none) and (pointer: coarse) {
-  /* Larger touch targets */
+  /* Smaller minimum for all rounded-full elements and interactive elements */
   button,
   a,
   input[type="checkbox"],
-  input[type="radio"] {
-    min-height: 48px;
-    min-width: 48px;
+  input[type="radio"],
+  .rounded-full {
+    min-width: 25px;
+    min-height: 25px;
   }
 
   /* Remove hover effects on touch devices */

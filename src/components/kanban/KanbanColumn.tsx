@@ -13,6 +13,9 @@ interface KanbanColumnProps {
   onDragOver: (e: React.DragEvent) => void;
   onDrop: (e: React.DragEvent, status: KanbanStatus) => void;
   onTaskClick: (task: KanbanTask) => void;
+  onStatusChange?: (taskId: string, newStatus: KanbanStatus) => void;
+  onDelete?: (taskId: string) => void;
+  onEdit?: (task: KanbanTask) => void;
 }
 
 export function KanbanColumn({
@@ -24,6 +27,9 @@ export function KanbanColumn({
   onDragOver,
   onDrop,
   onTaskClick,
+  onStatusChange,
+  onDelete,
+  onEdit,
 }: KanbanColumnProps) {
   return (
     <div
@@ -65,6 +71,9 @@ export function KanbanColumn({
               task={task}
               onDragStart={onDragStart}
               onClick={onTaskClick}
+              onStatusChange={onStatusChange}
+              onDelete={onDelete}
+              onEdit={onEdit}
             />
           ))
         )}

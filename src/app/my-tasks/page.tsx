@@ -207,6 +207,7 @@ export default function MyTasksPage() {
                                 >
                                     <div
                                         className="w-3 h-3 rounded-full"
+                                        data-color={list.color}
                                         style={{ backgroundColor: list.color }}
                                     />
                                     <span className="font-medium">{list.name}</span>
@@ -228,6 +229,7 @@ export default function MyTasksPage() {
                                 <div className="flex items-center gap-3">
                                     <div
                                         className="w-4 h-4 rounded-full"
+                                        data-color={selectedList.color}
                                         style={{ backgroundColor: selectedList.color }}
                                     />
                                     <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
@@ -277,7 +279,7 @@ export default function MyTasksPage() {
                                         >
                                             <button
                                                 onClick={() => handleToggleTask(task)}
-                                                className="flex-shrink-0 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full border border-gray-300 dark:border-gray-600 hover:border-blue-500 transition-colors"
+                                                className="flex-shrink-0 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full border border-gray-300 dark:border-gray-600 hover:border-blue-500 transition-colors no-min-size"
                                             />
                                             <span className="flex-1 text-base sm:text-lg text-gray-900 dark:text-white">
                                                 {task.title}
@@ -307,7 +309,7 @@ export default function MyTasksPage() {
                                             >
                                                 <button
                                                     onClick={() => handleToggleTask(task)}
-                                                    className="flex-shrink-0 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-blue-600 flex items-center justify-center"
+                                                    className="flex-shrink-0 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-blue-600 flex items-center justify-center no-min-size"
                                                 >
                                                     <CheckIcon className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
                                                 </button>

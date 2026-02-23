@@ -204,15 +204,16 @@ service cloud.firestore {
       // Users can create kanban tasks
       allow create: if isAuthenticated();
       
-      // Users can update kanban tasks they created or are assigned to
+      // Users can update kanban tasks if they own the business
       allow update: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid ||
-        request.auth.uid in resource.data.get('assignedTo', [])
+        exists(/databases/$(database)/documents/kanban_businesses/$(resource.data.businessId)) &&
+        get(/databases/$(database)/documents/kanban_businesses/$(resource.data.businessId)).data.userId == request.auth.uid
       );
       
-      // Users can delete their own tasks, admins can delete any
+      // Users can delete tasks if they own the business, admins can delete any
       allow delete: if isAuthenticated() && (
-        resource.data.userId == request.auth.uid ||
+        (exists(/databases/$(database)/documents/kanban_businesses/$(resource.data.businessId)) &&
+        get(/databases/$(database)/documents/kanban_businesses/$(resource.data.businessId)).data.userId == request.auth.uid) ||
         isAdmin()
       );
     }

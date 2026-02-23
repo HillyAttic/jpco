@@ -10,11 +10,12 @@ interface AddTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (task: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'>) => void;
+  editTask?: KanbanTask | null;
 }
 
 const AVATAR_COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6', '#EC4899'];
 
-export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
+export function AddTaskModal({ isOpen, onClose, onSave, editTask }: AddTaskModalProps) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -22,6 +23,19 @@ export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
     dueDate: new Date().toISOString().split('T')[0],
     priority: 'medium' as 'low' | 'medium' | 'high',
   });
+
+  // Update form when editTask changes
+  React.useEffect(() => {
+    if (editTask) {
+      setFormData({
+        title: editTask.title,
+        description: editTask.description || '',
+        status: editTask.status,
+        dueDate: new Date(editTask.dueDate).toISOString().split('T')[0],
+        priority: editTask.priority || 'medium',
+      });
+    }
+  }, [editTask]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,23 +45,23 @@ export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
       return;
     }
 
-    const newTask: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'> = {
+    const taskData: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'> = {
       title: formData.title,
       description: formData.description || undefined,
       status: formData.status,
       dueDate: new Date(formData.dueDate),
       priority: formData.priority,
-      commentsCount: 0,
-      attachmentsCount: 0,
-      assignee: {
+      commentsCount: editTask?.commentsCount || 0,
+      attachmentsCount: editTask?.attachmentsCount || 0,
+      assignee: editTask?.assignee || {
         name: 'Unassigned',
         role: 'Team Member',
         avatarColor: AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)],
       },
-      tags: [],
+      tags: editTask?.tags || [],
     };
 
-    onSave(newTask);
+    onSave(taskData);
     handleClose();
   };
 
@@ -66,7 +80,9 @@ export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">Add New Task</DialogTitle>
+          <DialogTitle className="text-2xl font-bold">
+            {editTask ? 'Edit Task' : 'Add New Task'}
+          </DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
@@ -159,7 +175,7 @@ export function AddTaskModal({ isOpen, onClose, onSave }: AddTaskModalProps) {
               type="submit"
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white"
             >
-              Add Task
+              {editTask ? 'Update Task' : 'Add Task'}
             </Button>
           </DialogFooter>
         </form>

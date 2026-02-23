@@ -12,6 +12,7 @@ interface EnhancedKanbanBoardProps {
   tasks: KanbanTask[];
   onTaskUpdate: (task: KanbanTask) => void;
   onTaskAdd: (task: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'>) => void;
+  onTaskDelete: (taskId: string) => void;
 }
 
 const COLUMNS: KanbanColumnType[] = [
@@ -20,11 +21,12 @@ const COLUMNS: KanbanColumnType[] = [
   { id: 'completed', title: 'Completed', color: 'bg-green-50' },
 ];
 
-export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd }: EnhancedKanbanBoardProps) {
+export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd, onTaskDelete }: EnhancedKanbanBoardProps) {
   const [draggedTask, setDraggedTask] = useState<KanbanTask | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState<KanbanTask | null>(null);
+  const [editingTask, setEditingTask] = useState<KanbanTask | null>(null);
   
   const [filters, setFilters] = useState<KanbanFilters>({
     dueDate: 'all',
@@ -118,8 +120,34 @@ export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd }: Enhanced
     console.log('Task clicked:', task);
   };
 
+  const handleStatusChange = (taskId: string, newStatus: KanbanStatus) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (task) {
+      const updatedTask = { ...task, status: newStatus };
+      onTaskUpdate(updatedTask);
+    }
+  };
+
   const handleAddTask = (taskData: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'>) => {
-    onTaskAdd(taskData);
+    if (editingTask) {
+      // Update existing task
+      const updatedTask = { ...editingTask, ...taskData };
+      onTaskUpdate(updatedTask);
+      setEditingTask(null);
+    } else {
+      // Add new task
+      onTaskAdd(taskData);
+    }
+  };
+
+  const handleEditTask = (task: KanbanTask) => {
+    setEditingTask(task);
+    setShowAddModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowAddModal(false);
+    setEditingTask(null);
   };
 
   const handleApplyFilters = (newFilters: KanbanFilters, newSort: KanbanSort) => {
@@ -184,6 +212,9 @@ export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd }: Enhanced
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
                 onTaskClick={handleTaskClick}
+                onStatusChange={handleStatusChange}
+                onDelete={onTaskDelete}
+                onEdit={handleEditTask}
               />
             </div>
           );
@@ -193,8 +224,9 @@ export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd }: Enhanced
       {/* Modals */}
       <AddTaskModal
         isOpen={showAddModal}
-        onClose={() => setShowAddModal(false)}
+        onClose={handleCloseModal}
         onSave={handleAddTask}
+        editTask={editingTask}
       />
 
       <FilterSortModal
