@@ -424,9 +424,6 @@ export default function NotificationsPage() {
                       <h3 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base truncate">
                         {notification.title}
                       </h3>
-                      {!notification.read && (
-                        <span className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></span>
-                      )}
                     </div>
                     <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-2 line-clamp-2">
                       {notification.body}

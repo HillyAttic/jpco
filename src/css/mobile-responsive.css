@@ -177,13 +177,20 @@ body.modal-open header {
 /* Touch Device Optimizations */
 @media (hover: none) and (pointer: coarse) {
   /* Smaller minimum for all rounded-full elements and interactive elements */
-  button,
-  a,
+  /* Exclude notification badges from touch target sizing */
+  button:not([aria-label*="unread"]),
+  a:not([aria-label*="unread"]),
   input[type="checkbox"],
   input[type="radio"],
-  .rounded-full {
+  .rounded-full:not([aria-label*="unread"]) {
     min-width: 25px;
     min-height: 25px;
+  }
+  
+  /* Explicitly prevent notification badges from being resized */
+  span[aria-label*="unread"] {
+    min-width: unset !important;
+    min-height: unset !important;
   }
 
   /* Remove hover effects on touch devices */
