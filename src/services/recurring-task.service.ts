@@ -137,11 +137,29 @@ export const recurringTaskService = {
   async create(
     data: Omit<RecurringTask, 'id' | 'createdAt' | 'updatedAt' | 'completionHistory' | 'isPaused'>
   ): Promise<RecurringTask> {
-    return recurringTaskFirebaseService.create({
+    const task = await recurringTaskFirebaseService.create({
       ...data,
       completionHistory: [],
       isPaused: false,
     });
+    
+    // Send push notifications to team members
+    if (data.teamMemberMappings && data.teamMemberMappings.length > 0) {
+      try {
+        const { pushNotificationService } = await import('./push-notification.service');
+        const userIds = data.teamMemberMappings.map(m => m.userId);
+        await pushNotificationService.notifyTaskAssignments(
+          userIds,
+          data.title,
+          task.id!,
+          true
+        );
+      } catch (error) {
+        console.error('Error sending recurring task assignment notifications:', error);
+      }
+    }
+    
+    return task;
   },
 
   /**
@@ -151,7 +169,25 @@ export const recurringTaskService = {
     id: string,
     data: Partial<Omit<RecurringTask, 'id'>>
   ): Promise<RecurringTask> {
-    return recurringTaskFirebaseService.update(id, data);
+    const task = await recurringTaskFirebaseService.update(id, data);
+    
+    // Send push notifications if team members are updated
+    if (data.teamMemberMappings && data.teamMemberMappings.length > 0) {
+      try {
+        const { pushNotificationService } = await import('./push-notification.service');
+        const userIds = data.teamMemberMappings.map(m => m.userId);
+        await pushNotificationService.notifyTaskAssignments(
+          userIds,
+          data.title || task.title,
+          id,
+          true
+        );
+      } catch (error) {
+        console.error('Error sending recurring task assignment notifications:', error);
+      }
+    }
+    
+    return task;
   },
 
   /**

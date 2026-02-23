@@ -13,33 +13,38 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    console.log('[API /api/tasks/[id]/complete] PATCH request received');
+    
     // Verify authentication
     const { verifyAuthToken } = await import('@/lib/server-auth');
     const authResult = await verifyAuthToken(request);
     
+    console.log('[API /api/tasks/[id]/complete] Auth result:', { 
+      success: authResult.success, 
+      error: authResult.error,
+      hasUser: !!authResult.user 
+    });
+    
     if (!authResult.success || !authResult.user) {
-      return ErrorResponses.unauthorized();
+      console.error('[API /api/tasks/[id]/complete] Authentication failed:', authResult.error);
+      return ErrorResponses.unauthorized(authResult.error);
     }
 
     // Check role-based permissions
     const userRole = authResult.user.claims.role;
+    console.log('[API /api/tasks/[id]/complete] User role:', userRole);
+    
     if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      console.error('[API /api/tasks/[id]/complete] Insufficient permissions for role:', userRole);
       return ErrorResponses.forbidden('Insufficient permissions');
     }
 
-    console.log('[API /api/tasks/[id]/complete] PATCH request received');
-    
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
-
     const { id } = await params;
+    console.log('[API /api/tasks/[id]/complete] Toggling task:', id);
     
     const updatedTask = await nonRecurringTaskAdminService.toggleComplete(id);
     
-    console.log('[API /api/tasks/[id]/complete] Task toggled:', id);
+    console.log('[API /api/tasks/[id]/complete] Task toggled successfully:', id);
     
     return NextResponse.json(updatedTask, { status: 200 });
   } catch (error) {

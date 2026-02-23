@@ -112,18 +112,40 @@ export const leaveService = {
    * Approve leave request
    */
   async approve(id: string, approverId: string, approverName: string): Promise<void> {
+    // Get leave request details before updating
+    const leaveRequest = await leaveFirebaseService.getById(id);
+    
     await leaveFirebaseService.update(id, {
       status: 'approved',
       approvedBy: approverId,
       approverName,
       approvedAt: new Date(),
     });
+    
+    // Send push notification to employee
+    if (leaveRequest) {
+      try {
+        const { pushNotificationService } = await import('./push-notification.service');
+        await pushNotificationService.notifyLeaveApproval(
+          leaveRequest.employeeId,
+          leaveRequest.leaveType || 'Leave',
+          leaveRequest.startDate,
+          leaveRequest.endDate,
+          true
+        );
+      } catch (error) {
+        console.error('Error sending leave approval notification:', error);
+      }
+    }
   },
 
   /**
    * Reject leave request
    */
   async reject(id: string, approverId: string, approverName: string, reason: string): Promise<void> {
+    // Get leave request details before updating
+    const leaveRequest = await leaveFirebaseService.getById(id);
+    
     await leaveFirebaseService.update(id, {
       status: 'rejected',
       approvedBy: approverId,
@@ -131,6 +153,23 @@ export const leaveService = {
       approvedAt: new Date(),
       rejectionReason: reason,
     });
+    
+    // Send push notification to employee
+    if (leaveRequest) {
+      try {
+        const { pushNotificationService } = await import('./push-notification.service');
+        await pushNotificationService.notifyLeaveApproval(
+          leaveRequest.employeeId,
+          leaveRequest.leaveType || 'Leave',
+          leaveRequest.startDate,
+          leaveRequest.endDate,
+          false,
+          reason
+        );
+      } catch (error) {
+        console.error('Error sending leave rejection notification:', error);
+      }
+    }
   },
 
   /**
@@ -448,12 +487,31 @@ export const leaveService = {
    */
   async approveLeaveRequest(id: string, approverId: string): Promise<void> {
     try {
+      // Get leave request details before updating
+      const leaveRequest = await leaveFirebaseService.getById(id);
+      
       await leaveFirebaseService.update(id, {
         status: 'approved',
         approvedBy: approverId,
         approvedAt: new Date(),
         updatedAt: new Date()
       });
+      
+      // Send push notification to employee
+      if (leaveRequest) {
+        try {
+          const { pushNotificationService } = await import('./push-notification.service');
+          await pushNotificationService.notifyLeaveApproval(
+            leaveRequest.employeeId,
+            leaveRequest.leaveType || 'Leave',
+            leaveRequest.startDate,
+            leaveRequest.endDate,
+            true
+          );
+        } catch (error) {
+          console.error('Error sending leave approval notification:', error);
+        }
+      }
     } catch (error) {
       console.error('Error approving leave request:', error);
       throw error;
@@ -465,6 +523,9 @@ export const leaveService = {
    */
   async rejectLeaveRequest(id: string, approverId: string, reason: string): Promise<void> {
     try {
+      // Get leave request details before updating
+      const leaveRequest = await leaveFirebaseService.getById(id);
+      
       await leaveFirebaseService.update(id, {
         status: 'rejected',
         approvedBy: approverId,
@@ -472,6 +533,23 @@ export const leaveService = {
         approvedAt: new Date(),
         updatedAt: new Date()
       });
+      
+      // Send push notification to employee
+      if (leaveRequest) {
+        try {
+          const { pushNotificationService } = await import('./push-notification.service');
+          await pushNotificationService.notifyLeaveApproval(
+            leaveRequest.employeeId,
+            leaveRequest.leaveType || 'Leave',
+            leaveRequest.startDate,
+            leaveRequest.endDate,
+            false,
+            reason
+          );
+        } catch (error) {
+          console.error('Error sending leave rejection notification:', error);
+        }
+      }
     } catch (error) {
       console.error('Error rejecting leave request:', error);
       throw error;

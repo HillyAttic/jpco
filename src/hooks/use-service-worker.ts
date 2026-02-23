@@ -328,6 +328,17 @@ export function useOfflineAPI() {
         options.headers as Record<string, string>
       );
 
+      // Register background sync to retry when online
+      if ('serviceWorker' in navigator && 'sync' in ServiceWorkerRegistration.prototype) {
+        try {
+          const registration = await navigator.serviceWorker.ready;
+          await registration.sync.register('sync-offline-requests');
+          console.log('[Offline API] Background sync registered');
+        } catch (error) {
+          console.error('[Offline API] Background sync registration failed:', error);
+        }
+      }
+
       throw new Error('Request queued for when online');
     }
 

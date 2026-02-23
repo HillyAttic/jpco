@@ -106,7 +106,24 @@ export const nonRecurringTaskService = {
   async create(
     data: Omit<NonRecurringTask, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<NonRecurringTask> {
-    return taskFirebaseService.create(data);
+    const task = await taskFirebaseService.create(data);
+    
+    // Send push notifications to assigned users
+    if (data.assignedTo && data.assignedTo.length > 0) {
+      try {
+        const { pushNotificationService } = await import('./push-notification.service');
+        await pushNotificationService.notifyTaskAssignments(
+          data.assignedTo,
+          data.title,
+          task.id!,
+          false
+        );
+      } catch (error) {
+        console.error('Error sending task assignment notifications:', error);
+      }
+    }
+    
+    return task;
   },
 
   /**
@@ -116,7 +133,24 @@ export const nonRecurringTaskService = {
     id: string,
     data: Partial<Omit<NonRecurringTask, 'id'>>
   ): Promise<NonRecurringTask> {
-    return taskFirebaseService.update(id, data);
+    const task = await taskFirebaseService.update(id, data);
+    
+    // Send push notifications if new users are assigned
+    if (data.assignedTo && data.assignedTo.length > 0) {
+      try {
+        const { pushNotificationService } = await import('./push-notification.service');
+        await pushNotificationService.notifyTaskAssignments(
+          data.assignedTo,
+          data.title || task.title,
+          id,
+          false
+        );
+      } catch (error) {
+        console.error('Error sending task assignment notifications:', error);
+      }
+    }
+    
+    return task;
   },
 
   /**

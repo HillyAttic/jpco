@@ -5,6 +5,8 @@ import { useServiceWorker } from '@/hooks/use-service-worker';
 import { useResponsive } from '@/hooks/use-responsive';
 import { TouchOptimizedButton } from '@/components/ui/touch-optimized-input';
 import { setupBFCacheHandling } from '@/lib/bfcache-helper';
+import { InstallPrompt } from '@/components/pwa/install-prompt';
+import { NotificationPermissionPrompt } from '@/components/pwa/notification-permission-prompt';
 
 interface ServiceWorkerProviderProps {
   children: React.ReactNode;
@@ -66,6 +68,9 @@ export function ServiceWorkerProvider({ children }: ServiceWorkerProviderProps) 
   return (
     <>
       {children}
+      
+      {/* Install Prompt */}
+      <InstallPrompt />
       
       {/* Update Available Notification */}
       {showUpdateNotification && (

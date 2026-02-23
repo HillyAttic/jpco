@@ -27,6 +27,7 @@ import { taskApi } from '@/services/task.api';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { activityService } from '@/services/activity.service';
 import { clientService } from '@/services/client.service';
+import { employeeService } from '@/services/employee.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useModal } from '@/contexts/modal-context';
 import { getDbLazy, getAuthLazy, preloadFirebase } from '@/lib/firebase-optimized';
@@ -262,24 +263,44 @@ export default function DashboardPage() {
     ).sort((a, b) => new Date(a.dueDate!).getTime() - new Date(b.dueDate!).getTime());
   }, [tasks]);
 
-  // Calculate team performance data (memoized)
-  const teamPerformanceData = useMemo(() => {
-    const memberStats = new Map<string, { name: string; completed: number; inProgress: number }>();
+  // Fetch all employees
+  const { data: employees, loading: employeesLoading } = useOptimizedFetch(
+    'dashboard-employees',
+    () => employeeService.getAll({ status: 'active' }),
+    { cacheTime: 5 * 60 * 1000, dedupe: true }
+  );
 
+  // Calculate team performance data (memoized) - shows ALL employees
+  const teamPerformanceData = useMemo(() => {
+    if (!employees || employees.length === 0) return [];
+
+    // Create a map to track task counts per employee
+    const memberStats = new Map<string, { id: string; name: string; completed: number; inProgress: number; pending: number }>();
+
+    // Initialize all employees with zero counts
+    employees.forEach(emp => {
+      memberStats.set(emp.id!, {
+        id: emp.id!,
+        name: emp.name,
+        completed: 0,
+        inProgress: 0,
+        pending: 0
+      });
+    });
+
+    // Count tasks for each employee
     tasks.forEach(task => {
       if (task.assignedTo && task.assignedTo.length > 0) {
         task.assignedTo.forEach(userId => {
-          const userName = userNamesCache[userId] || 'Loading...';
-          
-          if (!memberStats.has(userId)) {
-            memberStats.set(userId, { name: userName, completed: 0, inProgress: 0 });
-          }
-
-          const stats = memberStats.get(userId)!;
-          if (task.status === 'completed') {
-            stats.completed++;
-          } else if (task.status === 'in-progress') {
-            stats.inProgress++;
+          if (memberStats.has(userId)) {
+            const stats = memberStats.get(userId)!;
+            if (task.status === 'completed') {
+              stats.completed++;
+            } else if (task.status === 'in-progress') {
+              stats.inProgress++;
+            } else if (task.status === 'pending' || task.status === 'todo') {
+              stats.pending++;
+            }
           }
         });
       }
@@ -287,12 +308,18 @@ export default function DashboardPage() {
 
     return Array.from(memberStats.values())
       .map(stat => ({
+        id: stat.id,
         name: stat.name,
         tasksCompleted: stat.completed,
-        tasksInProgress: stat.inProgress
+        tasksInProgress: stat.inProgress,
+        tasksPending: stat.pending
       }))
-      .sort((a, b) => (b.tasksCompleted + b.tasksInProgress) - (a.tasksCompleted + a.tasksInProgress));
-  }, [tasks, userNamesCache]);
+      .sort((a, b) => {
+        const totalA = a.tasksCompleted + a.tasksInProgress + a.tasksPending;
+        const totalB = b.tasksCompleted + b.tasksInProgress + b.tasksPending;
+        return totalB - totalA;
+      });
+  }, [tasks, employees]);
 
   // Calculate weekly progress data (memoized)
   const weeklyProgressData = useMemo(() => {
