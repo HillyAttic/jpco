@@ -124,6 +124,12 @@ export async function POST(request: NextRequest) {
     // Send push notifications to assigned users directly (no fetch needed)
     if (taskData.assignedTo && taskData.assignedTo.length > 0) {
       try {
+        console.log(`[Task API] ========== NOTIFICATION DEBUG START ==========`);
+        console.log(`[Task API] Task created:`, {
+          id: newTask.id,
+          title: taskData.title,
+          assignedTo: taskData.assignedTo,
+        });
         console.log(`[Task API] Sending notifications to ${taskData.assignedTo.length} user(s):`, taskData.assignedTo);
         
         const result = await sendNotification({
@@ -151,14 +157,25 @@ export async function POST(request: NextRequest) {
           console.log('[Task API] ⚠️ Notification errors:', result.errors);
           result.errors.forEach(err => {
             if (err.error === 'No FCM token') {
-              console.log(`[Task API] ⚠️ User ${err.userId} needs to enable notifications at /notifications page`);
+              console.log(`[Task API] ⚠️ User ${err.userId} has not enabled notifications`);
+              console.log(`[Task API] 💡 User needs to visit the app and click "Enable Notifications"`);
+            } else {
+              console.log(`[Task API] ❌ User ${err.userId} error: ${err.error}`);
             }
           });
         }
+        
+        console.log(`[Task API] ========== NOTIFICATION DEBUG END ==========`);
       } catch (error) {
-        console.error('[Task API] ❌ Error sending task assignment notifications:', error);
+        console.error('[Task API] ❌ CRITICAL ERROR sending task assignment notifications:', error);
+        console.error('[Task API] Error details:', {
+          message: error instanceof Error ? error.message : 'Unknown error',
+          stack: error instanceof Error ? error.stack : undefined,
+        });
         // Don't fail the task creation if notification fails
       }
+    } else {
+      console.log('[Task API] ⚠️ No users assigned to task, skipping notifications');
     }
     
     return NextResponse.json(newTask, { status: 201 });

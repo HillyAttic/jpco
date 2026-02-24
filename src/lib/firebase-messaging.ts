@@ -22,6 +22,13 @@ export const initializeMessaging = () => {
     return null;
   }
   
+  // CRITICAL: Validate VAPID key is configured
+  if (!process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY) {
+    console.error('[FCM] ❌ VAPID key not configured! Set NEXT_PUBLIC_FIREBASE_VAPID_KEY in environment variables');
+    console.error('[FCM] 💡 Get your VAPID key from Firebase Console > Project Settings > Cloud Messaging > Web Push certificates');
+    return null;
+  }
+  
   if (!messaging) {
     try {
       messaging = getMessaging(app);
@@ -122,16 +129,17 @@ export const onForegroundMessage = (callback: (payload: any) => void) => {
 // Save FCM token to Firestore
 export const saveFCMToken = async (userId: string, token: string) => {
   try {
-    const response = await fetch('/api/notifications/fcm-token', {
+    // Import authenticatedFetch to include auth token
+    const { authenticatedFetch } = await import('@/lib/api-client');
+    
+    const response = await authenticatedFetch('/api/notifications/fcm-token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ userId, token }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to save FCM token');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save FCM token');
     }
 
     console.log('[FCM] Token saved successfully');
@@ -145,16 +153,17 @@ export const saveFCMToken = async (userId: string, token: string) => {
 // Delete FCM token from Firestore
 export const deleteFCMToken = async (userId: string) => {
   try {
-    const response = await fetch('/api/notifications/fcm-token', {
+    // Import authenticatedFetch to include auth token
+    const { authenticatedFetch } = await import('@/lib/api-client');
+    
+    const response = await authenticatedFetch('/api/notifications/fcm-token', {
       method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({ userId }),
     });
 
     if (!response.ok) {
-      throw new Error('Failed to delete FCM token');
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to delete FCM token');
     }
 
     console.log('[FCM] Token deleted successfully');
