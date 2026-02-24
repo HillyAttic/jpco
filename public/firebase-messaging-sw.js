@@ -15,8 +15,8 @@
 // - Data-only payload ensures consistent behavior across platforms
 // - Service worker ALWAYS calls showNotification() to prevent Chrome fallback
 
-importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-app-compat.js');
-importScripts('https://www.gstatic.com/firebasejs/11.10.0/firebase-messaging-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/11.11.0/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/11.11.0/firebase-messaging-compat.js');
 
 // Take control immediately
 self.addEventListener('install', (event) => {
@@ -121,8 +121,9 @@ self.addEventListener('push', (event) => {
 
   const notificationPromise = (async () => {
     try {
+      // Validate push data exists
       if (!event.data) {
-        console.log('[SW v6.0] No push data - showing default notification');
+        console.log('[SW v6.0] ⚠️ No push data - showing default notification');
         return self.registration.showNotification('JPCO Dashboard', {
           body: 'You have a new notification',
           icon: '/images/logo/logo-icon.svg',
@@ -133,11 +134,15 @@ self.addEventListener('push', (event) => {
         });
       }
 
-      // Parse push payload
+      // Parse push payload with validation
       let payload;
       try {
         payload = event.data.json();
+        if (!payload) {
+          throw new Error('Empty payload');
+        }
       } catch (e) {
+        console.log('[SW v6.0] ⚠️ JSON parse failed:', e.message);
         const text = event.data.text();
         console.log('[SW v6.0] Text payload:', text);
         return self.registration.showNotification('JPCO Dashboard', {
@@ -188,7 +193,8 @@ self.addEventListener('push', (event) => {
       return self.registration.showNotification(title, options);
 
     } catch (error) {
-      console.error('[SW v6.0] ❌ Error:', error);
+      console.error('[SW v6.0] ❌ Push handler error:', error.message || error);
+      console.error('[SW v6.0] ❌ Stack:', error.stack);
       // CRITICAL: Even on error, must show notification to prevent Chrome fallback
       return self.registration.showNotification('JPCO Dashboard', {
         body: 'You have a new notification',
@@ -232,7 +238,7 @@ self.addEventListener('notificationclick', (event) => {
               return client.focus();
             }
           } catch (e) { 
-            console.error('[SW v6.0] URL comparison error:', e);
+            console.error('[SW v6.0] URL comparison error:', e.message);
           }
         }
         
@@ -248,7 +254,7 @@ self.addEventListener('notificationclick', (event) => {
           return clients.openWindow(urlToOpen);
         }
       })
-      .catch((e) => console.error('[SW v6.0] Click handler error:', e))
+      .catch((e) => console.error('[SW v6.0] Click handler error:', e.message || e))
   );
 });
 
@@ -257,41 +263,3 @@ self.addEventListener('notificationclose', (event) => {
 });
 
 console.log('[SW v6.0] ✅ Service worker loaded and ready');
-
-/**
- * Notification click handler
- */
-self.addEventListener('notificationclick', (event) => {
-  console.log('[SW v5.3] Click:', event.action);
-  event.notification.close();
-
-  if (event.action === 'close') return;
-
-  const urlToOpen = event.notification.data?.url || '/notifications';
-
-  event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then((windowClients) => {
-        for (const client of windowClients) {
-          try {
-            const clientUrl = new URL(client.url);
-            const targetUrl = new URL(urlToOpen, self.location.origin);
-            if (clientUrl.pathname === targetUrl.pathname && 'focus' in client) {
-              return client.focus();
-            }
-          } catch (e) { /* skip */ }
-        }
-        if (windowClients.length > 0 && windowClients[0].navigate) {
-          return windowClients[0].navigate(urlToOpen).then(c => c?.focus());
-        }
-        if (clients.openWindow) return clients.openWindow(urlToOpen);
-      })
-      .catch((e) => console.error('[SW v5.3] Click error:', e))
-  );
-});
-
-self.addEventListener('notificationclose', () => {
-  console.log('[SW v5.3] Dismissed');
-});
-
-console.log('[SW v5.3] Loaded');
