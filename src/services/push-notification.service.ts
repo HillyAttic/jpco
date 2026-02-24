@@ -3,9 +3,6 @@
  * Sends push notifications directly to users via FCM
  */
 
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
 interface NotificationPayload {
   title: string;
   body: string;
@@ -21,47 +18,20 @@ interface NotificationPayload {
 
 class PushNotificationService {
   /**
-   * Get user's FCM token from Firestore
-   */
-  private async getUserFCMToken(userId: string): Promise<string | null> {
-    try {
-      const tokenDoc = await getDoc(doc(db, 'fcmTokens', userId));
-      if (tokenDoc.exists()) {
-        return tokenDoc.data().token || null;
-      }
-      return null;
-    } catch (error) {
-      console.error('[Push] Error getting FCM token for user:', userId, error);
-      return null;
-    }
-  }
-
-  /**
    * Send push notification to a single user
    */
   async sendToUser(userId: string, payload: NotificationPayload): Promise<boolean> {
     try {
-      const token = await this.getUserFCMToken(userId);
-      
-      if (!token) {
-        console.warn('[Push] No FCM token found for user:', userId);
-        return false;
-      }
-
-      // Send notification via API route
-      const response = await fetch('/api/fcm/send', {
+      // Use the fast direct FCM endpoint
+      const response = await fetch('/api/notifications/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          token,
-          notification: {
-            title: payload.title,
-            body: payload.body,
-            icon: payload.icon || '/images/logo/logo-icon.svg',
-            badge: payload.badge || '/images/logo/logo-icon.svg',
-          },
+          userIds: [userId],
+          title: payload.title,
+          body: payload.body,
           data: payload.data || {},
         }),
       });
@@ -83,15 +53,34 @@ class PushNotificationService {
    * Send push notification to multiple users
    */
   async sendToUsers(userIds: string[], payload: NotificationPayload): Promise<number> {
-    let successCount = 0;
+    try {
+      // Use the fast direct FCM endpoint for batch sending
+      const response = await fetch('/api/notifications/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userIds,
+          title: payload.title,
+          body: payload.body,
+          data: payload.data || {},
+        }),
+      });
 
-    for (const userId of userIds) {
-      const success = await this.sendToUser(userId, payload);
-      if (success) successCount++;
+      if (!response.ok) {
+        console.error('[Push] Failed to send notifications:', await response.text());
+        return 0;
+      }
+
+      const result = await response.json();
+      const successCount = result.sent?.length || 0;
+      console.log(`[Push] Sent notifications to ${successCount}/${userIds.length} users`);
+      return successCount;
+    } catch (error) {
+      console.error('[Push] Error sending notifications:', error);
+      return 0;
     }
-
-    console.log(`[Push] Sent notifications to ${successCount}/${userIds.length} users`);
-    return successCount;
   }
 
   /**

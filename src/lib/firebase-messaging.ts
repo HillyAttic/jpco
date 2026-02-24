@@ -103,7 +103,7 @@ export const onForegroundMessage = (callback: (payload: any) => void) => {
 // Save FCM token to Firestore
 export const saveFCMToken = async (userId: string, token: string) => {
   try {
-    const response = await fetch('/api/fcm/save-token', {
+    const response = await fetch('/api/notifications/fcm-token', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -126,8 +126,8 @@ export const saveFCMToken = async (userId: string, token: string) => {
 // Delete FCM token from Firestore
 export const deleteFCMToken = async (userId: string) => {
   try {
-    const response = await fetch('/api/fcm/delete-token', {
-      method: 'POST',
+    const response = await fetch('/api/notifications/fcm-token', {
+      method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
       },
