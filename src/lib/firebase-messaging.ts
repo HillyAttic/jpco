@@ -10,12 +10,25 @@ let messaging: Messaging | null = null;
 export const initializeMessaging = () => {
   if (typeof window === 'undefined') return null;
   
+  // Check if browser supports required APIs
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+    console.warn('[FCM] Browser does not support push notifications');
+    return null;
+  }
+  
+  // Check if running in secure context (HTTPS or localhost)
+  if (!window.isSecureContext) {
+    console.warn('[FCM] Push notifications require a secure context (HTTPS)');
+    return null;
+  }
+  
   if (!messaging) {
     try {
       messaging = getMessaging(app);
       console.log('[FCM] Messaging initialized');
     } catch (error) {
       console.error('[FCM] Failed to initialize messaging:', error);
+      return null;
     }
   }
   

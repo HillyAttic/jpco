@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "mcp-postman": {
+      "source": "janjaszczak/cursor",
+      "sourceType": "github",
+      "computedHash": "46f84d899887b81f847632905f244322a74c3f898cf774dfd4c6f91598d9219d"
+    },
+    "postman-collection-generator": {
+      "source": "patricio0312rev/skills",
+      "sourceType": "github",
+      "computedHash": "2b66fcb334e6eab11e64fc19525fa9c75ef8e6b301dd819b2d57d4792d9ccf9f"
+    }
+  }
+}
