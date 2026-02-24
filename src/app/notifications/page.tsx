@@ -289,10 +289,11 @@ export default function NotificationsPage() {
           <div className="flex flex-col sm:flex-row gap-2">
             {notificationPermission === 'granted' && fcmToken ? (
               <button
-                onClick={handleDisableNotifications}
-                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-red-600 text-white text-sm sm:text-base rounded-lg hover:bg-red-700 transition-colors font-medium"
+                disabled
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-green-600 text-white text-sm sm:text-base rounded-lg font-medium cursor-not-allowed opacity-90 flex items-center justify-center gap-2"
               >
-                Disable
+                <Check className="w-4 h-4" />
+                Enabled
               </button>
             ) : (
               <button
