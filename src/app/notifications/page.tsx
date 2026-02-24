@@ -37,12 +37,32 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Check notification permission on mount
+  // Check notification permission and FCM token on mount
   useEffect(() => {
     if ('Notification' in window) {
       setNotificationPermission(Notification.permission);
     }
-  }, []);
+
+    // Check if user already has an FCM token
+    const checkExistingToken = async () => {
+      if (!user) return;
+
+      try {
+        const response = await authenticatedFetch(`/api/notifications/check-token?userId=${encodeURIComponent(user.uid)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.hasToken && data.token) {
+            setFcmToken(data.token);
+            console.log('Existing FCM token found');
+          }
+        }
+      } catch (error) {
+        console.error('Error checking existing token:', error);
+      }
+    };
+
+    checkExistingToken();
+  }, [user]);
 
   // Request notification permission
   const handleEnableNotifications = async () => {
