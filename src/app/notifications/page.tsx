@@ -152,36 +152,6 @@ export default function NotificationsPage() {
     }
   };
 
-  // Fix service worker issues
-  const handleFixServiceWorker = async () => {
-    try {
-      toast.info("Fixing service worker...");
-      
-      // Get all registrations
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      
-      console.log(`Found ${registrations.length} service worker(s)`);
-      
-      // Unregister all
-      for (const registration of registrations) {
-        console.log('Unregistering:', registration.scope);
-        await registration.unregister();
-      }
-      
-      console.log('All service workers unregistered');
-      
-      toast.success("Service workers cleared. Reloading...");
-      
-      // Wait a bit then reload
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
-    } catch (error) {
-      console.error('Error fixing service worker:', error);
-      toast.error("Failed to fix service worker. Please try clearing site data manually.");
-    }
-  };
-
   // Listen for foreground messages
   useEffect(() => {
     if (!user) return;
@@ -317,7 +287,7 @@ export default function NotificationsPage() {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2">
-            {notificationPermission === 'granted' ? (
+            {notificationPermission === 'granted' && fcmToken ? (
               <button
                 onClick={handleDisableNotifications}
                 className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-red-600 text-white text-sm sm:text-base rounded-lg hover:bg-red-700 transition-colors font-medium"
@@ -332,15 +302,6 @@ export default function NotificationsPage() {
                 Enable Notifications
               </button>
             )}
-            
-            {/* Fix Service Worker Button */}
-            <button
-              onClick={handleFixServiceWorker}
-              className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-yellow-600 text-white text-sm sm:text-base rounded-lg hover:bg-yellow-700 transition-colors font-medium"
-              title="Fix service worker issues if notifications aren't working"
-            >
-              Fix SW Issues
-            </button>
           </div>
         </div>
       </div>
