@@ -1,17 +1,17 @@
 // Firebase Cloud Messaging Service Worker
 // This file must be in the public folder and served from the root  
-// VERSION: 6.0 - Fixed locked/closed app notifications with data-only payload
+// VERSION: 6.1 - CRITICAL FIX: Use onBackgroundMessage (Firebase intercepts push events)
 //
 // CRITICAL FIXES:
 // 1. Service worker explicitly registered before FCM token generation
 // 2. Data-only payload handling (no notification payload from server)
-// 3. Service worker handles ALL notification display
+// 3. Firebase SDK intercepts 'push' events, so we MUST use onBackgroundMessage
 // 4. Works when app is closed, locked, or in background
 //
 // ARCHITECTURE:
 // - Firebase messaging SDK loaded (required for FCM token generation)
-// - onBackgroundMessage NOT used (unreliable on Android Chrome)
-// - ALL notification display handled by custom 'push' event handler
+// - onBackgroundMessage handles ALL notification display (Firebase intercepts push events)
+// - Raw 'push' event handler kept as backup for edge cases
 // - Data-only payload ensures consistent behavior across platforms
 // - Service worker ALWAYS calls showNotification() to prevent Chrome fallback
 
@@ -20,12 +20,12 @@ importScripts('https://www.gstatic.com/firebasejs/11.11.0/firebase-messaging-com
 
 // Take control immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW v6.0] Installing...');
+  console.log('[SW v6.1] Installing...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW v6.0] Activating...');
+  console.log('[SW v6.1] Activating...');
   event.waitUntil(
     (async () => {
       // Enable navigation preload for better performance
@@ -34,7 +34,7 @@ self.addEventListener('activate', (event) => {
       }
       // Take control of all clients immediately
       await clients.claim();
-      console.log('[SW v6.0] ✅ Activated and controlling clients');
+      console.log('[SW v6.1] ✅ Activated and controlling clients');
     })()
   );
 });
@@ -42,7 +42,7 @@ self.addEventListener('activate', (event) => {
 // Handle skip waiting message
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[SW v6.0] Skip waiting requested');
+    console.log('[SW v6.1] Skip waiting requested');
     self.skipWaiting();
   }
 });
@@ -69,11 +69,46 @@ setInterval(() => {
   shownNotifications.clear();
 }, 5 * 60 * 1000);
 
-// IMPORTANT: Do NOT use onBackgroundMessage - it's unreliable
-// Our push handler below handles ALL notification display
+// CRITICAL: Firebase intercepts push events, so we MUST use onBackgroundMessage
+// The raw 'push' event handler below will NOT fire when Firebase SDK is loaded
 messaging.onBackgroundMessage((payload) => {
-  console.log('[SW v6.0] onBackgroundMessage fired (ignored):', JSON.stringify(payload));
-  // Do nothing - let push handler display the notification
+  console.log('[SW v6.0] ===== onBackgroundMessage RECEIVED =====');
+  console.log('[SW v6.0] Full payload:', JSON.stringify(payload, null, 2));
+  
+  try {
+    // Extract data from FCM payload
+    const data = payload.data || {};
+    const title = data.title || payload.notification?.title || 'JPCO Dashboard';
+    const body = data.body || payload.notification?.body || 'You have a new notification';
+    
+    console.log('[SW v6.0] Extracted title:', title);
+    console.log('[SW v6.0] Extracted body:', body);
+    console.log('[SW v6.0] Data keys:', Object.keys(data));
+    
+    const options = buildNotificationOptions(data);
+    
+    console.log('[SW v6.0] 🔔 Displaying notification');
+    console.log('[SW v6.0] 🔔 Title:', title);
+    console.log('[SW v6.0] 🔔 Body:', options.body);
+    console.log('[SW v6.0] 🔔 Tag:', options.tag);
+    console.log('[SW v6.0] 🔔 URL:', options.data.url);
+    
+    // CRITICAL: Must return promise from showNotification
+    return self.registration.showNotification(title, options);
+  } catch (error) {
+    console.error('[SW v6.0] ❌ onBackgroundMessage error:', error.message || error);
+    console.error('[SW v6.0] ❌ Stack:', error.stack);
+    
+    // Fallback notification
+    return self.registration.showNotification('JPCO Dashboard', {
+      body: 'You have a new notification',
+      icon: '/images/logo/logo-icon.svg',
+      badge: '/images/logo/logo-icon.svg',
+      tag: 'jpco-error-' + Date.now(),
+      requireInteraction: true,
+      vibrate: [300, 100, 300, 100, 300],
+    });
+  }
 });
 
 /**
@@ -107,16 +142,15 @@ function buildNotificationOptions(data) {
 }
 
 /**
- * PUSH EVENT HANDLER - Main notification display logic
+ * RAW PUSH EVENT HANDLER - Backup handler
  * 
- * CRITICAL FIXES:
- * 1. Handles data-only payload (no notification object from server)
- * 2. Works when app is closed, locked, or in background
- * 3. Chrome REQUIRES event.waitUntil(showNotification()) or shows fallback
- * 4. Every code path MUST call showNotification() - no exceptions!
+ * NOTE: This may NOT fire when Firebase SDK is loaded, as Firebase intercepts
+ * push events and routes them through onBackgroundMessage instead.
+ * We keep this as a fallback for edge cases.
  */
 self.addEventListener('push', (event) => {
-  console.log('[SW v6.0] ===== PUSH EVENT RECEIVED =====');
+  console.log('[SW v6.0] ===== RAW PUSH EVENT RECEIVED =====');
+  console.log('[SW v6.0] ⚠️ This should NOT fire if Firebase SDK is working correctly');
   console.log('[SW v6.0] App state: closed/locked/background');
 
   const notificationPromise = (async () => {
@@ -262,4 +296,4 @@ self.addEventListener('notificationclose', (event) => {
   console.log('[SW v6.0] Notification closed:', event.notification.tag);
 });
 
-console.log('[SW v6.0] ✅ Service worker loaded and ready');
+console.log('[SW v6.1] ✅ Service worker loaded and ready');
