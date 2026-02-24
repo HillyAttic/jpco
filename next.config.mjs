@@ -161,6 +161,24 @@ const nextConfig = {
   // Performance headers for caching, compression, and security
   async headers() {
     return [
+      // Notifications page - NO CACHING
+      {
+        source: '/notifications',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0',
+          },
+          {
+            key: 'Pragma',
+            value: 'no-cache',
+          },
+          {
+            key: 'Expires',
+            value: '0',
+          },
+        ],
+      },
       // Service Worker files
       {
         source: '/sw.js',

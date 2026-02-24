@@ -73,6 +73,11 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // NEVER cache the notifications page - always fetch fresh
+  if (url.pathname === '/notifications' || url.pathname.startsWith('/notifications/')) {
+    return; // Let browser handle it, no caching
+  }
+
   // Handle different resource types with appropriate strategies
   if (request.destination === 'image') {
     event.respondWith(cacheFirstStrategy(request, IMAGE_CACHE));

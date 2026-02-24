@@ -81,6 +81,8 @@ export default function NotificationsPage() {
     }
 
     try {
+      console.log('[NOTIFICATIONS v2.0] Starting notification enable process');
+      
       // Mobile-specific checks
       const isMobile = isMobileDevice();
       const isIOS = isIOSDevice();
@@ -117,19 +119,8 @@ export default function NotificationsPage() {
         return;
       }
 
-      // Wait for service worker to be ready
-      console.log("Waiting for service worker...");
-      const registration = await navigator.serviceWorker.ready;
-      console.log("Service worker ready:", registration.active?.scriptURL);
-
-      // Verify it's the Firebase service worker
-      if (registration.active && !registration.active.scriptURL.includes('firebase-messaging-sw.js')) {
-        console.warn('Wrong service worker registered:', registration.active.scriptURL);
-        toast.warning("Service worker issue detected. Please refresh the page and try again.");
-        return;
-      }
-
       // Request permission (use mobile-specific handler if on mobile)
+      // These functions handle service worker registration with proper timeouts
       const token = isMobile
         ? await requestNotificationPermissionMobile()
         : await requestNotificationPermission();

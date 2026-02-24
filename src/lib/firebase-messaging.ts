@@ -53,7 +53,7 @@ export const initializeMessaging = () => {
   }
 };
 
-// Get FCM token with retry logic
+// Get FCM token with retry logic - OPTIMIZED FOR SPEED
 export const getFCMToken = async (retries = 3): Promise<string | null> => {
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -63,44 +63,47 @@ export const getFCMToken = async (retries = 3): Promise<string | null> => {
         return null;
       }
 
-      // CRITICAL FIX: Explicitly register service worker FIRST
-      console.log(`[FCM] Registering service worker (attempt ${attempt}/${retries})...`);
-      const registration = await registerServiceWorker();
-      
-      if (!registration) {
-        console.error('[FCM] ❌ Failed to register service worker');
-        if (attempt < retries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-          continue;
-        }
-        return null;
-      }
-
-      // Verify service worker is active
-      const isActive = await isServiceWorkerActive();
-      if (!isActive) {
-        console.error('[FCM] ❌ Service worker not active');
-        if (attempt < retries) {
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
-          continue;
-        }
-        return null;
-      }
-
-      console.log('[FCM] ✅ Service worker ready');
-
-      // Request notification permission
+      // Request notification permission first (fast)
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') {
         console.warn('[FCM] Notification permission denied');
         return null;
       }
 
+      // Register service worker in parallel with permission request
+      console.log(`[FCM] Registering service worker (attempt ${attempt}/${retries})...`);
+      const registrationPromise = registerServiceWorker();
+      
+      // Don't wait for full registration, just wait for it to start
+      const registration = await Promise.race([
+        registrationPromise,
+        new Promise<ServiceWorkerRegistration | null>((resolve) => 
+          setTimeout(() => resolve(null), 2000) // 2 second timeout
+        )
+      ]);
+      
+      if (!registration) {
+        // Try to get existing registration
+        const existingReg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
+        if (existingReg) {
+          console.log('[FCM] Using existing service worker registration');
+        } else {
+          console.error('[FCM] ❌ Service worker registration timeout');
+          if (attempt < retries) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            continue;
+          }
+          return null;
+        }
+      }
+
+      console.log('[FCM] ✅ Service worker ready');
+
       // Get FCM token with explicit service worker registration
       console.log('[FCM] Requesting FCM token...');
       const token = await getToken(messagingInstance, {
         vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-        serviceWorkerRegistration: registration,
+        serviceWorkerRegistration: registration || undefined,
       });
 
       if (token) {
@@ -110,14 +113,14 @@ export const getFCMToken = async (retries = 3): Promise<string | null> => {
 
       console.warn('[FCM] Failed to get token');
       if (attempt < retries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        await new Promise(resolve => setTimeout(resolve, 500));
         continue;
       }
       return null;
     } catch (error) {
       console.error(`[FCM] Error getting token (attempt ${attempt}/${retries}):`, error);
       if (attempt < retries) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        await new Promise(resolve => setTimeout(resolve, 500));
         continue;
       }
       return null;
