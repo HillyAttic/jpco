@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,11 +9,19 @@ import Select from '@/components/ui/select';
 import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { XMarkIcon } from '@heroicons/react/24/outline';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface TaskCreationModalProps {
   open: boolean;
   onClose: () => void;
   onTaskCreated?: (task: Task) => void;
+}
+
+interface Employee {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
 }
 
 export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreationModalProps) {
@@ -23,10 +31,34 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
     status: TaskStatus.TODO,
     priority: TaskPriority.MEDIUM,
     dueDate: '',
-    assignee: ''
+    assignedTo: [] as string[]
   });
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loadingEmployees, setLoadingEmployees] = useState(false);
+
+  // Fetch employees when modal opens
+  useEffect(() => {
+    if (open) {
+      fetchEmployees();
+    }
+  }, [open]);
+
+  const fetchEmployees = async () => {
+    try {
+      setLoadingEmployees(true);
+      const response = await authenticatedFetch('/api/employees');
+      if (response.ok) {
+        const data = await response.json();
+        setEmployees(data);
+      }
+    } catch (error) {
+      console.error('Error fetching employees:', error);
+    } finally {
+      setLoadingEmployees(false);
+    }
+  };
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -41,10 +73,6 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
     
     if (formData.description && formData.description.length > 500) {
       newErrors.description = 'Description must be less than 500 characters';
-    }
-    
-    if (formData.assignee && formData.assignee.length > 50) {
-      newErrors.assignee = 'Assignee name must be less than 50 characters';
     }
     
     setErrors(newErrors);
@@ -67,7 +95,7 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
         status: formData.status,
         priority: formData.priority,
         dueDate: formData.dueDate ? new Date(formData.dueDate) : new Date(),
-        assignedTo: formData.assignee ? [formData.assignee.trim()] : [],
+        assignedTo: formData.assignedTo,
         category: undefined,
         commentCount: 0
       };
@@ -90,7 +118,7 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
       status: TaskStatus.TODO,
       priority: TaskPriority.MEDIUM,
       dueDate: '',
-      assignee: ''
+      assignedTo: []
     });
     setErrors({});
     onClose();
@@ -105,6 +133,23 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
         return newErrors;
       });
     }
+  };
+
+  const handleEmployeeSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const selectedId = e.target.value;
+    if (selectedId && !formData.assignedTo.includes(selectedId)) {
+      setFormData(prev => ({
+        ...prev,
+        assignedTo: [...prev.assignedTo, selectedId]
+      }));
+    }
+  };
+
+  const removeEmployee = (employeeId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      assignedTo: prev.assignedTo.filter(id => id !== employeeId)
+    }));
   };
 
   return (
@@ -214,17 +259,47 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
           
           <div className="space-y-2">
             <label htmlFor="assignee" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Assignee
+              Assign To
             </label>
-            <Input
+            <Select
               id="assignee"
-              value={formData.assignee}
-              onChange={(e) => handleInputChange('assignee', e.target.value)}
-              placeholder="Enter assignee name (optional)"
-              className={errors.assignee ? 'border-red-300' : ''}
-            />
-            {errors.assignee && (
-              <p className="text-sm text-red-600">{errors.assignee}</p>
+              value=""
+              onChange={handleEmployeeSelect}
+              disabled={loadingEmployees}
+            >
+              <option value="">
+                {loadingEmployees ? 'Loading employees...' : 'Select employee to assign'}
+              </option>
+              {employees
+                .filter(emp => !formData.assignedTo.includes(emp.id))
+                .map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} ({emp.email})
+                  </option>
+                ))}
+            </Select>
+            
+            {formData.assignedTo.length > 0 && (
+              <div className="mt-2 space-y-1">
+                {formData.assignedTo.map(empId => {
+                  const emp = employees.find(e => e.id === empId);
+                  return emp ? (
+                    <div
+                      key={empId}
+                      className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 rounded px-3 py-2"
+                    >
+                      <span className="text-sm">{emp.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeEmployee(empId)}
+                        className="text-red-600 hover:text-red-700"
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : null;
+                })}
+              </div>
             )}
           </div>
           

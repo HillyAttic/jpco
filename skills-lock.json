@@ -10,6 +10,11 @@
       "source": "patricio0312rev/skills",
       "sourceType": "github",
       "computedHash": "2b66fcb334e6eab11e64fc19525fa9c75ef8e6b301dd819b2d57d4792d9ccf9f"
+    },
+    "push-notification-setup": {
+      "source": "aj-geddes/useful-ai-prompts",
+      "sourceType": "github",
+      "computedHash": "24cc0b653f1538ded7945fea77d021a587d34f0a36edad951afd608b8aff5f04"
     }
   }
 }

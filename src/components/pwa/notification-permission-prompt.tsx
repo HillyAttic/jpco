@@ -1,24 +1,36 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { TouchOptimizedButton } from '@/components/ui/touch-optimized-input';
 import { useResponsive } from '@/hooks/use-responsive';
 import { useAuth } from '@/contexts/auth.context';
+import { checkNotificationSupport } from '@/lib/firebase-messaging';
 
 export function NotificationPermissionPrompt() {
   const { currentUser } = useAuth();
   const { isSupported, permission, isLoading, requestPermission, isEnabled } = usePushNotifications();
   const { isTouchDevice } = useResponsive();
   const [isVisible, setIsVisible] = useState(true);
+  const [notificationInfo, setNotificationInfo] = useState<ReturnType<typeof checkNotificationSupport> | null>(null);
+
+  useEffect(() => {
+    setNotificationInfo(checkNotificationSupport());
+  }, []);
 
   // Don't show if:
   // - User is not signed in (CRITICAL FIX)
   // - Not supported
   // - Already granted or denied
   // - User dismissed
+  // - iOS device not in PWA mode
   if (!currentUser || !isSupported || permission === 'granted' || permission === 'denied' || !isVisible) {
     return null;
+  }
+
+  // iOS requires PWA installation
+  if (notificationInfo?.isIOS && notificationInfo?.requiresPWA && !notificationInfo?.isPWA) {
+    return null; // IOSPWAPrompt will handle this
   }
 
   const handleEnable = async () => {
@@ -53,6 +65,11 @@ export function NotificationPermissionPrompt() {
             </h4>
             <p className="text-sm text-dark-4 dark:text-dark-6 mt-1">
               Get instant updates about tasks, attendance, and team activities even when the app is closed.
+              {notificationInfo?.isIOS && notificationInfo?.isPWA && (
+                <span className="block mt-1 text-xs text-primary">
+                  ✓ Running as PWA - notifications supported
+                </span>
+              )}
             </p>
             <div className="flex space-x-2 mt-3">
               <TouchOptimizedButton

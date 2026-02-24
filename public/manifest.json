@@ -12,12 +12,6 @@
   "categories": ["business", "productivity"],
   "icons": [
     {
-      "src": "/images/logo/logo-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
-    },
-    {
       "src": "/images/logo/logo-192.png",
       "sizes": "192x192",
       "type": "image/png",
@@ -31,13 +25,13 @@
     },
     {
       "src": "/images/logo/logo-maskable-192.png",
-      "sizes": "192x192",
+      "sizes": "230x230",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
       "src": "/images/logo/logo-maskable-512.png",
-      "sizes": "512x512",
+      "sizes": "614x614",
       "type": "image/png",
       "purpose": "maskable"
     }
@@ -119,5 +113,13 @@
   },
   "launch_handler": {
     "client_mode": "navigate-existing"
+  },
+  "gcm_sender_id": "492450530050",
+  "permissions": [
+    "notifications"
+  ],
+  "notification_preferences": {
+    "vibrate": true,
+    "sound": true
   }
 }

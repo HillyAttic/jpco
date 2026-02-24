@@ -134,6 +134,21 @@ export function usePushNotifications() {
     }
   }, [currentUser, isSupported, permission]);
 
+  // Setup token refresh listener when user is authenticated and has granted permission
+  useEffect(() => {
+    if (!currentUser?.uid || permission !== 'granted') return;
+
+    console.log('[Push] Setting up token refresh listener');
+    const { setupTokenRefreshListener } = require('@/lib/firebase-messaging');
+    
+    const cleanup = setupTokenRefreshListener(currentUser.uid, (newToken: string) => {
+      console.log('[Push] Token refreshed:', newToken.substring(0, 20) + '...');
+      setToken(newToken);
+    });
+
+    return cleanup;
+  }, [currentUser, permission]);
+
   return {
     isSupported,
     permission,

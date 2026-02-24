@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Client } from '@/services/client.service';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface UseClientsOptions {
   initialFetch?: boolean;
@@ -42,7 +43,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
       if (searchQuery) params.append('search', searchQuery);
       if (statusFilter) params.append('status', statusFilter);
 
-      const response = await fetch(`/api/clients?${params.toString()}`);
+      const response = await authenticatedFetch(`/api/clients?${params.toString()}`);
 
       if (!response.ok) {
         throw new Error('Failed to fetch clients');
@@ -87,11 +88,8 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
       setClients((prev) => [optimisticClient, ...prev]);
 
       try {
-        const response = await fetch('/api/clients', {
+        const response = await authenticatedFetch('/api/clients', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(data),
         });
 
@@ -139,11 +137,8 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
       );
 
       try {
-        const response = await fetch(`/api/clients/${id}`, {
+        const response = await authenticatedFetch(`/api/clients/${id}`, {
           method: 'PUT',
-          headers: {
-            'Content-Type': 'application/json',
-          },
           body: JSON.stringify(data),
         });
 
@@ -188,7 +183,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
       setClients((prev) => prev.filter((client) => client.id !== id));
 
       try {
-        const response = await fetch(`/api/clients/${id}`, {
+        const response = await authenticatedFetch(`/api/clients/${id}`, {
           method: 'DELETE',
         });
 

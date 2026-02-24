@@ -35,58 +35,77 @@ export const initializeMessaging = () => {
   return messaging;
 };
 
-// Get FCM token
-export const getFCMToken = async (): Promise<string | null> => {
-  try {
-    const messagingInstance = initializeMessaging();
-    if (!messagingInstance) {
-      console.warn('[FCM] Messaging not available');
+// Get FCM token with retry logic
+export const getFCMToken = async (retries = 3): Promise<string | null> => {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const messagingInstance = initializeMessaging();
+      if (!messagingInstance) {
+        console.warn('[FCM] Messaging not available');
+        return null;
+      }
+
+      // CRITICAL FIX: Explicitly register service worker FIRST
+      console.log(`[FCM] Registering service worker (attempt ${attempt}/${retries})...`);
+      const registration = await registerServiceWorker();
+      
+      if (!registration) {
+        console.error('[FCM] ❌ Failed to register service worker');
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
+        return null;
+      }
+
+      // Verify service worker is active
+      const isActive = await isServiceWorkerActive();
+      if (!isActive) {
+        console.error('[FCM] ❌ Service worker not active');
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
+        return null;
+      }
+
+      console.log('[FCM] ✅ Service worker ready');
+
+      // Request notification permission
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') {
+        console.warn('[FCM] Notification permission denied');
+        return null;
+      }
+
+      // Get FCM token with explicit service worker registration
+      console.log('[FCM] Requesting FCM token...');
+      const token = await getToken(messagingInstance, {
+        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+        serviceWorkerRegistration: registration,
+      });
+
+      if (token) {
+        console.log('[FCM] ✅ Token obtained:', token.substring(0, 20) + '...');
+        return token;
+      }
+
+      console.warn('[FCM] Failed to get token');
+      if (attempt < retries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        continue;
+      }
+      return null;
+    } catch (error) {
+      console.error(`[FCM] Error getting token (attempt ${attempt}/${retries}):`, error);
+      if (attempt < retries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        continue;
+      }
       return null;
     }
-
-    // CRITICAL FIX: Explicitly register service worker FIRST
-    console.log('[FCM] Registering service worker...');
-    const registration = await registerServiceWorker();
-    
-    if (!registration) {
-      console.error('[FCM] ❌ Failed to register service worker');
-      return null;
-    }
-
-    // Verify service worker is active
-    const isActive = await isServiceWorkerActive();
-    if (!isActive) {
-      console.error('[FCM] ❌ Service worker not active');
-      return null;
-    }
-
-    console.log('[FCM] ✅ Service worker ready');
-
-    // Request notification permission
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') {
-      console.warn('[FCM] Notification permission denied');
-      return null;
-    }
-
-    // Get FCM token with explicit service worker registration
-    console.log('[FCM] Requesting FCM token...');
-    const token = await getToken(messagingInstance, {
-      vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
-      serviceWorkerRegistration: registration,
-    });
-
-    if (token) {
-      console.log('[FCM] ✅ Token obtained:', token.substring(0, 20) + '...');
-      return token;
-    } else {
-      console.warn('[FCM] ❌ No token available');
-      return null;
-    }
-  } catch (error) {
-    console.error('[FCM] ❌ Error getting token:', error);
-    return null;
   }
+  return null;
 };
 
 // Listen for foreground messages
@@ -216,4 +235,83 @@ export const requestNotificationPermissionMobile = async (): Promise<string | nu
     console.error('[FCM] Error requesting mobile permission:', error);
     return null;
   }
+};
+
+
+// Setup token refresh listener - CRITICAL FOR MOBILE
+export const setupTokenRefreshListener = (userId: string, onTokenRefresh?: (token: string) => void) => {
+  const messagingInstance = initializeMessaging();
+  if (!messagingInstance) {
+    console.warn('[FCM] Messaging not available for token refresh');
+    return () => {};
+  }
+
+  console.log('[FCM] Setting up token refresh listener');
+
+  // Listen for token refresh
+  const unsubscribe = onMessage(messagingInstance, async (payload) => {
+    // Check if this is a token refresh message
+    if (payload.data?.type === 'token_refresh') {
+      console.log('[FCM] Token refresh requested');
+      try {
+        const newToken = await getFCMToken();
+        if (newToken) {
+          await saveFCMToken(userId, newToken);
+          if (onTokenRefresh) {
+            onTokenRefresh(newToken);
+          }
+          console.log('[FCM] ✅ Token refreshed successfully');
+        }
+      } catch (error) {
+        console.error('[FCM] Error refreshing token:', error);
+      }
+    }
+  });
+
+  // Also check token validity periodically (every 24 hours)
+  const intervalId = setInterval(async () => {
+    console.log('[FCM] Periodic token check');
+    try {
+      const currentToken = await getFCMToken();
+      if (currentToken) {
+        await saveFCMToken(userId, currentToken);
+        console.log('[FCM] ✅ Token validated and updated');
+      }
+    } catch (error) {
+      console.error('[FCM] Error during periodic token check:', error);
+    }
+  }, 24 * 60 * 60 * 1000); // 24 hours
+
+  // Return cleanup function
+  return () => {
+    unsubscribe();
+    clearInterval(intervalId);
+    console.log('[FCM] Token refresh listener cleaned up');
+  };
+};
+
+// Check if notifications are supported and enabled
+export const checkNotificationSupport = (): {
+  supported: boolean;
+  permission: NotificationPermission;
+  isIOS: boolean;
+  isPWA: boolean;
+  iosVersion: number | null;
+  requiresPWA: boolean;
+} => {
+  const isIOS = isIOSDevice();
+  const isPWA = isStandalonePWA();
+  const iosVersion = getIOSVersion();
+  
+  // iOS 16.4+ supports web push in PWA mode
+  const requiresPWA = isIOS && (iosVersion === null || iosVersion >= 16);
+  
+  return {
+    supported: 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window,
+    permission: typeof Notification !== 'undefined' ? Notification.permission : 'default',
+    isIOS,
+    isPWA,
+    iosVersion,
+    requiresPWA,
+  };
 };
