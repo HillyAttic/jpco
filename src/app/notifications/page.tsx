@@ -36,6 +36,7 @@ export default function NotificationsPage() {
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isClearing, setIsClearing] = useState(false);
 
   // Check notification permission and FCM token on mount
   useEffect(() => {
@@ -169,6 +170,47 @@ export default function NotificationsPage() {
     } catch (error) {
       console.error("Error disabling notifications:", error);
       toast.error("Failed to disable notifications");
+    }
+  };
+
+  // Clear cache and reload
+  const handleClearCache = async () => {
+    setIsClearing(true);
+    try {
+      // Delete FCM token first if user is logged in
+      if (user) {
+        try {
+          await deleteFCMToken(user.uid);
+          console.log('[FCM] Token deleted');
+        } catch (error) {
+          console.error('[FCM] Error deleting token:', error);
+        }
+      }
+
+      // Clear all caches
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+        console.log('[Cache] Cleared all caches');
+      }
+
+      // Unregister service workers
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(reg => reg.unregister()));
+        console.log('[SW] Unregistered all service workers');
+      }
+
+      toast.success("Cache cleared! Reloading page...", { autoClose: 2000 });
+      
+      // Reload the page after a short delay
+      setTimeout(() => {
+        window.location.reload();
+      }, 2000);
+    } catch (error) {
+      console.error('Error clearing cache:', error);
+      toast.error("Failed to clear cache");
+      setIsClearing(false);
     }
   };
 
@@ -323,6 +365,32 @@ export default function NotificationsPage() {
                 Enable Notifications
               </button>
             )}
+          </div>
+        </div>
+      </div>
+
+      {/* Clear Cache Button - Show if there are notification errors */}
+      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4 sm:mb-6">
+        <div className="flex items-start gap-3">
+          <div className="flex-shrink-0 mt-0.5">
+            <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-semibold text-yellow-900 dark:text-yellow-200 mb-1">
+              Notifications Not Working?
+            </h4>
+            <p className="text-xs sm:text-sm text-yellow-800 dark:text-yellow-300 mb-3">
+              If you're seeing errors or notifications aren't working after an update, try clearing your browser cache and reloading the page.
+            </p>
+            <button
+              onClick={handleClearCache}
+              disabled={isClearing}
+              className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isClearing ? 'Clearing Cache...' : 'Clear Cache & Reload'}
+            </button>
           </div>
         </div>
       </div>

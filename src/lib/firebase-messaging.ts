@@ -8,9 +8,12 @@ let messaging: Messaging | null = null;
 
 // Initialize Firebase Messaging
 export const initializeMessaging = () => {
-  if (typeof window === 'undefined') return null;
+  // CRITICAL: Only run in browser
+  if (typeof window === 'undefined') {
+    return null;
+  }
   
-  // Check if browser supports required APIs
+  // CRITICAL: Check if browser supports required APIs
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
     console.warn('[FCM] Browser does not support push notifications');
     return null;
@@ -29,17 +32,25 @@ export const initializeMessaging = () => {
     return null;
   }
   
-  if (!messaging) {
-    try {
-      messaging = getMessaging(app);
-      console.log('[FCM] Messaging initialized');
-    } catch (error) {
-      console.error('[FCM] Failed to initialize messaging:', error);
-      return null;
-    }
+  // Return existing instance if already initialized
+  if (messaging) {
+    return messaging;
   }
   
-  return messaging;
+  // Initialize messaging with error handling
+  try {
+    messaging = getMessaging(app);
+    console.log('[FCM] Messaging initialized successfully');
+    return messaging;
+  } catch (error: any) {
+    // Handle specific Firebase errors
+    if (error?.code === 'messaging/unsupported-browser') {
+      console.warn('[FCM] This browser does not support Firebase Cloud Messaging');
+    } else {
+      console.error('[FCM] Failed to initialize messaging:', error);
+    }
+    return null;
+  }
 };
 
 // Get FCM token with retry logic
@@ -176,13 +187,13 @@ export const deleteFCMToken = async (userId: string) => {
 
 // Helper function to check if device is mobile
 export const isMobileDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
   return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 };
 
 // Helper function to check if device is iOS
 export const isIOSDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
   return /iPhone|iPad|iPod/i.test(navigator.userAgent);
 };
 
@@ -195,7 +206,7 @@ export const isStandalonePWA = (): boolean => {
 
 // Helper function to get iOS version
 export const getIOSVersion = (): number | null => {
-  if (typeof window === 'undefined' || !isIOSDevice()) return null;
+  if (typeof window === 'undefined' || typeof navigator === 'undefined' || !isIOSDevice()) return null;
   const match = navigator.userAgent.match(/OS (\d+)_/);
   return match ? parseInt(match[1], 10) : null;
 };
