@@ -1,9 +1,9 @@
 // Enhanced Service Worker for JPCO Dashboard
-// VERSION: 1.1.0
+// VERSION: 1.2.0
 // Provides: Offline support, caching strategies, background sync
-// UPDATED: Changed static asset caching to stale-while-revalidate for better updates
+// UPDATED: Cache bust for VAPID key fix
 
-const CACHE_VERSION = 'jpco-v1.1';
+const CACHE_VERSION = 'jpco-v1.2';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;

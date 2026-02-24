@@ -4,6 +4,24 @@ import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/mess
 import app from './firebase';
 import { registerServiceWorker, isServiceWorkerActive } from './register-sw';
 
+// Utility: Clean VAPID key - strips ALL possible corruption from env vars
+// Handles: literal \r\n strings, actual whitespace, quotes, and any other invalid chars
+// VAPID keys are base64url encoded, so only A-Za-z0-9, -, _ and = are valid
+function cleanVapidKey(raw: string | undefined): string {
+  if (!raw) return '';
+  let cleaned = raw;
+  // Remove literal backslash sequences using split/join (avoids regex escaping issues)
+  // These handle the case where env var contains actual backslash-r-backslash-n text
+  cleaned = cleaned.split('\\r\\n').join('');
+  cleaned = cleaned.split('\\r').join('');
+  cleaned = cleaned.split('\\n').join('');
+  // Remove quotes that might wrap the value
+  cleaned = cleaned.replace(/["']/g, '');
+  // Remove actual whitespace characters (spaces, tabs, real CR, LF)
+  cleaned = cleaned.replace(/\s/g, '');
+  return cleaned;
+}
+
 let messaging: Messaging | null = null;
 
 // Initialize Firebase Messaging
@@ -12,31 +30,36 @@ export const initializeMessaging = () => {
   if (typeof window === 'undefined') {
     return null;
   }
-  
+
   // CRITICAL: Check if browser supports required APIs
   if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
     console.warn('[FCM] Browser does not support push notifications');
     return null;
   }
-  
+
   // Check if running in secure context (HTTPS or localhost)
   if (!window.isSecureContext) {
     console.warn('[FCM] Push notifications require a secure context (HTTPS)');
     return null;
   }
-  
+
   // CRITICAL: Validate VAPID key is configured
-  if (!process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY) {
+  const vapidKey = cleanVapidKey(process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY);
+  if (!vapidKey) {
     console.error('[FCM] ❌ VAPID key not configured! Set NEXT_PUBLIC_FIREBASE_VAPID_KEY in environment variables');
     console.error('[FCM] 💡 Get your VAPID key from Firebase Console > Project Settings > Cloud Messaging > Web Push certificates');
     return null;
   }
-  
+
+  // Log VAPID key info for debugging (first/last chars only)
+  const rawKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '';
+  console.log(`[FCM] VAPID key: raw length=${rawKey.length}, clean length=${vapidKey.length}, key=${vapidKey.substring(0, 4)}...${vapidKey.substring(vapidKey.length - 4)}`);
+
   // Return existing instance if already initialized
   if (messaging) {
     return messaging;
   }
-  
+
   // Initialize messaging with error handling
   try {
     messaging = getMessaging(app);
@@ -73,15 +96,15 @@ export const getFCMToken = async (retries = 3): Promise<string | null> => {
       // Register service worker in parallel with permission request
       console.log(`[FCM] Registering service worker (attempt ${attempt}/${retries})...`);
       const registrationPromise = registerServiceWorker();
-      
+
       // Don't wait for full registration, just wait for it to start
       const registration = await Promise.race([
         registrationPromise,
-        new Promise<ServiceWorkerRegistration | null>((resolve) => 
+        new Promise<ServiceWorkerRegistration | null>((resolve) =>
           setTimeout(() => resolve(null), 2000) // 2 second timeout
         )
       ]);
-      
+
       if (!registration) {
         // Try to get existing registration
         const existingReg = await navigator.serviceWorker.getRegistration('/firebase-messaging-sw.js');
@@ -101,8 +124,12 @@ export const getFCMToken = async (retries = 3): Promise<string | null> => {
 
       // Get FCM token with explicit service worker registration
       console.log('[FCM] Requesting FCM token...');
+      // CRITICAL: clean the VAPID key to strip any \r\n, quotes, or whitespace from env vars
+      const vapidKey = cleanVapidKey(process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY);
+      console.log(`[FCM] Using VAPID key: ${vapidKey.substring(0, 4)}...${vapidKey.substring(vapidKey.length - 4)} (length: ${vapidKey.length})`);
+
       const token = await getToken(messagingInstance, {
-        vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
+        vapidKey,
         serviceWorkerRegistration: registration || undefined,
       });
 
@@ -132,7 +159,7 @@ export const getFCMToken = async (retries = 3): Promise<string | null> => {
 // Listen for foreground messages
 export const onForegroundMessage = (callback: (payload: any) => void) => {
   const messagingInstance = initializeMessaging();
-  if (!messagingInstance) return () => {};
+  if (!messagingInstance) return () => { };
 
   return onMessage(messagingInstance, (payload) => {
     console.log('[FCM] Foreground message received:', payload);
@@ -145,7 +172,7 @@ export const saveFCMToken = async (userId: string, token: string) => {
   try {
     // Import authenticatedFetch to include auth token
     const { authenticatedFetch } = await import('@/lib/api-client');
-    
+
     const response = await authenticatedFetch('/api/notifications/fcm-token', {
       method: 'POST',
       body: JSON.stringify({ userId, token }),
@@ -169,7 +196,7 @@ export const deleteFCMToken = async (userId: string) => {
   try {
     // Import authenticatedFetch to include auth token
     const { authenticatedFetch } = await import('@/lib/api-client');
-    
+
     const response = await authenticatedFetch('/api/notifications/fcm-token', {
       method: 'DELETE',
       body: JSON.stringify({ userId }),
@@ -203,8 +230,8 @@ export const isIOSDevice = (): boolean => {
 // Helper function to check if running as standalone PWA
 export const isStandalonePWA = (): boolean => {
   if (typeof window === 'undefined') return false;
-  return window.matchMedia('(display-mode: standalone)').matches || 
-         (window.navigator as any).standalone === true;
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as any).standalone === true;
 };
 
 // Helper function to get iOS version
@@ -226,7 +253,7 @@ export const requestNotificationPermission = async (): Promise<string | null> =>
     if (permission === 'granted') {
       return await getFCMToken();
     }
-    
+
     return null;
   } catch (error) {
     console.error('[FCM] Error requesting permission:', error);
@@ -252,7 +279,7 @@ export const requestNotificationPermissionMobile = async (): Promise<string | nu
     if (permission === 'granted') {
       return await getFCMToken();
     }
-    
+
     return null;
   } catch (error) {
     console.error('[FCM] Error requesting mobile permission:', error);
@@ -266,7 +293,7 @@ export const setupTokenRefreshListener = (userId: string, onTokenRefresh?: (toke
   const messagingInstance = initializeMessaging();
   if (!messagingInstance) {
     console.warn('[FCM] Messaging not available for token refresh');
-    return () => {};
+    return () => { };
   }
 
   console.log('[FCM] Setting up token refresh listener');
@@ -325,10 +352,10 @@ export const checkNotificationSupport = (): {
   const isIOS = isIOSDevice();
   const isPWA = isStandalonePWA();
   const iosVersion = getIOSVersion();
-  
+
   // iOS 16.4+ supports web push in PWA mode
   const requiresPWA = isIOS && (iosVersion === null || iosVersion >= 16);
-  
+
   return {
     supported: 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window,
     permission: typeof Notification !== 'undefined' ? Notification.permission : 'default',

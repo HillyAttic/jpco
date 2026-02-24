@@ -37,10 +37,10 @@ export default function DiagnosticPage() {
       diagnostics.checks.push({ name: 'Browser Support', status: 'PASS', details: 'All APIs available' });
     } else {
       diagnostics.errors.push('❌ Browser does NOT support push notifications');
-      diagnostics.checks.push({ 
-        name: 'Browser Support', 
-        status: 'FAIL', 
-        details: `Notification: ${hasNotification}, SW: ${hasServiceWorker}, Push: ${hasPushManager}` 
+      diagnostics.checks.push({
+        name: 'Browser Support',
+        status: 'FAIL',
+        details: `Notification: ${hasNotification}, SW: ${hasServiceWorker}, Push: ${hasPushManager}`
       });
     }
 
@@ -65,10 +65,10 @@ export default function DiagnosticPage() {
         const registration = await navigator.serviceWorker.getRegistration('/');
         if (registration?.active) {
           diagnostics.success.push('✅ Service worker is ACTIVE');
-          diagnostics.checks.push({ 
-            name: 'Service Worker', 
-            status: 'PASS', 
-            details: registration.active.scriptURL 
+          diagnostics.checks.push({
+            name: 'Service Worker',
+            status: 'PASS',
+            details: registration.active.scriptURL
           });
         } else {
           diagnostics.warnings.push('⚠️ Service worker NOT active - Refresh page');
@@ -81,13 +81,15 @@ export default function DiagnosticPage() {
     }
 
     // Check 5: VAPID Key
-    const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+    const rawVapidKey = process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY;
+    const vapidKey = (rawVapidKey || '').trim();
     if (vapidKey) {
-      diagnostics.success.push('✅ VAPID key is configured');
-      diagnostics.checks.push({ 
-        name: 'VAPID Key', 
-        status: 'PASS', 
-        details: vapidKey.substring(0, 20) + '...' 
+      const hasWhitespace = rawVapidKey !== vapidKey;
+      diagnostics.success.push(`✅ VAPID key is configured (length: ${vapidKey.length}${hasWhitespace ? ', WARNING: had trailing whitespace that was trimmed!' : ''})`);
+      diagnostics.checks.push({
+        name: 'VAPID Key',
+        status: hasWhitespace ? 'WARN' : 'PASS',
+        details: `${vapidKey.substring(0, 10)}...${vapidKey.substring(vapidKey.length - 10)} (raw: ${rawVapidKey?.length}, trimmed: ${vapidKey.length})`
       });
     } else {
       diagnostics.errors.push('❌ VAPID key NOT configured - Check .env.local');
@@ -103,10 +105,10 @@ export default function DiagnosticPage() {
           const data = await response.json();
           if (data.fcmToken.registered) {
             diagnostics.success.push('✅ FCM token is registered');
-            diagnostics.checks.push({ 
-              name: 'FCM Token', 
-              status: 'PASS', 
-              details: `Last updated: ${data.fcmToken.lastUpdated}` 
+            diagnostics.checks.push({
+              name: 'FCM Token',
+              status: 'PASS',
+              details: `Last updated: ${data.fcmToken.lastUpdated}`
             });
           } else {
             diagnostics.warnings.push('⚠️ FCM token NOT registered - Enable notifications first');
@@ -148,19 +150,18 @@ export default function DiagnosticPage() {
       <h1 className="text-3xl font-bold mb-6">Push Notification Diagnostics</h1>
 
       {/* Overall Status */}
-      <div className={`p-6 rounded-lg mb-6 ${
-        allPassed ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500' :
-        results.errors.length > 0 ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-500' :
-        'bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-500'
-      }`}>
+      <div className={`p-6 rounded-lg mb-6 ${allPassed ? 'bg-green-50 dark:bg-green-900/20 border-2 border-green-500' :
+          results.errors.length > 0 ? 'bg-red-50 dark:bg-red-900/20 border-2 border-red-500' :
+            'bg-yellow-50 dark:bg-yellow-900/20 border-2 border-yellow-500'
+        }`}>
         <h2 className="text-2xl font-bold mb-2">
           {allPassed ? '✅ All Checks Passed!' :
-           results.errors.length > 0 ? '❌ Issues Found' :
-           '⚠️ Warnings Found'}
+            results.errors.length > 0 ? '❌ Issues Found' :
+              '⚠️ Warnings Found'}
         </h2>
         <p className="text-sm">
           {allPassed ? 'Your push notifications should be working!' :
-           'Please fix the issues below to enable push notifications.'}
+            'Please fix the issues below to enable push notifications.'}
         </p>
       </div>
 
@@ -216,11 +217,10 @@ export default function DiagnosticPage() {
                 <div className="font-medium">{check.name}</div>
                 <div className="text-sm text-gray-600 dark:text-gray-400">{check.details}</div>
               </div>
-              <div className={`px-3 py-1 rounded text-sm font-medium ${
-                check.status === 'PASS' ? 'bg-green-100 text-green-700' :
-                check.status === 'FAIL' ? 'bg-red-100 text-red-700' :
-                'bg-yellow-100 text-yellow-700'
-              }`}>
+              <div className={`px-3 py-1 rounded text-sm font-medium ${check.status === 'PASS' ? 'bg-green-100 text-green-700' :
+                  check.status === 'FAIL' ? 'bg-red-100 text-red-700' :
+                    'bg-yellow-100 text-yellow-700'
+                }`}>
                 {check.status}
               </div>
             </div>

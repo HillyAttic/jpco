@@ -1,6 +1,6 @@
 // Firebase Cloud Messaging Service Worker
 // This file must be in the public folder and served from the root  
-// VERSION: 7.0 - MOBILE FIX: Enhanced background notification handling
+// VERSION: 8.0 - CACHE BUST: Force update for VAPID key fix
 //
 // CRITICAL FIXES FOR MOBILE (iOS/Android):
 // 1. Proper notification payload extraction (supports both data and notification objects)
@@ -21,12 +21,12 @@ importScripts('https://www.gstatic.com/firebasejs/11.0.0/firebase-messaging-comp
 
 // Take control immediately
 self.addEventListener('install', (event) => {
-  console.log('[SW v7.0] Installing...');
+  console.log('[SW v8.0] Installing...');
   self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  console.log('[SW v7.0] Activating...');
+  console.log('[SW v8.0] Activating...');
   event.waitUntil(
     (async () => {
       // Enable navigation preload for better performance
@@ -35,7 +35,7 @@ self.addEventListener('activate', (event) => {
       }
       // Take control of all clients immediately
       await clients.claim();
-      console.log('[SW v7.0] ✅ Activated and controlling clients');
+      console.log('[SW v8.0] ✅ Activated and controlling clients');
     })()
   );
 });
@@ -43,7 +43,7 @@ self.addEventListener('activate', (event) => {
 // Handle skip waiting message
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
-    console.log('[SW v7.0] Skip waiting requested');
+    console.log('[SW v8.0] Skip waiting requested');
     self.skipWaiting();
   }
 });
@@ -230,4 +230,4 @@ self.addEventListener('notificationclose', (event) => {
   console.log('[SW v7.0] Notification closed:', event.notification.tag);
 });
 
-console.log('[SW v7.0] ✅ Service worker loaded and ready');
+console.log('[SW v8.0] ✅ Service worker loaded and ready');
