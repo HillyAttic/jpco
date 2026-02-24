@@ -1,8 +1,9 @@
 // Enhanced Service Worker for JPCO Dashboard
-// VERSION: 1.0.0
+// VERSION: 1.1.0
 // Provides: Offline support, caching strategies, background sync
+// UPDATED: Changed static asset caching to stale-while-revalidate for better updates
 
-const CACHE_VERSION = 'jpco-v1';
+const CACHE_VERSION = 'jpco-v1.1';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;
@@ -17,7 +18,7 @@ const STATIC_ASSETS = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing enhanced service worker v1.0.0');
+  console.log('[SW] Installing enhanced service worker v1.1.0');
   
   event.waitUntil(
     caches.open(STATIC_CACHE)
@@ -76,7 +77,8 @@ self.addEventListener('fetch', (event) => {
   if (request.destination === 'image') {
     event.respondWith(cacheFirstStrategy(request, IMAGE_CACHE));
   } else if (url.pathname.startsWith('/_next/static/')) {
-    event.respondWith(cacheFirstStrategy(request, STATIC_CACHE));
+    // Use stale-while-revalidate for JS bundles to allow updates
+    event.respondWith(staleWhileRevalidateStrategy(request, STATIC_CACHE));
   } else if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirstStrategy(request, DYNAMIC_CACHE));
   } else {
@@ -221,4 +223,4 @@ self.addEventListener('message', (event) => {
   }
 });
 
-console.log('[SW] Enhanced service worker loaded v1.0.0');
+console.log('[SW] Enhanced service worker loaded v1.1.0');

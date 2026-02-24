@@ -201,13 +201,14 @@ const nextConfig = {
           },
         ],
       },
-      // Static assets - aggressive caching
+      // Static assets - cache with revalidation
+      // Changed from immutable to allow updates when environment variables change
       {
         source: '/_next/static/:path*',
         headers: [
           {
             key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            value: 'public, max-age=31536000, stale-while-revalidate=86400',
           },
         ],
       },

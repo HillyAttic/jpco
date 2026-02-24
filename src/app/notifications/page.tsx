@@ -50,12 +50,20 @@ export default function NotificationsPage() {
 
       try {
         const response = await authenticatedFetch(`/api/notifications/check-token?userId=${encodeURIComponent(user.uid)}`);
+        
+        // 200 = token exists, 404 = no token (both are valid responses)
         if (response.ok) {
           const data = await response.json();
-          if (data.hasToken && data.token) {
-            setFcmToken(data.token);
+          if (data.hasToken && data.exists) {
+            setFcmToken('exists'); // Set a placeholder to indicate token exists
             console.log('Existing FCM token found');
           }
+        } else if (response.status === 404) {
+          // No token found - this is expected for users who haven't enabled notifications
+          console.log('No FCM token found - user needs to enable notifications');
+        } else {
+          // Other errors
+          console.error('Error checking token:', response.status);
         }
       } catch (error) {
         console.error('Error checking existing token:', error);
