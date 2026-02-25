@@ -10,20 +10,11 @@ body.modal-open header {
 
 /* Base Mobile Optimizations */
 @media (max-width: 768px) {
-  /* Ensure proper touch targets (minimum 44x44px) */
-  button:not(.no-min-size),
-  a:not(.no-min-size),
-  input:not(.no-min-size),
-  select:not(.no-min-size),
-  textarea:not(.no-min-size) {
-    min-height: 44px;
-    min-width: 44px;
-  }
+  /* Touch target sizing is handled by the touch device media query below */
 
-  /* Improve text readability on mobile */
+  /* NOTE: Removed global touch-action: manipulation as it was causing zoom issues */
+
   body {
-    font-size: 16px; /* Prevents iOS zoom on input focus */
-    -webkit-text-size-adjust: 100%;
     -webkit-font-smoothing: antialiased;
   }
 
@@ -35,11 +26,11 @@ body.modal-open header {
   }
 
   /* Optimize spacing for mobile */
-  .space-y-6 > * + * {
+  .space-y-6>*+* {
     margin-top: 1rem !important;
   }
 
-  .space-y-4 > * + * {
+  .space-y-4>*+* {
     margin-top: 0.75rem !important;
   }
 
@@ -51,17 +42,20 @@ body.modal-open header {
 
   /* Responsive text sizes */
   h1 {
-    font-size: 1.875rem !important; /* 30px */
+    font-size: 1.875rem !important;
+    /* 30px */
     line-height: 2.25rem !important;
   }
 
   h2 {
-    font-size: 1.5rem !important; /* 24px */
+    font-size: 1.5rem !important;
+    /* 24px */
     line-height: 2rem !important;
   }
 
   h3 {
-    font-size: 1.25rem !important; /* 20px */
+    font-size: 1.25rem !important;
+    /* 20px */
     line-height: 1.75rem !important;
   }
 
@@ -77,7 +71,7 @@ body.modal-open header {
     font-size: 1rem;
   }
 
-  /* Form input optimizations */
+  /* Form input optimizations - prevent zoom on focus */
   input[type="text"],
   input[type="email"],
   input[type="password"],
@@ -86,15 +80,16 @@ body.modal-open header {
   input[type="url"],
   textarea,
   select {
-    font-size: 16px; /* Prevents iOS zoom */
+    font-size: 16px;
+    /* Prevents iOS zoom on input focus */
     padding: 0.75rem;
+    /* Removed touch-action: manipulation - was causing zoom issues */
   }
 
   /* Table responsiveness */
   table {
     display: block;
     overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
   }
 
   /* Grid optimizations */
@@ -113,12 +108,14 @@ body.modal-open header {
 /* Small Mobile (< 375px) */
 @media (max-width: 374px) {
   h1 {
-    font-size: 1.5rem !important; /* 24px */
+    font-size: 1.5rem !important;
+    /* 24px */
     line-height: 2rem !important;
   }
 
   h2 {
-    font-size: 1.25rem !important; /* 20px */
+    font-size: 1.25rem !important;
+    /* 20px */
     line-height: 1.75rem !important;
   }
 
@@ -150,15 +147,16 @@ body.modal-open header {
   }
 
   /* Better spacing for tablet */
-  .space-y-6 > * + * {
+  .space-y-6>*+* {
     margin-top: 1.5rem;
   }
 }
 
 /* Landscape Mobile (< 768px height) */
 @media (max-height: 768px) and (orientation: landscape) {
+
   /* Reduce vertical spacing in landscape */
-  .space-y-6 > * + * {
+  .space-y-6>*+* {
     margin-top: 0.75rem !important;
   }
 
@@ -176,31 +174,10 @@ body.modal-open header {
 
 /* Touch Device Optimizations */
 @media (hover: none) and (pointer: coarse) {
-  /* Smaller minimum for all rounded-full elements and interactive elements */
-  /* Exclude notification badges from touch target sizing */
-  button:not([aria-label*="unread"]),
-  a:not([aria-label*="unread"]),
-  input[type="checkbox"],
-  input[type="radio"],
-  .rounded-full:not([aria-label*="unread"]) {
-    min-width: 25px;
-    min-height: 25px;
-  }
-  
-  /* Explicitly prevent notification badges from being resized */
-  span[aria-label*="unread"] {
-    min-width: unset !important;
-    min-height: unset !important;
-  }
 
   /* Remove hover effects on touch devices */
   *:hover {
     transition: none;
-  }
-
-  /* Improve scrolling */
-  * {
-    -webkit-overflow-scrolling: touch;
   }
 
   /* Prevent text selection on buttons */
@@ -212,7 +189,9 @@ body.modal-open header {
 }
 
 /* High DPI Displays */
-@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+@media (-webkit-min-device-pixel-ratio: 2),
+(min-resolution: 192dpi) {
+
   /* Sharper borders */
   * {
     -webkit-font-smoothing: antialiased;
@@ -222,6 +201,7 @@ body.modal-open header {
 
 /* Dark Mode Mobile Optimizations */
 @media (prefers-color-scheme: dark) and (max-width: 768px) {
+
   /* Reduce brightness for OLED screens */
   body {
     background-color: #000000;
@@ -234,6 +214,7 @@ body.modal-open header {
 
 /* Accessibility - Reduced Motion */
 @media (prefers-reduced-motion: reduce) {
+
   *,
   *::before,
   *::after {
@@ -245,6 +226,7 @@ body.modal-open header {
 
 /* Print Styles */
 @media print {
+
   /* Hide navigation and non-essential elements */
   header,
   aside,

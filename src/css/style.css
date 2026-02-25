@@ -532,10 +532,10 @@ input[type="search"]::-webkit-search-cancel-button {
 }
 /* Responsive Design Utilities */
 
-/* Touch-friendly interactions */
-.touch-manipulation {
+/* Touch-friendly interactions - DISABLED due to zoom issues */
+/* .touch-manipulation {
   touch-action: manipulation;
-}
+} */
 
 /* Smooth scrolling for better UX */
 html {
@@ -733,6 +733,7 @@ img {
 
 /* Touch-specific styles */
 @media (pointer: coarse) {
+  /* Only apply touch-target sizing to elements that explicitly opt-in via class */
   .touch-target {
     min-height: 44px;
     min-width: 44px;
@@ -743,20 +744,8 @@ img {
     transition: transform 0.1s ease;
   }
   
-  /* Touch-friendly button sizes */
-  button,
-  a,
-  input[type="checkbox"],
-  input[type="radio"] {
-    min-width: 44px;
-    min-height: 44px;
-  }
-  
-  /* Override for rounded-full buttons to ensure touch-friendly size */
-  .rounded-full {
-    min-width: 44px;
-    min-height: 44px;
-  }
+  /* DO NOT apply global min-width/min-height to button, a, .rounded-full etc.
+     This was forcing notification badges, status dots, and small icons to 44x44px */
 }
 
 /* High DPI display optimizations */

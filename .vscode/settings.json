@@ -1,4 +1,5 @@
 {
     "typescript.autoClosingTags": false,
-    "kiroAgent.agentAutonomy": "Autopilot"
+    "kiroAgent.agentAutonomy": "Autopilot",
+    "css.lint.unknownAtRules": "ignore"
 }
