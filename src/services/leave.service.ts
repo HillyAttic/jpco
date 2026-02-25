@@ -238,7 +238,7 @@ export const leaveService = {
             code: 'CASUAL',
             isPaid: true,
             requiresApproval: true,
-            maxDaysPerYear: 10,
+            maxDaysPerYear: 12,
             accrualRate: 1,
             carryOverAllowed: false,
             color: '#f59e0b',
@@ -252,9 +252,9 @@ export const leaveService = {
             code: 'VACATION',
             isPaid: true,
             requiresApproval: true,
-            maxDaysPerYear: 20,
-            accrualRate: 1.5,
-            carryOverAllowed: true,
+            maxDaysPerYear: 7,
+            accrualRate: 1,
+            carryOverAllowed: false,
             color: '#10b981',
             isActive: true,
             createdAt: new Date(),
@@ -290,7 +290,7 @@ export const leaveService = {
           code: 'CASUAL',
           isPaid: true,
           requiresApproval: true,
-          maxDaysPerYear: 10,
+          maxDaysPerYear: 12,
           accrualRate: 1,
           carryOverAllowed: false,
           color: '#f59e0b',
@@ -304,9 +304,9 @@ export const leaveService = {
           code: 'VACATION',
           isPaid: true,
           requiresApproval: true,
-          maxDaysPerYear: 20,
-          accrualRate: 1.5,
-          carryOverAllowed: true,
+          maxDaysPerYear: 7,
+          accrualRate: 1,
+          carryOverAllowed: false,
           color: '#10b981',
           isActive: true,
           createdAt: new Date(),
@@ -321,31 +321,25 @@ export const leaveService = {
    */
   async getLeaveBalances(employeeId: string): Promise<LeaveBalance[]> {
     try {
-      // First get all leave types
-      const leaveTypes = await this.getLeaveTypes();
+      // Import the calculator
+      const { LeaveBalanceCalculator } = await import('./leave-balance-calculator.service');
       
-      // Then get the employee's leave balances
-      const balances = await leaveBalanceFirebaseService.getAll({
-        filters: [{ field: 'employeeId', operator: '==', value: employeeId }]
-      });
-
-      // If no balances exist, return default balances based on leave types
-      if (balances.length === 0) {
-        console.log('No leave balances found, returning defaults for employee:', employeeId);
-        const defaultBalances: LeaveBalance[] = leaveTypes.map(type => ({
-          leaveTypeId: type.id,
-          leaveTypeName: type.name,
-          totalDays: type.maxDaysPerYear,
-          usedDays: 0,
-          remainingDays: type.maxDaysPerYear,
-          accrualRate: type.accrualRate,
-          updatedAt: new Date()
-        }));
-        
-        return defaultBalances;
-      }
+      // Get all leave requests for this employee
+      const requests = await this.getAll({ employeeId });
       
-      return balances;
+      // Calculate balances using the new calculator
+      const calculatedBalances = LeaveBalanceCalculator.calculateBalances(employeeId, requests);
+      
+      // Return as LeaveBalance array (without the extra calculated fields)
+      return calculatedBalances.map(balance => ({
+        leaveTypeId: balance.leaveTypeId,
+        leaveTypeName: balance.leaveTypeName,
+        totalDays: balance.totalDays,
+        usedDays: balance.usedDays,
+        remainingDays: balance.remainingDays,
+        accrualRate: balance.accrualRate,
+        updatedAt: balance.updatedAt
+      }));
     } catch (error) {
       console.error('Error fetching leave balances:', error);
       return [];
@@ -440,6 +434,24 @@ export const leaveService = {
    */
   async createLeaveRequest(data: any): Promise<AttendanceLeaveRequest> {
     try {
+      // Import the calculator for validation
+      const { LeaveBalanceCalculator } = await import('./leave-balance-calculator.service');
+      
+      // Get employee's existing requests for validation
+      const existingRequests = await this.getAll({ employeeId: data.employeeId });
+      
+      // Validate the leave request
+      const validation = LeaveBalanceCalculator.validateLeaveRequest(
+        data.leaveTypeId,
+        new Date(data.startDate),
+        new Date(data.endDate),
+        existingRequests
+      );
+      
+      if (!validation.valid) {
+        throw new Error(validation.message || 'Leave request validation failed');
+      }
+      
       // Calculate duration
       const start = new Date(data.startDate);
       const end = new Date(data.endDate);
