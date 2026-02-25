@@ -109,8 +109,9 @@ export const rosterAdminService = {
         }
 
         const docRef = await adminDb.collection(COLLECTION).add(entry);
-        const created = await docRef.get();
-        return convertDoc(created.data()!, docRef.id);
+
+        // Return data we already have — no extra Firestore read needed
+        return convertDoc({ ...entry, createdAt: entry.createdAt, updatedAt: entry.updatedAt }, docRef.id);
     },
 
     async updateRosterEntry(id: string, data: any) {
@@ -126,10 +127,35 @@ export const rosterAdminService = {
                 data.endDate instanceof Date ? data.endDate : new Date(data.endDate)
             );
         }
+        if (data.timeStart) {
+            updates.timeStart = Timestamp.fromDate(
+                data.timeStart instanceof Date ? data.timeStart : new Date(data.timeStart)
+            );
+        }
+        if (data.timeEnd) {
+            updates.timeEnd = Timestamp.fromDate(
+                data.timeEnd instanceof Date ? data.timeEnd : new Date(data.timeEnd)
+            );
+        }
+
+        // Recalculate duration and taskDate if timeStart/timeEnd are updated for single tasks
+        if (data.taskType === 'single' && (data.timeStart || data.timeEnd)) {
+            const existingDoc = await adminDb.collection(COLLECTION).doc(id).get();
+            const existingData = existingDoc.data();
+            const currentStart = updates.timeStart ? safeToDate(updates.timeStart) : safeToDate(existingData?.timeStart);
+            const currentEnd = updates.timeEnd ? safeToDate(updates.timeEnd) : safeToDate(existingData?.timeEnd);
+
+            if (currentStart && currentEnd) {
+                updates.durationHours = calculateDuration(currentStart, currentEnd);
+                updates.taskDate = currentStart.toISOString().split('T')[0];
+            }
+        }
 
         await adminDb.collection(COLLECTION).doc(id).update(updates);
-        const updated = await adminDb.collection(COLLECTION).doc(id).get();
-        return convertDoc(updated.data()!, id);
+
+        // Return data we already have — no extra Firestore read needed
+        const existing = await adminDb.collection(COLLECTION).doc(id).get(); // This read is necessary to get fields not included in 'updates'
+        return convertDoc({ ...existing.data()!, ...updates }, id);
     },
 
     async deleteRosterEntry(id: string) {
@@ -140,10 +166,30 @@ export const rosterAdminService = {
         const startOfMonth = new Date(year, month - 1, 1);
         const endOfMonth = new Date(year, month, 0, 23, 59, 59);
 
-        const snapshot = await adminDb.collection(COLLECTION).get();
-        let entries = snapshot.docs.map((doc) => convertDoc(doc.data(), doc.id));
+        // Use server-side filtering where possible instead of downloading ALL entries
+        // Filter multi-tasks by month/year fields on the server
+        const multiQuery = adminDb.collection(COLLECTION)
+            .where('taskType', '==', 'multi')
+            .where('month', '==', month)
+            .where('year', '==', year);
 
-        // Filter entries that overlap with the current month
+        // For single tasks, we need timeStart range filtering
+        // Firestore requires a composite index for timestamp range + equality
+        // Fall back to fetching single tasks for the broader period
+        const singleQuery = adminDb.collection(COLLECTION)
+            .where('taskType', '==', 'single');
+
+        const [multiSnapshot, singleSnapshot] = await Promise.all([
+            multiQuery.get(),
+            singleQuery.get(),
+        ]);
+
+        let entries = [
+            ...multiSnapshot.docs.map((doc) => convertDoc(doc.data(), doc.id)),
+            ...singleSnapshot.docs.map((doc) => convertDoc(doc.data(), doc.id)),
+        ];
+
+        // Filter single tasks client-side (only the ones in this month)
         entries = entries.filter((entry) => {
             if (entry.taskType === 'multi' && entry.startDate && entry.endDate) {
                 return entry.startDate <= endOfMonth && entry.endDate >= startOfMonth;

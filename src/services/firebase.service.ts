@@ -207,7 +207,7 @@ export class FirebaseService<T extends { id?: string }> {
         details: { rawError: error },
       };
     }
-    
+
     const serviceError: FirebaseServiceError = {
       code: error.code || 'unknown',
       message: error.message || 'An unknown error occurred',
@@ -249,19 +249,20 @@ export class FirebaseService<T extends { id?: string }> {
     try {
       const collectionRef = collection(db, this.collectionName);
       const preparedData = this.prepareForStorage(data);
+      const now = Timestamp.now();
       const docRef = await addDoc(collectionRef, {
         ...preparedData,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
+        createdAt: now,
+        updatedAt: now,
       });
 
-      const createdDoc = await getDoc(docRef);
-      const docData = createdDoc.data();
-
+      // Return data we already have — no extra Firestore read needed
       return {
         id: docRef.id,
-        ...this.convertTimestamps(docData),
-      } as T;
+        ...data,
+        createdAt: now.toDate(),
+        updatedAt: now.toDate(),
+      } as unknown as T;
     } catch (error) {
       throw this.handleError(error);
     }
@@ -298,7 +299,7 @@ export class FirebaseService<T extends { id?: string }> {
       const q = query(collectionRef, ...constraints);
 
       // Use getDocsFromServer to bypass cache if forceServerFetch is true
-      const querySnapshot = options?.forceServerFetch 
+      const querySnapshot = options?.forceServerFetch
         ? await getDocsFromServer(q)
         : await getDocs(q);
       const documents: T[] = [];
@@ -324,7 +325,7 @@ export class FirebaseService<T extends { id?: string }> {
     try {
       const pageSize = options?.pagination?.pageSize || 20;
       const collectionRef = collection(db, this.collectionName);
-      
+
       // Request one extra document to check if there are more pages
       const constraints = this.buildQueryConstraints({
         ...options,
@@ -333,11 +334,11 @@ export class FirebaseService<T extends { id?: string }> {
           pageSize: pageSize + 1,
         },
       });
-      
+
       const q = query(collectionRef, ...constraints);
-      
+
       // Use getDocsFromServer to bypass cache if forceServerFetch is true
-      const querySnapshot = options?.forceServerFetch 
+      const querySnapshot = options?.forceServerFetch
         ? await getDocsFromServer(q)
         : await getDocs(q);
 
@@ -375,22 +376,19 @@ export class FirebaseService<T extends { id?: string }> {
     try {
       const docRef = doc(db, this.collectionName, id);
       const preparedData = this.prepareForStorage(data);
-      
+      const now = Timestamp.now();
+
       await updateDoc(docRef, {
         ...preparedData,
-        updatedAt: Timestamp.now(),
+        updatedAt: now,
       });
 
-      const updatedDoc = await getDoc(docRef);
-      
-      if (!updatedDoc.exists()) {
-        throw new Error('Document not found after update');
-      }
-
+      // Return the merged data — no extra Firestore read needed
       return {
-        id: updatedDoc.id,
-        ...this.convertTimestamps(updatedDoc.data()),
-      } as T;
+        id,
+        ...data,
+        updatedAt: now.toDate(),
+      } as unknown as T;
     } catch (error) {
       throw this.handleError(error);
     }

@@ -8,6 +8,28 @@ import { adminDb } from '@/lib/firebase-admin';
  * Uses Firebase Admin SDK for secure token verification
  */
 
+// In-memory cache for user profiles to avoid Firestore reads on every API call
+// key: uid, value: { data, timestamp }
+const USER_PROFILE_CACHE = new Map<string, { data: any; timestamp: number }>();
+const PROFILE_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+function getCachedProfile(uid: string): any | null {
+  const cached = USER_PROFILE_CACHE.get(uid);
+  if (cached && Date.now() - cached.timestamp < PROFILE_CACHE_TTL) {
+    return cached.data;
+  }
+  if (cached) USER_PROFILE_CACHE.delete(uid);
+  return null;
+}
+
+function setCachedProfile(uid: string, data: any): void {
+  USER_PROFILE_CACHE.set(uid, { data, timestamp: Date.now() });
+}
+
+export function invalidateProfileCache(uid: string): void {
+  USER_PROFILE_CACHE.delete(uid);
+}
+
 export interface AuthenticatedRequest extends NextRequest {
   user?: {
     uid: string;
@@ -30,7 +52,7 @@ export async function verifyAuthToken(request: NextRequest): Promise<{
 }> {
   try {
     const authHeader = request.headers.get('authorization');
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       return {
         success: false,
@@ -39,7 +61,7 @@ export async function verifyAuthToken(request: NextRequest): Promise<{
     }
 
     const idToken = authHeader.split('Bearer ')[1];
-    
+
     if (!idToken) {
       return {
         success: false,
@@ -48,8 +70,9 @@ export async function verifyAuthToken(request: NextRequest): Promise<{
     }
 
     // Verify the ID token using Firebase Admin SDK
-    const decodedToken = await admin.auth().verifyIdToken(idToken, true);
-    
+    // Pass false for checkRevoked to speed up verification (skip extra network call)
+    const decodedToken = await admin.auth().verifyIdToken(idToken, false);
+
     if (!decodedToken || !decodedToken.uid) {
       return {
         success: false,
@@ -57,19 +80,26 @@ export async function verifyAuthToken(request: NextRequest): Promise<{
       };
     }
 
-    // Get user profile from Firestore to retrieve role and permissions
-    const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
-    
-    if (!userDoc.exists) {
-      return {
-        success: false,
-        error: 'User profile not found',
-      };
+    // Try to get user profile from cache first (avoids Firestore read on every API call)
+    let userData = getCachedProfile(decodedToken.uid);
+
+    if (!userData) {
+      // Cache miss — fetch from Firestore and cache for 5 minutes
+      const userDoc = await adminDb.collection('users').doc(decodedToken.uid).get();
+
+      if (!userDoc.exists) {
+        return {
+          success: false,
+          error: 'User profile not found',
+        };
+      }
+
+      userData = userDoc.data();
+      setCachedProfile(decodedToken.uid, userData);
     }
 
-    const userData = userDoc.data();
     const role = (decodedToken.role as UserRole) || userData?.role || 'employee';
-    
+
     // Build custom claims
     const claims: CustomClaims = {
       role,
@@ -89,7 +119,7 @@ export async function verifyAuthToken(request: NextRequest): Promise<{
     };
   } catch (error: any) {
     console.error('Token verification error:', error);
-    
+
     // Provide specific error messages for common issues
     if (error.code === 'auth/id-token-expired') {
       return {
@@ -97,21 +127,21 @@ export async function verifyAuthToken(request: NextRequest): Promise<{
         error: 'Token expired. Please sign in again.',
       };
     }
-    
+
     if (error.code === 'auth/id-token-revoked') {
       return {
         success: false,
         error: 'Token revoked. Please sign in again.',
       };
     }
-    
+
     if (error.code === 'auth/argument-error') {
       return {
         success: false,
         error: 'Invalid token format',
       };
     }
-    
+
     return {
       success: false,
       error: 'Token verification failed',
@@ -127,7 +157,7 @@ export function withAuth(
 ) {
   return async (request: NextRequest): Promise<NextResponse> => {
     const authResult = await verifyAuthToken(request);
-    
+
     if (!authResult.success) {
       return NextResponse.json(
         { error: authResult.error || 'Authentication failed' },
@@ -152,7 +182,7 @@ export function withRoleAuth(
 ) {
   return withAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
     const userRole = request.user?.claims.role;
-    
+
     if (!userRole || !allowedRoles.includes(userRole)) {
       return NextResponse.json(
         { error: 'Insufficient permissions' },
@@ -173,11 +203,11 @@ export function withPermissionAuth(
 ) {
   return withAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
     const userPermissions = request.user?.claims.permissions || [];
-    
+
     const hasAllPermissions = requiredPermissions.every(permission =>
       userPermissions.includes(permission)
     );
-    
+
     if (!hasAllPermissions) {
       return NextResponse.json(
         { error: 'Insufficient permissions' },
@@ -241,11 +271,11 @@ export function hasRole(
 ): boolean {
   const userRole = request.user?.claims.role;
   if (!userRole) return false;
-  
+
   if (Array.isArray(role)) {
     return role.includes(userRole);
   }
-  
+
   return userRole === role;
 }
 

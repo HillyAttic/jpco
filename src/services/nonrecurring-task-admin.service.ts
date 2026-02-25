@@ -101,14 +101,14 @@ export const nonRecurringTaskAdminService = {
     };
 
     const docRef = await adminDb.collection('tasks').add(taskData);
-    const doc = await docRef.get();
 
+    // Return the data we already have — no need for an extra Firestore read
     return {
-      id: doc.id,
-      ...doc.data(),
-      dueDate: doc.data()?.dueDate?.toDate() || new Date(),
-      createdAt: doc.data()?.createdAt?.toDate(),
-      updatedAt: doc.data()?.updatedAt?.toDate(),
+      id: docRef.id,
+      ...data,
+      dueDate: data.dueDate instanceof Date ? data.dueDate : new Date(data.dueDate as any),
+      createdAt: now,
+      updatedAt: now,
     } as NonRecurringTask;
   },
 
@@ -119,19 +119,20 @@ export const nonRecurringTaskAdminService = {
     id: string,
     data: Partial<Omit<NonRecurringTask, 'id'>>
   ): Promise<NonRecurringTask> {
+    const now = new Date();
     const updateData = {
       ...data,
-      updatedAt: new Date(),
+      updatedAt: now,
     };
 
     await adminDb.collection('tasks').doc(id).update(updateData);
 
-    const updated = await this.getById(id);
-    if (!updated) {
-      throw new Error('Task not found after update');
-    }
-
-    return updated;
+    // Return merged data — no need for extra Firestore read after update
+    return {
+      id,
+      ...data,
+      updatedAt: now,
+    } as NonRecurringTask;
   },
 
   /**

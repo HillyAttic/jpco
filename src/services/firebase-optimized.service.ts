@@ -82,7 +82,7 @@ export class OptimizedFirebaseService<T extends { id?: string }> {
     if (data === null || data === undefined) return data;
     if (data instanceof Date) return Timestamp.fromDate(data);
     if (Array.isArray(data)) return data.map(item => this.prepareForStorage(item));
-    
+
     if (typeof data === 'object') {
       const prepared: any = {};
       Object.keys(data).forEach((key) => {
@@ -93,7 +93,7 @@ export class OptimizedFirebaseService<T extends { id?: string }> {
       });
       return prepared;
     }
-    
+
     return data;
   }
 
@@ -226,17 +226,20 @@ export class OptimizedFirebaseService<T extends { id?: string }> {
     try {
       const collectionRef = collection(db, this.collectionName);
       const preparedData = this.prepareForStorage(data);
+      const now = Timestamp.now();
       const docRef = await addDoc(collectionRef, {
         ...preparedData,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
+        createdAt: now,
+        updatedAt: now,
       });
 
-      const createdDoc = await getDoc(docRef);
+      // Return data we already have — no extra Firestore read needed
       const result = {
         id: docRef.id,
-        ...this.convertTimestamps(createdDoc.data()),
-      } as T;
+        ...data,
+        createdAt: now.toDate(),
+        updatedAt: now.toDate(),
+      } as unknown as T;
 
       // Invalidate cache
       await this.invalidateCache();
@@ -255,22 +258,19 @@ export class OptimizedFirebaseService<T extends { id?: string }> {
     try {
       const docRef = doc(db, this.collectionName, id);
       const preparedData = this.prepareForStorage(data);
-      
+      const now = Timestamp.now();
+
       await updateDoc(docRef, {
         ...preparedData,
-        updatedAt: Timestamp.now(),
+        updatedAt: now,
       });
 
-      const updatedDoc = await getDoc(docRef);
-      
-      if (!updatedDoc.exists()) {
-        throw new Error('Document not found after update');
-      }
-
+      // Return merged data — no extra Firestore read needed
       const result = {
-        id: updatedDoc.id,
-        ...this.convertTimestamps(updatedDoc.data()),
-      } as T;
+        id,
+        ...data,
+        updatedAt: now.toDate(),
+      } as unknown as T;
 
       // Invalidate cache
       await this.invalidateCache();

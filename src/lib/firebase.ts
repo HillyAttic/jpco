@@ -43,12 +43,13 @@ const app = initializeApp(firebaseConfig);
 // Initialize Firebase services
 export const auth = getAuth(app);
 
-// Initialize Firestore with long-polling instead of gRPC/QUIC streaming.
-// This fixes ERR_QUIC_PROTOCOL_ERROR.QUIC_TOO_MANY_RTOS errors that occur
-// when the network blocks or throttles UDP packets (QUIC uses UDP).
-// Long-polling uses standard HTTP (TCP) which works on all networks.
+// Initialize Firestore with persistent local cache for offline support.
+// Uses the default WebSocket/gRPC transport for fastest real-time performance.
+// The SDK will auto-fallback to long-polling if WebSocket is blocked.
+// NOTE: experimentalForceLongPolling was REMOVED — it was causing extreme
+// slowness on mobile devices by forcing repeated HTTP round-trips instead
+// of maintaining a fast persistent WebSocket connection.
 export const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true,
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager(),
   }),

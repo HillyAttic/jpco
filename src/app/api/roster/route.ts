@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { rosterAdminService } from '@/services/roster-admin.service';
 import { ErrorResponses } from '@/lib/api-error-handler';
+import { verifyAuthToken } from '@/lib/server-auth';
 
 /**
  * GET /api/roster
@@ -8,7 +9,6 @@ import { ErrorResponses } from '@/lib/api-error-handler';
  */
 export async function GET(request: NextRequest) {
   try {
-    const { verifyAuthToken } = await import('@/lib/server-auth');
     const authResult = await verifyAuthToken(request);
 
     if (!authResult.success || !authResult.user) {
@@ -43,7 +43,6 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const { verifyAuthToken } = await import('@/lib/server-auth');
     const authResult = await verifyAuthToken(request);
 
     if (!authResult.success || !authResult.user) {
@@ -115,7 +114,6 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const { verifyAuthToken } = await import('@/lib/server-auth');
     const authResult = await verifyAuthToken(request);
 
     if (!authResult.success || !authResult.user) {
@@ -159,7 +157,6 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const { verifyAuthToken } = await import('@/lib/server-auth');
     const authResult = await verifyAuthToken(request);
 
     if (!authResult.success || !authResult.user) {

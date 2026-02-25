@@ -5,6 +5,7 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 import { adminDb } from '@/lib/firebase-admin';
 import admin from '@/lib/firebase-admin';
 import { sendNotification } from '@/lib/notifications/send-notification';
+import { verifyAuthToken } from '@/lib/server-auth';
 
 // Validation schema for task creation
 const createTaskSchema = z.object({
@@ -29,9 +30,8 @@ const createTaskSchema = z.object({
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication
-    const { verifyAuthToken } = await import('@/lib/server-auth');
     const authResult = await verifyAuthToken(request);
-    
+
     if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
     const isAdminOrManager = userRole === 'admin' || userRole === 'manager';
 
     const { searchParams } = new URL(request.url);
-    
+
     const filters = {
       status: searchParams.get('status') || undefined,
       priority: searchParams.get('priority') || undefined,
@@ -52,7 +52,7 @@ export async function GET(request: NextRequest) {
 
     // Fetch all tasks
     let tasks = await nonRecurringTaskAdminService.getAll(filters);
-    
+
     // Filter tasks based on user role
     if (!isAdminOrManager) {
       // Employees only see tasks assigned to them
@@ -63,12 +63,12 @@ export async function GET(request: NextRequest) {
         }
         return task.assignedTo.includes(userId);
       });
-      
+
       console.log(`Employee ${userId} filtered tasks:`, tasks.length);
     } else {
       console.log(`Admin/Manager ${userId} viewing all tasks:`, tasks.length);
     }
-    
+
     return NextResponse.json(tasks, { status: 200 });
   } catch (error) {
     return handleApiError(error);
@@ -83,9 +83,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     // Verify authentication
-    const { verifyAuthToken } = await import('@/lib/server-auth');
     const authResult = await verifyAuthToken(request);
-    
+
     if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
@@ -118,9 +117,9 @@ export async function POST(request: NextRequest) {
       dueDate: new Date(taskData.dueDate),
       createdBy: userId, // Store the creator's user ID
     };
-    
+
     const newTask = await nonRecurringTaskAdminService.create(taskToCreate);
-    
+
     // Send push notifications to assigned users directly (no fetch needed)
     if (taskData.assignedTo && taskData.assignedTo.length > 0) {
       try {
@@ -131,7 +130,7 @@ export async function POST(request: NextRequest) {
           assignedTo: taskData.assignedTo,
         });
         console.log(`[Task API] Sending notifications to ${taskData.assignedTo.length} user(s):`, taskData.assignedTo);
-        
+
         const result = await sendNotification({
           userIds: taskData.assignedTo,
           title: 'New Task Assigned',
@@ -148,7 +147,7 @@ export async function POST(request: NextRequest) {
           sent: result.sent.length,
           errors: result.errors.length,
         });
-        
+
         // Log which users received notifications and which didn't
         if (result.sent.length > 0) {
           console.log('[Task API] ✅ Notifications sent to:', result.sent.map(s => s.userId));
@@ -164,7 +163,7 @@ export async function POST(request: NextRequest) {
             }
           });
         }
-        
+
         console.log(`[Task API] ========== NOTIFICATION DEBUG END ==========`);
       } catch (error) {
         console.error('[Task API] ❌ CRITICAL ERROR sending task assignment notifications:', error);
@@ -177,7 +176,7 @@ export async function POST(request: NextRequest) {
     } else {
       console.log('[Task API] ⚠️ No users assigned to task, skipping notifications');
     }
-    
+
     return NextResponse.json(newTask, { status: 201 });
   } catch (error) {
     return handleApiError(error);

@@ -1,40 +1,61 @@
 import { auth } from '@/lib/firebase';
+import { onAuthStateChanged } from 'firebase/auth';
+
+// Cached auth promise to avoid re-subscribing
+let authReadyPromise: Promise<void> | null = null;
 
 /**
- * Wait for Firebase auth to be ready
+ * Wait for Firebase auth to be ready using onAuthStateChanged (event-driven, not polling)
  */
-async function waitForAuth(maxWaitMs: number = 5000): Promise<void> {
-  const startTime = Date.now();
-  
-  while (!auth.currentUser && (Date.now() - startTime) < maxWaitMs) {
-    await new Promise(resolve => setTimeout(resolve, 100));
-  }
-  
-  if (!auth.currentUser) {
-    throw new Error('User not authenticated - auth timeout');
-  }
+function waitForAuth(maxWaitMs: number = 5000): Promise<void> {
+  // If user is already available, resolve immediately
+  if (auth.currentUser) return Promise.resolve();
+
+  // Reuse existing promise if already waiting
+  if (authReadyPromise) return authReadyPromise;
+
+  authReadyPromise = new Promise<void>((resolve, reject) => {
+    const timeout = setTimeout(() => {
+      unsubscribe();
+      authReadyPromise = null;
+      reject(new Error('User not authenticated - auth timeout'));
+    }, maxWaitMs);
+
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      if (user) {
+        clearTimeout(timeout);
+        unsubscribe();
+        authReadyPromise = null;
+        resolve();
+      }
+    });
+  });
+
+  return authReadyPromise;
 }
 
 /**
  * Make authenticated API requests
  * Automatically adds Firebase ID token to Authorization header
+ * Uses cached token when possible (avoids network call on every request)
  */
 export async function authenticatedFetch(
   url: string,
   options: RequestInit = {}
 ): Promise<Response> {
   try {
-    // Wait for auth to be ready
+    // Wait for auth to be ready (event-driven, not polling)
     await waitForAuth();
-    
+
     const user = auth.currentUser;
-    
+
     if (!user) {
       throw new Error('User not authenticated');
     }
 
-    // Get fresh ID token
-    const token = await user.getIdToken();
+    // Use cached ID token (false = don't force refresh unless expired)
+    // This is much faster than getIdToken(true) which always makes a network call
+    const token = await user.getIdToken(false);
 
     // Add Authorization header
     const headers = {

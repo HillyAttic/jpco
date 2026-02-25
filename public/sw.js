@@ -1,9 +1,9 @@
 // Enhanced Service Worker for JPCO Dashboard
-// VERSION: 1.2.0
+// VERSION: 2.0.0
 // Provides: Offline support, caching strategies, background sync
-// UPDATED: Cache bust for VAPID key fix
+// UPDATED: Performance fix - removed API response caching, bumped version to force cache refresh
 
-const CACHE_VERSION = 'jpco-v1.2';
+const CACHE_VERSION = 'jpco-v2.0';
 const STATIC_CACHE = `${CACHE_VERSION}-static`;
 const DYNAMIC_CACHE = `${CACHE_VERSION}-dynamic`;
 const IMAGE_CACHE = `${CACHE_VERSION}-images`;
@@ -19,7 +19,7 @@ const STATIC_ASSETS = [
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
   console.log('[SW] Installing enhanced service worker v1.1.0');
-  
+
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then(cache => {
@@ -34,7 +34,7 @@ self.addEventListener('install', (event) => {
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
   console.log('[SW] Activating enhanced service worker');
-  
+
   event.waitUntil(
     caches.keys()
       .then(cacheNames => {
@@ -67,14 +67,20 @@ self.addEventListener('fetch', (event) => {
   }
 
   // Skip Firebase and external API calls
-  if (url.hostname.includes('googleapis.com') || 
-      url.hostname.includes('firebaseio.com') ||
-      url.hostname.includes('firestore.googleapis.com')) {
+  if (url.hostname.includes('googleapis.com') ||
+    url.hostname.includes('firebaseio.com') ||
+    url.hostname.includes('firestore.googleapis.com')) {
     return;
   }
 
   // NEVER cache the notifications page - always fetch fresh
   if (url.pathname === '/notifications' || url.pathname.startsWith('/notifications/')) {
+    return; // Let browser handle it, no caching
+  }
+
+  // NEVER cache API responses - they must always be fresh
+  // Caching API responses causes stale data on mobile devices
+  if (url.pathname.startsWith('/api/')) {
     return; // Let browser handle it, no caching
   }
 
@@ -84,8 +90,6 @@ self.addEventListener('fetch', (event) => {
   } else if (url.pathname.startsWith('/_next/static/')) {
     // Use stale-while-revalidate for JS bundles to allow updates
     event.respondWith(staleWhileRevalidateStrategy(request, STATIC_CACHE));
-  } else if (url.pathname.startsWith('/api/')) {
-    event.respondWith(networkFirstStrategy(request, DYNAMIC_CACHE));
   } else {
     event.respondWith(staleWhileRevalidateStrategy(request, DYNAMIC_CACHE));
   }
@@ -153,7 +157,7 @@ async function staleWhileRevalidateStrategy(request, cacheName) {
 // Background Sync - retry failed requests
 self.addEventListener('sync', (event) => {
   console.log('[SW] Background sync event:', event.tag);
-  
+
   if (event.tag === 'sync-offline-requests') {
     event.waitUntil(syncOfflineRequests());
   }
@@ -163,7 +167,7 @@ async function syncOfflineRequests() {
   try {
     // Get offline queue from IndexedDB or localStorage
     const queue = JSON.parse(localStorage.getItem('offline-queue') || '[]');
-    
+
     for (const item of queue) {
       try {
         await fetch(item.url, {
@@ -175,7 +179,7 @@ async function syncOfflineRequests() {
         console.error('[SW] Failed to sync request:', error);
       }
     }
-    
+
     // Clear the queue after successful sync
     localStorage.setItem('offline-queue', '[]');
   } catch (error) {
@@ -186,7 +190,7 @@ async function syncOfflineRequests() {
 // Periodic Background Sync - fetch fresh data periodically
 self.addEventListener('periodicsync', (event) => {
   console.log('[SW] Periodic sync event:', event.tag);
-  
+
   if (event.tag === 'update-dashboard-data') {
     event.waitUntil(updateDashboardData());
   }
@@ -208,18 +212,18 @@ async function updateDashboardData() {
 // Message handler - for communication with the app
 self.addEventListener('message', (event) => {
   console.log('[SW] Message received:', event.data);
-  
+
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
-  
+
   if (event.data.type === 'CACHE_URLS') {
     event.waitUntil(
       caches.open(DYNAMIC_CACHE)
         .then(cache => cache.addAll(event.data.urls))
     );
   }
-  
+
   if (event.data.type === 'CLEAR_CACHE') {
     event.waitUntil(
       caches.keys()
