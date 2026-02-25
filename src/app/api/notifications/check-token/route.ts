@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { ErrorResponses } from '@/lib/api-error-handler';
+import { verifyAuthToken } from '@/lib/server-auth';
 
 /**
  * GET /api/notifications/check-token?userId=xxx
@@ -10,9 +11,8 @@ import { ErrorResponses } from '@/lib/api-error-handler';
 export async function GET(request: NextRequest) {
   try {
     // Verify authentication
-    const { verifyAuthToken } = await import('@/lib/server-auth');
     const authResult = await verifyAuthToken(request);
-    
+
     if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
@@ -54,8 +54,8 @@ export async function GET(request: NextRequest) {
     }
 
     const data = tokenDoc.data();
-    const tokenPreview = data?.token ? 
-      `${data.token.substring(0, 20)}...${data.token.substring(data.token.length - 10)}` : 
+    const tokenPreview = data?.token ?
+      `${data.token.substring(0, 20)}...${data.token.substring(data.token.length - 10)}` :
       'N/A';
 
     console.log(`[Check Token] ✅ FCM token found for user: ${userId}`);
@@ -75,9 +75,9 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('[Check Token] Error:', error);
     return NextResponse.json(
-      { 
-        error: 'Failed to check FCM token', 
-        details: error.message 
+      {
+        error: 'Failed to check FCM token',
+        details: error.message
       },
       { status: 500 }
     );

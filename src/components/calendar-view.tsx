@@ -315,13 +315,13 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           </div>
         </div>
 
-        {/* Legend */}
-        <div className="mb-4 flex items-center gap-4 text-xs text-gray-600 dark:text-gray-400">
+        {/* Legend - Responsive */}
+        <div className="mb-4 flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-1">
             <ArrowPathIcon className="w-4 h-4" />
             <span>Recurring Task</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <span className="font-semibold">M</span> = Monthly
             <span className="font-semibold">Q</span> = Quarterly
             <span className="font-semibold">H</span> = Half-Yearly
@@ -329,8 +329,8 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           </div>
           {canViewRosterStats && (
             <>
-              <div className="border-l border-gray-300 dark:border-gray-600 h-4 mx-2"></div>
-              <div className="flex items-center gap-2">
+              <div className="hidden md:block border-l border-gray-300 dark:border-gray-600 h-4 mx-2"></div>
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-semibold">Employee Status:</span>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-orange-500 rounded"></div>
@@ -349,8 +349,8 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           )}
         </div>
 
-        {/* Weekday Headers */}
-        <div className="grid grid-cols-7 gap-1 mb-2">
+        {/* Weekday Headers - Hidden on mobile */}
+        <div className="hidden md:grid grid-cols-7 gap-1 mb-2">
           {weekdays.map(day => (
             <div key={day} className="p-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
               {day}

@@ -37,6 +37,7 @@ export default function NotificationsPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
+  const [isEnabling, setIsEnabling] = useState(false);
 
   // Check notification permission and FCM token on mount
   useEffect(() => {
@@ -50,7 +51,7 @@ export default function NotificationsPage() {
 
       try {
         const response = await authenticatedFetch(`/api/notifications/check-token?userId=${encodeURIComponent(user.uid)}`);
-        
+
         // 200 = token exists, 404 = no token (both are valid responses)
         if (response.ok) {
           const data = await response.json();
@@ -73,88 +74,62 @@ export default function NotificationsPage() {
     checkExistingToken();
   }, [user]);
 
-  // Request notification permission
+  // Request notification permission — FAST, no redundant checks
   const handleEnableNotifications = async () => {
     if (!user) {
       toast.error("Please log in to enable notifications");
       return;
     }
 
+    // Show loading state immediately so user sees instant feedback
+    setIsEnabling(true);
+
     try {
-      console.log('[NOTIFICATIONS v2.0] Starting notification enable process');
-      
-      // Mobile-specific checks
       const isMobile = isMobileDevice();
       const isIOS = isIOSDevice();
-      const isStandalone = isStandalonePWA();
 
-      console.log('Device info:', { isMobile, isIOS, isStandalone });
-
-      // iOS-specific check
-      if (isIOS && !isStandalone) {
-        toast.error("On iOS, please add this app to your home screen first to enable notifications", {
-          autoClose: 8000
-        });
+      // iOS-specific check (fast, no async work)
+      if (isIOS && !isStandalonePWA()) {
+        toast.error("On iOS, please add this app to your home screen first", { autoClose: 8000 });
+        setIsEnabling(false);
         return;
       }
 
-      // iOS version check
       if (isIOS) {
         const iosVersion = getIOSVersion();
         if (iosVersion && iosVersion < 16.4) {
           toast.error('Push notifications require iOS 16.4 or later');
+          setIsEnabling(false);
           return;
         }
       }
 
-      // Check service worker support
-      if (!('serviceWorker' in navigator)) {
-        toast.error("Push notifications are not supported on this device");
-        return;
-      }
-
-      // Check notification support
-      if (!('Notification' in window)) {
-        toast.error("Notifications are not supported on this browser");
-        return;
-      }
-
-      // Request permission (use mobile-specific handler if on mobile)
-      // These functions handle service worker registration with proper timeouts
+      // Request permission + get token in one shot (the lib handles everything)
       const token = isMobile
         ? await requestNotificationPermissionMobile()
         : await requestNotificationPermission();
 
       if (token) {
-        // Save token to Firestore
-        const saved = await saveFCMToken(user.uid, token);
+        // Update UI immediately while save happens in background
+        setFcmToken(token);
+        setNotificationPermission('granted');
 
-        if (saved) {
-          setFcmToken(token);
-          setNotificationPermission('granted');
-          toast.success("Notifications enabled successfully!");
-
-          // Log success for debugging
-          console.log('Notification setup complete:', {
-            token: token.substring(0, 20) + '...',
-            userId: user.uid,
-            device: isMobile ? 'mobile' : 'desktop',
-            platform: isIOS ? 'iOS' : 'other'
-          });
-        } else {
-          toast.error("Failed to save notification token");
-        }
+        // Save token to server (don't block UI on this)
+        saveFCMToken(user.uid, token).then(saved => {
+          if (saved) {
+            toast.success("Notifications enabled!");
+          } else {
+            toast.error("Failed to save notification token");
+          }
+        });
       } else {
         toast.error("Failed to get notification permission");
       }
     } catch (error: any) {
       console.error("Error enabling notifications:", error);
-
-      // Show user-friendly error message
-      const errorMessage = error.message || "Failed to enable notifications";
-      toast.error(errorMessage, {
-        autoClose: 8000
-      });
+      toast.error(error.message || "Failed to enable notifications", { autoClose: 8000 });
+    } finally {
+      setIsEnabling(false);
     }
   };
 
@@ -201,7 +176,7 @@ export default function NotificationsPage() {
       }
 
       toast.success("Cache cleared! Reloading page...", { autoClose: 2000 });
-      
+
       // Reload the page after a short delay
       setTimeout(() => {
         window.location.reload();
@@ -359,9 +334,20 @@ export default function NotificationsPage() {
             ) : (
               <button
                 onClick={handleEnableNotifications}
-                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-blue-600 text-white text-sm sm:text-base rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                disabled={isEnabling}
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-blue-600 text-white text-sm sm:text-base rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-70 disabled:cursor-wait flex items-center justify-center gap-2"
               >
-                Enable Notifications
+                {isEnabling ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Enabling...
+                  </>
+                ) : (
+                  'Enable Notifications'
+                )}
               </button>
             )}
           </div>

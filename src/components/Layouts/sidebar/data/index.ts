@@ -12,6 +12,12 @@ export const NAV_DATA = [
         items: [],
       },
       {
+        title: "Task Tray",
+        url: "/task-tray",
+        icon: Icons.TaskTrayIcon,
+        items: [],
+      },
+      {
         title: "Calendar",
         url: "/calendar",
         icon: Icons.Calendar,
