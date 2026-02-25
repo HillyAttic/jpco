@@ -169,14 +169,13 @@ export default function CalendarPage() {
     return generateLeaveOccurrences(leaveRequests);
   }, [leaveRequests, generateLeaveOccurrences]);
 
-  // Memoize the combined tasks array
+  // Memoize the combined tasks array - exclude non-recurring tasks
   const allTasks = React.useMemo(() => {
     return [
-      ...nonRecurringTasks.map(task => ({ ...task, isRecurring: false })),
       ...recurringCalendarTasks,
       ...leaveCalendarTasks
     ];
-  }, [nonRecurringTasks, recurringCalendarTasks, leaveCalendarTasks]);
+  }, [recurringCalendarTasks, leaveCalendarTasks]);
 
   // Update tasks when allTasks changes
   useEffect(() => {

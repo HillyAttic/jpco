@@ -45,7 +45,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
   const [rosterStats, setRosterStats] = useState<Record<number, DailyStats>>({});
   const [loadingStats, setLoadingStats] = useState(false);
 
-  const canViewRosterStats = isAdmin || isManager;
+  const canViewRosterStats = isAdmin;
 
   // Fetch roster stats when month changes
   useEffect(() => {
@@ -316,12 +316,12 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
         </div>
 
         {/* Legend - Responsive */}
-        <div className="mb-4 flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-xs text-gray-600 dark:text-gray-400">
+        <div className="mb-4 flex flex-col md:flex-row md:items-center gap-2 md:gap-4 text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">
           <div className="flex items-center gap-1">
-            <ArrowPathIcon className="w-4 h-4" />
+            <ArrowPathIcon className="w-3 h-3 sm:w-4 sm:h-4" />
             <span>Recurring Task</span>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1 sm:gap-2">
             <span className="font-semibold">M</span> = Monthly
             <span className="font-semibold">Q</span> = Quarterly
             <span className="font-semibold">H</span> = Half-Yearly
@@ -330,7 +330,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           {canViewRosterStats && (
             <>
               <div className="hidden md:block border-l border-gray-300 dark:border-gray-600 h-4 mx-2"></div>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                 <span className="font-semibold">Employee Status:</span>
                 <div className="flex items-center gap-1">
                   <div className="w-3 h-3 bg-orange-500 rounded"></div>

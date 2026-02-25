@@ -21,9 +21,10 @@ interface TaskFilterProps {
   filters: TaskFilters;
   onFiltersChange: (filters: TaskFilters) => void;
   onClearFilters: () => void;
+  taskCount?: number;
 }
 
-export function TaskFilter({ filters, onFiltersChange, onClearFilters }: TaskFilterProps) {
+export function TaskFilter({ filters, onFiltersChange, onClearFilters, taskCount }: TaskFilterProps) {
   const [showFilters, setShowFilters] = useState(false);
 
   const handleFilterChange = (key: keyof TaskFilters, value: string | undefined) => {
@@ -40,7 +41,14 @@ export function TaskFilter({ filters, onFiltersChange, onClearFilters }: TaskFil
   return (
     <div className="mb-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Tasks</h2>
+        <div className="flex items-center gap-3">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Tasks</h2>
+          {taskCount !== undefined && (
+            <span className="px-3 py-1 text-sm font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full">
+              {taskCount} {taskCount === 1 ? 'task' : 'tasks'}
+            </span>
+          )}
+        </div>
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"

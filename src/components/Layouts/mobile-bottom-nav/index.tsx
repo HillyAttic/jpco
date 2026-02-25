@@ -3,7 +3,7 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Calendar, LayoutDashboard, Settings, Bell, ClipboardCheck } from "lucide-react";
+import { Calendar, LayoutDashboard, Bell, ClipboardCheck, Users } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 
 interface NavItem {
@@ -20,9 +20,9 @@ const NAV_ITEMS: NavItem[] = [
     label: "Dashboard",
   },
   {
-    href: "/roster/update-schedule",
+    href: "/calendar",
     icon: Calendar,
-    label: "Roster",
+    label: "Compliance",
   },
   {
     href: "/notifications",
@@ -31,14 +31,14 @@ const NAV_ITEMS: NavItem[] = [
     showBadge: true,
   },
   {
+    href: "/roster/update-schedule",
+    icon: Users,
+    label: "Roster",
+  },
+  {
     href: "/attendance",
     icon: ClipboardCheck,
     label: "Attendance",
-  },
-  {
-    href: "/settings",
-    icon: Settings,
-    label: "Settings",
   },
 ];
 
