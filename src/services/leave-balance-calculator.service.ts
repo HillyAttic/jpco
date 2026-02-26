@@ -33,19 +33,19 @@ export interface CalculatedBalance extends LeaveBalance {
 // Leave type configurations
 const LEAVE_ALLOCATIONS: LeaveAllocation[] = [
   {
-    leaveTypeId: 'sick-leave',
+    leaveTypeId: 'sick',
     leaveTypeName: 'Sick Leave',
     annualAllocation: 12,
      monthlyLimit: 1
   },
   {
-    leaveTypeId: 'casual-leave',
+    leaveTypeId: 'casual',
     leaveTypeName: 'Casual Leave',
     annualAllocation: 12,
     monthlyLimit: 1
   },
   {
-    leaveTypeId: 'vacation-leave',
+    leaveTypeId: 'vacation',
     leaveTypeName: 'Vacation Leave',
     annualAllocation: 7,
     monthlyLimit: undefined // No monthly limit
@@ -176,11 +176,11 @@ export class LeaveBalanceCalculator {
         const monthData = monthlyData.get(key);
         
         if (monthData) {
-          if (req.leaveType === 'sick-leave' || req.leaveType === 'Sick Leave') {
+          if (req.leaveType === 'sick') {
             monthData.sickLeave += req.totalDays;
-          } else if (req.leaveType === 'casual-leave' || req.leaveType === 'Casual Leave') {
+          } else if (req.leaveType === 'casual') {
             monthData.casualLeave += req.totalDays;
-          } else if (req.leaveType === 'vacation-leave' || req.leaveType === 'Vacation Leave') {
+          } else if (req.leaveType === 'vacation') {
             monthData.vacationLeave += req.totalDays;
           }
         }
