@@ -218,6 +218,35 @@ class PushNotificationService {
       },
     });
   }
+
+  /**
+   * Send leave request notification to admins
+   */
+  async notifyLeaveRequest(
+    adminIds: string[],
+    employeeName: string,
+    leaveType: string,
+    startDate: Date,
+    endDate: Date,
+    duration: number
+  ): Promise<number> {
+    const formatDate = (date: Date) => {
+      return new Intl.DateTimeFormat('en-US', {
+        month: 'short',
+        day: 'numeric',
+        year: 'numeric',
+      }).format(date);
+    };
+
+    return this.sendToUsers(adminIds, {
+      title: 'New Leave Request',
+      body: `${employeeName} requested ${leaveType} (${duration} day${duration > 1 ? 's' : ''}) from ${formatDate(startDate)} to ${formatDate(endDate)}`,
+      data: {
+        url: '/admin/leave-approvals',
+        type: 'leave_request',
+      },
+    });
+  }
 }
 
 export const pushNotificationService = new PushNotificationService();

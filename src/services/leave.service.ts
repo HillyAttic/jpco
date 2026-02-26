@@ -474,6 +474,34 @@ export const leaveService = {
       
       const created = await leaveFirebaseService.create(transformedData);
       
+      // Send push notification to all admins
+      try {
+        const { pushNotificationService } = await import('./push-notification.service');
+        const { employeeService } = await import('./employee.service');
+        
+        // Get all admin users
+        const allEmployees = await employeeService.getAll({ status: 'active' });
+        const adminIds = allEmployees
+          .filter(emp => emp.role === 'admin')
+          .map(emp => emp.id)
+          .filter((id): id is string => id !== undefined);
+        
+        if (adminIds.length > 0) {
+          await pushNotificationService.notifyLeaveRequest(
+            adminIds,
+            data.employeeName,
+            data.leaveTypeId.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
+            start,
+            end,
+            duration
+          );
+          console.log(`[Leave] Sent leave request notification to ${adminIds.length} admin(s)`);
+        }
+      } catch (error) {
+        console.error('Error sending leave request notification:', error);
+        // Don't fail the request if notification fails
+      }
+      
       return {
         id: created.id || '',
         employeeId: created.employeeId,

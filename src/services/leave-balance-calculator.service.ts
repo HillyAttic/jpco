@@ -36,13 +36,13 @@ const LEAVE_ALLOCATIONS: LeaveAllocation[] = [
     leaveTypeId: 'sick-leave',
     leaveTypeName: 'Sick Leave',
     annualAllocation: 12,
-    monthlyLimit: 2
+     monthlyLimit: 1
   },
   {
     leaveTypeId: 'casual-leave',
     leaveTypeName: 'Casual Leave',
     annualAllocation: 12,
-    monthlyLimit: 2
+    monthlyLimit: 1
   },
   {
     leaveTypeId: 'vacation-leave',

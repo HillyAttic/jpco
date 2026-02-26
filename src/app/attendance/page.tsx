@@ -227,21 +227,37 @@ export default function AttendancePage() {
               <p className="text-muted-foreground text-sm">No leave balances found.</p>
             ) : (
               <div className="space-y-4">
-                {leaveBalances.map(balance => (
-                  <div key={balance.leaveTypeId} className="flex justify-between items-center pb-3 border-b last:border-0">
-                    <div className="flex-1">
-                      <p className="font-medium text-base">{balance.leaveTypeName}</p>
-                      <div className="flex items-center gap-3 mt-1">
-                        <p className="text-xs text-muted-foreground">Total: {balance.totalDays}</p>
-                        <p className="text-xs text-orange-600 dark:text-orange-400">Taken: {balance.usedDays}</p>
+                {leaveBalances.map(balance => {
+                  // Determine monthly limit text
+                  let monthlyLimitText = '';
+                  if (balance.leaveTypeName === 'Sick Leave' || balance.leaveTypeName === 'Casual Leave') {
+                    monthlyLimitText = 'only one per month';
+                  }
+                  
+                  return (
+                    <div key={balance.leaveTypeId} className="flex justify-between items-center pb-3 border-b last:border-0">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium text-base">{balance.leaveTypeName}</p>
+                          {monthlyLimitText && (
+                            <span className="px-2 py-0.5 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full whitespace-nowrap">
+                              <span className="hidden sm:inline">{monthlyLimitText}</span>
+                              <span className="sm:hidden">1/month</span>
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 mt-1">
+                          <p className="text-xs text-muted-foreground">Total: {balance.totalDays}</p>
+                          <p className="text-xs text-orange-600 dark:text-orange-400">Taken: {balance.usedDays}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-xl text-blue-600 dark:text-blue-400">{balance.remainingDays}</p>
+                        <p className="text-xs text-muted-foreground">Remaining</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-bold text-xl text-blue-600 dark:text-blue-400">{balance.remainingDays}</p>
-                      <p className="text-xs text-muted-foreground">Remaining</p>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </CardContent>
