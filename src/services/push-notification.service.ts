@@ -18,11 +18,26 @@ interface NotificationPayload {
 
 class PushNotificationService {
   /**
+   * Format date for notifications
+   */
+  private formatDate(date: Date, includeYear: boolean = true): string {
+    const options: Intl.DateTimeFormatOptions = {
+      month: 'short',
+      day: 'numeric',
+    };
+    
+    if (includeYear) {
+      options.year = 'numeric';
+    }
+    
+    return new Intl.DateTimeFormat('en-US', options).format(date);
+  }
+
+  /**
    * Send push notification to a single user
    */
   async sendToUser(userId: string, payload: NotificationPayload): Promise<boolean> {
     try {
-      // Use the fast direct FCM endpoint
       const response = await fetch('/api/notifications/send', {
         method: 'POST',
         headers: {
@@ -54,7 +69,6 @@ class PushNotificationService {
    */
   async sendToUsers(userIds: string[], payload: NotificationPayload): Promise<number> {
     try {
-      // Use the fast direct FCM endpoint for batch sending
       const response = await fetch('/api/notifications/send', {
         method: 'POST',
         headers: {
@@ -134,24 +148,17 @@ class PushNotificationService {
     approved: boolean,
     rejectionReason?: string
   ): Promise<boolean> {
-    const formatDate = (date: Date) => {
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }).format(date);
-    };
-
     const title = approved ? 'Leave Request Approved' : 'Leave Request Rejected';
+    const dateRange = `${this.formatDate(startDate)} to ${this.formatDate(endDate)}`;
     const body = approved
-      ? `Your ${leaveType} from ${formatDate(startDate)} to ${formatDate(endDate)} has been approved.`
-      : `Your ${leaveType} from ${formatDate(startDate)} to ${formatDate(endDate)} has been rejected.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`;
+      ? `Your ${leaveType} from ${dateRange} has been approved.`
+      : `Your ${leaveType} from ${dateRange} has been rejected.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`;
 
     return this.sendToUser(userId, {
       title,
       body,
       data: {
-        url: '/attendance/leave',
+        url: '/attendance',
         type: approved ? 'leave_approved' : 'leave_rejected',
       },
     });
@@ -167,16 +174,9 @@ class PushNotificationService {
     dueDate: Date,
     isRecurring: boolean = false
   ): Promise<boolean> {
-    const formatDate = (date: Date) => {
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-      }).format(date);
-    };
-
     return this.sendToUser(userId, {
       title: 'Task Due Soon',
-      body: `"${taskTitle}" is due on ${formatDate(dueDate)}`,
+      body: `"${taskTitle}" is due on ${this.formatDate(dueDate, false)}`,
       data: {
         url: isRecurring ? `/tasks/recurring/${taskId}` : `/tasks/${taskId}`,
         type: 'task_reminder',
@@ -230,17 +230,12 @@ class PushNotificationService {
     endDate: Date,
     duration: number
   ): Promise<number> {
-    const formatDate = (date: Date) => {
-      return new Intl.DateTimeFormat('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-      }).format(date);
-    };
+    const dateRange = `${this.formatDate(startDate)} to ${this.formatDate(endDate)}`;
+    const daysText = `${duration} day${duration > 1 ? 's' : ''}`;
 
     return this.sendToUsers(adminIds, {
       title: 'New Leave Request',
-      body: `${employeeName} requested ${leaveType} (${duration} day${duration > 1 ? 's' : ''}) from ${formatDate(startDate)} to ${formatDate(endDate)}`,
+      body: `${employeeName} requested ${leaveType} (${daysText}) from ${dateRange}`,
       data: {
         url: '/admin/leave-approvals',
         type: 'leave_request',

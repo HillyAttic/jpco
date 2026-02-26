@@ -33,16 +33,25 @@ export function PWAInstallButton() {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
       const isFullscreen = window.matchMedia('(display-mode: fullscreen)').matches;
       const isIOSStandalone = (window.navigator as any).standalone === true;
-      
+
       const installed = isStandalone || isFullscreen || isIOSStandalone;
       setIsInstalled(installed);
-      
+
       // Reduced logging for cleaner console
-      
+
       return installed;
     };
 
     const installed = checkIfInstalled();
+
+    // Check if the early inline script (in layout.tsx) already captured the prompt
+    const earlyPrompt = (window as any).__pwaInstallPrompt as BeforeInstallPromptEvent | undefined;
+    if (earlyPrompt && !installed) {
+      setDeferredPrompt(earlyPrompt);
+      setIsInstallable(true);
+      // Clear it so we don't re-use a stale reference
+      (window as any).__pwaInstallPrompt = null;
+    }
 
     // Listen for beforeinstallprompt event (Android/Chrome)
     const handleBeforeInstallPrompt = (e: Event) => {
@@ -74,7 +83,7 @@ export function PWAInstallButton() {
 
   const handleInstallClick = useCallback(async () => {
     console.log('[PWA Install] Button clicked', { isIOS, hasDeferredPrompt: !!deferredPrompt });
-    
+
     if (isIOS) {
       setShowInstructions(true);
       return;
@@ -85,15 +94,15 @@ export function PWAInstallButton() {
       try {
         console.log('[PWA Install] Showing install prompt...');
         await deferredPrompt.prompt();
-        
+
         const { outcome } = await deferredPrompt.userChoice;
         console.log('[PWA Install] User choice:', outcome);
-        
+
         if (outcome === 'accepted') {
           console.log('[PWA Install] User accepted the install prompt');
           setIsInstalled(true);
         }
-        
+
         setDeferredPrompt(null);
         setIsInstallable(false);
       } catch (error) {
@@ -142,45 +151,45 @@ export function PWAInstallButton() {
           flex items-center justify-center
           ${isTouchDevice ? 'h-[34px] w-[34px]' : 'h-[26px] w-[26px]'}
         `}>
-          <svg 
-            width="20" 
-            height="20" 
-            viewBox="0 0 24 24" 
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 24 24"
             fill="none"
             className="text-current"
           >
             <g clipPath="url(#clip0_11570_87998)">
-              <path 
-                d="M18 20.25V3.75C18 2.92157 17.3284 2.25 16.5 2.25L7.5 2.25C6.67157 2.25 6 2.92157 6 3.75L6 20.25C6 21.0784 6.67157 21.75 7.5 21.75H16.5C17.3284 21.75 18 21.0784 18 20.25Z" 
-                stroke="currentColor" 
-                strokeWidth="1.4" 
-                strokeLinecap="round" 
+              <path
+                d="M18 20.25V3.75C18 2.92157 17.3284 2.25 16.5 2.25L7.5 2.25C6.67157 2.25 6 2.92157 6 3.75L6 20.25C6 21.0784 6.67157 21.75 7.5 21.75H16.5C17.3284 21.75 18 21.0784 18 20.25Z"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              <path 
-                d="M12 10.1055L12 17.6055" 
-                stroke="currentColor" 
-                strokeWidth="1.4" 
-                strokeLinecap="round" 
+              <path
+                d="M12 10.1055L12 17.6055"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              <path 
-                d="M9.75 15.3555L12 17.6055L14.25 15.3555" 
-                stroke="currentColor" 
-                strokeWidth="1.4" 
-                strokeLinecap="round" 
+              <path
+                d="M9.75 15.3555L12 17.6055L14.25 15.3555"
+                stroke="currentColor"
+                strokeWidth="1.4"
+                strokeLinecap="round"
                 strokeLinejoin="round"
               />
-              <path 
-                d="M10.5 4.5H13.5" 
-                stroke="currentColor" 
-                strokeWidth="1.4" 
+              <path
+                d="M10.5 4.5H13.5"
+                stroke="currentColor"
+                strokeWidth="1.4"
                 strokeLinecap="round"
               />
             </g>
             <defs>
               <clipPath id="clip0_11570_87998">
-                <rect width="24" height="24" fill="white"/>
+                <rect width="24" height="24" fill="white" />
               </clipPath>
             </defs>
           </svg>
@@ -189,11 +198,11 @@ export function PWAInstallButton() {
 
       {/* Installation Instructions Modal */}
       {showInstructions && (
-        <div 
+        <div
           className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/50 p-4"
           onClick={closeInstructions}
         >
-          <div 
+          <div
             className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-md w-full p-6"
             onClick={(e) => e.stopPropagation()}
           >

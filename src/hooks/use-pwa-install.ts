@@ -18,9 +18,18 @@ export function usePWAInstall() {
       const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
       const isIOSStandalone = (window.navigator as any).standalone === true;
       setIsInstalled(isStandalone || isIOSStandalone);
+      return isStandalone || isIOSStandalone;
     };
 
-    checkInstalled();
+    const installed = checkInstalled();
+
+    // Check if the early inline script (in layout.tsx) already captured the prompt
+    const earlyPrompt = (window as any).__pwaInstallPrompt as BeforeInstallPromptEvent | undefined;
+    if (earlyPrompt && !installed) {
+      setDeferredPrompt(earlyPrompt);
+      setIsInstallable(true);
+      (window as any).__pwaInstallPrompt = null;
+    }
 
     const handleBeforeInstallPrompt = (e: Event) => {
       e.preventDefault();

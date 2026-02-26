@@ -53,6 +53,20 @@ export default function RootLayout({ children }: PropsWithChildren) {
         <link rel="preconnect" href="https://firestore.googleapis.com" />
         <link rel="preconnect" href="https://identitytoolkit.googleapis.com" />
         <link rel="dns-prefetch" href="https://firestore.googleapis.com" />
+        {/* CRITICAL: Suppress Chrome's "Tap to copy the URL" mini-infobar notification.
+            This MUST run before React hydrates to catch the beforeinstallprompt event early.
+            Chrome fires this event when it detects a PWA-eligible manifest, and if not
+            intercepted with preventDefault(), it shows the mini-infobar notification. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.addEventListener('beforeinstallprompt', function(e) {
+                e.preventDefault();
+                window.__pwaInstallPrompt = e;
+              });
+            `,
+          }}
+        />
       </head>
       <body className="font-sans antialiased">
         <Providers>
