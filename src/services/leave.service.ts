@@ -482,7 +482,7 @@ export const leaveService = {
         // Get all admin users
         const allEmployees = await employeeService.getAll({ status: 'active' });
         const adminIds = allEmployees
-          .filter(emp => emp.role === 'admin')
+          .filter(emp => emp.role === 'Admin')
           .map(emp => emp.id)
           .filter((id): id is string => id !== undefined);
         
