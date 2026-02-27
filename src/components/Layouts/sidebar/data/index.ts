@@ -12,13 +12,13 @@ export const NAV_DATA = [
         items: [],
       },
       {
-        title: "Task Tray",
-        url: "/task-tray",
+        title: "Tasks",
+        url: "/tasks",
         icon: Icons.TaskTrayIcon,
         items: [],
       },
       {
-        title: "Calendar",
+        title: "Compliance",
         url: "/calendar",
         icon: Icons.Calendar,
         items: [],
@@ -43,6 +43,7 @@ export const NAV_DATA = [
         url: "/my-tasks",
         icon: Icons.MyTasksIcon,
         items: [],
+        requiresRole: ['admin'], // Only admins can see this
       },
 
     ],
@@ -105,19 +106,17 @@ export const NAV_DATA = [
         items: [],
       },
       {
-        title: "Roster",
+        title: "View Roster",
+        url: "/roster/view-schedule",
         icon: Icons.Calendar,
-        items: [
-          {
-            title: "Update Schedule",
-            url: "/roster/update-schedule",
-          },
-          {
-            title: "View Schedule",
-            url: "/roster/view-schedule",
-            requiresRole: ['admin', 'manager'], // Only managers and admins can see this
-          },
-        ],
+        items: [],
+        requiresRole: ['admin', 'manager'], // Only managers and admins can see this
+      },
+      {
+        title: "Update Roster",
+        url: "/roster/update-schedule",
+        icon: Icons.Calendar,
+        items: [],
       },
       {
         title: "Reports",

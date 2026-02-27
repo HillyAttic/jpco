@@ -103,6 +103,11 @@ export function useTeams(): UseTeamsReturn {
     }
   }, [filters]);
 
+  // Refresh teams
+  const refreshTeams = useCallback(() => {
+    return fetchTeams();
+  }, [fetchTeams]);
+
   // Initial load
   useEffect(() => {
     fetchTeams();
@@ -270,9 +275,12 @@ export function useTeams(): UseTeamsReturn {
       }
 
       // Update with server response
-      setTeams(prev => prev.map(team => 
+      setTeams(prev => prev.map(team =>
         team.id === teamId ? result.data : team
       ));
+
+      // Force refresh all teams to ensure consistency across all team cards
+      await refreshTeams();
     } catch (err) {
       // Revert optimistic update
       setTeams(prev => prev.map(team => 
@@ -283,6 +291,7 @@ export function useTeams(): UseTeamsReturn {
       setError(errorMessage);
       throw err;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teams]);
 
   // Remove member from team - Requirement 4.6
@@ -316,9 +325,12 @@ export function useTeams(): UseTeamsReturn {
       }
 
       // Update with server response
-      setTeams(prev => prev.map(team => 
+      setTeams(prev => prev.map(team =>
         team.id === teamId ? result.data : team
       ));
+
+      // Force refresh all teams to ensure consistency across all team cards
+      await refreshTeams();
     } catch (err) {
       // Revert optimistic update
       setTeams(prev => prev.map(team => 
@@ -329,6 +341,7 @@ export function useTeams(): UseTeamsReturn {
       setError(errorMessage);
       throw err;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teams]);
 
   // Update member role - Requirements 4.5, 4.6
@@ -368,9 +381,12 @@ export function useTeams(): UseTeamsReturn {
       }
 
       // Update with server response
-      setTeams(prev => prev.map(team => 
+      setTeams(prev => prev.map(team =>
         team.id === teamId ? result.data : team
       ));
+
+      // Force refresh all teams to ensure consistency across all team cards
+      await refreshTeams();
     } catch (err) {
       // Revert optimistic update
       setTeams(prev => prev.map(team => 
@@ -381,6 +397,7 @@ export function useTeams(): UseTeamsReturn {
       setError(errorMessage);
       throw err;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teams]);
 
   // Set filters and refetch
@@ -398,11 +415,6 @@ export function useTeams(): UseTeamsReturn {
     };
     setFiltersState(clearedFilters);
     fetchTeams(clearedFilters);
-  }, [fetchTeams]);
-
-  // Refresh teams
-  const refreshTeams = useCallback(() => {
-    return fetchTeams();
   }, [fetchTeams]);
 
   // Get team by ID

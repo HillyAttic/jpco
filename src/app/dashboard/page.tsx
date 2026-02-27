@@ -270,15 +270,39 @@ export default function DashboardPage() {
     { cacheTime: 5 * 60 * 1000, dedupe: true }
   );
 
-  // Calculate team performance data (memoized) - shows ALL employees
+  // Fetch manager's assigned employees if user is a manager
+  const { data: managerHierarchy } = useOptimizedFetch(
+    `manager-hierarchy-${user?.uid}`,
+    async () => {
+      if (!user || !isManager || isAdmin) return null;
+      const { managerHierarchyService } = await import('@/services/manager-hierarchy.service');
+      return managerHierarchyService.getByManagerId(user.uid);
+    },
+    { 
+      cacheTime: 5 * 60 * 1000, 
+      dedupe: true
+    }
+  );
+
+  // Calculate team performance data (memoized)
+  // For managers: show only assigned team members
+  // For admins: show all employees
   const teamPerformanceData = useMemo(() => {
     if (!employees || employees.length === 0) return [];
+
+    // Filter employees based on role
+    let filteredEmployees = employees;
+    if (isManager && !isAdmin && managerHierarchy) {
+      // For managers, only show assigned employees
+      const assignedEmployeeIds = new Set(managerHierarchy.employeeIds);
+      filteredEmployees = employees.filter(emp => assignedEmployeeIds.has(emp.id!));
+    }
 
     // Create a map to track task counts per employee
     const memberStats = new Map<string, { id: string; name: string; completed: number; inProgress: number; pending: number }>();
 
-    // Initialize all employees with zero counts
-    employees.forEach(emp => {
+    // Initialize filtered employees with zero counts
+    filteredEmployees.forEach(emp => {
       memberStats.set(emp.id!, {
         id: emp.id!,
         name: emp.name,
@@ -319,7 +343,7 @@ export default function DashboardPage() {
         const totalB = b.tasksCompleted + b.tasksInProgress + b.tasksPending;
         return totalB - totalA;
       });
-  }, [tasks, employees]);
+  }, [tasks, employees, isManager, isAdmin, managerHierarchy]);
 
   // Calculate weekly progress data (memoized)
   const weeklyProgressData = useMemo(() => {
@@ -642,7 +666,7 @@ export default function DashboardPage() {
       {/* Third Row: Team Performance and Weekly Progress in 2-column grid for desktop */}
       {shouldRenderCharts && canViewAllTasks && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          {/* Team Performance Chart */}
+          {/* Team Performance Chart - Show for both admin and manager */}
           {teamPerformanceData.length > 0 && (
             <ProgressiveHydration
               delay={300}
@@ -655,16 +679,18 @@ export default function DashboardPage() {
             </ProgressiveHydration>
           )}
 
-          {/* Weekly Progress Chart */}
-          <ProgressiveHydration
-            delay={350}
-            priority="low"
-            fallback={<SkeletonLoader className="h-64 w-full" />}
-          >
-            <Suspense fallback={<SkeletonLoader className="h-64 w-full" />}>
-              <WeeklyProgressChart data={weeklyProgressData} />
-            </Suspense>
-          </ProgressiveHydration>
+          {/* Weekly Progress Chart - Show only for admin, hide for manager */}
+          {isAdmin && (
+            <ProgressiveHydration
+              delay={350}
+              priority="low"
+              fallback={<SkeletonLoader className="h-64 w-full" />}
+            >
+              <Suspense fallback={<SkeletonLoader className="h-64 w-full" />}>
+                <WeeklyProgressChart data={weeklyProgressData} />
+              </Suspense>
+            </ProgressiveHydration>
+          )}
         </div>
       )}
 
@@ -767,6 +793,15 @@ export default function DashboardPage() {
                     const isOverdue = dueDate && dueDate < now && task.status !== 'completed';
                     const daysUntilDue = dueDate ? Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : null;
                     
+                    // For completed tasks, show relative completion time
+                    const getCompletedTimeText = () => {
+                      if (task.status !== 'completed' || !daysUntilDue) return null;
+                      const daysPast = Math.abs(daysUntilDue);
+                      if (daysPast === 0) return 'today';
+                      if (daysPast === 1) return '1 day ago';
+                      return `${daysPast} days ago`;
+                    };
+                    
                     return (
                       <div
                         key={task.id}
@@ -783,7 +818,7 @@ export default function DashboardPage() {
                               <div className="flex items-center gap-2">
                                 <h4 className="font-semibold text-gray-900 dark:text-white">{task.title}</h4>
                               </div>
-                              {dueDate && (
+                              {dueDate && task.status !== 'completed' && (
                                 <div className="flex items-center gap-2 flex-shrink-0">
                                   <div className={`px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap ${
                                     isOverdue ? 'bg-red-600 text-white' :
@@ -795,6 +830,13 @@ export default function DashboardPage() {
                                      daysUntilDue === 0 ? 'Due today' :
                                      daysUntilDue === 1 ? 'Due tomorrow' :
                                      `${daysUntilDue} days`}
+                                  </div>
+                                </div>
+                              )}
+                              {task.status === 'completed' && getCompletedTimeText() && (
+                                <div className="flex items-center gap-2 flex-shrink-0">
+                                  <div className="px-2 sm:px-3 py-0.5 sm:py-1.5 rounded-full text-[10px] sm:text-xs font-semibold whitespace-nowrap bg-blue-600 text-white">
+                                    {getCompletedTimeText()}
                                   </div>
                                 </div>
                               )}

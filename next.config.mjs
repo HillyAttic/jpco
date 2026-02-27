@@ -14,10 +14,10 @@ const nextConfig = {
       '@hookform/resolvers',
     ],
   },
-  
+
   // Production optimizations
   reactStrictMode: true,
-  
+
   // Optimize bundle splitting - MORE AGGRESSIVE
   webpack: (config, { isServer, dev }) => {
     if (!isServer && !dev) {
@@ -101,13 +101,13 @@ const nextConfig = {
           },
         },
       };
-      
+
       // Minimize bundle size
       config.optimization.minimize = true;
     }
     return config;
   },
-  
+
   // Optimize images
   images: {
     formats: ['image/webp', 'image/avif'],
@@ -147,17 +147,17 @@ const nextConfig = {
       }
     ]
   },
-  
+
   // Enable compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn'],
     } : false,
   },
-  
+
   // Turbopack configuration (empty to silence warning)
   turbopack: {},
-  
+
   // Performance headers for caching, compression, and security
   async headers() {
     return [
@@ -179,20 +179,7 @@ const nextConfig = {
           },
         ],
       },
-      // Service Worker files
-      {
-        source: '/sw.js',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
-          },
-          {
-            key: 'Service-Worker-Allowed',
-            value: '/',
-          },
-        ],
-      },
+      // Firebase Messaging Service Worker
       {
         source: '/firebase-messaging-sw.js',
         headers: [

@@ -9,7 +9,10 @@
   "orientation": "portrait-primary",
   "scope": "/",
   "lang": "en",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "/images/logo/logo-192.png",
@@ -92,34 +95,5 @@
   ],
   "related_applications": [],
   "prefer_related_applications": false,
-  "share_target": {
-    "action": "/share",
-    "method": "POST",
-    "enctype": "multipart/form-data",
-    "params": {
-      "title": "title",
-      "text": "text",
-      "url": "url",
-      "files": [
-        {
-          "name": "files",
-          "accept": ["image/*", "application/pdf", ".csv", ".xlsx"]
-        }
-      ]
-    }
-  },
-  "edge_side_panel": {
-    "preferred_width": 400
-  },
-  "launch_handler": {
-    "client_mode": "navigate-existing"
-  },
-  "gcm_sender_id": "492450530050",
-  "permissions": [
-    "notifications"
-  ],
-  "notification_preferences": {
-    "vibrate": true,
-    "sound": true
-  }
+  "gcm_sender_id": "492450530050"
 }

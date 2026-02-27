@@ -18,8 +18,8 @@ import Script from "next/script";
 
 export const metadata: Metadata = {
   title: {
-    template: "%s | JPCO - Next.js Dashboard Kit",
-    default: "JPCO - Next.js Dashboard Kit",
+    template: "%s | JPCO",
+    default: "JPCO",
   },
   description:
     "JPCO admin dashboard toolkit with 200+ templates, UI components, and integrations for fast dashboard development.",

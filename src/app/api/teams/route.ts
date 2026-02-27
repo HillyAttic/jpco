@@ -70,24 +70,35 @@ export async function POST(request: NextRequest) {
 
     const validatedData = validationResult.data;
 
-    // Use Admin SDK to look up employee names
+    // Use Admin SDK to look up employee names from 'users' collection
     const { adminDb } = await import('@/lib/firebase-admin');
 
     let leaderName = '';
     if (validatedData.leaderId) {
-      const leaderDoc = await adminDb.collection('employees').doc(validatedData.leaderId).get();
+      const leaderDoc = await adminDb.collection('users').doc(validatedData.leaderId).get();
       if (leaderDoc.exists) {
-        leaderName = leaderDoc.data()!.name || '';
+        const leaderData = leaderDoc.data()!;
+        leaderName = leaderData.displayName || leaderData.name || '';
       }
     }
 
     const members = [];
     if (validatedData.memberIds && validatedData.memberIds.length > 0) {
       for (const memberId of validatedData.memberIds) {
-        const empDoc = await adminDb.collection('employees').doc(memberId).get();
+        const empDoc = await adminDb.collection('users').doc(memberId).get();
         if (empDoc.exists) {
           const emp = empDoc.data()!;
-          members.push({ id: memberId, name: emp.name, avatar: undefined, role: emp.role });
+          const member: any = {
+            id: memberId,
+            name: emp.displayName || emp.name || 'Unknown',
+            role: emp.role || 'Employee',
+          };
+          // Only add avatar if it exists (avoid undefined)
+          const avatarUrl = emp.avatar || emp.photoURL;
+          if (avatarUrl) {
+            member.avatar = avatarUrl;
+          }
+          members.push(member);
         }
       }
     }

@@ -30,10 +30,95 @@ export interface Team {
 const baseService = createAdminService<Team>('teams');
 
 /**
+ * Populate team member details and leader name from employees collection
+ */
+async function populateTeamMembers(team: Team): Promise<Team> {
+  console.log(`[populateTeamMembers] Processing team: ${team.name}`, {
+    leaderId: team.leaderId,
+    memberIds: team.memberIds,
+    existingMembers: team.members?.length || 0,
+  });
+
+  // NOTE: Employee data is stored in the 'users' collection, NOT 'employees'
+  // Field names: displayName (primary) or name (fallback)
+
+  // Populate leader name
+  let leaderName = '';
+  if (team.leaderId) {
+    try {
+      const leaderDoc = await adminDb.collection('users').doc(team.leaderId).get();
+      if (leaderDoc.exists) {
+        const leaderData = leaderDoc.data()!;
+        leaderName = leaderData.displayName || leaderData.name || '';
+        console.log(`[populateTeamMembers] Found leader: ${leaderName}`);
+      } else {
+        console.log(`[populateTeamMembers] Leader not found in 'users' collection: ${team.leaderId}`);
+      }
+    } catch (error) {
+      console.error(`[populateTeamMembers] Error fetching leader ${team.leaderId}:`, error);
+    }
+  }
+
+  // Populate members array from memberIds
+  const members: TeamMember[] = [];
+  if (team.memberIds && team.memberIds.length > 0) {
+    console.log(`[populateTeamMembers] Fetching ${team.memberIds.length} members from 'users' collection`);
+    for (const memberId of team.memberIds) {
+      try {
+        const empDoc = await adminDb.collection('users').doc(memberId).get();
+        if (empDoc.exists) {
+          const emp = empDoc.data()!;
+          const memberName = emp.displayName || emp.name || 'Unknown';
+          const member: TeamMember = {
+            id: memberId,
+            name: memberName,
+            role: emp.role || 'Employee',
+          };
+          // Only add avatar if it exists (avoid undefined)
+          const avatarUrl = emp.avatar || emp.photoURL;
+          if (avatarUrl) {
+            member.avatar = avatarUrl;
+          }
+          members.push(member);
+          console.log(`[populateTeamMembers] Added member: ${memberName}`);
+        } else {
+          console.log(`[populateTeamMembers] Member not found in 'users' collection: ${memberId}`);
+        }
+      } catch (error) {
+        console.error(`[populateTeamMembers] Error fetching member ${memberId}:`, error);
+      }
+    }
+  }
+
+  const result = {
+    ...team,
+    leaderName,
+    members,
+  };
+
+  console.log(`[populateTeamMembers] Result for ${team.name}:`, {
+    leaderName: result.leaderName,
+    membersCount: result.members.length,
+    members: result.members.map(m => m.name),
+  });
+
+  return result;
+}
+
+/**
  * Team Admin Service - Server-side only
  */
 export const teamAdminService = {
   ...baseService,
+
+  /**
+   * Get a team by ID with populated member details
+   */
+  async getById(id: string): Promise<Team | null> {
+    const team = await baseService.getById(id);
+    if (!team) return null;
+    return await populateTeamMembers(team);
+  },
 
   /**
    * Get all teams with optional filters
@@ -89,7 +174,10 @@ export const teamAdminService = {
       );
     }
 
-    return teams;
+    // Populate member details and leader name from employees collection
+    const populatedTeams = await Promise.all(teams.map(populateTeamMembers));
+
+    return populatedTeams;
   },
 
   /**
@@ -109,8 +197,8 @@ export const teamAdminService = {
 
     const updatedMembers = [...team.members, member];
     const updatedMemberIds = [...team.memberIds, member.id];
-    
-    return await baseService.update(id, { 
+
+    return await baseService.update(id, {
       members: updatedMembers,
       memberIds: updatedMemberIds,
     });
@@ -127,8 +215,8 @@ export const teamAdminService = {
 
     const updatedMembers = team.members.filter((m) => m.id !== memberId);
     const updatedMemberIds = team.memberIds.filter((id) => id !== memberId);
-    
-    return await baseService.update(id, { 
+
+    return await baseService.update(id, {
       members: updatedMembers,
       memberIds: updatedMemberIds,
     });
@@ -161,7 +249,7 @@ export const teamAdminService = {
     const allTeams = await baseService.getAll();
     console.log(`[Team Admin Service] Getting teams for member: ${memberId}`);
     console.log(`[Team Admin Service] Total teams in database: ${allTeams.length}`);
-    
+
     const memberTeams = allTeams.filter((team) => {
       // Check if member is in the members array (by id)
       const isMember = team.members.some((m) => m.id === memberId);
@@ -169,7 +257,7 @@ export const teamAdminService = {
       const isLeader = team.leaderId === memberId;
       // Check if member is in memberIds array
       const isInMemberIds = team.memberIds && team.memberIds.includes(memberId);
-      
+
       console.log(`[Team Admin Service] Team "${team.name}" (${team.id}):`, {
         members: team.members.map(m => ({ id: m.id, name: m.name })),
         memberIds: team.memberIds,
@@ -179,10 +267,10 @@ export const teamAdminService = {
         isInMemberIds,
         willInclude: isMember || isLeader || isInMemberIds
       });
-      
+
       return isMember || isLeader || isInMemberIds;
     });
-    
+
     console.log(`[Team Admin Service] Member ${memberId} is in ${memberTeams.length} teams`);
     return memberTeams;
   },

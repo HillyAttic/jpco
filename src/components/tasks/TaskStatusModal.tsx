@@ -12,13 +12,13 @@ import { Label } from '@/components/ui/label';
 interface Task {
   id: string;
   title: string;
-  status: 'pending' | 'in-progress' | 'completed';
+  status: 'todo' | 'pending' | 'in-progress' | 'completed';
 }
 
 interface TaskStatusModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (taskId: string, status: 'pending' | 'in-progress' | 'completed') => Promise<void>;
+  onSubmit: (taskId: string, status: 'todo' | 'pending' | 'in-progress' | 'completed') => Promise<void>;
   task: Task | null;
   isLoading?: boolean;
 }
@@ -34,7 +34,7 @@ export function TaskStatusModal({
   task,
   isLoading = false,
 }: TaskStatusModalProps) {
-  const [status, setStatus] = useState<'pending' | 'in-progress' | 'completed'>('pending');
+  const [status, setStatus] = useState<'todo' | 'pending' | 'in-progress' | 'completed'>('pending');
 
   // Update status when task changes
   useEffect(() => {
@@ -84,10 +84,11 @@ export function TaskStatusModal({
             <select
               id="status"
               value={status}
-              onChange={(e) => setStatus(e.target.value as 'pending' | 'in-progress' | 'completed')}
+              onChange={(e) => setStatus(e.target.value as 'todo' | 'pending' | 'in-progress' | 'completed')}
               className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
               disabled={isLoading}
             >
+              <option value="todo">To Do</option>
               <option value="pending">Pending</option>
               <option value="in-progress">In Progress</option>
               <option value="completed">Completed</option>

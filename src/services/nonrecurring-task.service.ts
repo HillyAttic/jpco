@@ -11,7 +11,7 @@ export interface NonRecurringTask {
   description: string;
   dueDate: Date;
   priority: 'low' | 'medium' | 'high' | 'urgent';
-  status: 'pending' | 'in-progress' | 'completed';
+  status: 'todo' | 'pending' | 'in-progress' | 'completed';
   assignedTo: string[]; // Array of employee IDs
   categoryId?: string; // Category ID reference
   contactId?: string; // Client ID reference
@@ -107,7 +107,7 @@ export const nonRecurringTaskService = {
     data: Omit<NonRecurringTask, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<NonRecurringTask> {
     const task = await taskFirebaseService.create(data);
-    
+
     // Send push notifications to assigned users
     if (data.assignedTo && data.assignedTo.length > 0) {
       try {
@@ -122,7 +122,7 @@ export const nonRecurringTaskService = {
         console.error('Error sending task assignment notifications:', error);
       }
     }
-    
+
     return task;
   },
 
@@ -134,7 +134,7 @@ export const nonRecurringTaskService = {
     data: Partial<Omit<NonRecurringTask, 'id'>>
   ): Promise<NonRecurringTask> {
     const task = await taskFirebaseService.update(id, data);
-    
+
     // Send push notifications if new users are assigned
     if (data.assignedTo && data.assignedTo.length > 0) {
       try {
@@ -149,7 +149,7 @@ export const nonRecurringTaskService = {
         console.error('Error sending task assignment notifications:', error);
       }
     }
-    
+
     return task;
   },
 

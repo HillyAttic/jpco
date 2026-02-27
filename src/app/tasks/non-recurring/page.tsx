@@ -182,7 +182,7 @@ export default function NonRecurringTasksPage() {
   };
 
   // Handle status update (for employees)
-  const handleStatusUpdate = async (taskId: string, status: 'pending' | 'in-progress' | 'completed') => {
+  const handleStatusUpdate = async (taskId: string, status: 'todo' | 'pending' | 'in-progress' | 'completed') => {
     setIsSubmitting(true);
     
     try {

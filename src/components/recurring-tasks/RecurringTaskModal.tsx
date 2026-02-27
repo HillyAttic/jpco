@@ -660,7 +660,6 @@ export function RecurringTaskModal({
                 id="startDate"
                 type="date"
                 {...register('startDate')}
-                min={getMinDate()}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
                 required
@@ -677,7 +676,6 @@ export function RecurringTaskModal({
                 id="dueDate"
                 type="date"
                 {...register('dueDate')}
-                min={startDate || getMinDate()}
                 className="mt-1 w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={isLoading}
               />

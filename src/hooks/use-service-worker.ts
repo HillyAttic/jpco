@@ -37,8 +37,10 @@ export function useServiceWorker() {
     offlineQueueRef.current = offlineQueue;
   }, [offlineQueue]);
 
-  // Register service worker
-  const registerServiceWorker = useCallback(async () => {
+  // Check for existing service worker (do NOT register a new one proactively)
+  // The service worker should only be registered when the user enables push notifications.
+  // Proactive registration causes Chrome on Android to show the "Tap to copy URL" notification.
+  const checkServiceWorker = useCallback(async () => {
     if (!('serviceWorker' in navigator)) {
       setState(prev => ({
         ...prev,
@@ -49,16 +51,21 @@ export function useServiceWorker() {
     }
 
     try {
-      // Check if firebase-messaging-sw.js is already registered
+      // Only check if one already exists, don't register a new one
       const existingRegistrations = await navigator.serviceWorker.getRegistrations();
       const firebaseSwRegistration = existingRegistrations.find(
         reg => reg.active?.scriptURL.includes('firebase-messaging-sw.js')
       );
 
-      // If firebase-messaging-sw.js is already registered, use it
+      // Unregister the old sw.js if it's still lingering
+      for (const reg of existingRegistrations) {
+        if (reg.active && !reg.active.scriptURL.includes('firebase-messaging-sw.js')) {
+          console.log('[SW] Unregistering old service worker:', reg.active.scriptURL);
+          await reg.unregister();
+        }
+      }
+
       if (firebaseSwRegistration) {
-        console.log('[SW] firebase-messaging-sw.js already registered, skipping re-registration');
-        
         setState(prev => ({
           ...prev,
           isSupported: true,
@@ -66,12 +73,8 @@ export function useServiceWorker() {
           registration: firebaseSwRegistration,
           error: null
         }));
-        
-        // Wait for service worker to be ready
-        await navigator.serviceWorker.ready;
-        console.log('[SW] Service worker is ready');
-        
-        // Check for updates
+
+        // Check for updates on existing registration
         firebaseSwRegistration.addEventListener('updatefound', () => {
           const newWorker = firebaseSwRegistration.installing;
           if (newWorker) {
@@ -85,67 +88,22 @@ export function useServiceWorker() {
             });
           }
         });
-        
-        return;
+      } else {
+        // No service worker registered - that's fine, it will be registered
+        // when user enables push notifications via firebase-messaging.ts
+        setState(prev => ({
+          ...prev,
+          isSupported: true,
+          isRegistered: false,
+          error: null
+        }));
       }
-
-      // Only unregister OTHER service workers (not firebase-messaging-sw.js)
-      console.log('[SW Fix] Found', existingRegistrations.length, 'existing service workers');
-      
-      for (const reg of existingRegistrations) {
-        if (reg.active && !reg.active.scriptURL.includes('firebase-messaging-sw.js')) {
-          console.log('[SW Fix] Unregistering conflicting SW:', reg.active.scriptURL);
-          await reg.unregister();
-        }
-      }
-
-      // Wait a bit for unregistration to complete
-      if (existingRegistrations.length > 0) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      // Register Firebase messaging service worker for push notifications
-      const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js', {
-        scope: '/',
-        updateViaCache: 'none', // Always check for latest SW version
-      });
-
-      console.log('[SW] Registered firebase-messaging-sw.js successfully');
-
-      // Wait for the service worker to be ready
-      await navigator.serviceWorker.ready;
-      console.log('[SW] Service worker is ready');
-
-      setState(prev => ({
-        ...prev,
-        isSupported: true,
-        isRegistered: true,
-        registration,
-        error: null
-      }));
-
-      // Check for updates
-      registration.addEventListener('updatefound', () => {
-        const newWorker = registration.installing;
-        if (newWorker) {
-          newWorker.addEventListener('statechange', () => {
-            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              setState(prev => ({
-                ...prev,
-                updateAvailable: true
-              }));
-            }
-          });
-        }
-      });
-
-      console.log('Service Worker registered successfully');
     } catch (error) {
       setState(prev => ({
         ...prev,
-        error: `Service Worker registration failed: ${error}`
+        error: `Service Worker check failed: ${error}`
       }));
-      console.error('Service Worker registration failed:', error);
+      console.error('Service Worker check failed:', error);
     }
   }, []);
 
@@ -165,8 +123,7 @@ export function useServiceWorker() {
   const handleOnlineStatus = useCallback(() => {
     const isOnline = navigator.onLine;
     setState(prev => ({ ...prev, isOnline }));
-    // Note: processOfflineQueue will be triggered by the useEffect that watches state.isOnline
-  }, []); // Remove offlineQueue dependency to break the loop
+  }, []);
 
   // Add request to offline queue
   const queueOfflineRequest = useCallback((
@@ -228,7 +185,7 @@ export function useServiceWorker() {
       localStorage.setItem('offline-queue', JSON.stringify(filtered));
       return filtered;
     });
-  }, []); // Remove dependencies to break the loop
+  }, []);
 
   // Cache critical resources - DISABLED
   const cacheCriticalResources = useCallback(async () => {
@@ -268,9 +225,9 @@ export function useServiceWorker() {
     }
   }, []);
 
-  // Initialize service worker and event listeners
+  // Initialize - just check existing SWs, don't register new ones
   useEffect(() => {
-    registerServiceWorker();
+    checkServiceWorker();
 
     // Load offline queue from localStorage
     const savedQueue = JSON.parse(localStorage.getItem('offline-queue') || '[]');
@@ -284,20 +241,14 @@ export function useServiceWorker() {
       window.removeEventListener('online', handleOnlineStatus);
       window.removeEventListener('offline', handleOnlineStatus);
     };
-  }, [registerServiceWorker]); // Remove handleOnlineStatus dependency to break the loop
-
-  // Cache critical resources when service worker is ready - DISABLED
-  // Caching is disabled, so this effect does nothing
-  useEffect(() => {
-    // No caching
-  }, [state.isRegistered]);
+  }, [checkServiceWorker]);
 
   // Process offline queue when online status changes
   useEffect(() => {
     if (state.isOnline && offlineQueue.length > 0) {
       processOfflineQueue();
     }
-  }, [state.isOnline]); // Only depend on isOnline, not processOfflineQueue or offlineQueue
+  }, [state.isOnline]); // Only depend on isOnline
 
   return {
     ...state,

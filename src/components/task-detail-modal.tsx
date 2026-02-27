@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Select from '@/components/ui/select';
-import { 
+import {
   PaperClipIcon,
   ChatBubbleLeftRightIcon,
   ClockIcon,
@@ -39,7 +39,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [displayValue, setDisplayValue] = useState('');
-  
+
   // Check if current user is the task creator
   const isTaskCreator = task?.createdBy === user?.uid;
 
@@ -48,10 +48,10 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
     const fetchUserNames = async () => {
       try {
         setLoadingUsers(true);
-        
+
         const { auth } = await import('@/lib/firebase');
         const user = auth.currentUser;
-        
+
         if (!user) {
           console.error('User not authenticated');
           setUserNames({});
@@ -60,7 +60,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
         }
 
         const token = await user.getIdToken();
-        
+
         const response = await fetch('/api/users/names', {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -90,7 +90,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
     if (task) {
       setEditingTask({ ...task });
       loadComments(task.id);
-      
+
       // Set display value with user names
       if (!loadingUsers && task.assignedTo) {
         const names = task.assignedTo.map(id => userNames[id] || id).join(', ');
@@ -113,18 +113,32 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
 
   const handleSave = async () => {
     if (!editingTask) return;
-    
+
     setLoading(true);
     try {
+      // Serialize dueDate properly - handle Date objects, Firestore Timestamps, and strings
+      let dueDateString: string | undefined;
+      if (editingTask.dueDate) {
+        if (editingTask.dueDate instanceof Date) {
+          dueDateString = editingTask.dueDate.toISOString();
+        } else if (typeof editingTask.dueDate === 'object' && 'seconds' in (editingTask.dueDate as Record<string, unknown>)) {
+          dueDateString = new Date((editingTask.dueDate as unknown as { seconds: number }).seconds * 1000).toISOString();
+        } else if (typeof editingTask.dueDate === 'string') {
+          dueDateString = editingTask.dueDate;
+        } else {
+          dueDateString = new Date(editingTask.dueDate as unknown as string).toISOString();
+        }
+      }
+
       const updatedTask = await taskApi.updateTask(editingTask.id, {
         title: editingTask.title,
         description: editingTask.description,
         status: editingTask.status,
         priority: editingTask.priority,
-        dueDate: editingTask.dueDate,
+        dueDate: dueDateString as unknown as Date,
         assignedTo: editingTask.assignedTo
       });
-      
+
       onUpdate?.(updatedTask);
       onClose();
     } catch (error) {
@@ -136,13 +150,13 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
 
   const handleAddComment = async () => {
     if (!editingTask || !newComment.trim()) return;
-    
+
     try {
       const comment = await taskApi.addComment(editingTask.id, {
         author: 'Current User', // This should come from auth context
         content: newComment.trim()
       });
-      
+
       setComments(prev => [...prev, {
         ...comment,
         createdAt: new Date(comment.createdAt)
@@ -174,7 +188,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
             View and edit task information, status, and comments
           </DialogDescription>
         </DialogHeader>
-        
+
         <div className="space-y-6">
           {/* Task Info */}
           <div className="space-y-4">
@@ -186,7 +200,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
               {isTaskCreator ? (
                 <Input
                   value={editingTask.title}
-                  onChange={(e) => setEditingTask({...editingTask, title: e.target.value})}
+                  onChange={(e) => setEditingTask({ ...editingTask, title: e.target.value })}
                   className="w-full"
                 />
               ) : (
@@ -195,7 +209,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 </div>
               )}
             </div>
-            
+
             {/* Description - Read-only for non-creators */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -204,7 +218,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
               {isTaskCreator ? (
                 <Textarea
                   value={editingTask.description || ''}
-                  onChange={(e) => setEditingTask({...editingTask, description: e.target.value})}
+                  onChange={(e) => setEditingTask({ ...editingTask, description: e.target.value })}
                   rows={3}
                   className="w-full"
                 />
@@ -214,7 +228,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 </div>
               )}
             </div>
-            
+
             <div className="grid grid-cols-2 gap-4">
               {/* Status - Editable for everyone */}
               <div className={!isTaskCreator ? 'ring-2 ring-blue-500 ring-offset-2 rounded-lg p-2 -m-2' : ''}>
@@ -223,7 +237,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 </label>
                 <Select
                   value={editingTask.status}
-                  onChange={(e) => setEditingTask({...editingTask, status: e.target.value as TaskStatus})}
+                  onChange={(e) => setEditingTask({ ...editingTask, status: e.target.value as TaskStatus })}
                   className="w-full"
                 >
                   <option value={TaskStatus.TODO}>To Do</option>
@@ -231,7 +245,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                   <option value={TaskStatus.COMPLETED}>Completed</option>
                 </Select>
               </div>
-              
+
               {/* Priority - Read-only for non-creators */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -240,7 +254,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 {isTaskCreator ? (
                   <Select
                     value={editingTask.priority}
-                    onChange={(e) => setEditingTask({...editingTask, priority: e.target.value as TaskPriority})}
+                    onChange={(e) => setEditingTask({ ...editingTask, priority: e.target.value as TaskPriority })}
                     className="w-full"
                   >
                     <option value={TaskPriority.LOW}>Low</option>
@@ -256,7 +270,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 )}
               </div>
             </div>
-            
+
             {/* Due Date - Read-only for non-creators */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -267,20 +281,20 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                   type="date"
                   value={editingTask.dueDate ? (editingTask.dueDate instanceof Date ? editingTask.dueDate.toISOString().split('T')[0] : new Date(editingTask.dueDate).toISOString().split('T')[0]) : ''}
                   onChange={(e) => setEditingTask({
-                    ...editingTask, 
+                    ...editingTask,
                     dueDate: e.target.value ? new Date(e.target.value) : new Date()
                   })}
                   className="w-full"
                 />
               ) : (
                 <div className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-900 dark:text-white">
-                  {editingTask.dueDate 
+                  {editingTask.dueDate
                     ? new Date(editingTask.dueDate).toLocaleDateString()
                     : 'No due date'}
                 </div>
               )}
             </div>
-            
+
             {/* Assigned Users - Read-only for non-creators */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -299,14 +313,14 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                         acc[name.toLowerCase()] = id;
                         return acc;
                       }, {} as Record<string, string>);
-                      
+
                       const ids = inputNames.map(name => {
                         const lowerName = name.toLowerCase();
                         return userIdMap[lowerName] || name;
                       });
-                      
+
                       setEditingTask({
-                        ...editingTask, 
+                        ...editingTask,
                         assignedTo: ids
                       });
                     }}
@@ -325,14 +339,14 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
               )}
             </div>
           </div>
-          
+
           {/* Comments Section */}
           <div className="border-t pt-6">
             <div className="flex items-center mb-4">
               <ChatBubbleLeftRightIcon className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
               <h3 className="text-lg font-medium">Comments ({comments.length})</h3>
             </div>
-            
+
             <div className="space-y-4 mb-4 max-h-60 overflow-y-auto">
               {comments.length === 0 ? (
                 <p className="text-gray-500 dark:text-gray-400 text-center py-4">No comments yet</p>
@@ -353,7 +367,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 ))
               )}
             </div>
-            
+
             <div className="flex space-x-2">
               <Input
                 value={newComment}
@@ -366,7 +380,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                   }
                 }}
               />
-              <Button 
+              <Button
                 onClick={handleAddComment}
                 disabled={!newComment.trim() || loading}
               >
@@ -374,7 +388,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
               </Button>
             </div>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="flex justify-end space-x-3 pt-4 border-t">
             <Button
@@ -384,7 +398,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
             >
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={handleSave}
               disabled={loading}
             >

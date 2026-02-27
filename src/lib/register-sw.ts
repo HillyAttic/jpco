@@ -1,8 +1,9 @@
 /**
  * Service Worker Registration Utility
  * 
- * Explicitly registers the Firebase messaging service worker
- * and ensures it's active before FCM token generation.
+ * Used ONLY when the user explicitly enables push notifications.
+ * DO NOT call this on page load — proactive registration causes
+ * Chrome on Android to show the "Tap to copy URL" PWA notification.
  */
 
 export async function registerServiceWorker(): Promise<ServiceWorkerRegistration | null> {
@@ -14,7 +15,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
   try {
     // Check if our service worker is already registered
     const existingRegistration = await navigator.serviceWorker.getRegistration('/');
-    
+
     if (existingRegistration?.active?.scriptURL.includes('firebase-messaging-sw.js')) {
       console.log('[SW] Already registered:', existingRegistration.scope);
       return existingRegistration;
@@ -33,7 +34,7 @@ export async function registerServiceWorker(): Promise<ServiceWorkerRegistration
     console.log('[SW] Registering firebase-messaging-sw.js...');
     const registration = await navigator.serviceWorker.register(
       '/firebase-messaging-sw.js',
-      { 
+      {
         scope: '/',
         updateViaCache: 'none' // Always fetch fresh service worker
       }

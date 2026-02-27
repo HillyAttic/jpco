@@ -77,13 +77,18 @@ export async function PUT(
 
     const updateData: any = { ...validatedData };
 
-    // Use Admin SDK to look up employee names
+    // Use Admin SDK to look up employee names from 'users' collection
     const { adminDb } = await import('@/lib/firebase-admin');
 
     if (validatedData.leaderId !== undefined) {
       if (validatedData.leaderId) {
-        const leaderDoc = await adminDb.collection('employees').doc(validatedData.leaderId).get();
-        updateData.leaderName = leaderDoc.exists ? leaderDoc.data()!.name || '' : '';
+        const leaderDoc = await adminDb.collection('users').doc(validatedData.leaderId).get();
+        if (leaderDoc.exists) {
+          const leaderData = leaderDoc.data()!;
+          updateData.leaderName = leaderData.displayName || leaderData.name || '';
+        } else {
+          updateData.leaderName = '';
+        }
       } else {
         updateData.leaderName = '';
       }
@@ -92,10 +97,20 @@ export async function PUT(
     if (validatedData.memberIds !== undefined) {
       const members = [];
       for (const memberId of validatedData.memberIds) {
-        const empDoc = await adminDb.collection('employees').doc(memberId).get();
+        const empDoc = await adminDb.collection('users').doc(memberId).get();
         if (empDoc.exists) {
           const emp = empDoc.data()!;
-          members.push({ id: memberId, name: emp.name, avatar: undefined, role: emp.role });
+          const member: any = {
+            id: memberId,
+            name: emp.displayName || emp.name || 'Unknown',
+            role: emp.role || 'Employee',
+          };
+          // Only add avatar if it exists (avoid undefined)
+          const avatarUrl = emp.avatar || emp.photoURL;
+          if (avatarUrl) {
+            member.avatar = avatarUrl;
+          }
+          members.push(member);
         }
       }
       updateData.members = members;
