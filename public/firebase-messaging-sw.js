@@ -48,6 +48,26 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// Fetch handler — required for Chrome to treat this as a proper PWA service worker.
+// Without a fetch handler, Chrome won't create a WebAPK and may show PWA notifications.
+// Strategy: network-first for navigations (always fresh), passthrough for everything else.
+self.addEventListener('fetch', (event) => {
+  const { request } = event;
+
+  // Only handle same-origin navigation requests (page loads)
+  if (request.mode === 'navigate') {
+    event.respondWith(
+      fetch(request).catch(() => {
+        // If offline, try to serve from cache or show offline page
+        return caches.match(request).then(cached => cached || caches.match('/offline.html'));
+      })
+    );
+    return;
+  }
+
+  // Let all other requests (API calls, assets, etc.) pass through normally
+});
+
 // Initialize Firebase (required for FCM push subscription management)
 firebase.initializeApp({
   apiKey: "AIzaSyBkxT1xMRCj2iAoig87tBkFXSGcoZyuQDw",
@@ -73,20 +93,20 @@ setInterval(() => {
 // Build notification options from data payload - ENHANCED FOR MOBILE
 function buildNotificationOptions(data, notification = {}) {
   const notificationId = data.notificationId || `jpco-${Date.now()}`;
-  
+
   // Check if we've already shown this notification
   if (shownNotifications.has(notificationId)) {
     console.log('[SW v7.0] ⚠️ Duplicate notification prevented:', notificationId);
     return null;
   }
-  
+
   shownNotifications.add(notificationId);
-  
+
   // Extract body from data or notification object
   const body = data.body || notification.body || 'You have a new notification';
   const icon = data.icon || notification.icon || '/images/logo/logo-icon.svg';
   const image = data.image || notification.image;
-  
+
   return {
     body,
     icon,
@@ -125,38 +145,38 @@ function buildNotificationOptions(data, notification = {}) {
 messaging.onBackgroundMessage((payload) => {
   console.log('[SW v7.0] ===== onBackgroundMessage RECEIVED =====');
   console.log('[SW v7.0] Full payload:', JSON.stringify(payload, null, 2));
-  
+
   try {
     // Extract data from FCM payload - support both data and notification objects
     const data = payload.data || {};
     const notification = payload.notification || {};
-    
+
     // Priority: data.title > notification.title > default
     const title = data.title || notification.title || 'JPCO Dashboard';
-    
+
     console.log('[SW v7.0] Extracted title:', title);
     console.log('[SW v7.0] Data keys:', Object.keys(data));
     console.log('[SW v7.0] Notification keys:', Object.keys(notification));
-    
+
     const options = buildNotificationOptions(data, notification);
-    
+
     if (!options) {
       console.log('[SW v7.0] ⚠️ Duplicate notification, skipping');
       return Promise.resolve();
     }
-    
+
     console.log('[SW v7.0] 🔔 Displaying notification');
     console.log('[SW v7.0] 🔔 Title:', title);
     console.log('[SW v7.0] 🔔 Body:', options.body);
     console.log('[SW v7.0] 🔔 Tag:', options.tag);
     console.log('[SW v7.0] 🔔 URL:', options.data.url);
-    
+
     // CRITICAL: Must return promise from showNotification
     return self.registration.showNotification(title, options);
   } catch (error) {
     console.error('[SW v7.0] ❌ onBackgroundMessage error:', error.message || error);
     console.error('[SW v7.0] ❌ Stack:', error.stack);
-    
+
     // Fallback notification
     return self.registration.showNotification('JPCO Dashboard', {
       body: 'You have a new notification',
@@ -173,25 +193,25 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener('notificationclick', (event) => {
   console.log('[SW v7.0] Notification clicked:', event.notification.tag);
   console.log('[SW v7.0] Action:', event.action);
-  
+
   event.notification.close();
-  
+
   // Handle action buttons
   if (event.action === 'close') {
     console.log('[SW v7.0] Notification dismissed by user');
     return;
   }
-  
+
   const urlToOpen = event.notification.data?.url || '/notifications';
   const fullUrl = new URL(urlToOpen, self.location.origin).href;
-  
+
   console.log('[SW v7.0] Opening URL:', fullUrl);
-  
+
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true })
       .then((clientList) => {
         console.log('[SW v7.0] Found', clientList.length, 'open windows');
-        
+
         // Check if there's already a window open with the target URL
         for (const client of clientList) {
           if (client.url === fullUrl && 'focus' in client) {
@@ -199,7 +219,7 @@ self.addEventListener('notificationclick', (event) => {
             return client.focus();
           }
         }
-        
+
         // Check if there's any window from our origin
         for (const client of clientList) {
           if (client.url.includes(self.location.origin) && 'focus' in client) {
@@ -213,7 +233,7 @@ self.addEventListener('notificationclick', (event) => {
             });
           }
         }
-        
+
         // No window open, open a new one
         console.log('[SW v7.0] Opening new window');
         if (clients.openWindow) {
