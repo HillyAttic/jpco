@@ -797,7 +797,7 @@ export default function DashboardPage() {
                   No tasks found
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-0 md:space-y-3">
                   {tasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     const now = new Date();
@@ -954,7 +954,7 @@ export default function DashboardPage() {
                   No completed tasks
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-0 md:space-y-3">
                   {completedTasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     
@@ -1057,7 +1057,7 @@ export default function DashboardPage() {
                   No tasks in progress
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-0 md:space-y-3">
                   {inProgressTasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     const now = new Date();
@@ -1178,7 +1178,7 @@ export default function DashboardPage() {
                   No pending tasks
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-0 md:space-y-3">
                   {todoTasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     const now = new Date();
@@ -1301,7 +1301,7 @@ export default function DashboardPage() {
                   No overdue tasks
                 </p>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-0 md:space-y-3">
                   {overdueTasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     const now = new Date();

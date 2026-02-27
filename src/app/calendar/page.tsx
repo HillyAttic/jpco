@@ -187,16 +187,10 @@ export default function CalendarPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Compliance Calendar</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">View your recurring compliance tasks</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={() => setShowCreateModal(true)} className="text-white">
-            <PlusCircleIcon className="w-5 h-5 mr-2" />
-            Add Task
-          </Button>
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Compliance Calendar</h1>
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">View your recurring compliance tasks</p>
         </div>
       </div>
 

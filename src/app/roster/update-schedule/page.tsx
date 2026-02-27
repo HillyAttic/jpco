@@ -48,6 +48,7 @@ export default function UpdateSchedulePage() {
     timeStart: '', // Now stores only time (HH:MM)
     timeEnd: '', // Now stores only time (HH:MM)
   });
+  const [clientSearchQuery, setClientSearchQuery] = useState('');
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -405,7 +406,13 @@ export default function UpdateSchedulePage() {
   const handleCloseModal = () => {
     setShowModal(false);
     closeModal();
+    setClientSearchQuery('');
   };
+
+  // Filter clients based on search query
+  const filteredClients = clients.filter(client =>
+    client.name.toLowerCase().includes(clientSearchQuery.toLowerCase())
+  );
 
   const handleDateClick = async (date: Date) => {
     if (!user) return;
@@ -582,7 +589,7 @@ export default function UpdateSchedulePage() {
           onClick={handleCloseModal}
         >
           <div
-            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl w-full max-w-md mx-auto p-4 sm:p-6 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl w-full max-w-md mx-auto p-4 sm:p-6 max-h-[90vh] overflow-y-auto pb-safe"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
@@ -675,23 +682,6 @@ export default function UpdateSchedulePage() {
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Client (Optional)
-                    </label>
-                    <select
-                      value={formData.clientId}
-                      onChange={(e) => setFormData({ ...formData, clientId: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    >
-                      <option value="">Select a client</option>
-                      {clients.map(client => (
-                        <option key={client.id} value={client.id}>
-                          {client.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       Task Detail *
                     </label>
                     <input
@@ -743,7 +733,7 @@ export default function UpdateSchedulePage() {
                 </>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2 pb-4 sm:pb-2">
                 <Button type="submit" className="w-full sm:flex-1 text-white min-h-[44px] sm:min-h-[40px]">
                   {editingEntry ? 'Update' : 'Create'}
                 </Button>

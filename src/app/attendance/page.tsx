@@ -185,14 +185,6 @@ export default function AttendancePage() {
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           <Button
-            onClick={() => window.location.href = '/calendar'}
-            className="justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none ring-offset-background border border-input hover:bg-accent hover:text-accent-foreground h-9 px-3 rounded-md flex items-center gap-1 text-xs bg-white text-black border-slate-200"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-calendar h-3 w-3" aria-hidden="true"><path d="M8 2v4"></path><path d="M16 2v4"></path><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M3 10h18"></path></svg>
-            Calendar Overview
-          </Button>
-
-          <Button
             onClick={() => setShowLeaveModal(true)}
             className="flex items-center gap-2"
           >

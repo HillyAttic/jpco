@@ -86,18 +86,16 @@ export const NAV_DATA = [
       },
       {
         title: "Attendance",
+        url: "/attendance",
         icon: Icons.ClockIcon,
-        items: [
-          {
-            title: "Track Attendance",
-            url: "/attendance",
-          },
-          {
-            title: "Attendance Tray",
-            url: "/attendance/tray",
-            requiresRole: ['admin', 'manager'], // Only managers and admins can see this
-          },
-        ],
+        items: [],
+      },
+      {
+        title: "Attendance Tray",
+        url: "/attendance/tray",
+        icon: Icons.ClockIcon,
+        items: [],
+        requiresRole: ['admin', 'manager'], // Only managers and admins can see this
       },
       {
         title: "Apply Leave",

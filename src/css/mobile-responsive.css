@@ -27,7 +27,7 @@ body.modal-open header {
 
   /* Optimize spacing for mobile */
   .space-y-6>*+* {
-    margin-top: 1rem !important;
+    margin-top: 0rem !important;
   }
 
   .space-y-4>*+* {
