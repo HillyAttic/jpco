@@ -5,6 +5,8 @@ import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useRouter } from 'next/navigation';
 import { useModal } from '@/contexts/modal-context';
 import { rosterService, getTaskColor } from '@/services/roster.service';
+import { leaveService } from '@/services/leave.service';
+import { LeaveRequest } from '@/types/attendance.types';
 import { RosterEntry, MONTHS, getDaysInMonth, MonthlyRosterView } from '@/types/roster.types';
 import { collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -26,6 +28,7 @@ export default function ViewSchedulePage() {
   const [monthlyView, setMonthlyView] = useState<MonthlyRosterView | null>(null);
   const [loading, setLoading] = useState(true);
   const [users, setUsers] = useState<UserProfile[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [selectedActivity, setSelectedActivity] = useState<any>(null);
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -42,6 +45,11 @@ export default function ViewSchedulePage() {
 
   // Helper function to get color classes based on task duration
   const getTaskColorClass = (task: RosterEntry): string => {
+    // Check if it's a leave task
+    if (task.taskDetail?.startsWith('OFF:')) {
+      return 'bg-yellow-100 text-yellow-800 border-yellow-400 hover:bg-yellow-200';
+    }
+    
     const color = getTaskColor(task);
     if (color === 'green') return 'bg-emerald-100 text-emerald-800 border-emerald-400 hover:bg-emerald-200';
     if (color === 'yellow') return 'bg-amber-100 text-amber-800 border-amber-400 hover:bg-amber-200';
@@ -50,6 +58,11 @@ export default function ViewSchedulePage() {
 
   // Helper function to get Excel cell color classes
   const getExcelCellColorClass = (task: RosterEntry): string => {
+    // Check if it's a leave task
+    if (task.taskDetail?.startsWith('OFF:')) {
+      return 'bg-yellow-400 hover:bg-yellow-500';
+    }
+    
     const color = getTaskColor(task);
     if (color === 'green') return 'bg-emerald-400 hover:bg-emerald-500';
     if (color === 'yellow') return 'bg-amber-400 hover:bg-amber-500';
@@ -93,6 +106,63 @@ export default function ViewSchedulePage() {
 
         // Load monthly roster view
         const view = await rosterService.getMonthlyRosterView(currentMonth, currentYear);
+        
+        // Load all approved leave requests for the month
+        const allLeaves = await leaveService.getLeaveRequests();
+        const approvedLeaves = allLeaves.filter(leave => leave.status === 'approved');
+        setLeaveRequests(approvedLeaves);
+        
+        // Integrate leaves into the monthly view
+        if (view && approvedLeaves.length > 0) {
+          approvedLeaves.forEach(leave => {
+            if (!leave.startDate || !leave.endDate) return;
+
+            const startDate = leave.startDate instanceof Date
+              ? leave.startDate
+              : (leave.startDate as any).toDate ? (leave.startDate as any).toDate() : new Date((leave.startDate as any).seconds * 1000);
+
+            const endDate = leave.endDate instanceof Date
+              ? leave.endDate
+              : (leave.endDate as any).toDate ? (leave.endDate as any).toDate() : new Date((leave.endDate as any).seconds * 1000);
+
+            // Calculate which days of the month this leave spans
+            const leaveStartDay = startDate.getUTCMonth() + 1 === currentMonth && startDate.getUTCFullYear() === currentYear
+              ? startDate.getUTCDate()
+              : 1;
+            
+            const leaveEndDay = endDate.getUTCMonth() + 1 === currentMonth && endDate.getUTCFullYear() === currentYear
+              ? endDate.getUTCDate()
+              : getDaysInMonth(currentMonth, currentYear);
+
+            // Find or create employee entry
+            let employeeData = view.employees.find(e => e.userId === leave.employeeId);
+            if (!employeeData) {
+              const user = usersData.find(u => u.id === leave.employeeId);
+              if (user) {
+                employeeData = {
+                  userId: leave.employeeId,
+                  userName: user.name,
+                  activities: []
+                };
+                view.employees.push(employeeData);
+              }
+            }
+
+            // Add leave as an activity
+            if (employeeData) {
+              employeeData.activities.push({
+                id: `leave-${leave.id}-${leaveStartDay}`,
+                startDay: leaveStartDay,
+                endDay: leaveEndDay,
+                taskType: 'single',
+                taskDetail: `OFF: ${leave.leaveTypeName}`,
+                startDate: startDate,
+                endDate: endDate,
+              });
+            }
+          });
+        }
+        
         setMonthlyView(view);
       } else {
         // Load only user's own entries
@@ -181,7 +251,43 @@ export default function ViewSchedulePage() {
       setSelectedUser(user);
       // Load user's calendar entries for the current month
       const entries = await rosterService.getUserCalendarEvents(user.id, currentMonth, currentYear);
-      setUserCalendarEntries(entries);
+      
+      // Load user's approved leaves
+      const userLeaves = leaveRequests.filter(leave => leave.employeeId === user.id);
+      
+      // Add leaves to entries
+      const leaveEntries: RosterEntry[] = [];
+      userLeaves.forEach(leave => {
+        if (!leave.startDate || !leave.endDate) return;
+
+        const startDate = leave.startDate instanceof Date
+          ? leave.startDate
+          : (leave.startDate as any).toDate ? (leave.startDate as any).toDate() : new Date((leave.startDate as any).seconds * 1000);
+
+        const endDate = leave.endDate instanceof Date
+          ? leave.endDate
+          : (leave.endDate as any).toDate ? (leave.endDate as any).toDate() : new Date((leave.endDate as any).seconds * 1000);
+
+        const current = new Date(startDate);
+        while (current <= endDate) {
+          // Only add if it's in the current month
+          if (current.getMonth() + 1 === currentMonth && current.getFullYear() === currentYear) {
+            leaveEntries.push({
+              id: `leave-${leave.id}-${current.getTime()}`,
+              taskType: 'single',
+              userId: user.id,
+              userName: user.name,
+              taskDetail: `OFF: ${leave.leaveTypeName}`,
+              timeStart: new Date(current),
+              timeEnd: new Date(current),
+              createdBy: user.id,
+            } as RosterEntry);
+          }
+          current.setDate(current.getDate() + 1);
+        }
+      });
+      
+      setUserCalendarEntries([...entries, ...leaveEntries]);
       setShowUserCalendarModal(true);
       openModal(); // Open modal context to hide header
     } catch (error) {
@@ -442,7 +548,7 @@ export default function ViewSchedulePage() {
                     title="Click to view full calendar"
                     style={{ width: '150px', minWidth: '150px', height: '40px' }}
                   >
-                    <div className="truncate">{user.name}</div>
+                    <div className="truncate">{user.name?.trim() || user.name}</div>
                   </td>
                   {days.map(day => {
                     // Find activities that span this day

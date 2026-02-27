@@ -20,21 +20,21 @@ export const NAV_DATA = [
       {
         title: "Compliance",
         url: "/calendar",
-        icon: Icons.Calendar,
+        icon: Icons.ComplianceIcon,
         items: [],
         hideOnMobile: true, // Hide on mobile view
       },
       {
         title: "Categories",
         url: "/categories",
-        icon: Icons.Table,
+        icon: Icons.CategoriesIcon,
         items: [],
         hideOnMobile: true, // Hide on mobile view
       },
       {
         title: "Kanban",
         url: "/kanban",
-        icon: Icons.Table,
+        icon: Icons.KanbanIcon,
         items: [],
         hideOnMobile: true, // Hide on mobile view
       },
@@ -54,7 +54,7 @@ export const NAV_DATA = [
       {
         title: "Clients",
         url: "/clients",
-        icon: Icons.User,
+        icon: Icons.ClientsIcon,
         items: [],
         hideOnMobile: true, // Hide on mobile view
       },
@@ -73,7 +73,7 @@ export const NAV_DATA = [
       {
         title: "Teams",
         url: "/teams",
-        icon: Icons.User,
+        icon: Icons.TeamsIcon,
         items: [],
         requiresRole: ['admin', 'manager'], // Only managers and admins can see this
       },
@@ -102,13 +102,13 @@ export const NAV_DATA = [
       {
         title: "Apply Leave",
         url: "/attendance?openLeaveModal=true",
-        icon: Icons.Calendar,
+        icon: Icons.LeaveIcon,
         items: [],
       },
       {
         title: "View Roster",
         url: "/roster/view-schedule",
-        icon: Icons.Calendar,
+        icon: Icons.RosterIcon,
         items: [],
         requiresRole: ['admin', 'manager'], // Only managers and admins can see this
       },
@@ -140,7 +140,7 @@ export const NAV_DATA = [
       {
         title: "Attendance Sheet",
         url: "/admin/attendance-roster",
-        icon: Icons.Calendar,
+        icon: Icons.AttendanceSheetIcon,
         items: [],
         requiresRole: ['admin'], // Only admins can view full attendance roster
       },

@@ -94,10 +94,13 @@ export async function GET(request: NextRequest) {
     console.log(`[Recurring Tasks API] Is Calendar View: ${isCalendarView}`);
 
     // Filter tasks based on user role
-    // Admin sees all tasks
+    // Admin sees all recurring tasks (created by any admin)
     // Managers see only tasks they created or tasks assigned to their team members
     // Employees see only their assigned tasks
-    if (userRole === 'manager') {
+    if (userRole === 'admin') {
+      // Admins see all recurring tasks
+      console.log(`Admin ${userId} viewing all recurring tasks:`, tasks.length);
+    } else if (userRole === 'manager') {
       // Managers see tasks they created OR tasks assigned to their managed employees
       const { adminDb } = await import('@/lib/firebase-admin');
       

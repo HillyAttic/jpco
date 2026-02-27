@@ -303,8 +303,8 @@ export const rosterService = {
           activityName: entry.activityName,
           startDate: entry.startDate,
           endDate: entry.endDate,
-          startDay: displayStart.getDate(),
-          endDay: displayEnd.getDate(),
+          startDay: displayStart.getUTCDate(),
+          endDay: displayEnd.getUTCDate(),
           notes: entry.notes,
         });
       } else if (entry.taskType === 'single' && entry.timeStart && entry.timeEnd) {
@@ -318,8 +318,8 @@ export const rosterService = {
           taskDetail: entry.taskDetail,
           startDate: entry.timeStart,
           endDate: entry.timeEnd,
-          startDay: taskStart.getDate(),
-          endDay: taskEnd.getDate(),
+          startDay: taskStart.getUTCDate(),
+          endDay: taskEnd.getUTCDate(),
         });
       }
     });

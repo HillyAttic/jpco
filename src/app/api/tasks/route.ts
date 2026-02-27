@@ -54,7 +54,39 @@ export async function GET(request: NextRequest) {
     let tasks = await nonRecurringTaskAdminService.getAll(filters);
 
     // Filter tasks based on user role
-    if (!isAdminOrManager) {
+    if (userRole === 'admin') {
+      // Admins only see tasks they created
+      tasks = tasks.filter(task => task.createdBy === userId);
+      console.log(`Admin ${userId} filtered tasks (created by them):`, tasks.length);
+    } else if (userRole === 'manager') {
+      // Managers see tasks they created OR tasks assigned to their managed employees
+      const { adminDb } = await import('@/lib/firebase-admin');
+      
+      // Get employees managed by this manager
+      const hierarchySnapshot = await adminDb
+        .collection('manager-hierarchies')
+        .where('managerId', '==', userId)
+        .limit(1)
+        .get();
+      
+      const managedEmployeeIds = new Set<string>();
+      if (!hierarchySnapshot.empty) {
+        const hierarchy = hierarchySnapshot.docs[0].data();
+        (hierarchy.employeeIds || []).forEach((id: string) => managedEmployeeIds.add(id));
+      }
+      
+      // Filter tasks: created by manager OR assigned to managed employees
+      tasks = tasks.filter(task => {
+        const isCreatedByManager = task.createdBy === userId;
+        const isAssignedToManagedEmployee = task.assignedTo && 
+          Array.isArray(task.assignedTo) &&
+          task.assignedTo.some(assigneeId => managedEmployeeIds.has(assigneeId));
+        
+        return isCreatedByManager || isAssignedToManagedEmployee;
+      });
+      
+      console.log(`Manager ${userId} filtered tasks:`, tasks.length);
+    } else {
       // Employees only see tasks assigned to them
       tasks = tasks.filter(task => {
         // Check if task has assignedTo array and if it includes the user's ID
@@ -65,8 +97,6 @@ export async function GET(request: NextRequest) {
       });
 
       console.log(`Employee ${userId} filtered tasks:`, tasks.length);
-    } else {
-      console.log(`Admin/Manager ${userId} viewing all tasks:`, tasks.length);
     }
 
     return NextResponse.json(tasks, { status: 200 });

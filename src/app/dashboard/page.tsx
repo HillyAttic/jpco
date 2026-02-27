@@ -468,6 +468,7 @@ export default function DashboardPage() {
               e.stopPropagation();
               setSelectedTaskForClients(task);
               setShowClientListModal(true);
+              openModal(); // Hide header when modal opens
             }}
             className="px-3 py-1.5 text-xs font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
           >
@@ -483,6 +484,7 @@ export default function DashboardPage() {
               e.stopPropagation();
               setSelectedTaskForTeam(task);
               setShowTeamMembersModal(true);
+              openModal(); // Hide header when modal opens
             }}
             className="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
           >
@@ -498,6 +500,7 @@ export default function DashboardPage() {
               e.stopPropagation();
               setSelectedTaskForPlanning(task);
               setShowPlanTaskModal(true);
+              openModal(); // Hide header when modal opens
             }}
             className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
           >
@@ -634,7 +637,10 @@ export default function DashboardPage() {
 
         {/* Quick Actions */}
         <QuickActions 
-          onCreateTask={() => setShowTaskTypeDialog(true)}
+          onCreateTask={() => {
+            setShowTaskTypeDialog(true);
+            openModal(); // Hide header when modal opens
+          }}
           onViewTeam={() => router.push('/users')}
           onManageProjects={() => router.push('/categories')}
           onViewRoster={() => router.push('/roster')}
@@ -698,7 +704,10 @@ export default function DashboardPage() {
       {showTaskTypeDialog && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowTaskTypeDialog(false)}
+          onClick={() => {
+            setShowTaskTypeDialog(false);
+            closeModal(); // Close modal context to show header
+          }}
         >
           <div 
             className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-md w-full p-6"
@@ -711,6 +720,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => {
                   setShowTaskTypeDialog(false);
+                  closeModal(); // Close modal context to show header
                   router.push('/tasks/non-recurring');
                 }}
                 className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-blue-500 transition-all text-left"
@@ -721,6 +731,7 @@ export default function DashboardPage() {
               <button
                 onClick={() => {
                   setShowTaskTypeDialog(false);
+                  closeModal(); // Close modal context to show header
                   router.push('/tasks/recurring');
                 }}
                 className="w-full p-4 border-2 border-gray-200 rounded-lg hover:border-green-500 transition-all text-left"
@@ -1372,6 +1383,7 @@ export default function DashboardPage() {
           onClose={() => {
             setShowPlanTaskModal(false);
             setSelectedTaskForPlanning(null);
+            closeModal(); // Close modal context to show header
           }}
           assignedClientIds={
             selectedTaskForPlanning.teamMemberMappings
@@ -1392,6 +1404,7 @@ export default function DashboardPage() {
           onClose={() => {
             setShowClientListModal(false);
             setSelectedTaskForClients(null);
+            closeModal(); // Close modal context to show header
           }}
           taskTitle={selectedTaskForClients.title}
           clientIds={
@@ -1415,6 +1428,7 @@ export default function DashboardPage() {
           onClose={() => {
             setShowTeamMembersModal(false);
             setSelectedTaskForTeam(null);
+            closeModal(); // Close modal context to show header
           }}
           taskTitle={selectedTaskForTeam.title}
           teamMembers={selectedTaskForTeam.teamMemberMappings || []}

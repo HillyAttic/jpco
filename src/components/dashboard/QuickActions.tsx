@@ -10,8 +10,15 @@ import {
   Cog6ToothIcon,
   CalendarDaysIcon,
   ClipboardDocumentCheckIcon,
-  ClockIcon
+  ClockIcon,
+  MapPinIcon,
+  CheckCircleIcon,
+  CalendarIcon,
+  Squares2X2Icon,
+  BuildingOfficeIcon,
+  UsersIcon
 } from '@heroicons/react/24/outline';
+import { useRouter } from 'next/navigation';
 
 interface QuickActionsProps {
   onCreateTask?: () => void;
@@ -34,6 +41,8 @@ export function QuickActions({
   onViewAttendance,
   isAdminOrManager = false,
 }: QuickActionsProps) {
+  const router = useRouter();
+  
   // Only show Quick Actions to admin/manager roles
   if (!isAdminOrManager) {
     return null;
@@ -59,9 +68,9 @@ export function QuickActions({
       color: 'bg-indigo-600 hover:bg-indigo-700'
     },
     {
-      label: 'Roster',
+      label: 'View Roster',
       icon: <CalendarDaysIcon className="w-5 h-5" />,
-      onClick: onViewRoster,
+      onClick: () => router.push('/roster/view-schedule'),
       color: 'bg-teal-600 hover:bg-teal-700'
     },
     {
@@ -71,10 +80,46 @@ export function QuickActions({
       color: 'bg-cyan-600 hover:bg-cyan-700'
     },
     {
-      label: 'Attendance',
+      label: 'Attendance Sheet',
       icon: <ClockIcon className="w-5 h-5" />,
-      onClick: onViewAttendance,
+      onClick: () => router.push('/admin/attendance-roster'),
       color: 'bg-pink-600 hover:bg-pink-700'
+    },
+    {
+      label: 'Client Visits',
+      icon: <MapPinIcon className="w-5 h-5" />,
+      onClick: () => router.push('/admin/client-visits'),
+      color: 'bg-purple-600 hover:bg-purple-700'
+    },
+    {
+      label: 'Leave Approvals',
+      icon: <CheckCircleIcon className="w-5 h-5" />,
+      onClick: () => router.push('/admin/leave-approvals'),
+      color: 'bg-orange-600 hover:bg-orange-700'
+    },
+    {
+      label: 'Compliance',
+      icon: <CalendarIcon className="w-5 h-5" />,
+      onClick: () => router.push('/calendar'),
+      color: 'bg-red-600 hover:bg-red-700'
+    },
+    {
+      label: 'Kanban',
+      icon: <Squares2X2Icon className="w-5 h-5" />,
+      onClick: () => router.push('/kanban'),
+      color: 'bg-yellow-600 hover:bg-yellow-700'
+    },
+    {
+      label: 'Clients',
+      icon: <BuildingOfficeIcon className="w-5 h-5" />,
+      onClick: () => router.push('/clients'),
+      color: 'bg-emerald-600 hover:bg-emerald-700'
+    },
+    {
+      label: 'Employees',
+      icon: <UsersIcon className="w-5 h-5" />,
+      onClick: () => router.push('/employees'),
+      color: 'bg-violet-600 hover:bg-violet-700'
     }
   ];
 

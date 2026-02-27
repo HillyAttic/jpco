@@ -23,18 +23,29 @@ export function Sidebar() {
     setExpandedItems((prev) => (prev.includes(title) ? [] : [title]));
   };
 
+  // Auto-close sidebar on mobile when route changes
+  useEffect(() => {
+    if (isMobile && isOpen) {
+      setIsOpen(false);
+    }
+  }, [pathname, isMobile]);
+
   useEffect(() => {
     // Keep collapsible open when its subpage is active
     NAV_DATA.some((section) => {
       return section.items.some((item) => {
-        return item.items.some((subItem) => {
-          if (subItem.url === pathname) {
-            if (!expandedItems.includes(item.title)) {
-              toggleExpanded(item.title);
+        if (item.items && item.items.length > 0) {
+          return item.items.some((subItem: any) => {
+            if (subItem.url === pathname) {
+              if (!expandedItems.includes(item.title)) {
+                toggleExpanded(item.title);
+              }
+              return true;
             }
-            return true;
-          }
-        });
+            return false;
+          });
+        }
+        return false;
       });
     });
   }, [pathname]);
@@ -70,7 +81,7 @@ export function Sidebar() {
   };
 
   const getSidebarClasses = () => {
-    const baseClasses = "overflow-hidden border-r border-gray-200 bg-white transition-all duration-300 ease-in-out dark:border-gray-800 dark:bg-gray-dark";
+    const baseClasses = "overflow-hidden border-r border-gray-200 bg-white transition-all duration-200 ease-in-out dark:border-gray-800 dark:bg-gray-dark";
     
     if (variant === 'mobile') {
       return cn(
@@ -150,9 +161,25 @@ export function Sidebar() {
             )}
           </div>
 
+          {/* Logo */}
+          <div className="px-3.5" style={{ marginBottom: '-1rem' }}>
+            <img 
+              src="/images/go.png" 
+              alt="Logo" 
+              className="h-auto w-full dark:hidden"
+              style={{ maxWidth: '167px' }}
+            />
+            <img 
+              src="/images/go dark.png" 
+              alt="Logo" 
+              className="h-auto w-full hidden dark:block"
+              style={{ maxWidth: '167px' }}
+            />
+          </div>
+
           {/* Navigation */}
           <div className={cn(
-            "custom-scrollbar mt-6 flex-1 overflow-y-auto pr-3",
+            "mt-6 flex-1 overflow-y-auto pr-3 scrollbar-hide",
             "md:mt-10"
           )}>
             {NAV_DATA.map((section) => {
@@ -186,7 +213,7 @@ export function Sidebar() {
 
                 <nav role="navigation" aria-label={section.label}>
                   <ul className="space-y-2">
-                    {visibleItems.map((item) => {
+                    {visibleItems.map((item: any) => {
                         // Filter subitems based on role requirements
                         const filteredSubItems = item.items.filter((subItem: any) => {
                           if (subItem.requiresRole) {
@@ -201,7 +228,7 @@ export function Sidebar() {
                               <div>
                                 <MenuItem
                                   isActive={filteredSubItems.some(
-                                    ({ url }) => url === pathname,
+                                    ({ url }: any) => url === pathname,
                                   )}
                                   onClick={() => toggleExpanded(item.title)}
                                   className={cn(
@@ -237,7 +264,7 @@ export function Sidebar() {
                               {/* Submenu */}
                               {expandedItems.includes(item.title) && (variant !== 'tablet' || isOpen) && (
                                 <ul className="ml-9 mr-0 space-y-1.5 pb-[15px] pr-0 pt-2" role="menu">
-                                  {filteredSubItems.map((subItem) => (
+                                  {filteredSubItems.map((subItem: any) => (
                                     <li key={subItem.title} role="none">
                                       <MenuItem
                                         as="link"

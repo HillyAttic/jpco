@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { useModal } from '@/contexts/modal-context';
 import { rosterService, getTaskColor } from '@/services/roster.service';
 import { clientService, Client } from '@/services/client.service';
+import { leaveService } from '@/services/leave.service';
+import { LeaveRequest } from '@/types/attendance.types';
 import { RosterEntry, MONTHS, getDaysInMonth, TaskType } from '@/types/roster.types';
 import { Button } from '@/components/ui/button';
 import { PlusCircleIcon, TrashIcon, PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
@@ -24,6 +26,7 @@ export default function UpdateSchedulePage() {
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth() + 1);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const [entries, setEntries] = useState<RosterEntry[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -56,6 +59,7 @@ export default function UpdateSchedulePage() {
     if (user) {
       loadRosterEntries();
       loadClients();
+      loadLeaveRequests();
     }
   }, [user, currentMonth, currentYear]);
 
@@ -79,6 +83,21 @@ export default function UpdateSchedulePage() {
       setClients(data);
     } catch (error) {
       console.error('Error loading clients:', error);
+    }
+  };
+
+  const loadLeaveRequests = async () => {
+    if (!user) return;
+
+    try {
+      const allLeaves = await leaveService.getLeaveRequests({
+        employeeId: user.uid,
+      });
+      // Filter for approved leaves only
+      const approvedLeaves = allLeaves.filter(leave => leave.status === 'approved');
+      setLeaveRequests(approvedLeaves);
+    } catch (error) {
+      console.error('Error loading leave requests:', error);
     }
   };
 
@@ -138,6 +157,58 @@ export default function UpdateSchedulePage() {
           return date.getTime() === taskStart.getTime();
         }
       });
+
+      // Check if there's a leave on this day
+      const hasLeave = leaveRequests.some(leave => {
+        if (!leave.startDate || !leave.endDate) return false;
+
+        const startDate = leave.startDate instanceof Date
+          ? leave.startDate
+          : (leave.startDate as any).toDate ? (leave.startDate as any).toDate() : new Date((leave.startDate as any).seconds * 1000);
+
+        const endDate = leave.endDate instanceof Date
+          ? leave.endDate
+          : (leave.endDate as any).toDate ? (leave.endDate as any).toDate() : new Date((leave.endDate as any).seconds * 1000);
+
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(0, 0, 0, 0);
+
+        return date >= startDate && date <= endDate;
+      });
+
+      // Add leave indicator to tasks if there's a leave
+      if (hasLeave) {
+        const leaveOnDay = leaveRequests.find(leave => {
+          if (!leave.startDate || !leave.endDate) return false;
+
+          const startDate = leave.startDate instanceof Date
+            ? leave.startDate
+            : (leave.startDate as any).toDate ? (leave.startDate as any).toDate() : new Date((leave.startDate as any).seconds * 1000);
+
+          const endDate = leave.endDate instanceof Date
+            ? leave.endDate
+            : (leave.endDate as any).toDate ? (leave.endDate as any).toDate() : new Date((leave.endDate as any).seconds * 1000);
+
+          startDate.setHours(0, 0, 0, 0);
+          endDate.setHours(0, 0, 0, 0);
+
+          return date >= startDate && date <= endDate;
+        });
+
+        if (leaveOnDay) {
+          // Create a pseudo-task for the leave
+          dayTasks.push({
+            id: `leave-${leaveOnDay.id}-${date.getTime()}`,
+            taskType: 'single',
+            userId: user!.uid,
+            userName: userProfile?.displayName || userProfile?.email || 'Unknown',
+            taskDetail: `OFF: ${leaveOnDay.leaveTypeName}`,
+            timeStart: date,
+            timeEnd: date,
+            createdBy: user!.uid,
+          } as RosterEntry);
+        }
+      }
 
       days.push({
         date,
@@ -356,6 +427,11 @@ export default function UpdateSchedulePage() {
   };
 
   const getTaskColorClass = (task: RosterEntry): string => {
+    // Check if it's a leave task
+    if (task.taskDetail?.startsWith('OFF:')) {
+      return 'bg-yellow-100 text-yellow-800 border-yellow-300';
+    }
+    
     const color = getTaskColor(task);
     if (color === 'green') return 'bg-green-100 text-green-800 border-green-300';
     if (color === 'yellow') return 'bg-yellow-100 text-yellow-800 border-yellow-300';
@@ -473,11 +549,16 @@ export default function UpdateSchedulePage() {
                 {calDay.tasks.slice(0, 3).map(task => (
                   <div
                     key={task.id}
-                    className={`text-xs px-1 py-0.5 rounded truncate border ${getTaskColorClass(task)}`}
+                    className={`text-xs px-1 py-0.5 rounded truncate border ${getTaskColorClass(task)} ${
+                      task.taskDetail?.startsWith('OFF:') ? 'cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'
+                    }`}
                     title={task.taskType === 'multi' ? task.activityName : (task.clientName || task.taskDetail)}
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleEditTask(task);
+                      // Don't allow editing leave tasks
+                      if (!task.taskDetail?.startsWith('OFF:')) {
+                        handleEditTask(task);
+                      }
                     }}
                   >
                     {task.taskType === 'multi' ? task.activityName : (task.clientName || task.taskDetail)}
@@ -497,29 +578,29 @@ export default function UpdateSchedulePage() {
       {/* Task Form Modal */}
       {showModal && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4"
           onClick={handleCloseModal}
         >
           <div
-            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl w-full max-w-md mx-auto p-4 sm:p-6 max-h-[95vh] sm:max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4">
               {editingEntry ? 'Edit Task' : 'Add Task'}
             </h3>
 
             {/* Task Type Selector (only for new tasks) */}
             {!editingEntry && (
-              <div className="mb-4">
+              <div className="mb-3 sm:mb-4">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Task Type</label>
                 <div className="flex gap-2">
                   <button
                     type="button"
                     onClick={() => setTaskType('single')}
-                    className={`flex-1 py-2 px-4 rounded-lg border ${
+                    className={`flex-1 py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg border ${
                       taskType === 'single'
                         ? 'bg-blue-600 text-white border-blue-600'
-                        : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                     }`}
                   >
                     Client Task
@@ -527,16 +608,17 @@ export default function UpdateSchedulePage() {
                   <button
                     type="button"
                     disabled
-                    className="flex-1 py-2 px-4 rounded-lg border bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-300 dark:border-gray-600 cursor-not-allowed opacity-60"
+                    className="flex-1 py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg border bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-300 dark:border-gray-600 cursor-not-allowed opacity-60"
                     title="Activity tasks are currently disabled"
                   >
-                    Activity (Coming Soon)
+                    <span className="hidden sm:inline">Activity (Coming Soon)</span>
+                    <span className="sm:hidden">Activity</span>
                   </button>
                 </div>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
               {taskType === 'multi' ? (
                 <>
                   <div>
@@ -661,15 +743,15 @@ export default function UpdateSchedulePage() {
                 </>
               )}
 
-              <div className="flex gap-3 pt-2">
-                <Button type="submit" className="flex-1 text-white">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 pt-2">
+                <Button type="submit" className="w-full sm:flex-1 text-white min-h-[44px] sm:min-h-[40px]">
                   {editingEntry ? 'Update' : 'Create'}
                 </Button>
                 <Button
                   type="button"
                   onClick={handleCloseModal}
                   variant="outline"
-                  className="flex-1"
+                  className="w-full sm:flex-1 min-h-[44px] sm:min-h-[40px]"
                 >
                   Cancel
                 </Button>

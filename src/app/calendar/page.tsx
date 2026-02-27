@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
-import { leaveService } from '@/services/leave.service';
-import { LeaveRequest } from '@/types/attendance.types';
 import { calculateAllOccurrences } from '@/utils/recurrence-scheduler';
 import { CalendarView } from '@/components/calendar-view';
 import { Button } from '@/components/ui/button';
@@ -13,13 +11,11 @@ import { PlusCircleIcon } from '@heroicons/react/24/outline';
 import { TaskCreationModal } from '@/components/task-creation-modal';
 import { auth } from '@/lib/firebase';
 
-// Extended task type to include recurring task occurrences and leave requests
+// Extended task type to include recurring task occurrences
 interface CalendarTask extends Task {
   isRecurring?: boolean;
   recurringTaskId?: string;
   recurrencePattern?: string;
-  isLeave?: boolean;
-  leaveId?: string;
 }
 
 export default function CalendarPage() {
@@ -28,7 +24,6 @@ export default function CalendarPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [nonRecurringTasks, setNonRecurringTasks] = useState<Task[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
 
   useEffect(() => {
     loadTasks();
@@ -114,68 +109,15 @@ export default function CalendarPage() {
     return calendarTasks;
   }, []);
 
-  /**
-   * Generate calendar tasks for leave requests
-   */
-  const generateLeaveOccurrences = React.useCallback((leaves: LeaveRequest[]): CalendarTask[] => {
-    const leaveTasks: CalendarTask[] = [];
-
-    leaves.forEach(leave => {
-      if (!leave.startDate || !leave.endDate) return;
-
-      // Convert timestamps to Date objects if needed
-      const startDate = leave.startDate instanceof Date
-        ? leave.startDate
-        : (leave.startDate as any).toDate ? (leave.startDate as any).toDate() : new Date((leave.startDate as any).seconds * 1000);
-
-      const endDate = leave.endDate instanceof Date
-        ? leave.endDate
-        : (leave.endDate as any).toDate ? (leave.endDate as any).toDate() : new Date((leave.endDate as any).seconds * 1000);
-
-      const current = new Date(startDate);
-
-      // Loop through each day of the leave
-      while (current <= endDate) {
-        leaveTasks.push({
-          id: `leave-${leave.id}-${current.getTime()}`,
-          title: `OFF: ${leave.leaveTypeName}`, // Display as 'OFF: Sick Leave' etc.
-          description: leave.reason,
-          dueDate: new Date(current), // Create a new Date instance
-          priority: TaskPriority.MEDIUM,
-          status: TaskStatus.COMPLETED, // Mark as completed to signify it's a done deal or blocked time
-          assignedTo: [leave.employeeId],
-          category: 'Leave',
-          createdAt: leave.createdAt instanceof Date ? leave.createdAt : new Date(),
-          updatedAt: leave.updatedAt instanceof Date ? leave.updatedAt : new Date(),
-          isLeave: true,
-          leaveId: leave.id
-        });
-
-        // Increment day
-        current.setDate(current.getDate() + 1);
-      }
-    });
-
-    return leaveTasks;
-  }, []);
-
   // Memoize the generation of recurring task occurrences to avoid recalculation
   const recurringCalendarTasks = React.useMemo(() => {
     return generateRecurringTaskOccurrences(recurringTasks);
   }, [recurringTasks, generateRecurringTaskOccurrences]);
 
-  // Memoize leave tasks
-  const leaveCalendarTasks = React.useMemo(() => {
-    return generateLeaveOccurrences(leaveRequests);
-  }, [leaveRequests, generateLeaveOccurrences]);
-
-  // Memoize the combined tasks array - exclude non-recurring tasks
+  // Memoize the combined tasks array - exclude non-recurring tasks and leaves
   const allTasks = React.useMemo(() => {
-    return [
-      ...recurringCalendarTasks,
-      ...leaveCalendarTasks
-    ];
-  }, [recurringCalendarTasks, leaveCalendarTasks]);
+    return recurringCalendarTasks;
+  }, [recurringCalendarTasks]);
 
   // Update tasks when allTasks changes
   useEffect(() => {
@@ -215,25 +157,14 @@ export default function CalendarPage() {
         return await recurringResponse.json();
       };
 
-      const fetchLeaves = async () => {
-        if (!currentUser) return [];
-        // Fetch all leave requests and filter for approved ones
-        const allLeaves = await leaveService.getLeaveRequests({
-          employeeId: currentUser.uid,
-        });
-        return allLeaves.filter(leave => leave.status === 'approved');
-      };
-
-      const [nonRecurringTasksData, recurringTasksData, leaveRequestsData] = await Promise.all([
+      const [nonRecurringTasksData, recurringTasksData] = await Promise.all([
         taskApi.getTasks().catch(e => { console.error(e); return []; }),
-        fetchRecurring().catch(e => { console.error(e); return []; }),
-        fetchLeaves().catch(e => { console.error(e); return []; })
+        fetchRecurring().catch(e => { console.error(e); return []; })
       ]);
 
       // Store in separate state to enable memoization
       setNonRecurringTasks(nonRecurringTasksData);
       setRecurringTasks(recurringTasksData);
-      setLeaveRequests(leaveRequestsData);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -258,8 +189,8 @@ export default function CalendarPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Calendar</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">View your tasks and leave schedule</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Compliance Calendar</h1>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">View your recurring compliance tasks</p>
         </div>
         <div className="flex gap-2">
           <Button onClick={() => setShowCreateModal(true)} className="text-white">

@@ -162,8 +162,22 @@ export function TaskList({ tasks, onTaskClick, showStatus = true }: TaskListProp
                           {getUserName(task.createdBy).charAt(0).toUpperCase()}
                         </span>
                       </div>
-                      <span className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 dark:text-gray-400 mr-1">Assigned by:</span>
+                      <span className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 mr-1">Assigned by:</span>
                       <span className="truncate max-w-[120px] md:max-w-none">{getUserName(task.createdBy)}</span>
+                    </div>
+                  )}
+                  
+                  {task.assignedTo && task.assignedTo.length > 0 && (
+                    <div className="flex items-center">
+                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-full bg-blue-300 dark:bg-blue-600 flex items-center justify-center mr-1.5 md:mr-2 flex-shrink-0">
+                        <span className="text-[10px] md:text-xs font-medium text-blue-700 dark:text-blue-200">
+                          {getUserName(task.assignedTo[0]).charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <span className="text-[10px] md:text-xs text-gray-400 dark:text-gray-500 mr-1">Assigned to:</span>
+                      <span className="truncate max-w-[120px] md:max-w-none">
+                        {task.assignedTo.map(userId => getUserName(userId)).join(', ')}
+                      </span>
                     </div>
                   )}
                   
