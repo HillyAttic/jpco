@@ -16,7 +16,7 @@ import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ManagerGuard } from '@/components/Auth/PermissionGuard';
+import { AdminGuard } from '@/components/Auth/PermissionGuard';
 
 // Lazy load heavy modals
 const LocationMapModal = dynamic(() => import('@/components/attendance/LocationMapModal').then(mod => ({ default: mod.LocationMapModal })), {
@@ -348,7 +348,7 @@ export default function AttendanceTrayPage() {
   }
 
   return (
-    <ManagerGuard
+    <AdminGuard
       fallback={
         <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
           <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-full">
@@ -356,7 +356,7 @@ export default function AttendanceTrayPage() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Access Restricted</h2>
           <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
-            You don't have permission to access this page. Only managers and administrators can view the attendance tray.
+            You don't have permission to access this page. Only administrators can view the attendance tray.
           </p>
           <Button onClick={() => window.history.back()} variant="outline">
             Go Back
@@ -675,6 +675,6 @@ export default function AttendanceTrayPage() {
         onClose={() => setShowHolidayModal(false)}
       />
     </div>
-  </ManagerGuard>
+  </AdminGuard>
   );
 }
