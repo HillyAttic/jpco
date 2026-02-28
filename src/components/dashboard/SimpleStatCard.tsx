@@ -13,6 +13,7 @@ interface SimpleStatCardProps {
   onClick?: () => void;
   color?: 'blue' | 'green' | 'orange' | 'red' | 'purple';
   subtitle?: string;
+  compact?: boolean;
 }
 
 const colorMap = {
@@ -45,6 +46,7 @@ export function SimpleStatCard({
   onClick,
   color = 'blue',
   subtitle,
+  compact = false,
 }: SimpleStatCardProps) {
   const colors = colorMap[color];
   
@@ -57,6 +59,7 @@ export function SimpleStatCard({
       iconBgColor={colors.iconBgColor}
       iconColor={colors.iconColor}
       onClick={onClick}
+      compact={compact}
     />
   );
 }

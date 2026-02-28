@@ -14,6 +14,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,6 +64,9 @@ export function LeaveRequestModal({
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Request Leave</DialogTitle>
+          <DialogDescription>
+            Submit a leave request by selecting the leave type, dates, and providing a reason.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmitForm)} className="space-y-4">
           <div>

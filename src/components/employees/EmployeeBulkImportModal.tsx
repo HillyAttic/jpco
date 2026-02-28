@@ -41,6 +41,7 @@ export function EmployeeBulkImportModal({
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<ImportResult | null>(null);
   const [previewData, setPreviewData] = useState<any[]>([]);
+  const [importProgress, setImportProgress] = useState<{ current: number; total: number } | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -71,15 +72,30 @@ export function EmployeeBulkImportModal({
       const parsed = parseCSV(text);
       const rows = parsed.data;
 
-      const employees = rows.map((row: any) => ({
-        employeeId: row['Employee ID']?.trim() || '',
-        name: row['Name']?.trim() || '',
-        email: row['Email']?.trim() || '',
-        phone: row['Phone']?.trim() || '',
-        role: row['Role']?.trim() || 'Employee',
-        password: row['Password']?.trim() || '',
-        status: (row['Status']?.trim().toLowerCase() || 'active') as 'active' | 'on-leave',
-      }));
+      const employees = rows.map((row: any) => {
+        let phone = row['Phone']?.trim() || '';
+        
+        // Ensure phone is in E.164 format (starts with +)
+        if (phone && !phone.startsWith('+')) {
+          // If it's a 10-digit number, assume it's Indian (+91)
+          if (/^\d{10}$/.test(phone)) {
+            phone = `+91${phone}`;
+          } else if (/^\d+$/.test(phone)) {
+            // For other digit-only numbers, add + prefix
+            phone = `+${phone}`;
+          }
+        }
+        
+        return {
+          employeeId: row['Employee ID']?.trim() || '',
+          name: row['Name']?.trim() || '',
+          email: row['Email']?.trim() || '',
+          phone: phone,
+          role: row['Role']?.trim() || 'Employee',
+          password: row['Password']?.trim() || '',
+          status: (row['Status']?.trim().toLowerCase() || 'active') as 'active' | 'on-leave',
+        };
+      });
 
       // Check for duplicate Employee IDs within the CSV
       const employeeIds = new Set<string>();
@@ -130,9 +146,9 @@ export function EmployeeBulkImportModal({
           errors.push({ row: rowNum, error: 'Phone is required', data: emp });
           continue;
         }
-        // Validate phone format
-        if (!/^\+?[\d\s\-()]+$/.test(emp.phone)) {
-          errors.push({ row: rowNum, error: 'Invalid phone format (use digits, spaces, +, -, or parentheses only)', data: emp });
+        // Validate phone format (E.164: starts with + followed by digits)
+        if (!/^\+\d{10,15}$/.test(emp.phone)) {
+          errors.push({ row: rowNum, error: 'Invalid phone format. Must be in E.164 format (e.g., +919876543210)', data: emp });
           continue;
         }
         if (!emp.password) {
@@ -153,15 +169,16 @@ export function EmployeeBulkImportModal({
 
       for (let i = 0; i < validEmployees.length; i++) {
         try {
+          setImportProgress({ current: i + 1, total: validEmployees.length });
           console.log(`Importing employee ${i + 1}/${validEmployees.length}:`, validEmployees[i]);
           await onImport([validEmployees[i]]);
           successCount++;
           
           // Add delay between requests to avoid Firebase rate limiting
-          // Wait 2 seconds between each employee creation
+          // Wait 1 second between each employee creation (reduced from 2s)
           if (i < validEmployees.length - 1) {
-            console.log('Waiting 2 seconds before next import...');
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            console.log('Waiting 1 second before next import...');
+            await new Promise(resolve => setTimeout(resolve, 1000));
           }
         } catch (error) {
           const rowNum = employees.indexOf(validEmployees[i]) + 2;
@@ -171,13 +188,19 @@ export function EmployeeBulkImportModal({
           
           if (error instanceof Error) {
             errorMessage = error.message;
-            // Check for specific error types
-            if (errorMessage.includes('already exists') || errorMessage.includes('409')) {
-              errorMessage = `Employee ID '${validEmployees[i].employeeId}' already exists`;
+            
+            // Parse specific error types for better user feedback
+            if (errorMessage.includes('Email already exists') || 
+                (errorMessage.includes('already exists') && errorMessage.toLowerCase().includes('email'))) {
+              errorMessage = `Email '${validEmployees[i].email}' is already registered`;
+            } else if (errorMessage.includes('Employee ID already exists') || 
+                       (errorMessage.includes('already exists') && errorMessage.toLowerCase().includes('employee'))) {
+              errorMessage = `Employee ID '${validEmployees[i].employeeId}' already exists in the system`;
+            } else if (errorMessage === 'Conflict' || errorMessage.includes('409')) {
+              // Generic conflict - try to determine what conflicted
+              errorMessage = `Employee '${validEmployees[i].employeeId}' or email '${validEmployees[i].email}' already exists`;
             } else if (errorMessage.includes('too-many-requests') || errorMessage.includes('429')) {
               errorMessage = 'Rate limit exceeded. Please wait a few minutes and try again.';
-            } else if (errorMessage.includes('Email already exists')) {
-              errorMessage = `Email '${validEmployees[i].email}' already exists`;
             }
           }
           
@@ -200,6 +223,7 @@ export function EmployeeBulkImportModal({
         failed: importErrors.length,
         errors: importErrors,
       });
+      setImportProgress(null);
 
       // If all successful, close modal after a delay
       if (importErrors.length === 0) {
@@ -212,6 +236,7 @@ export function EmployeeBulkImportModal({
       alert('Error importing employees. Please try again.');
     } finally {
       setImporting(false);
+      setImportProgress(null);
     }
   };
 
@@ -219,6 +244,7 @@ export function EmployeeBulkImportModal({
     setFile(null);
     setPreviewData([]);
     setImportResult(null);
+    setImportProgress(null);
     onClose();
   };
 
@@ -286,7 +312,7 @@ export function EmployeeBulkImportModal({
           </div>
 
           {/* Preview Data */}
-          {previewData.length > 0 && !importResult && (
+          {previewData.length > 0 && !importResult && !importing && (
             <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
               <h4 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
                 Preview (First 5 rows)
@@ -314,6 +340,29 @@ export function EmployeeBulkImportModal({
                     ))}
                   </tbody>
                 </table>
+              </div>
+            </div>
+          )}
+
+          {/* Import Progress */}
+          {importing && importProgress && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+              <div className="flex items-center gap-3">
+                <svg className="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-blue-900">
+                    Importing employee {importProgress.current} of {importProgress.total}...
+                  </p>
+                  <div className="w-full bg-blue-200 rounded-full h-2 mt-2">
+                    <div 
+                      className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                      style={{ width: `${(importProgress.current / importProgress.total) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -372,7 +421,9 @@ export function EmployeeBulkImportModal({
                     <li>Role must be: Manager, Admin, or Employee</li>
                     <li>Status must be: active or on-leave</li>
                     <li>Password will be hashed automatically</li>
+                    <li><strong>Phone must be in E.164 format</strong> (e.g., +919876543210 or +15551234567)</li>
                     <li><strong>All Employee IDs must be unique</strong> (duplicates will be rejected)</li>
+                    <li><strong>Emails must be unique</strong> (existing emails will be rejected)</li>
                   </ul>
                 </div>
               </div>
@@ -394,11 +445,22 @@ export function EmployeeBulkImportModal({
               type="button"
               onClick={handleImport}
               disabled={!file || importing}
-              loading={importing}
               className="text-white"
             >
-              <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
-              {importing ? 'Importing...' : 'Import Employees'}
+              {importing ? (
+                <>
+                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Importing...
+                </>
+              ) : (
+                <>
+                  <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
+                  Import Employees
+                </>
+              )}
             </Button>
           )}
         </DialogFooter>

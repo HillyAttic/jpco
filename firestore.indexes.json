@@ -1,239 +1,52 @@
 {
   "indexes": [
     {
-      "collectionGroup": "leave-requests",
+      "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "assignedTo", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "leave-requests",
+      "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "employeeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "createdBy", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "leave-requests",
+      "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "employeeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "leave-requests",
+      "collectionGroup": "tasks",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "leaveType",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "assignedTo", "arrayConfig": "CONTAINS" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "client-visits",
+      "collectionGroup": "recurring-tasks",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "clientId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "visitDate",
-          "order": "DESCENDING"
-        }
+        { "fieldPath": "createdBy", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     },
     {
-      "collectionGroup": "client-visits",
+      "collectionGroup": "recurring-tasks",
       "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "employeeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "visitDate",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "client-visits",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "clientId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "employeeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "visitDate",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "client-visits",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "taskType",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "visitDate",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "manager-hierarchies",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "managerId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "attendance-records",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "employeeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "clockIn",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "attendance-records",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "employeeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "clockIn",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "attendance-records",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "employeeId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "date",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "roster",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "clientId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "taskDate",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "roster",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "clientId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "timeStart",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "roster",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "taskType",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "clientId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "taskDate",
-          "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "my_tasks",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "listId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
       ]
     }
   ],

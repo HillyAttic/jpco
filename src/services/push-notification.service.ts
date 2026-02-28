@@ -69,10 +69,23 @@ class PushNotificationService {
    */
   async sendToUsers(userIds: string[], payload: NotificationPayload): Promise<number> {
     try {
+      // Get the current user's auth token
+      const { getAuthLazy } = await import('@/lib/firebase-optimized');
+      const auth = await getAuthLazy();
+      const currentUser = auth.currentUser;
+      
+      if (!currentUser) {
+        console.error('[Push] No authenticated user found');
+        return 0;
+      }
+
+      const token = await currentUser.getIdToken();
+
       const response = await fetch('/api/notifications/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           userIds,
@@ -83,7 +96,8 @@ class PushNotificationService {
       });
 
       if (!response.ok) {
-        console.error('[Push] Failed to send notifications:', await response.text());
+        const errorText = await response.text();
+        console.error('[Push] Failed to send notifications:', JSON.parse(errorText));
         return 0;
       }
 

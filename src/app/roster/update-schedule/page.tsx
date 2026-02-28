@@ -318,6 +318,8 @@ export default function UpdateSchedulePage() {
 
     try {
       await rosterService.deleteRosterEntry(id);
+      // Update the selectedDateTasks to remove the deleted task immediately
+      setSelectedDateTasks(prev => prev.filter(task => task.id !== id));
       await loadRosterEntries();
     } catch (error) {
       console.error('Error deleting task:', error);
@@ -761,18 +763,19 @@ export default function UpdateSchedulePage() {
             className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full p-6 max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
-                Tasks for {selectedDate.toLocaleDateString('en-US', { 
+            <div className="flex justify-between items-center mb-4 gap-2">
+              <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white flex-1 min-w-0">
+                <span className="block sm:inline">Tasks for </span>
+                <span className="block sm:inline">{selectedDate.toLocaleDateString('en-US', { 
                   weekday: 'long', 
                   year: 'numeric', 
                   month: 'long', 
                   day: 'numeric' 
-                })}
+                })}</span>
               </h3>
               <button
                 onClick={handleCloseTaskTable}
-                className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
+                className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>

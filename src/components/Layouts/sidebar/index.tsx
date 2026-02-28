@@ -128,21 +128,6 @@ export function Sidebar() {
         <div className="flex h-full flex-col py-6 pl-6 pr-2 md:py-10 md:pl-[25px] md:pr-[7px]">
           {/* Header */}
           <div className="relative pr-4.5">
-            {/* Mobile close button */}
-            {isMobile && (
-              <button
-                onClick={toggleSidebar}
-                className={cn(
-                  "absolute right-4.5 top-1/2 -translate-y-1/2",
-                  // Touch-optimized sizing
-                  "min-h-[44px] min-w-[44px] flex items-center justify-center"
-                )}
-                aria-label="Close Menu"
-              >
-                <ArrowLeftIcon className="h-6 w-6" />
-              </button>
-            )}
-            
             {/* Tablet open button - shown when sidebar is closed */}
             {isTablet && !isOpen && (
               <button

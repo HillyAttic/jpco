@@ -219,7 +219,7 @@ export const leaveService = {
         console.log('No leave types found in database, returning defaults...');
         const defaultTypes = [
           {
-            id: 'sick-leave',
+            id: 'sick',
             name: 'Sick Leave',
             code: 'SICK',
             isPaid: true,
@@ -233,7 +233,7 @@ export const leaveService = {
             updatedAt: new Date()
           },
           {
-            id: 'casual-leave',
+            id: 'casual',
             name: 'Casual Leave',
             code: 'CASUAL',
             isPaid: true,
@@ -247,7 +247,7 @@ export const leaveService = {
             updatedAt: new Date()
           },
           {
-            id: 'vacation-leave',
+            id: 'vacation',
             name: 'Vacation Leave',
             code: 'VACATION',
             isPaid: true,

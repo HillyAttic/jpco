@@ -125,7 +125,8 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to create employee');
+          const errorMessage = errorData.error || errorData.message || 'Failed to create employee';
+          throw new Error(errorMessage);
         }
 
         const newEmployee = await response.json();
