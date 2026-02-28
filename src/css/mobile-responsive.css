@@ -157,7 +157,19 @@ body.modal-open header {
 
   /* Reduce vertical spacing in landscape */
   .space-y-6>*+* {
-    margin-top: 0.75rem !important;
+    margin-top: 0rem !important;
+  }
+
+  .space-y-4>*+* {
+    margin-top: 0rem !important;
+  }
+
+  .space-y-3>*+* {
+    margin-top: 0rem !important;
+  }
+
+  .space-y-2>*+* {
+    margin-top: 0rem !important;
   }
 
   /* Optimize header height */
