@@ -560,7 +560,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
+    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
       {/* Stats Cards - Critical, render immediately */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-5 2xl:gap-7.5">
         <SimpleStatCard
@@ -799,7 +799,7 @@ export default function DashboardPage() {
                   No tasks found
                 </p>
               ) : (
-                <div className="space-y-0 md:space-y-3">
+                <div className="space-y-3">
                   {tasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     const now = new Date();
@@ -956,7 +956,7 @@ export default function DashboardPage() {
                   No completed tasks
                 </p>
               ) : (
-                <div className="space-y-0 md:space-y-3">
+                <div className="space-y-3">
                   {completedTasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     
@@ -1034,10 +1034,10 @@ export default function DashboardPage() {
             className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <ClockIcon className="w-6 h-6 text-orange-600" />
+                <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <ClockIcon className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
                   In Progress Tasks ({inProgressTasks.length})
                 </h3>
                 <button
@@ -1059,7 +1059,7 @@ export default function DashboardPage() {
                   No tasks in progress
                 </p>
               ) : (
-                <div className="space-y-0 md:space-y-3">
+                <div className="space-y-3">
                   {inProgressTasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     const now = new Date();
@@ -1155,10 +1155,10 @@ export default function DashboardPage() {
             className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <PlusCircleIcon className="w-6 h-6 text-blue-600" />
+                <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <PlusCircleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
                   To Do Tasks ({todoTasks.length})
                 </h3>
                 <button
@@ -1180,7 +1180,7 @@ export default function DashboardPage() {
                   No pending tasks
                 </p>
               ) : (
-                <div className="space-y-0 md:space-y-3">
+                <div className="space-y-3">
                   {todoTasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     const now = new Date();
@@ -1278,7 +1278,7 @@ export default function DashboardPage() {
               e.stopPropagation();
             }}
           >
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
