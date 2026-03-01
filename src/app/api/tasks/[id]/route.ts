@@ -73,7 +73,8 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 /**
  * PUT /api/tasks/[id]
  * Update a specific task
- * Uses Admin SDK to bypass Firestore security rules
+ * Allows any authenticated user who is assigned to the task to update it
+ * Admins and managers can update any task
  * Validates Requirements: 2.3
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
@@ -85,20 +86,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
     }
-
-    // Check role-based permissions
-    const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
-      return ErrorResponses.forbidden('Only managers and admins can access this resource');
-    }
-
-    console.log('[API /api/tasks/[id]] PUT request received');
-
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
 
     const { id } = await params;
     const body = await request.json();
@@ -125,6 +112,21 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (taskData.assignedTo !== undefined) taskToUpdate.assignedTo = taskData.assignedTo;
     if (taskData.categoryId !== undefined) taskToUpdate.categoryId = taskData.categoryId;
     if (taskData.contactId !== undefined) taskToUpdate.contactId = taskData.contactId ?? undefined;
+
+    // Check if user is assigned to the task or has admin/manager role
+    const userRole = authResult.user.claims.role;
+    const isAuthorized = userRole === 'admin' || userRole === 'manager';
+
+    if (!isAuthorized) {
+      // Get the current task to check if user is assigned
+      const currentTask = await nonRecurringTaskAdminService.getById(id);
+
+      if (!currentTask || !currentTask.assignedTo?.includes(authResult.user.uid)) {
+        return ErrorResponses.forbidden('You must be assigned to this task to update it');
+      }
+    }
+
+    console.log('[API /api/tasks/[id]] PUT request received');
 
     const updatedTask = await nonRecurringTaskAdminService.update(id, taskToUpdate);
 

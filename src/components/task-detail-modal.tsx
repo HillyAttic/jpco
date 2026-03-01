@@ -42,6 +42,8 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
 
   // Check if current user is the task creator
   const isTaskCreator = task?.createdBy === user?.uid;
+  // Check if current user is assigned to the task
+  const isTaskAssigned = task?.assignedTo?.includes(user?.uid || '') || false;
 
   // Fetch user names
   useEffect(() => {
@@ -116,6 +118,13 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
 
     setLoading(true);
     try {
+      // Check if user is assigned to the task
+      if (!isTaskAssigned) {
+        console.error('User is not assigned to this task');
+        setLoading(false);
+        return;
+      }
+
       // Serialize dueDate properly - handle Date objects, Firestore Timestamps, and strings
       let dueDateString: string | undefined;
       if (editingTask.dueDate) {
@@ -143,6 +152,10 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
       onClose();
     } catch (error) {
       console.error('Error updating task:', error);
+      // Show error message to user
+      if (error instanceof Error && error.message.includes('You must be assigned to this task')) {
+        // Handle assignment error appropriately
+      }
     } finally {
       setLoading(false);
     }
