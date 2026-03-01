@@ -37,9 +37,7 @@ export function useServiceWorker() {
     offlineQueueRef.current = offlineQueue;
   }, [offlineQueue]);
 
-  // Check for existing service worker (do NOT register a new one proactively)
-  // The service worker should only be registered when the user enables push notifications.
-  // Proactive registration causes Chrome on Android to show the "Tap to copy URL" notification.
+  // Check for existing service worker and register if needed
   const checkServiceWorker = useCallback(async () => {
     if (!('serviceWorker' in navigator)) {
       setState(prev => ({
@@ -51,20 +49,41 @@ export function useServiceWorker() {
     }
 
     try {
-      // Only check if one already exists, don't register a new one
+      // Check if service worker is already registered
       const existingRegistrations = await navigator.serviceWorker.getRegistrations();
       const firebaseSwRegistration = existingRegistrations.find(
         reg => reg.active?.scriptURL.includes('firebase-messaging-sw.js')
       );
+      const mainSwRegistration = existingRegistrations.find(
+        reg => reg.active?.scriptURL.includes('sw.js')
+      );
 
-      // Unregister the old sw.js if it's still lingering
-      for (const reg of existingRegistrations) {
-        if (reg.active && !reg.active.scriptURL.includes('firebase-messaging-sw.js')) {
-          console.log('[SW] Unregistering old service worker:', reg.active.scriptURL);
-          await reg.unregister();
+      // If no service worker is registered, register the main one
+      if (!firebaseSwRegistration && !mainSwRegistration) {
+        console.log('[SW] Registering new service worker...');
+        try {
+          const registration = await navigator.serviceWorker.register(
+            '/sw.js',
+            { scope: '/' }
+          );
+          console.log('[SW] Service worker registered successfully');
+
+          // Set state as registered
+          setState(prev => ({
+            ...prev,
+            isSupported: true,
+            isRegistered: true,
+            registration: registration,
+            error: null
+          }));
+          return;
+        } catch (registerError) {
+          console.error('[SW] Service worker registration failed:', registerError);
+          // Continue to check for existing registrations
         }
       }
 
+      // If we have a firebase service worker, use that
       if (firebaseSwRegistration) {
         setState(prev => ({
           ...prev,
@@ -88,15 +107,34 @@ export function useServiceWorker() {
             });
           }
         });
-      } else {
-        // No service worker registered - that's fine, it will be registered
-        // when user enables push notifications via firebase-messaging.ts
+        return;
+      }
+
+      // If we have a main service worker, use that
+      if (mainSwRegistration) {
         setState(prev => ({
           ...prev,
           isSupported: true,
-          isRegistered: false,
+          isRegistered: true,
+          registration: mainSwRegistration,
           error: null
         }));
+
+        // Check for updates on existing registration
+        mainSwRegistration.addEventListener('updatefound', () => {
+          const newWorker = mainSwRegistration.installing;
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setState(prev => ({
+                  ...prev,
+                  updateAvailable: true
+                }));
+              }
+            });
+          }
+        });
+        return;
       }
     } catch (error) {
       setState(prev => ({

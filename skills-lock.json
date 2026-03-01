@@ -1,20 +1,295 @@
 {
   "version": 1,
   "skills": {
+    "aeo-optimization": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "8931223c9b701ac1fc9ca407fab1064c520662acf20628877bf63831f35f021a"
+    },
+    "agent-teams": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "ffa03e9a247202b1b9eed8032dc653fa1392020b8c54f8ed21705d9bd10d664e"
+    },
+    "agentic-development": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "84560acd16c91ce75a7bde55129e018435bbfcf5fa27aed4daeda77dd4d303b7"
+    },
+    "ai-models": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "6e25ff853a9a5cce8f2e8f5a53e8d8a1b1bffc317b9f00a3894e246e695d4f97"
+    },
+    "android-java": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "787ff265e167ec0935e1ed34151cfe7a41748abc2b9bdec65e848ed3d72d7c2c"
+    },
+    "android-kotlin": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "b53ef0b13679d6f9f4873b607732e85990cc7cb4cf3109af15c5b83ce00ae0d9"
+    },
+    "aws-aurora": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "02ae63d09570a45adbcf0aca958e4ff029c63750f059343b43e5f18b5c19b331"
+    },
+    "aws-dynamodb": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "4c3e45f64175c94d9421ca270b486609a2adbe3033f23cd44f8914d8c10014f5"
+    },
+    "azure-cosmosdb": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "9d6ea64dca3dd34bb0f306d787e6c64af3fb674d3f14e25c5429c5ff7881ab4d"
+    },
+    "base": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "d11bd95d7e2793d1c443b90865132c74494eb22dd46497b002240c85743a79d8"
+    },
+    "cloudflare-d1": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "2f667887bacb2540ffd240f1ae7c21c727bcb55dc159ae4ced3a5312fe595fd9"
+    },
+    "code-deduplication": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "25a28c280b2f25f3b837793b15991d9a89b5aaca944f6a8dea15706940858b20"
+    },
+    "code-review": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "90640b74aa6efd0094f9ae125d7a68613b11c94002bba3daec40a7f914819fb8"
+    },
+    "codex-review": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "2705b0cb0e351672d466dcc8d6c6b3f5a12488256432be4fda8e6b1a2c8eb65b"
+    },
+    "commit-hygiene": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "a4a4256c14cd15e78560b9e6272395920a161db8e896eb48f2b92afab1318904"
+    },
+    "credentials": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "a5dde8b383b89f344d72971e27b31c6e8c60b7dac61ce7d988336cbcc5931f65"
+    },
+    "database-schema": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "a0c9abae177dc4a6e0c0fe707452e748100471773889b25eebcfc0e028cdbb88"
+    },
+    "existing-repo": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "2825882cd1ad0732373a12e8fd233f46951976dafe8ae8132b31e8be740a9f95"
+    },
+    "firebase": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "786dc150ef6c0fcc8c24a2d088b2d1b482ccf395b48747eabf613aa39233c965"
+    },
+    "flutter": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "462bf6f86e24a51f090177b381a2eb51e7652724e6aea3d4d622b4e6e2c35297"
+    },
+    "gemini-review": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "8f2dddc225eab19af12fc97cb542b4c99b0e86a2c9eb5fe64166ddf09cba89c2"
+    },
+    "iterative-development": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "89d037dc35ba49dd4af3532d9ef899fef2aa731ac0fbba1a65b13401e0e526e0"
+    },
+    "klaviyo": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "629147a00e6a9f54cec525022d94edaffb0c07e5242090461165420431a27ad0"
+    },
+    "llm-patterns": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "8418fa815e5d45e60c0944d070155232b9ca97832888806b80164563881023ff"
+    },
     "mcp-postman": {
       "source": "janjaszczak/cursor",
       "sourceType": "github",
       "computedHash": "46f84d899887b81f847632905f244322a74c3f898cf774dfd4c6f91598d9219d"
+    },
+    "medusa": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "9e96ac7ca5dd7f8701a79e537529e418d72135e96093294009499252fb1f6325"
+    },
+    "ms-teams-apps": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "f12c3f1a4346024bb95a4ca6b9d4da44023d4d91207abe1e06c63a7a8cd0351c"
+    },
+    "nodejs-backend": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "f19e62059da07272c6c5749e8ef7dd3e1c238f224a81b0da228d0eb68c8b3ed4"
+    },
+    "playwright-testing": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "1763c85a5e5869fb7b6ffcd7af7b7a674e21d23435c830bfec99365306fd1fef"
+    },
+    "posthog-analytics": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "ce37f9066c1f522e01348b6856f1666fec2d077b313df0a3fae3985b0f88c84a"
     },
     "postman-collection-generator": {
       "source": "patricio0312rev/skills",
       "sourceType": "github",
       "computedHash": "2b66fcb334e6eab11e64fc19525fa9c75ef8e6b301dd819b2d57d4792d9ccf9f"
     },
+    "project-tooling": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "6ba38c32ea5d85b33580b237687c5c164b12a99c58c11d9f079dbaf9bff0563e"
+    },
     "push-notification-setup": {
       "source": "aj-geddes/useful-ai-prompts",
       "sourceType": "github",
       "computedHash": "24cc0b653f1538ded7945fea77d021a587d34f0a36edad951afd608b8aff5f04"
+    },
+    "pwa-development": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "45a3bae4955e3399fd4680c44d2bf1adb8e88a4c595c0d2284de5785497a621f"
+    },
+    "python": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "b97909bdb01670901d2a3f627c97375d6b2fde10f7b373b5f75c9ecd63690c31"
+    },
+    "react-native": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "92871498b78da226a5fa7f9c52f962e205a6e62749d8de06c6c935788dd04097"
+    },
+    "react-web": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "c19bea2ea2ecb005a36e139ba7bf8a74e631f26f02368037fe767d93063a7568"
+    },
+    "reddit-ads": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "064331471daa8868b1dfaf21b44d82f405150d436f02810a4609b19099efef53"
+    },
+    "reddit-api": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "d2fb74658a7ad2bd99d5157508e7d6becf239073d592068051cecd29042a4ca7"
+    },
+    "security": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "61fe2538c2812dc8d61b9c5861b7d70890fa2175322da753359f7547c730f2a9"
+    },
+    "session-management": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "91d435effb9073dfb5738c5707737d6c519da4b156238d4c1f4bb86989cb42f4"
+    },
+    "shopify-apps": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "86da65f93eb6251505626aff26299118f5a901616674c972d3f6cd1576d5a353"
+    },
+    "site-architecture": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "58ccd21b363b4b0dc8a677f463618685bc95d4bc799e9392fc814f3cf91f996c"
+    },
+    "supabase": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "d152a50f58b007e1bb7bdd47d5a21575141424122e31f203308cf1474fae71ba"
+    },
+    "supabase-nextjs": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "132b9891d0c2be2ae5799ce50d80570075e268a832998900f5b96f9603518b41"
+    },
+    "supabase-node": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "b540c8ae97b2ea222bcddd7293c77a91fdf1f2981edf22f58c22055735988995"
+    },
+    "supabase-python": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "8cd38c7c9f971bd658169c91bbad07f2e9c018ffb5aef6b0e272e692e50d8af0"
+    },
+    "team-coordination": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "2b85351ca676b0cfef913625d57b64c02e968d02568294e3400966087433c899"
+    },
+    "ticket-craft": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "259657bd7605ca8e0864b109adeccf985976ba1111abab05c6b4779343b88bf0"
+    },
+    "typescript": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "8646012c02fd4e2673be84f851dd802eeba12fdd92dca93b2f93c9b5ad33d945"
+    },
+    "ui-mobile": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "03ff504483106981bec32404e7b6aedb669b2eeab96cd2c8c76e18ab0b60811f"
+    },
+    "ui-testing": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "5ab343f5e2398974acbbd4bbf47d72f80aaf7e5fb020703a9676b1d94d47c4e2"
+    },
+    "ui-web": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "5f03019de630b240e6fa9d8f56694fbf40095f9e37796776a9f5faf31a91d062"
+    },
+    "user-journeys": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "6b6b217ed0c5eb28c3e902f482059ee187779a06a559e0715337486c9316d669"
+    },
+    "web-content": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "303a199de10fa39278c987eaedfdab46965f57949a8b53f7fcd1c7a3f4621d36"
+    },
+    "web-payments": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "698bee540a36ed827e6d8959d7dbef4bad13a5b8bcf8845c742a79c8e8a18a48"
+    },
+    "woocommerce": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "7e84f92b85506a2aca2abe3184f1458e80fd209b533492aa76ad10ac9eba5e90"
+    },
+    "workspace": {
+      "source": "alinaqi/claude-bootstrap",
+      "sourceType": "github",
+      "computedHash": "89cc7c98f03fbceefdae74f9fcc70257f52ffb1273bfde50843e8f72bd8eb61e"
     }
   }
 }

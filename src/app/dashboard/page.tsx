@@ -1280,8 +1280,8 @@ export default function DashboardPage() {
           >
             <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <ExclamationTriangleIcon className="w-6 h-6 text-red-600" />
+                <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                  <ExclamationTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
                   Overdue Tasks ({overdueTasks.length})
                 </h3>
                 <button
@@ -1303,7 +1303,7 @@ export default function DashboardPage() {
                   No overdue tasks
                 </p>
               ) : (
-                <div className="space-y-0 md:space-y-3">
+                <div className="space-y-3">
                   {overdueTasks.map((task) => {
                     const dueDate = task.dueDate ? new Date(task.dueDate) : null;
                     const now = new Date();

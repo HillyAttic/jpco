@@ -2,7 +2,15 @@
   "permissions": {
     "allow": [
       "Bash(npm run:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npx skills:*)",
+      "Bash(gh auth:*)",
+      "Bash(ssh-add:*)",
+      "Bash(npm test:*)",
+      "Bash(npm install:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)"
     ]
   }
 }

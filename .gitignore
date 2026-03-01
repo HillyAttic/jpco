@@ -13,5 +13,7 @@ dist/
 .vercel
 .kiro
 nul
+.adal/
+skills/
 
 

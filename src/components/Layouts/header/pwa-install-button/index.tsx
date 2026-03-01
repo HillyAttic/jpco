@@ -55,6 +55,7 @@ export function PWAInstallButton() {
 
     // Listen for beforeinstallprompt event (Android/Chrome)
     const handleBeforeInstallPrompt = (e: Event) => {
+      console.log('[SW] beforeinstallprompt captured');
       e.preventDefault();
       setDeferredPrompt(e as BeforeInstallPromptEvent);
       setIsInstallable(true);
