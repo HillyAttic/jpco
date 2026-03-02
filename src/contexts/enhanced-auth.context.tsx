@@ -179,6 +179,9 @@ export const EnhancedAuthProvider: React.FC<EnhancedAuthProviderProps> = ({ chil
         case 'auth/too-many-requests':
           errorMessage = 'Too many failed attempts. Please try again later';
           break;
+        case 'auth/invalid-credential':
+          errorMessage = 'User does not exist in the database. Please contact the administrator.';
+          break;
         default:
           errorMessage = authError.message;
       }
