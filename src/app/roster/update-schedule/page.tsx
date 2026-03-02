@@ -7,6 +7,7 @@ import { useModal } from '@/contexts/modal-context';
 import { rosterService, getTaskColor } from '@/services/roster.service';
 import { clientService, Client } from '@/services/client.service';
 import { leaveService } from '@/services/leave.service';
+import { nonRecurringTaskService, NonRecurringTask } from '@/services/nonrecurring-task.service';
 import { LeaveRequest } from '@/types/attendance.types';
 import { RosterEntry, MONTHS, getDaysInMonth, TaskType } from '@/types/roster.types';
 import { Button } from '@/components/ui/button';
@@ -17,6 +18,7 @@ interface CalendarDay {
   day: number;
   isCurrentMonth: boolean;
   tasks: RosterEntry[];
+  nonRecurringTasks: NonRecurringTask[];
 }
 
 export default function UpdateSchedulePage() {
@@ -49,6 +51,8 @@ export default function UpdateSchedulePage() {
     timeEnd: '', // Now stores only time (HH:MM)
   });
   const [clientSearchQuery, setClientSearchQuery] = useState('');
+  const [assignedTasks, setAssignedTasks] = useState<NonRecurringTask[]>([]);
+  const [selectedNonRecurringTask, setSelectedNonRecurringTask] = useState<NonRecurringTask | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -61,6 +65,7 @@ export default function UpdateSchedulePage() {
       loadRosterEntries();
       loadClients();
       loadLeaveRequests();
+      loadAssignedTasks();
     }
   }, [user, currentMonth, currentYear]);
 
@@ -102,6 +107,16 @@ export default function UpdateSchedulePage() {
     }
   };
 
+  const loadAssignedTasks = async () => {
+    if (!user) return;
+    try {
+      const tasks = await nonRecurringTaskService.getAssignedToUser(user.uid, currentMonth, currentYear);
+      setAssignedTasks(tasks);
+    } catch (error) {
+      console.error('Error loading assigned tasks:', error);
+    }
+  };
+
   // Helper function to format date for datetime-local input (avoids timezone issues)
   const formatDateForInput = (date: Date): string => {
     const year = date.getFullYear();
@@ -137,6 +152,7 @@ export default function UpdateSchedulePage() {
         day,
         isCurrentMonth: false,
         tasks: [],
+        nonRecurringTasks: [],
       });
     }
 
@@ -211,11 +227,18 @@ export default function UpdateSchedulePage() {
         }
       }
 
+      const dayNonRecurringTasks = assignedTasks.filter(task => {
+        const due = new Date(task.dueDate);
+        due.setHours(0, 0, 0, 0);
+        return date.getTime() === due.getTime();
+      });
+
       days.push({
         date,
         day,
         isCurrentMonth: true,
         tasks: dayTasks,
+        nonRecurringTasks: dayNonRecurringTasks,
       });
     }
 
@@ -229,6 +252,7 @@ export default function UpdateSchedulePage() {
         day,
         isCurrentMonth: false,
         tasks: [],
+        nonRecurringTasks: [],
       });
     }
 
@@ -483,6 +507,10 @@ export default function UpdateSchedulePage() {
             <div className="w-4 h-4 bg-orange-100 border border-orange-300 rounded"></div>
             <span>8 hours or more</span>
           </div>
+          <div className="flex items-center gap-2">
+            <div className="w-4 h-4 bg-indigo-100 border border-indigo-300 rounded"></div>
+            <span>Assigned Task (due date)</span>
+          </div>
         </div>
       </div>
 
@@ -576,6 +604,25 @@ export default function UpdateSchedulePage() {
                 {calDay.tasks.length > 3 && (
                   <div className="text-xs text-gray-500 dark:text-gray-400 px-1">
                     +{calDay.tasks.length - 3} more
+                  </div>
+                )}
+                {calDay.nonRecurringTasks.slice(0, 2).map(task => (
+                  <div
+                    key={`nrt-${task.id}`}
+                    className="text-xs px-1 py-0.5 rounded truncate border bg-indigo-100 text-indigo-800 border-indigo-300 cursor-pointer hover:opacity-80 transition-opacity"
+                    title={task.title}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedNonRecurringTask(task);
+                      openModal();
+                    }}
+                  >
+                    {task.title}
+                  </div>
+                ))}
+                {calDay.nonRecurringTasks.length > 2 && (
+                  <div className="text-xs text-gray-500 px-1">
+                    +{calDay.nonRecurringTasks.length - 2} more
                   </div>
                 )}
               </div>
@@ -749,6 +796,57 @@ export default function UpdateSchedulePage() {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Non-Recurring Task Details Modal */}
+      {selectedNonRecurringTask && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={() => { setSelectedNonRecurringTask(null); closeModal(); }}
+        >
+          <div
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Assigned Task</h3>
+              <button
+                onClick={() => { setSelectedNonRecurringTask(null); closeModal(); }}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-500 uppercase font-semibold">Title</p>
+                <p className="text-sm text-gray-900 dark:text-white">{selectedNonRecurringTask.title}</p>
+              </div>
+              {selectedNonRecurringTask.description && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Description</p>
+                  <p className="text-sm text-gray-900 dark:text-white">{selectedNonRecurringTask.description}</p>
+                </div>
+              )}
+              <div className="flex gap-4">
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Priority</p>
+                  <p className="text-sm capitalize text-gray-900 dark:text-white">{selectedNonRecurringTask.priority}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Status</p>
+                  <p className="text-sm capitalize text-gray-900 dark:text-white">{selectedNonRecurringTask.status}</p>
+                </div>
+              </div>
+              <div>
+                <p className="text-xs text-gray-500 uppercase font-semibold">Due Date</p>
+                <p className="text-sm text-gray-900 dark:text-white">
+                  {new Date(selectedNonRecurringTask.dueDate).toLocaleDateString()}
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       )}

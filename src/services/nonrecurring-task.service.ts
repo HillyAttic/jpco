@@ -3,6 +3,8 @@
  * Handles all non-recurring task-related Firebase operations
  */
 
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { createFirebaseService, QueryOptions } from './firebase.service';
 
 export interface NonRecurringTask {
@@ -189,6 +191,30 @@ export const nonRecurringTaskService = {
     });
 
     return tasks.filter((task) => task.dueDate < now);
+  },
+
+  /**
+   * Get tasks assigned to a specific user for a given month/year
+   */
+  async getAssignedToUser(userId: string, month: number, year: number): Promise<NonRecurringTask[]> {
+    const q = query(
+      collection(db, 'tasks'),
+      where('assignedTo', 'array-contains', userId)
+    );
+    const snapshot = await getDocs(q);
+
+    const startOfMonth = new Date(year, month - 1, 1);
+    const endOfMonth = new Date(year, month, 0, 23, 59, 59);
+
+    return snapshot.docs
+      .map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        dueDate: doc.data().dueDate?.toDate() ?? new Date(),
+        createdAt: doc.data().createdAt?.toDate(),
+        updatedAt: doc.data().updatedAt?.toDate(),
+      } as NonRecurringTask))
+      .filter(task => task.dueDate >= startOfMonth && task.dueDate <= endOfMonth);
   },
 
   /**
