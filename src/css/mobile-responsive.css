@@ -26,13 +26,8 @@ body.modal-open header {
   }
 
   /* Optimize spacing for mobile */
-  .space-y-6>*+* {
-    margin-top: 0rem !important;
-  }
-
-  .space-y-4>*+* {
-    margin-top: 0.75rem !important;
-  }
+  /* Removed space-y overrides - they were breaking desktop layouts with !important */
+  /* Tailwind's responsive utilities (space-y-4 md:space-y-6) handle this correctly */
 
   /* Mobile-friendly padding */
   .container {
@@ -92,10 +87,9 @@ body.modal-open header {
     overflow-x: auto;
   }
 
-  /* Grid optimizations */
-  .grid {
-    grid-template-columns: 1fr !important;
-  }
+  /* Grid optimizations - removed to prevent desktop layout issues */
+  /* The .grid rule was forcing single column on all breakpoints due to !important */
+  /* Tailwind's responsive grid utilities (md:grid-cols-2, lg:grid-cols-3, etc.) handle this properly */
 
   /* Modal optimizations */
   .modal {
@@ -152,24 +146,24 @@ body.modal-open header {
   }
 }
 
-/* Landscape Mobile (< 768px height) */
-@media (max-height: 768px) and (orientation: landscape) {
+/* Landscape Mobile (< 768px height AND max-width < 768px) */
+@media (max-height: 768px) and (orientation: landscape) and (max-width: 768px) {
 
-  /* Reduce vertical spacing in landscape */
+  /* Reduce vertical spacing in landscape MOBILE ONLY */
   .space-y-6>*+* {
-    margin-top: 0rem !important;
+    margin-top: 0.5rem !important;
   }
 
   .space-y-4>*+* {
-    margin-top: 0rem !important;
+    margin-top: 0.5rem !important;
   }
 
   .space-y-3>*+* {
-    margin-top: 0rem !important;
+    margin-top: 0.5rem !important;
   }
 
   .space-y-2>*+* {
-    margin-top: 0rem !important;
+    margin-top: 0.25rem !important;
   }
 
   /* Optimize header height */

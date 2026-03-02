@@ -109,7 +109,7 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
         <Header />
         <main 
           id="main-content"
-          className="flex-1 isolate mx-auto w-full max-w-screen-2xl overflow-hidden p-4 md:p-6 2xl:p-10 pb-20 md:pb-10"
+          className="flex-1 isolate mx-auto w-full max-w-screen-2xl overflow-x-hidden p-4 md:p-6 2xl:p-10 pb-20 md:pb-10"
           role="main"
           aria-label="Main content"
         >

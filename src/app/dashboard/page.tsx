@@ -560,9 +560,9 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 space-y-4 md:space-y-6">
+    <div className="space-y-6">
       {/* Stats Cards - Critical, render immediately */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-5 2xl:gap-7.5">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-5 xl:gap-6 2xl:gap-7.5">
         <SimpleStatCard
           title="Total Tasks"
           value={stats.total}

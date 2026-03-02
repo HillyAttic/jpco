@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function SettingsPage() {
   return (
-    <div className="mx-auto w-full max-w-[1080px] p-4 md:p-6">
+    <div className="mx-auto w-full max-w-[1080px]">
       <Breadcrumb pageName="Settings" />
 
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4 md:gap-8">
