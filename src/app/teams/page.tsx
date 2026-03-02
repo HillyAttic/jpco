@@ -71,15 +71,6 @@ export default function TeamsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // 'grid' or 'list' view mode
 
-  // Auto-refresh teams every 30 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      refreshTeams();
-    }, 30000); // 30 seconds
-
-    return () => clearInterval(interval);
-  }, [refreshTeams]);
-
   // Department filter removed since teams no longer have department field
 
   // Handle create team

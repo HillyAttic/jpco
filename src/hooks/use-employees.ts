@@ -30,8 +30,17 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [departmentFilter, setDepartmentFilter] = useState<string | undefined>(undefined);
+
+  // Debounce search query to avoid firing a fetch on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   /**
    * Fetch employees from API
@@ -50,7 +59,7 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
       const token = await user.getIdToken();
 
       const params = new URLSearchParams();
-      if (searchQuery) params.append('search', searchQuery);
+      if (debouncedSearchQuery) params.append('search', debouncedSearchQuery);
       if (statusFilter) params.append('status', statusFilter);
       if (departmentFilter) params.append('department', departmentFilter);
 
@@ -74,7 +83,7 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, statusFilter, departmentFilter]);
+  }, [debouncedSearchQuery, statusFilter, departmentFilter]);
 
   /**
    * Initial fetch on mount

@@ -64,25 +64,34 @@ export function useTeams(): UseTeamsReturn {
     department: 'all',
     search: '',
   });
+  const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Fetch teams from API
-  const fetchTeams = useCallback(async (currentFilters: UseTeamsFilters = filters) => {
+  // Debounce search to avoid fetching on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(filters.search || '');
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [filters.search]);
+
+  // Fetch teams from API — depends on non-search filters directly, search via debounced state
+  const fetchTeams = useCallback(async () => {
     setLoading(true);
     setError(null);
 
     try {
       const params = new URLSearchParams();
-      
-      if (currentFilters.status && currentFilters.status !== 'all') {
-        params.append('status', currentFilters.status);
+
+      if (filters.status && filters.status !== 'all') {
+        params.append('status', filters.status);
       }
-      
-      if (currentFilters.department && currentFilters.department !== 'all') {
-        params.append('department', currentFilters.department);
+
+      if (filters.department && filters.department !== 'all') {
+        params.append('department', filters.department);
       }
-      
-      if (currentFilters.search && currentFilters.search.trim()) {
-        params.append('search', currentFilters.search.trim());
+
+      if (debouncedSearch && debouncedSearch.trim()) {
+        params.append('search', debouncedSearch.trim());
       }
 
       const headers = await getAuthHeaders();
@@ -101,14 +110,14 @@ export function useTeams(): UseTeamsReturn {
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters.status, filters.department, debouncedSearch]);
 
   // Refresh teams
   const refreshTeams = useCallback(() => {
     return fetchTeams();
   }, [fetchTeams]);
 
-  // Initial load
+  // Fetch whenever non-search filters change or debounced search changes
   useEffect(() => {
     fetchTeams();
   }, [fetchTeams]);
@@ -400,22 +409,19 @@ export function useTeams(): UseTeamsReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [teams]);
 
-  // Set filters and refetch
+  // Set filters — state update triggers useEffect which re-fetches
   const setFilters = useCallback((newFilters: UseTeamsFilters) => {
     setFiltersState(newFilters);
-    fetchTeams(newFilters);
-  }, [fetchTeams]);
+  }, []);
 
   // Clear all filters
   const clearFilters = useCallback(() => {
-    const clearedFilters = {
+    setFiltersState({
       status: 'all',
       department: 'all',
       search: '',
-    };
-    setFiltersState(clearedFilters);
-    fetchTeams(clearedFilters);
-  }, [fetchTeams]);
+    });
+  }, []);
 
   // Get team by ID
   const getTeamById = useCallback((id: string) => {

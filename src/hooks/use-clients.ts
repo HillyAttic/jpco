@@ -29,7 +29,16 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
+
+  // Debounce search query to avoid firing a fetch on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   /**
    * Fetch clients from API
@@ -40,7 +49,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
 
     try {
       const params = new URLSearchParams();
-      if (searchQuery) params.append('search', searchQuery);
+      if (debouncedSearchQuery) params.append('search', debouncedSearchQuery);
       if (statusFilter) params.append('status', statusFilter);
 
       const response = await authenticatedFetch(`/api/clients?${params.toString()}`);
@@ -58,7 +67,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, statusFilter]);
+  }, [debouncedSearchQuery, statusFilter]);
 
   /**
    * Initial fetch on mount

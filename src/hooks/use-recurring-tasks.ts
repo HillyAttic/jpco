@@ -55,7 +55,16 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
   const [loading, setLoading] = useState<boolean>(false);
   const [error, setError] = useState<Error | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
   const [filters, setFilters] = useState<RecurringTaskFilters>({});
+
+  // Debounce search query to avoid firing a fetch on every keystroke
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   /**
    * Fetch recurring tasks from API
@@ -73,7 +82,7 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
 
     try {
       const params = new URLSearchParams();
-      if (searchQuery) params.append('search', searchQuery);
+      if (debouncedSearchQuery) params.append('search', debouncedSearchQuery);
       if (filters.status) params.append('status', filters.status);
       if (filters.priority) params.append('priority', filters.priority);
       if (filters.category) params.append('category', filters.category);
@@ -95,7 +104,7 @@ export function useRecurringTasks(options: UseRecurringTasksOptions = {}): UseRe
     } finally {
       setLoading(false);
     }
-  }, [searchQuery, filters]);
+  }, [debouncedSearchQuery, filters]);
 
   /**
    * Initial fetch on mount

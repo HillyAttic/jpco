@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Bell, BellOff, Check, X } from "lucide-react";
 import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
 import { authenticatedFetch } from "@/lib/api-client";
+import { useNotifications } from "@/hooks/use-notifications";
 import {
   requestNotificationPermission,
   requestNotificationPermissionMobile,
@@ -32,10 +33,9 @@ interface Notification {
 
 export default function NotificationsPage() {
   const { user } = useEnhancedAuth();
+  const { notifications, loading, markAsRead: markNotificationRead, refetch } = useNotifications();
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | null>(null);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
   const [isClearing, setIsClearing] = useState(false);
   const [isEnabling, setIsEnabling] = useState(false);
 
@@ -196,69 +196,18 @@ export default function NotificationsPage() {
       console.log("[Foreground] Message received:", payload);
 
       // Refresh notifications list to show the new notification
-      fetchNotifications();
+      refetch();
 
       // DO NOT show toast here - service worker already displayed the notification
       // This prevents duplicate notifications
     });
 
     return unsubscribe;
-  }, [user]);
-
-  // Fetch notifications from server API (bypasses Firestore security rules)
-  const fetchNotifications = async () => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
-
-    try {
-      const response = await authenticatedFetch(`/api/notifications?userId=${encodeURIComponent(user.uid)}`);
-      if (!response.ok) {
-        const errorData = await response.json();
-        console.error('Failed to fetch notifications:', errorData);
-        setLoading(false);
-        return;
-      }
-
-      const { notifications: notifs } = await response.json();
-      console.log('Loaded notifications:', notifs?.length || 0);
-      setNotifications(notifs || []);
-      setLoading(false);
-    } catch (error) {
-      console.error('Error fetching notifications:', error);
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchNotifications();
-
-    // Poll for new notifications every 15 seconds
-    const interval = setInterval(fetchNotifications, 15000);
-    return () => clearInterval(interval);
-  }, [user]);
-
-  // Mark notification as read
-  const markAsRead = async (notificationId: string) => {
-    try {
-      await authenticatedFetch('/api/notifications', {
-        method: 'POST',
-        body: JSON.stringify({ action: 'markAsRead', notificationId }),
-      });
-
-      // Update local state immediately
-      setNotifications(prev =>
-        prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
-      );
-    } catch (error) {
-      console.error("Error marking notification as read:", error);
-    }
-  };
+  }, [user, refetch]);
 
   // Handle notification click
   const handleNotificationClick = (notification: Notification) => {
-    markAsRead(notification.id);
+    markNotificationRead(notification.id);
 
     if (notification.data?.url) {
       window.location.href = notification.data.url;
@@ -478,7 +427,7 @@ export default function NotificationsPage() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        markAsRead(notification.id);
+                        markNotificationRead(notification.id);
                       }}
                       className="flex-shrink-0 p-2 text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 hover:bg-gray-100 dark:bg-gray-700 dark:hover:bg-gray-600 rounded-lg transition-colors"
                       title="Mark as read"

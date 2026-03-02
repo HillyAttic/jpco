@@ -52,11 +52,11 @@ export function useNotifications() {
     }
   }, [user?.uid]);
 
-  // Fetch on mount and poll every 15 seconds
+  // Fetch on mount and poll every 60 seconds
   useEffect(() => {
     fetchNotifications();
 
-    const interval = setInterval(fetchNotifications, 15000);
+    const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, [fetchNotifications]);
 
