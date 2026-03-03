@@ -162,9 +162,9 @@ export default function ViewSchedulePage() {
               : getDaysInMonth(currentMonth, currentYear);
 
             // Find or create employee entry
-            let employeeData = view.employees.find(e => e.userId === leave.employeeId);
+            let employeeData = view.employees.find((e: any) => e.userId === leave.employeeId);
             if (!employeeData) {
-              const user = usersData.find(u => u.id === leave.employeeId);
+              const user = usersData.find((u: UserProfile) => u.id === leave.employeeId);
               if (user) {
                 employeeData = {
                   userId: leave.employeeId,
