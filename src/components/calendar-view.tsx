@@ -349,7 +349,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           )}
         </div>
 
-        {/* Weekday Headers - Hidden on mobile */}
+        {/* Weekday Headers - Desktop only */}
         <div className="hidden md:grid grid-cols-7 gap-1 mb-2">
           {weekdays.map(day => (
             <div key={day} className="p-2 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
@@ -358,8 +358,8 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           ))}
         </div>
 
-        {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1">
+        {/* Calendar Grid - Desktop: 7 columns, Mobile: Vertical list */}
+        <div className="md:grid md:grid-cols-7 md:gap-1 space-y-2 md:space-y-0">
           {days.map((day, index) => {
             const dayTasks = day ? getTasksForDate(day) : [];
             const isToday = day &&
@@ -371,49 +371,65 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
               day.getMonth() === selectedDate.getMonth() &&
               day.getFullYear() === selectedDate.getFullYear();
 
+            // Skip rendering empty days on mobile (days from prev/next month)
+            if (!day) {
+              return <div key={index} className="hidden md:block border-transparent" />;
+            }
+
             return (
               <div
                 key={index}
-                className={`min-h-24 p-1 border rounded flex flex-col ${day ? 'border-gray-200 hover:bg-gray-50 cursor-pointer' : 'border-transparent'
-                  } ${isToday ? 'bg-blue-50 border-blue-300' : ''} ${isSelected ? 'bg-blue-100 border-blue-400' : ''
-                  }`}
+                className={`min-h-24 p-3 md:p-1 border rounded flex flex-col ${
+                  day ? 'border-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer' : 'border-transparent'
+                } ${isToday ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300' : ''} ${
+                  isSelected ? 'bg-blue-100 dark:bg-blue-900/30 border-blue-400' : ''
+                }`}
                 onClick={() => day && setSelectedDate(day)}
               >
-                {day ? (
-                  <>
-                    <div className={`text-sm font-medium ${isToday ? 'text-blue-700' : 'text-gray-900'
-                      }`}>
-                      {day.getDate()}
-                    </div>
-                    <div className="mt-1 space-y-1 max-h-20 overflow-y-auto flex-1">
-                      {dayTasks.slice(0, 3).map(task => (
-                        <div
-                          key={task.id}
-                          onClick={(e) => handleTaskClick(task, e, day)}
-                          className={`text-xs p-1 rounded truncate flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${task.priority === 'urgent' ? 'bg-red-100 text-red-800' :
-                              task.priority === 'high' ? 'bg-orange-100 text-orange-800' :
-                                task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                                  'bg-green-100 text-green-800'
-                            }`}
-                          title={`${task.title}${task.isRecurring ? ` (${task.recurrencePattern})` : ''}`}
-                        >
-                          {task.isRecurring && (
-                            <span className="font-bold text-[10px]">
-                              {getRecurrenceLabel(task.recurrencePattern)}
-                            </span>
-                          )}
-                          <span className="truncate">{task.title}</span>
-                        </div>
-                      ))}
-                      {dayTasks.length > 3 && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          +{dayTasks.length - 3} more
-                        </div>
+                {/* Mobile: Show full date with day name */}
+                <div className="md:hidden flex items-center justify-between mb-2">
+                  <div className={`text-base font-semibold ${isToday ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
+                    {day.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </div>
+                  {isToday && (
+                    <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full">Today</span>
+                  )}
+                </div>
+
+                {/* Desktop: Show just day number */}
+                <div className={`hidden md:block text-sm font-medium ${isToday ? 'text-blue-700 dark:text-blue-400' : 'text-gray-900 dark:text-white'}`}>
+                  {day.getDate()}
+                </div>
+
+                {/* Tasks */}
+                <div className="mt-1 space-y-1 md:max-h-20 overflow-y-auto flex-1">
+                  {dayTasks.slice(0, 3).map(task => (
+                    <div
+                      key={task.id}
+                      onClick={(e) => handleTaskClick(task, e, day)}
+                      className={`text-xs md:text-[11px] p-2 md:p-1 rounded flex items-center gap-1 cursor-pointer hover:opacity-80 transition-opacity ${
+                        task.priority === 'urgent' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
+                        task.priority === 'high' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
+                        task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
+                        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                      }`}
+                      title={`${task.title}${task.isRecurring ? ` (${task.recurrencePattern})` : ''}`}
+                    >
+                      {task.isRecurring && (
+                        <span className="font-bold text-[10px]">
+                          {getRecurrenceLabel(task.recurrencePattern)}
+                        </span>
                       )}
+                      <span className="truncate md:truncate">{task.title}</span>
                     </div>
-                    {canViewRosterStats && renderRosterStatsBar(day)}
-                  </>
-                ) : null}
+                  ))}
+                  {dayTasks.length > 3 && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 px-2 md:px-0">
+                      +{dayTasks.length - 3} more
+                    </div>
+                  )}
+                </div>
+                {canViewRosterStats && renderRosterStatsBar(day)}
               </div>
             );
           })}

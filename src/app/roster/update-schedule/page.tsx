@@ -539,9 +539,9 @@ export default function UpdateSchedulePage() {
           </button>
         </div>
 
-        {/* Calendar Grid */}
-        <div className="grid grid-cols-7 gap-1">
-          {/* Day Headers - Hidden on mobile */}
+        {/* Calendar Grid - Desktop: 7 columns, Mobile: Vertical list */}
+        <div className="md:grid md:grid-cols-7 md:gap-1 space-y-2 md:space-y-0">
+          {/* Day Headers - Desktop only */}
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
             <div key={day} className="hidden md:block text-center font-semibold text-sm text-gray-600 dark:text-gray-400 py-2">
               {day}
@@ -549,85 +549,118 @@ export default function UpdateSchedulePage() {
           ))}
 
           {/* Calendar Days */}
-          {calendarDays.map((calDay, index) => (
-            <div
-              key={index}
-              className={`relative min-h-[100px] border border-gray-200 p-2 ${
-                !calDay.isCurrentMonth ? 'bg-gray-50 md:block hidden' : 'bg-white'
-              } ${calDay.isCurrentMonth ? 'hover:bg-blue-50 cursor-pointer' : ''} transition-colors group`}
-              onMouseEnter={() => calDay.isCurrentMonth && setHoveredDay(index)}
-              onMouseLeave={() => setHoveredDay(null)}
-              onClick={() => calDay.isCurrentMonth && handleDateClick(calDay.date)}
-            >
-              <div className={`text-sm font-medium ${!calDay.isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}`}>
-                {calDay.day}
-              </div>
+          {calendarDays.map((calDay, index) => {
+            // Skip rendering days from prev/next month on mobile
+            if (!calDay.isCurrentMonth) {
+              return <div key={index} className="hidden md:block bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 min-h-[100px]" />;
+            }
 
-              {/* Add Task Button - Always visible on mobile, hover on desktop */}
-              {calDay.isCurrentMonth && (
-                <div 
-                  className={`absolute top-1 right-1 flex gap-1 z-10 ${
-                    hoveredDay === index ? 'block' : 'block md:hidden'
-                  }`} 
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <button
-                    onClick={() => handleAddTask(calDay.date, 'single')}
-                    className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center justify-center"
-                    title="Add Client Task"
-                  >
-                    <PlusCircleIcon className="w-4 h-4" />
-                  </button>
+            return (
+              <div
+                key={index}
+                className={`relative min-h-[100px] border border-gray-200 dark:border-gray-700 p-3 md:p-2 ${
+                  calDay.isCurrentMonth ? 'bg-white dark:bg-gray-dark hover:bg-blue-50 dark:hover:bg-blue-900/20 cursor-pointer' : ''
+                } transition-colors group`}
+                onMouseEnter={() => calDay.isCurrentMonth && setHoveredDay(index)}
+                onMouseLeave={() => setHoveredDay(null)}
+                onClick={() => calDay.isCurrentMonth && handleDateClick(calDay.date)}
+              >
+                {/* Mobile: Show full date with day name */}
+                <div className="md:hidden flex items-center justify-between mb-2">
+                  <div className="text-base font-semibold text-gray-900 dark:text-white">
+                    {calDay.date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                  </div>
+                  {calDay.date.toDateString() === new Date().toDateString() && (
+                    <span className="text-xs px-2 py-0.5 bg-blue-600 text-white rounded-full">Today</span>
+                  )}
                 </div>
-              )}
 
-              {/* Tasks */}
-              <div className="mt-1 space-y-1">
-                {calDay.tasks.slice(0, 3).map(task => (
-                  <div
-                    key={task.id}
-                    className={`text-xs px-1 py-0.5 rounded truncate border ${getTaskColorClass(task)} ${
-                      task.taskDetail?.startsWith('OFF:') ? 'cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'
-                    }`}
-                    title={task.taskType === 'multi' ? task.activityName : (task.clientName || task.taskDetail)}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      // Don't allow editing leave tasks
-                      if (!task.taskDetail?.startsWith('OFF:')) {
-                        handleEditTask(task);
-                      }
-                    }}
-                  >
-                    {task.taskType === 'multi' ? task.activityName : (task.clientName || task.taskDetail)}
-                  </div>
-                ))}
-                {calDay.tasks.length > 3 && (
-                  <div className="text-xs text-gray-500 dark:text-gray-400 px-1">
-                    +{calDay.tasks.length - 3} more
+                {/* Desktop: Show just day number */}
+                <div className="hidden md:block text-sm font-medium text-gray-900 dark:text-white">
+                  {calDay.day}
+                </div>
+
+                {/* Add Task Button - Right aligned on mobile */}
+                {calDay.isCurrentMonth && (
+                  <div className="md:hidden flex justify-end mb-1">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAddTask(calDay.date, 'single');
+                      }}
+                      className="p-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center justify-center"
+                      title="Add Client Task"
+                    >
+                      <PlusCircleIcon className="w-5 h-5" />
+                    </button>
                   </div>
                 )}
-                {calDay.nonRecurringTasks.slice(0, 2).map(task => (
-                  <div
-                    key={`nrt-${task.id}`}
-                    className="text-xs px-1 py-0.5 rounded truncate border bg-indigo-100 text-indigo-800 border-indigo-300 cursor-pointer hover:opacity-80 transition-opacity"
-                    title={task.title}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setSelectedNonRecurringTask(task);
-                      openModal();
-                    }}
+
+                {/* Add Task Button - Desktop hover */}
+                {calDay.isCurrentMonth && (
+                  <div 
+                    className={`hidden md:block absolute top-1 right-1 z-10 ${
+                      hoveredDay === index ? 'opacity-100' : 'opacity-0'
+                    } transition-opacity`} 
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    {task.title}
-                  </div>
-                ))}
-                {calDay.nonRecurringTasks.length > 2 && (
-                  <div className="text-xs text-gray-500 px-1">
-                    +{calDay.nonRecurringTasks.length - 2} more
+                    <button
+                      onClick={() => handleAddTask(calDay.date, 'single')}
+                      className="p-1 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors flex items-center justify-center"
+                      title="Add Client Task"
+                    >
+                      <PlusCircleIcon className="w-4 h-4" />
+                    </button>
                   </div>
                 )}
+
+                {/* Tasks */}
+                <div className="mt-1 space-y-1">
+                  {calDay.tasks.slice(0, 3).map(task => (
+                    <div
+                      key={task.id}
+                      className={`text-xs md:text-[11px] px-2 py-1.5 md:px-1 md:py-0.5 rounded border ${getTaskColorClass(task)} ${
+                        task.taskDetail?.startsWith('OFF:') ? 'cursor-default' : 'cursor-pointer hover:opacity-80 transition-opacity'
+                      }`}
+                      title={task.taskType === 'multi' ? task.activityName : (task.clientName || task.taskDetail)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!task.taskDetail?.startsWith('OFF:')) {
+                          handleEditTask(task);
+                        }
+                      }}
+                    >
+                      {task.taskType === 'multi' ? task.activityName : (task.clientName || task.taskDetail)}
+                    </div>
+                  ))}
+                  {calDay.tasks.length > 3 && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 px-2 md:px-1">
+                      +{calDay.tasks.length - 3} more
+                    </div>
+                  )}
+                  {calDay.nonRecurringTasks.slice(0, 2).map(task => (
+                    <div
+                      key={`nrt-${task.id}`}
+                      className="text-xs md:text-[11px] px-2 py-1.5 md:px-1 md:py-0.5 rounded border bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 border-indigo-300 dark:border-indigo-700 cursor-pointer hover:opacity-80 transition-opacity"
+                      title={task.title}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setSelectedNonRecurringTask(task);
+                        openModal();
+                      }}
+                    >
+                      {task.title}
+                    </div>
+                  ))}
+                  {calDay.nonRecurringTasks.length > 2 && (
+                    <div className="text-xs text-gray-500 dark:text-gray-400 px-2 md:px-1">
+                      +{calDay.nonRecurringTasks.length - 2} more
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
