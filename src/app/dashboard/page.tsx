@@ -292,10 +292,17 @@ export default function DashboardPage() {
 
     // Filter employees based on role
     let filteredEmployees = employees;
+    let assignedEmployeeIds: Set<string> | null = null;
+    
     if (isManager && !isAdmin && managerHierarchy) {
       // For managers, only show assigned employees
-      const assignedEmployeeIds = new Set(managerHierarchy.employeeIds);
-      filteredEmployees = employees.filter(emp => assignedEmployeeIds.has(emp.id!));
+      assignedEmployeeIds = new Set(managerHierarchy.employeeIds || []);
+      filteredEmployees = employees.filter(emp => assignedEmployeeIds!.has(emp.id!));
+    }
+
+    // If manager has no assigned employees, return empty array
+    if (isManager && !isAdmin && filteredEmployees.length === 0) {
+      return [];
     }
 
     // Create a map to track task counts per employee
@@ -312,10 +319,15 @@ export default function DashboardPage() {
       });
     });
 
-    // Count tasks for each employee
+    // Count tasks for each employee (only for assigned employees if manager)
     tasks.forEach(task => {
       if (task.assignedTo && task.assignedTo.length > 0) {
         task.assignedTo.forEach(userId => {
+          // For managers, only count tasks for assigned employees
+          if (isManager && !isAdmin && assignedEmployeeIds && !assignedEmployeeIds.has(userId)) {
+            return; // Skip this user if not assigned to manager
+          }
+          
           if (memberStats.has(userId)) {
             const stats = memberStats.get(userId)!;
             if (task.status === 'completed') {

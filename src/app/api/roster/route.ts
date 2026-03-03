@@ -25,7 +25,31 @@ export async function GET(request: NextRequest) {
     const month = searchParams.get('month') ? parseInt(searchParams.get('month')!) : undefined;
     const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined;
 
-    const entries = await rosterAdminService.getRosterEntries({ userId, month, year });
+    // For managers, filter by assigned employees only
+    let allowedUserIds: string[] | undefined = undefined;
+    if (userRole === 'manager') {
+      const { adminDb } = await import('@/lib/firebase-admin');
+      const hierarchySnapshot = await adminDb
+        .collection('manager-hierarchies')
+        .where('managerId', '==', authResult.user.uid)
+        .limit(1)
+        .get();
+
+      if (!hierarchySnapshot.empty) {
+        const hierarchyData = hierarchySnapshot.docs[0].data();
+        allowedUserIds = hierarchyData.employeeIds || [];
+      } else {
+        // Manager has no assigned employees
+        allowedUserIds = [];
+      }
+    }
+
+    const entries = await rosterAdminService.getRosterEntries({ 
+      userId, 
+      month, 
+      year,
+      allowedUserIds 
+    });
 
     return NextResponse.json(entries);
   } catch (error: any) {

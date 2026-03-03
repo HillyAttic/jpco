@@ -93,7 +93,7 @@ export default function ViewSchedulePage() {
       if (canViewAllSchedules) {
         // Load all users
         const usersSnapshot = await getDocs(collection(db, 'users'));
-        const usersData = usersSnapshot.docs.map(doc => {
+        let usersData = usersSnapshot.docs.map(doc => {
           const data = doc.data();
           return {
             id: doc.id,
@@ -102,10 +102,37 @@ export default function ViewSchedulePage() {
             role: data.role || 'employee',
           };
         }) as UserProfile[];
+
+        // For managers, filter users to only show assigned employees
+        if (isManager && !isAdmin) {
+          const { authenticatedFetch } = await import('@/lib/api-client');
+          const hierarchyRes = await authenticatedFetch(`/api/manager-hierarchy?managerId=${user.uid}`);
+          
+          if (hierarchyRes.ok) {
+            const hierarchies = await hierarchyRes.json();
+            if (hierarchies.length > 0) {
+              const assignedEmployeeIds = hierarchies[0].employeeIds || [];
+              usersData = usersData.filter(u => assignedEmployeeIds.includes(u.id));
+            } else {
+              // Manager has no assigned employees
+              usersData = [];
+            }
+          }
+        }
+
         setUsers(usersData);
 
-        // Load monthly roster view
-        const view = await rosterService.getMonthlyRosterView(currentMonth, currentYear);
+        // Load monthly roster view using the new API endpoint
+        const { authenticatedFetch } = await import('@/lib/api-client');
+        const viewRes = await authenticatedFetch(`/api/roster/monthly-view?month=${currentMonth}&year=${currentYear}`);
+        
+        let view;
+        if (viewRes.ok) {
+          view = await viewRes.json();
+        } else {
+          // Fallback to empty view
+          view = { month: currentMonth, year: currentYear, employees: [] };
+        }
         
         // Load all approved leave requests for the month
         const allLeaves = await leaveService.getLeaveRequests();

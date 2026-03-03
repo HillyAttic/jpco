@@ -41,6 +41,7 @@ export const rosterAdminService = {
         year?: number;
         startDate?: Date;
         endDate?: Date;
+        allowedUserIds?: string[];
     }) {
         let query: FirebaseFirestore.Query = adminDb.collection(COLLECTION);
 
@@ -50,6 +51,11 @@ export const rosterAdminService = {
 
         const snapshot = await query.get();
         let entries = snapshot.docs.map((doc) => convertDoc(doc.data(), doc.id));
+
+        // Filter by allowed user IDs if provided (for manager access control)
+        if (filters.allowedUserIds !== undefined) {
+            entries = entries.filter((entry) => filters.allowedUserIds!.includes(entry.userId));
+        }
 
         // Apply month/year filter client-side
         if (filters.month !== undefined && filters.year !== undefined) {
@@ -162,7 +168,7 @@ export const rosterAdminService = {
         await adminDb.collection(COLLECTION).doc(id).delete();
     },
 
-    async getMonthlyRosterView(month: number, year: number) {
+    async getMonthlyRosterView(month: number, year: number, allowedUserIds?: string[]) {
         const startOfMonth = new Date(year, month - 1, 1);
         const endOfMonth = new Date(year, month, 0, 23, 59, 59);
 
@@ -188,6 +194,11 @@ export const rosterAdminService = {
             ...multiSnapshot.docs.map((doc) => convertDoc(doc.data(), doc.id)),
             ...singleSnapshot.docs.map((doc) => convertDoc(doc.data(), doc.id)),
         ];
+
+        // Filter by allowed user IDs if provided (for manager access control)
+        if (allowedUserIds !== undefined) {
+            entries = entries.filter((entry) => allowedUserIds.includes(entry.userId));
+        }
 
         // Filter single tasks client-side (only the ones in this month)
         entries = entries.filter((entry) => {
