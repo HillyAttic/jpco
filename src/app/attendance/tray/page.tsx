@@ -16,7 +16,7 @@ import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { AdminGuard } from '@/components/Auth/PermissionGuard';
+import { ManagerGuard } from '@/components/Auth/PermissionGuard';
 
 // Lazy load heavy modals
 const LocationMapModal = dynamic(() => import('@/components/attendance/LocationMapModal').then(mod => ({ default: mod.LocationMapModal })), {
@@ -81,9 +81,10 @@ interface Employee {
 }
 
 export default function AttendanceTrayPage() {
-  const { user, userProfile } = useEnhancedAuth();
+  const { user, userProfile, isAdmin, isManager } = useEnhancedAuth();
   const [attendances, setAttendances] = useState<AttendanceRecord[]>([]);
   const [employees, setEmployees] = useState<Employee[]>([]);
+  const [assignedEmployeeIds, setAssignedEmployeeIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [hasMoreData, setHasMoreData] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -142,15 +143,48 @@ export default function AttendanceTrayPage() {
     };
   };
 
+  // Fetch manager hierarchy and assigned employees
+  const fetchManagerHierarchy = useCallback(async () => {
+    if (!user || !isManager || isAdmin) {
+      setAssignedEmployeeIds([]);
+      return;
+    }
+
+    try {
+      const { managerHierarchyService } = await import('@/services/manager-hierarchy.service');
+      const hierarchy = await managerHierarchyService.getByManagerId(user.uid);
+      
+      if (hierarchy && hierarchy.employeeIds) {
+        setAssignedEmployeeIds(hierarchy.employeeIds);
+      } else {
+        setAssignedEmployeeIds([]);
+      }
+    } catch (error) {
+      console.error('Error fetching manager hierarchy:', error);
+      setAssignedEmployeeIds([]);
+    }
+  }, [user, isManager, isAdmin]);
+
   // Fetch all employees
   const fetchEmployees = useCallback(async () => {
     try {
-      const allEmployees = await employeeService.getAll();
+      let allEmployees = await employeeService.getAll();
+      
+      // Filter employees for managers
+      if (isManager && !isAdmin && assignedEmployeeIds.length > 0) {
+        allEmployees = allEmployees.filter(emp => 
+          emp.id && assignedEmployeeIds.includes(emp.id)
+        );
+      } else if (isManager && !isAdmin && assignedEmployeeIds.length === 0) {
+        // Manager has no assigned employees
+        allEmployees = [];
+      }
+      
       setEmployees(allEmployees);
     } catch (error) {
       console.error('Error fetching employees:', error);
     }
-  }, []);
+  }, [isManager, isAdmin, assignedEmployeeIds]);
 
   // Fetch attendance records
   const fetchAttendanceHistory = useCallback(async (page = 1) => {
@@ -219,10 +253,20 @@ export default function AttendanceTrayPage() {
           return convertTimestamps(data);
         });
         
-        // Apply status filter client-side
+        // Filter records for managers - only show assigned employees
         let filteredRecords = allRecords;
+        if (isManager && !isAdmin && assignedEmployeeIds.length > 0) {
+          filteredRecords = allRecords.filter(record => 
+            assignedEmployeeIds.includes(record.employeeId)
+          );
+        } else if (isManager && !isAdmin && assignedEmployeeIds.length === 0) {
+          // Manager has no assigned employees
+          filteredRecords = [];
+        }
+        
+        // Apply status filter client-side
         if (selectedStatus !== 'all') {
-          filteredRecords = allRecords.filter(record => {
+          filteredRecords = filteredRecords.filter(record => {
             if (selectedStatus === 'active') return !record.clockOut;
             if (selectedStatus === 'completed') return !!record.clockOut;
             return true;
@@ -242,12 +286,24 @@ export default function AttendanceTrayPage() {
       setLoading(false);
       setIsInitialLoad(false);
     }
-  }, [selectedEmployee, selectedStatus, dateFilter]);
+  }, [selectedEmployee, selectedStatus, dateFilter, isManager, isAdmin, assignedEmployeeIds]);
 
-  // Load initial data
+  // Load manager hierarchy first, then employees
   useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
+    fetchManagerHierarchy();
+  }, [fetchManagerHierarchy]);
+
+  // Load employees after hierarchy is fetched
+  useEffect(() => {
+    if (isManager && !isAdmin) {
+      // Wait for assignedEmployeeIds to be set
+      if (assignedEmployeeIds.length > 0 || assignedEmployeeIds.length === 0) {
+        fetchEmployees();
+      }
+    } else {
+      fetchEmployees();
+    }
+  }, [fetchEmployees, isManager, isAdmin, assignedEmployeeIds]);
 
   useEffect(() => {
     fetchAttendanceHistory(currentPage);
@@ -348,7 +404,7 @@ export default function AttendanceTrayPage() {
   }
 
   return (
-    <AdminGuard
+    <ManagerGuard
       fallback={
         <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
           <div className="p-4 bg-yellow-50 dark:bg-yellow-900/20 rounded-full">
@@ -356,7 +412,7 @@ export default function AttendanceTrayPage() {
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Access Restricted</h2>
           <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
-            You don't have permission to access this page. Only administrators can view the attendance tray.
+            You don't have permission to access this page. Only administrators and managers can view the attendance tray.
           </p>
           <Button onClick={() => window.history.back()} variant="outline">
             Go Back
@@ -675,6 +731,6 @@ export default function AttendanceTrayPage() {
         onClose={() => setShowHolidayModal(false)}
       />
     </div>
-  </AdminGuard>
+  </ManagerGuard>
   );
 }
