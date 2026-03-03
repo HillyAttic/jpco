@@ -42,10 +42,12 @@ function convertTimestamps(entry: any): RosterEntry {
 /**
  * Calculate task duration in hours
  */
-function calculateDuration(start?: Date, end?: Date): number | undefined {
+function calculateDuration(start?: Date | string, end?: Date | string): number | undefined {
   if (!start || !end) return undefined;
-  const ms = end.getTime() - start.getTime();
-  return ms / (1000 * 60 * 60);
+  const s = start instanceof Date ? start : new Date(start as string);
+  const e = end instanceof Date ? end : new Date(end as string);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return undefined;
+  return (e.getTime() - s.getTime()) / (1000 * 60 * 60);
 }
 
 /**

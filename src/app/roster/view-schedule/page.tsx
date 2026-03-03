@@ -129,6 +129,16 @@ export default function ViewSchedulePage() {
         let view;
         if (viewRes.ok) {
           view = await viewRes.json();
+          // Convert ISO date strings back to Date objects after JSON parse.
+          // NextResponse.json() serialises Date fields to strings; calculateDuration()
+          // later calls .getTime() on them, which throws in production where real
+          // activity data exists.
+          view?.employees?.forEach((emp: any) => {
+            emp?.activities?.forEach((act: any) => {
+              if (act.startDate) act.startDate = new Date(act.startDate);
+              if (act.endDate)   act.endDate   = new Date(act.endDate);
+            });
+          });
         } else {
           // Fallback to empty view
           view = { month: currentMonth, year: currentYear, employees: [] };
