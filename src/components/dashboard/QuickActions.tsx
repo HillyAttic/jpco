@@ -63,14 +63,14 @@ export function QuickActions({
     {
       label: 'View Team',
       icon: <UserGroupIcon className="w-5 h-5" />,
-      onClick: onViewTeam,
+      onClick: () => router.push('/teams'),
       color: 'bg-green-600 hover:bg-green-700',
       showForManager: false
     },
     {
       label: 'Projects',
       icon: <FolderIcon className="w-5 h-5" />,
-      onClick: onManageProjects,
+      onClick: () => router.push('/categories'),
       color: 'bg-indigo-600 hover:bg-indigo-700',
       showForManager: false
     },
@@ -84,7 +84,7 @@ export function QuickActions({
     {
       label: 'Reports',
       icon: <ClipboardDocumentCheckIcon className="w-5 h-5" />,
-      onClick: onViewReports,
+      onClick: () => router.push('/reports'),
       color: 'bg-cyan-600 hover:bg-cyan-700',
       showForManager: true
     },
