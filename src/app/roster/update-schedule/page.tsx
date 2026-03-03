@@ -53,6 +53,9 @@ export default function UpdateSchedulePage() {
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [assignedTasks, setAssignedTasks] = useState<NonRecurringTask[]>([]);
   const [selectedNonRecurringTask, setSelectedNonRecurringTask] = useState<NonRecurringTask | null>(null);
+  const [showTaskActionMenu, setShowTaskActionMenu] = useState(false);
+  const [selectedTaskForAction, setSelectedTaskForAction] = useState<RosterEntry | null>(null);
+  const [showTaskViewModal, setShowTaskViewModal] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -296,6 +299,41 @@ export default function UpdateSchedulePage() {
     });
     setShowModal(true);
     openModal();
+  };
+
+  const handleTaskClick = (task: RosterEntry, e: React.MouseEvent) => {
+    e.stopPropagation();
+    // Don't show menu for leave tasks
+    if (task.taskDetail?.startsWith('OFF:')) {
+      return;
+    }
+    setSelectedTaskForAction(task);
+    setShowTaskActionMenu(true);
+    openModal();
+  };
+
+  const handleViewTask = () => {
+    setShowTaskActionMenu(false);
+    setShowTaskViewModal(true);
+  };
+
+  const handleEditTaskFromMenu = () => {
+    setShowTaskActionMenu(false);
+    if (selectedTaskForAction) {
+      handleEditTask(selectedTaskForAction);
+    }
+  };
+
+  const handleCloseTaskActionMenu = () => {
+    setShowTaskActionMenu(false);
+    setSelectedTaskForAction(null);
+    closeModal();
+  };
+
+  const handleCloseTaskViewModal = () => {
+    setShowTaskViewModal(false);
+    setSelectedTaskForAction(null);
+    closeModal();
   };
 
   const handleEditTask = (entry: RosterEntry) => {
@@ -624,9 +662,8 @@ export default function UpdateSchedulePage() {
                       }`}
                       title={task.taskType === 'multi' ? task.activityName : (task.clientName || task.taskDetail)}
                       onClick={(e) => {
-                        e.stopPropagation();
                         if (!task.taskDetail?.startsWith('OFF:')) {
-                          handleEditTask(task);
+                          handleTaskClick(task, e);
                         }
                       }}
                     >
@@ -879,6 +916,161 @@ export default function UpdateSchedulePage() {
                   {new Date(selectedNonRecurringTask.dueDate).toLocaleDateString()}
                 </p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task Action Menu Modal */}
+      {showTaskActionMenu && selectedTaskForAction && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseTaskActionMenu}
+        >
+          <div
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl w-full max-w-sm p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Task Options</h3>
+              <button
+                onClick={handleCloseTaskActionMenu}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-3">
+              <button
+                onClick={handleViewTask}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-blue-600 dark:text-blue-400">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-white">View Task</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">See task details</div>
+                </div>
+              </button>
+
+              <button
+                onClick={handleEditTaskFromMenu}
+                className="w-full flex items-center gap-3 px-4 py-3 text-left bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 rounded-lg transition-colors"
+              >
+                <PencilIcon className="w-5 h-5 text-green-600 dark:text-green-400" />
+                <div>
+                  <div className="font-medium text-gray-900 dark:text-white">Edit Task</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">Modify task details</div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Task View Modal */}
+      {showTaskViewModal && selectedTaskForAction && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseTaskViewModal}
+        >
+          <div
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl w-full max-w-md p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-white">Task Details</h3>
+              <button
+                onClick={handleCloseTaskViewModal}
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              {selectedTaskForAction.taskType === 'multi' ? (
+                <>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-1">Activity Name</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{selectedTaskForAction.activityName}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-1">Start Date</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {selectedTaskForAction.startDate ? new Date(selectedTaskForAction.startDate).toLocaleDateString() : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-1">End Date</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {selectedTaskForAction.endDate ? new Date(selectedTaskForAction.endDate).toLocaleDateString() : '—'}
+                      </p>
+                    </div>
+                  </div>
+                  {selectedTaskForAction.notes && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-1">Notes</p>
+                      <p className="text-sm text-gray-900 dark:text-white">{selectedTaskForAction.notes}</p>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <>
+                  {selectedTaskForAction.clientName && (
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-1">Client Name</p>
+                      <p className="text-sm text-gray-900 dark:text-white">{selectedTaskForAction.clientName}</p>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-1">Task Detail</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{selectedTaskForAction.taskDetail}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-1">Start Time</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {selectedTaskForAction.timeStart ? new Date(selectedTaskForAction.timeStart).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-1">End Time</p>
+                      <p className="text-sm text-gray-900 dark:text-white">
+                        {selectedTaskForAction.timeEnd ? new Date(selectedTaskForAction.timeEnd).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 dark:text-gray-400 uppercase font-semibold mb-1">Date</p>
+                    <p className="text-sm text-gray-900 dark:text-white">
+                      {selectedTaskForAction.timeStart ? new Date(selectedTaskForAction.timeStart).toLocaleDateString() : '—'}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+
+            <div className="mt-6 flex gap-2">
+              <button
+                onClick={() => {
+                  handleCloseTaskViewModal();
+                  handleEditTask(selectedTaskForAction);
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Edit Task
+              </button>
+              <button
+                onClick={handleCloseTaskViewModal}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
