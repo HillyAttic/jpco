@@ -383,13 +383,13 @@ export default function AttendanceRosterPage() {
 
       {/* Employee Detail Modal */}
       {showEmployeeModal && selectedEmployee && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h3 className="text-xl font-bold text-gray-900 dark:text-white">{selectedEmployee.employeeName}</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">{selectedEmployee.employeeEmail}</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-3 sm:p-6 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-start mb-4 sm:mb-6 gap-2">
+              <div className="flex-1 min-w-0">
+                <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">{selectedEmployee.employeeName}</h3>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{selectedEmployee.employeeEmail}</p>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
                   {monthNames[month]} {year} - Attendance Overview
                 </p>
               </div>
@@ -398,60 +398,62 @@ export default function AttendanceRosterPage() {
                   setShowEmployeeModal(false);
                   closeModal();
                 }}
-                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0"
               >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
 
             {/* Stats Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
-              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{selectedEmployee.stats.present}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Present</div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+              <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">{selectedEmployee.stats.present}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Present</div>
               </div>
-              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{selectedEmployee.stats.absent}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Absent</div>
+              <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-red-600">{selectedEmployee.stats.absent}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Absent</div>
               </div>
-              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{selectedEmployee.stats.approvedLeave}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Approved Leave</div>
+              <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">{selectedEmployee.stats.approvedLeave}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Approved Leave</div>
               </div>
-              <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{selectedEmployee.stats.halfDay}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Half Day</div>
+              <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">{selectedEmployee.stats.halfDay}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Half Day</div>
               </div>
-              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{selectedEmployee.stats.unapprovedLeave}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Unapproved</div>
+              <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-red-600">{selectedEmployee.stats.unapprovedLeave}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unapproved</div>
               </div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                <div className="text-2xl font-bold text-blue-600">{selectedEmployee.stats.holiday}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Holidays</div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600">{selectedEmployee.stats.holiday}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Holidays</div>
               </div>
-              <div className="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg col-span-2">
-                <div className="text-2xl font-bold text-gray-900 dark:text-white">{selectedEmployee.stats.totalHours.toFixed(1)}</div>
-                <div className="text-sm text-gray-600 dark:text-gray-400">Total Hours</div>
+              <div className="bg-gray-50 dark:bg-gray-700 p-2 sm:p-4 rounded-lg col-span-2">
+                <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{selectedEmployee.stats.totalHours.toFixed(1)}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Hours</div>
               </div>
             </div>
 
             {/* Calendar View */}
-            <div className="grid grid-cols-7 gap-2">
-              {selectedEmployee.days.map((day, idx) => (
-                <div
-                  key={idx}
-                  className={`p-3 rounded-lg border ${getStatusColor(day.status)} bg-opacity-20 border-opacity-50`}
-                >
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">{day.date.getDate()}</div>
-                  <div className="text-xs text-gray-600 dark:text-gray-400 capitalize">{day.status}</div>
-                  {day.hours && day.hours > 0 && (
-                    <div className="text-xs text-gray-600 dark:text-gray-400">{day.hours.toFixed(1)}h</div>
-                  )}
-                </div>
-              ))}
+            <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-[280px]">
+                {selectedEmployee.days.map((day, idx) => (
+                  <div
+                    key={idx}
+                    className={`p-1.5 sm:p-3 rounded-lg border ${getStatusColor(day.status)} bg-opacity-20 border-opacity-50`}
+                  >
+                    <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{day.date.getDate()}</div>
+                    <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 capitalize truncate">{day.status}</div>
+                    {day.hours && day.hours > 0 && (
+                      <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">{day.hours.toFixed(1)}h</div>
+                    )}
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>

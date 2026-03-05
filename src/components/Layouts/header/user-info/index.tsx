@@ -25,7 +25,7 @@ export function UserInfo() {
     try {
       setIsSigningOut(true);
       await auth.signOut();
-      router.push('/auth/sign-in');
+      router.push('/');
     } catch (error) {
       console.error('Error signing out:', error);
     } finally {
