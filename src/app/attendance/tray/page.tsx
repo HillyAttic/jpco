@@ -422,33 +422,37 @@ export default function AttendanceTrayPage() {
     >
       <div className="container mx-auto py-8 px-4">
       {/* Header */}
-      <div className="flex justify-between items-center mb-8">
-        <div>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4 sm:mb-0">
           <div className="flex items-center gap-3">
             <Users className="h-8 w-8 text-blue-600" />
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Attendance Tray</h1>
           </div>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">View attendance history for all employees</p>
+          <p className="text-gray-600 dark:text-gray-400 mt-2 sm:mt-0">View attendance history for all employees</p>
         </div>
-        <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setShowHolidayModal(true)}
-            className="flex items-center gap-2 text-blue-600 border-blue-600 hover:bg-blue-50"
-          >
-            <Calendar className="h-4 w-4" />
-            Manage Holidays
-          </Button>
-          <Button
-            variant="default"
-            size="sm"
-            onClick={() => setShowExportModal(true)}
-            className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </Button>
+        <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-end">
+          {isAdmin && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowHolidayModal(true)}
+              className="flex items-center gap-2 text-blue-600 border-blue-600 hover:bg-blue-50"
+            >
+              <Calendar className="h-4 w-4" />
+              Manage Holidays
+            </Button>
+          )}
+          {isAdmin && (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
+          )}
           <Button
             variant="outline"
             size="sm"
@@ -461,8 +465,8 @@ export default function AttendanceTrayPage() {
             <Loader2 className="h-4 w-4" />
             Refresh
           </Button>
-          <Button 
-            variant="outline" 
+          <Button
+            variant="outline"
             onClick={() => window.history.back()}
             className="flex items-center gap-2"
           >
@@ -613,7 +617,7 @@ export default function AttendanceTrayPage() {
                             className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                           >
                             <MapPin className="h-3 w-3" />
-                            <span>In: {record.location.clockIn.latitude.toFixed(4)}, {record.location.clockIn.longitude.toFixed(4)}</span>
+                            <span>Map (In)</span>
                           </button>
                         )}
                         {record.location?.clockOut && (
@@ -626,7 +630,7 @@ export default function AttendanceTrayPage() {
                             className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
                           >
                             <MapPin className="h-3 w-3" />
-                            <span>Out: {record.location.clockOut.latitude.toFixed(4)}, {record.location.clockOut.longitude.toFixed(4)}</span>
+                            <span>Map (Out)</span>
                           </button>
                         )}
                       </div>

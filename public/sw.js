@@ -1,40 +1,41 @@
 // Progressive Web App Service Worker
-// This service worker handles caching, offline functionality, and PWA installation
+// This service worker handles offline functionality and PWA installation
+// VERSION: 2.0 - Fixed aggressive caching that caused stale JS bundles in production
 
-const CACHE_NAME = 'jpco-dashboard-v1';
+const CACHE_NAME = 'jpco-dashboard-v2';
+
+// Only cache truly static assets that won't change between deployments
 const STATIC_ASSETS = [
-  '/',
-  '/index.html',
   '/manifest.json',
   '/images/logo/logo-192.png',
   '/images/logo/logo-512.png',
   '/images/logo/logo-maskable-192.png',
   '/images/logo/logo-maskable-512.png',
-  '/images/icons/dashboard-96.png',
-  '/images/icons/tasks-96.png',
-  '/images/icons/employees-96.png',
-  '/images/screenshots/desktop-dashboard.png',
-  '/images/screenshots/mobile-dashboard.png',
-  '/styles/main.css',
-  '/scripts/main.js',
-  '/scripts/vendor.js',
+  '/images/logo/logo-icon.svg',
   '/offline.html'
 ];
 
-// Install event - cache static assets
+// Install event - cache only truly static assets
 self.addEventListener('install', (event) => {
+  console.log('[SW v2.0] Installing...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Caching static assets');
-        return cache.addAll(STATIC_ASSETS);
+        console.log('[SW v2.0] Caching static assets');
+        // Use addAll with error handling - don't fail install if some assets are missing
+        return Promise.allSettled(
+          STATIC_ASSETS.map(asset => cache.add(asset).catch(err => {
+            console.warn('[SW v2.0] Failed to cache:', asset, err.message);
+          }))
+        );
       })
       .then(() => self.skipWaiting())
   );
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up ALL old caches to prevent stale content
 self.addEventListener('activate', (event) => {
+  console.log('[SW v2.0] Activating...');
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
@@ -42,7 +43,7 @@ self.addEventListener('activate', (event) => {
           cacheNames
             .filter((name) => name !== CACHE_NAME)
             .map((name) => {
-              console.log('[SW] Deleting old cache:', name);
+              console.log('[SW v2.0] Deleting old cache:', name);
               return caches.delete(name);
             })
         );
@@ -51,161 +52,101 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch event - serve from cache, fall back to network
+// Fetch event - NETWORK FIRST for everything except static assets
 self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (event.request.method !== 'GET') {
     return;
   }
 
-  // Skip browser extensions and non-GET requests
+  // Skip browser extensions
   if (event.request.url.startsWith('chrome-extension://') ||
       event.request.url.startsWith('moz-extension://')) {
     return;
   }
 
-  // For API requests, use network first with cache fallback
+  // Skip Firebase/Google API calls - always go to network
+  if (event.request.url.includes('firestore.googleapis.com') ||
+      event.request.url.includes('identitytoolkit.googleapis.com') ||
+      event.request.url.includes('firebaseinstallations.googleapis.com') ||
+      event.request.url.includes('fcmregistrations.googleapis.com')) {
+    return;
+  }
+
+  // Skip API requests - always go to network, NO caching
   if (event.request.url.includes('/api/')) {
+    return;
+  }
+
+  // CRITICAL: Never cache Next.js page navigations or _next/static JS/CSS chunks
+  // These change on every deployment and serving stale ones causes client-side crashes
+  if (event.request.mode === 'navigate' || 
+      event.request.url.includes('/_next/')) {
     event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          // If response is good, cache it
-          if (response.ok) {
-            const responseClone = response.clone();
-            caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseClone);
-            });
-          }
-          return response;
-        })
-        .catch(() => {
-          // If network fails, try cache
-          return caches.match(event.request);
-        })
+      fetch(event.request).catch(() => {
+        // Only if network fails, try to serve offline page for navigations
+        if (event.request.mode === 'navigate') {
+          return caches.match('/offline.html');
+        }
+        return new Response('Network error', { status: 503 });
+      })
     );
     return;
   }
 
-  // For static assets, use cache first
-  if (STATIC_ASSETS.some(asset => event.request.url.includes(asset))) {
+  // For truly static assets (images, manifest), use cache-first strategy
+  const isStaticAsset = STATIC_ASSETS.some(asset => event.request.url.endsWith(asset)) ||
+    event.request.url.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|avif)$/);
+
+  if (isStaticAsset) {
     event.respondWith(
       caches.match(event.request)
         .then((response) => {
-          // If cached, return it
           if (response) {
             return response;
           }
-
-          // Otherwise fetch from network and cache it
-          return fetch(event.request).then((response) => {
-            if (!response || response.status !== 200 || response.type !== 'basic') {
-              return response;
+          return fetch(event.request).then((networkResponse) => {
+            if (!networkResponse || networkResponse.status !== 200) {
+              return networkResponse;
             }
-
-            const responseToCache = response.clone();
+            const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
               cache.put(event.request, responseToCache);
             });
-
-            return response;
+            return networkResponse;
           });
         })
         .catch(() => {
-          // If everything fails, return offline page
-          return caches.match('/offline.html');
+          return new Response('', { status: 503 });
         })
     );
     return;
   }
 
-  // For all other requests, try network first
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // If response is good, cache it
-        if (response.ok) {
-          const responseClone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return response;
-      })
-      .catch(() => {
-        // If network fails, try cache
-        return caches.match(event.request);
-      })
-  );
+  // All other requests - network only, no caching
+  // This prevents stale JS/CSS/HTML from being served after deployments
 });
-
-// Background sync for offline form submissions
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-offline-requests') {
-    event.waitUntil(
-      processOfflineQueue()
-    );
-  }
-});
-
-// Process offline queue
-async function processOfflineQueue() {
-  const queue = await getOfflineQueue();
-
-  for (const item of queue) {
-    try {
-      const response = await fetch(item.url, {
-        method: item.method,
-        body: item.body ? JSON.stringify(item.body) : undefined,
-        headers: {
-          'Content-Type': 'application/json',
-          ...item.headers
-        }
-      });
-
-      if (response.ok) {
-        await removeFromOfflineQueue(item);
-      }
-    } catch (error) {
-      console.error('[SW] Failed to process offline queue item:', error);
-      // Stop processing if one fails
-      break;
-    }
-  }
-}
-
-// Get offline queue from localStorage
-async function getOfflineQueue() {
-  const queue = localStorage.getItem('offline-queue');
-  return queue ? JSON.parse(queue) : [];
-}
-
-// Remove item from offline queue
-async function removeFromOfflineQueue(item) {
-  const queue = await getOfflineQueue();
-  const filteredQueue = queue.filter(queueItem =>
-    !(queueItem.url === item.url &&
-      queueItem.method === item.method &&
-      queueItem.timestamp === item.timestamp)
-  );
-  localStorage.setItem('offline-queue', JSON.stringify(filteredQueue));
-}
 
 // Handle push notifications
 self.addEventListener('push', (event) => {
   if (event.data) {
-    const data = event.data.json();
-    const title = data.title || 'JPCO Dashboard';
-    const options = {
-      body: data.body || 'You have a new notification',
-      icon: '/images/logo/logo-192.png',
-      badge: '/images/logo/logo-72.png',
-      data: { url: data.url || '/' },
-      actions: data.actions || []
-    };
+    try {
+      const data = event.data.json();
+      const title = data.title || 'JPCO Dashboard';
+      const options = {
+        body: data.body || 'You have a new notification',
+        icon: '/images/logo/logo-192.png',
+        badge: '/images/logo/logo-icon.svg',
+        data: { url: data.url || '/' },
+        actions: data.actions || []
+      };
 
-    event.waitUntil(
-      self.registration.showNotification(title, options)
-    );
+      event.waitUntil(
+        self.registration.showNotification(title, options)
+      );
+    } catch (error) {
+      console.error('[SW v2.0] Push notification error:', error);
+    }
   }
 });
 
@@ -213,7 +154,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  if (event.notification.data.url) {
+  if (event.notification.data && event.notification.data.url) {
     event.waitUntil(
       clients.openWindow(event.notification.data.url)
     );
@@ -222,20 +163,15 @@ self.addEventListener('notificationclick', (event) => {
 
 // Handle notification close
 self.addEventListener('notificationclose', (event) => {
-  console.log('Notification was closed', event.notification);
+  // No-op
 });
 
-// Periodic background sync for token refresh
-const TOKEN_REFRESH_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+// Handle skip waiting message
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    console.log('[SW v2.0] Skip waiting requested');
+    self.skipWaiting();
+  }
+});
 
-setInterval(() => {
-  self.registration.pushManager.getSubscription()
-    .then((subscription) => {
-      if (subscription) {
-        // Trigger token refresh
-        self.registration.active?.postMessage({ type: 'token_refresh' });
-      }
-    });
-}, TOKEN_REFRESH_INTERVAL);
-
-console.log('[SW] Service worker loaded successfully');
+console.log('[SW v2.0] Service worker loaded successfully');

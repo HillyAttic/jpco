@@ -32,11 +32,12 @@ describe('Feature: management-pages, Property 51: Optimistic Create Display', ()
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
-          avatarUrl: fc.option(fc.webUrl(), { nil: undefined }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
         }),
         async (clientData) => {
@@ -85,10 +86,10 @@ describe('Feature: management-pages, Property 51: Optimistic Create Display', ()
 
           // Verify the optimistic client has the correct data
           const optimisticClient = result.current.clients[0];
-          expect(optimisticClient.name).toBe(clientData.name);
-          expect(optimisticClient.email).toBe(clientData.email);
-          expect(optimisticClient.phone).toBe(clientData.phone);
-          expect(optimisticClient.company).toBe(clientData.company);
+          expect(optimisticClient.clientName).toBe(clientData.clientName);
+          expect(optimisticClient.contact?.email).toBe(clientData.contact?.email);
+          expect(optimisticClient.contact?.phone).toBe(clientData.contact?.phone);
+          expect(optimisticClient.businessName).toBe(clientData.businessName);
           expect(optimisticClient.status).toBe(clientData.status);
 
           // Verify it has a temporary ID
@@ -127,10 +128,12 @@ describe('Feature: management-pages, Property 51: Optimistic Create Display', ()
       fc.asyncProperty(
         fc.array(
           fc.record({
-            name: fc.string({ minLength: 1, maxLength: 100 }),
-            email: fc.emailAddress(),
-            phone: fc.string({ minLength: 10, maxLength: 15 }),
-            company: fc.string({ minLength: 1, maxLength: 100 }),
+            clientName: fc.string({ minLength: 1, maxLength: 100 }),
+            contact: fc.record({
+              email: fc.emailAddress(),
+              phone: fc.string({ minLength: 10, maxLength: 15 }),
+            }),
+            businessName: fc.string({ minLength: 1, maxLength: 100 }),
             status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           }),
           { minLength: 2, maxLength: 5 }
@@ -180,10 +183,10 @@ describe('Feature: management-pages, Property 51: Optimistic Create Display', ()
 
           // Verify all client data is correct
           clientsData.forEach((clientData, index) => {
-            const client = result.current.clients.find(c => c.name === clientData.name);
+            const client = result.current.clients.find(c => c.clientName === clientData.clientName);
             expect(client).toBeDefined();
-            expect(client?.email).toBe(clientData.email);
-            expect(client?.company).toBe(clientData.company);
+            expect(client?.contact?.email).toBe(clientData.contact?.email);
+            expect(client?.businessName).toBe(clientData.businessName);
           });
         }
       ),
@@ -195,11 +198,12 @@ describe('Feature: management-pages, Property 51: Optimistic Create Display', ()
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
-          avatarUrl: fc.option(fc.webUrl(), { nil: undefined }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
         }),
         async (clientData) => {
@@ -246,18 +250,18 @@ describe('Feature: management-pages, Property 51: Optimistic Create Display', ()
 
           // Verify data is preserved while waiting for server
           const optimisticClient = result.current.clients[0];
-          expect(optimisticClient.name).toBe(clientData.name);
-          expect(optimisticClient.email).toBe(clientData.email);
-          expect(optimisticClient.phone).toBe(clientData.phone);
-          expect(optimisticClient.company).toBe(clientData.company);
+          expect(optimisticClient.clientName).toBe(clientData.clientName);
+          expect(optimisticClient.contact?.email).toBe(clientData.contact?.email);
+          expect(optimisticClient.contact?.phone).toBe(clientData.contact?.phone);
+          expect(optimisticClient.businessName).toBe(clientData.businessName);
 
           // Wait a bit to ensure data remains stable
           await new Promise(resolve => setTimeout(resolve, 100));
 
           // Verify data is still preserved
           const stillOptimisticClient = result.current.clients[0];
-          expect(stillOptimisticClient.name).toBe(clientData.name);
-          expect(stillOptimisticClient.email).toBe(clientData.email);
+          expect(stillOptimisticClient.clientName).toBe(clientData.clientName);
+          expect(stillOptimisticClient.contact?.email).toBe(clientData.contact?.email);
 
           // Now resolve the server response
           resolveCreate!({
@@ -285,10 +289,12 @@ describe('Feature: management-pages, Property 51: Optimistic Create Display', ()
         fc.array(
           fc.record({
             id: fc.uuid(),
-            name: fc.string({ minLength: 1, maxLength: 100 }),
-            email: fc.emailAddress(),
-            phone: fc.string({ minLength: 10, maxLength: 15 }),
-            company: fc.string({ minLength: 1, maxLength: 100 }),
+            clientName: fc.string({ minLength: 1, maxLength: 100 }),
+            contact: fc.record({
+              email: fc.emailAddress(),
+              phone: fc.string({ minLength: 10, maxLength: 15 }),
+            }),
+            businessName: fc.string({ minLength: 1, maxLength: 100 }),
             status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
             createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
             updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -296,10 +302,12 @@ describe('Feature: management-pages, Property 51: Optimistic Create Display', ()
           { minLength: 1, maxLength: 5 }
         ),
         fc.record({
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
         }),
         async (existingClients, newClientData) => {
@@ -334,8 +342,8 @@ describe('Feature: management-pages, Property 51: Optimistic Create Display', ()
           await waitFor(() => {
             expect(result.current.clients.length).toBe(existingClients.length + 1);
             const firstClient = result.current.clients[0];
-            expect(firstClient.name).toBe(newClientData.name);
-            expect(firstClient.email).toBe(newClientData.email);
+            expect(firstClient.clientName).toBe(newClientData.clientName);
+            expect(firstClient.contact?.email).toBe(newClientData.contact?.email);
           }, { timeout: 3000 });
         }
       ),
@@ -361,10 +369,12 @@ describe('Feature: management-pages, Property 52: Optimistic Delete Display', ()
       fc.asyncProperty(
         fc.record({
           id: fc.uuid(),
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
           updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -435,10 +445,12 @@ describe('Feature: management-pages, Property 52: Optimistic Delete Display', ()
         fc.array(
           fc.record({
             id: fc.uuid(),
-            name: fc.string({ minLength: 1, maxLength: 100 }),
-            email: fc.emailAddress(),
-            phone: fc.string({ minLength: 10, maxLength: 15 }),
-            company: fc.string({ minLength: 1, maxLength: 100 }),
+            clientName: fc.string({ minLength: 1, maxLength: 100 }),
+            contact: fc.record({
+              email: fc.emailAddress(),
+              phone: fc.string({ minLength: 10, maxLength: 15 }),
+            }),
+            businessName: fc.string({ minLength: 1, maxLength: 100 }),
             status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
             createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
             updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -497,10 +509,12 @@ describe('Feature: management-pages, Property 52: Optimistic Delete Display', ()
         fc.array(
           fc.record({
             id: fc.uuid(),
-            name: fc.string({ minLength: 1, maxLength: 100 }),
-            email: fc.emailAddress(),
-            phone: fc.string({ minLength: 10, maxLength: 15 }),
-            company: fc.string({ minLength: 1, maxLength: 100 }),
+            clientName: fc.string({ minLength: 1, maxLength: 100 }),
+            contact: fc.record({
+              email: fc.emailAddress(),
+              phone: fc.string({ minLength: 10, maxLength: 15 }),
+            }),
+            businessName: fc.string({ minLength: 1, maxLength: 100 }),
             status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
             createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
             updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -548,8 +562,8 @@ describe('Feature: management-pages, Property 52: Optimistic Delete Display', ()
           otherClients.forEach(otherClient => {
             const stillExists = result.current.clients.find(c => c.id === otherClient.id);
             expect(stillExists).toBeDefined();
-            expect(stillExists?.name).toBe(otherClient.name);
-            expect(stillExists?.email).toBe(otherClient.email);
+            expect(stillExists?.clientName).toBe(otherClient.clientName);
+            expect(stillExists?.contact?.email).toBe(otherClient.contact?.email);
           });
         }
       ),
@@ -563,10 +577,12 @@ describe('Feature: management-pages, Property 52: Optimistic Delete Display', ()
         fc.array(
           fc.record({
             id: fc.uuid(),
-            name: fc.string({ minLength: 1, maxLength: 100 }),
-            email: fc.emailAddress(),
-            phone: fc.string({ minLength: 10, maxLength: 15 }),
-            company: fc.string({ minLength: 1, maxLength: 100 }),
+            clientName: fc.string({ minLength: 1, maxLength: 100 }),
+            contact: fc.record({
+              email: fc.emailAddress(),
+              phone: fc.string({ minLength: 10, maxLength: 15 }),
+            }),
+            businessName: fc.string({ minLength: 1, maxLength: 100 }),
             status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
             createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
             updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -623,11 +639,12 @@ describe('Feature: management-pages, Property 52: Optimistic Delete Display', ()
         fc.array(
           fc.record({
             id: fc.uuid(),
-            name: fc.string({ minLength: 1, maxLength: 100 }),
-            email: fc.emailAddress(),
-            phone: fc.string({ minLength: 10, maxLength: 15 }),
-            company: fc.string({ minLength: 1, maxLength: 100 }),
-            avatarUrl: fc.option(fc.webUrl(), { nil: undefined }),
+            clientName: fc.string({ minLength: 1, maxLength: 100 }),
+            contact: fc.record({
+              email: fc.emailAddress(),
+              phone: fc.string({ minLength: 10, maxLength: 15 }),
+            }),
+            businessName: fc.string({ minLength: 1, maxLength: 100 }),
             status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
             createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
             updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -669,11 +686,10 @@ describe('Feature: management-pages, Property 52: Optimistic Delete Display', ()
             originalProperties.forEach((originalClient) => {
               const currentClient = result.current.clients.find(c => c.id === originalClient.id);
               expect(currentClient).toBeDefined();
-              expect(currentClient?.name).toBe(originalClient.name);
-              expect(currentClient?.email).toBe(originalClient.email);
-              expect(currentClient?.phone).toBe(originalClient.phone);
-              expect(currentClient?.company).toBe(originalClient.company);
-              expect(currentClient?.avatarUrl).toBe(originalClient.avatarUrl);
+              expect(currentClient?.clientName).toBe(originalClient.clientName);
+              expect(currentClient?.contact?.email).toBe(originalClient.contact?.email);
+              expect(currentClient?.contact?.phone).toBe(originalClient.contact?.phone);
+              expect(currentClient?.businessName).toBe(originalClient.businessName);
               expect(currentClient?.status).toBe(originalClient.status);
             });
           }, { timeout: 3000 });

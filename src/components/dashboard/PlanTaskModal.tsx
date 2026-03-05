@@ -164,7 +164,7 @@ export function PlanTaskModal({
 
     const newVisit: ClientVisit = {
       clientId: currentVisit.clientId,
-      clientName: client.name,
+      clientName: client.clientName,
       scheduleDate: currentVisit.scheduleDate,
       startTime: currentVisit.startTime,
       endTime: currentVisit.endTime,
@@ -412,7 +412,7 @@ export function PlanTaskModal({
                     <option value="">Select a client...</option>
                     {getAvailableClients().map((client) => (
                       <option key={client.id} value={client.id}>
-                        {client.name} {client.businessName ? `(${client.businessName})` : ''}
+                        {client.clientName} {client.businessName ? `(${client.businessName})` : ''}
                       </option>
                     ))}
                   </Select>

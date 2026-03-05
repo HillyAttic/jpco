@@ -48,17 +48,25 @@ export default function ClientsPage() {
     // Apply field filter - show only rows that have data in the selected field
     if (filters.filterBy !== 'all') {
       result = result.filter(client => {
-        const fieldValue = client[filters.filterBy as keyof Client];
-        // Check if field has a value (not null, undefined, or empty string)
-        return fieldValue !== null && fieldValue !== undefined && fieldValue !== '';
+        switch (filters.filterBy) {
+          case 'roc': return !!client.compliance?.roc;
+          case 'gstr1': return !!client.compliance?.gstr1;
+          case 'gst3b': return !!client.compliance?.gst3b;
+          case 'iff': return !!client.compliance?.iff;
+          case 'itr': return !!client.compliance?.itr;
+          case 'taxAudit': return !!client.compliance?.taxAudit;
+          case 'accounting': return !!client.compliance?.accounting;
+          case 'clientVisit': return !!client.compliance?.clientVisit;
+          default: return true;
+        }
       });
     }
 
-    // Sort by name for consistent display
+    // Sort by client number (S.No) in ascending order
     result.sort((a, b) => {
-      const aName = a.name || '';
-      const bName = b.name || '';
-      return aName.localeCompare(bName);
+      const aNum = a.clientNumber || '';
+      const bNum = b.clientNumber || '';
+      return aNum.localeCompare(bNum);
     });
 
     return result;
@@ -148,40 +156,42 @@ export default function ClientsPage() {
     setIsSubmitting(true);
 
     try {
+      const clientData = {
+        clientName: data.clientName,
+        businessName: data.businessName || undefined,
+        taxIdentifiers: (data.pan || data.tan || data.gstin) ? {
+          pan: data.pan || undefined,
+          tan: data.tan || undefined,
+          gstin: data.gstin || undefined,
+        } : undefined,
+        contact: (data.email || data.phone) ? {
+          email: data.email || undefined,
+          phone: data.phone || undefined,
+        } : undefined,
+        address: (data.address || data.city || data.state || data.country || data.zipCode) ? {
+          line1: data.address || undefined,
+          city: data.city || undefined,
+          state: data.state || undefined,
+          country: data.country || undefined,
+          zipCode: data.zipCode || undefined,
+        } : undefined,
+        compliance: {
+          roc: data.complianceRoc ?? false,
+          gstr1: data.complianceGstr1 ?? false,
+          gst3b: data.complianceGst3b ?? false,
+          iff: data.complianceIff ?? false,
+          itr: data.complianceItr ?? false,
+          taxAudit: data.complianceTaxAudit ?? false,
+          accounting: data.complianceAccounting ?? false,
+          clientVisit: data.complianceClientVisit ?? false,
+        },
+        status: data.status,
+      };
+
       if (selectedClient) {
-        // Update existing client
-        await updateClient(selectedClient.id!, {
-          name: data.name,
-          businessName: data.businessName,
-          pan: data.pan,
-          tan: data.tan,
-          gstin: data.gstin,
-          email: data.email,
-          phone: data.phone,
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          country: data.country,
-          zipCode: data.zipCode,
-          status: data.status,
-        });
+        await updateClient(selectedClient.id!, clientData);
       } else {
-        // Create new client
-        await createClient({
-          name: data.name,
-          businessName: data.businessName,
-          pan: data.pan,
-          tan: data.tan,
-          gstin: data.gstin,
-          email: data.email,
-          phone: data.phone,
-          address: data.address,
-          city: data.city,
-          state: data.state,
-          country: data.country,
-          zipCode: data.zipCode,
-          status: data.status,
-        });
+        await createClient(clientData);
       }
 
       setIsModalOpen(false);

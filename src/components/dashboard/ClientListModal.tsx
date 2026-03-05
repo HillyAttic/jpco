@@ -108,27 +108,27 @@ export function ClientListModal({
                       <div className="flex-shrink-0">
                         <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
                           <span className="text-indigo-600 dark:text-indigo-400 font-semibold text-sm">
-                            {client.name.charAt(0).toUpperCase()}
+                            {client.clientName.charAt(0).toUpperCase()}
                           </span>
                         </div>
                       </div>
                       <div className="flex-1 min-w-0">
                         <h4 className="font-semibold text-sm text-gray-900 dark:text-white truncate">
-                          {client.name}
+                          {client.clientName}
                         </h4>
                         {client.businessName && (
                           <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                             {client.businessName}
                           </p>
                         )}
-                        {client.email && (
+                        {client.contact?.email && (
                           <p className="text-xs text-gray-500 dark:text-gray-500 truncate mt-0.5">
-                            {client.email}
+                            {client.contact.email}
                           </p>
                         )}
-                        {client.phone && (
+                        {client.contact?.phone && (
                           <p className="text-xs text-gray-500 dark:text-gray-500 truncate">
-                            {client.phone}
+                            {client.contact.phone}
                           </p>
                         )}
                       </div>

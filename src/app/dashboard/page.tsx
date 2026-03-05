@@ -90,7 +90,7 @@ async function getClientName(clientId: string): Promise<string> {
   try {
     const client = await clientService.getById(clientId);
     if (client) {
-      return client.name || client.businessName || 'Unknown Client';
+      return client.clientName || client.businessName || 'Unknown Client';
     }
   } catch (error) {
     console.error('Error fetching client name:', error);

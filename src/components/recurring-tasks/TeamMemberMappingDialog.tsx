@@ -143,7 +143,7 @@ export function TeamMemberMappingDialog({
   // Get client name by ID
   const getClientName = (clientId: string) => {
     const client = clients.find(c => c.id === clientId);
-    return client?.name || 'Unknown Client';
+    return client?.clientName || 'Unknown Client';
   };
 
   // Get user name by ID
@@ -210,7 +210,7 @@ export function TeamMemberMappingDialog({
                 <option value="">Choose clients to assign...</option>
                 {getAvailableClients().map((client) => (
                   <option key={client.id} value={client.id}>
-                    {client.name} {client.businessName ? `(${client.businessName})` : ''}
+                    {client.clientName} {client.businessName ? `(${client.businessName})` : ''}
                   </option>
                 ))}
               </Select>

@@ -5,18 +5,34 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
 // Validation schema for client creation
 const createClientSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100),
+  clientName: z.string().min(1, 'Client name is required').max(100),
   businessName: z.string().optional(),
-  pan: z.string().optional(),
-  tan: z.string().optional(),
-  gstin: z.string().optional(),
-  email: z.string().optional(),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  city: z.string().optional(),
-  state: z.string().optional(),
-  country: z.string().optional(),
-  zipCode: z.string().optional(),
+  taxIdentifiers: z.object({
+    pan: z.string().optional(),
+    tan: z.string().optional(),
+    gstin: z.string().optional(),
+  }).optional(),
+  contact: z.object({
+    email: z.string().optional(),
+    phone: z.string().optional(),
+  }).optional(),
+  address: z.object({
+    line1: z.string().optional(),
+    city: z.string().optional(),
+    state: z.string().optional(),
+    country: z.string().optional(),
+    zipCode: z.string().optional(),
+  }).optional(),
+  compliance: z.object({
+    roc: z.boolean(),
+    gstr1: z.boolean(),
+    gst3b: z.boolean(),
+    iff: z.boolean(),
+    itr: z.boolean(),
+    taxAudit: z.boolean(),
+    accounting: z.boolean(),
+    clientVisit: z.boolean(),
+  }).optional(),
   status: z.enum(['active', 'inactive']).default('active'),
 });
 

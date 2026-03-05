@@ -66,10 +66,14 @@ export function ClientFilter({
             className="mt-1"
           >
             <option value="all">All Rows</option>
-            <option value="businessName">Business Name</option>
-            <option value="gstin">GSTIN</option>
-            <option value="tan">T.A.N.</option>
-            <option value="pan">P.A.N.</option>
+            <option value="roc">ROC</option>
+            <option value="gstr1">GSTR1</option>
+            <option value="gst3b">GST3B</option>
+            <option value="iff">IFF</option>
+            <option value="itr">ITR</option>
+            <option value="taxAudit">Tax Audit</option>
+            <option value="accounting">Accounting</option>
+            <option value="clientVisit">Client Visit</option>
           </Select>
         </div>
 

@@ -80,7 +80,7 @@ export async function GET(request: NextRequest) {
     
     // Filter clients by search
     const filteredClients = clientSearch
-      ? allClients.filter(c => c.name.toLowerCase().includes(clientSearch))
+      ? allClients.filter(c => c.clientName.toLowerCase().includes(clientSearch))
       : allClients;
 
     if (filteredClients.length === 0) {
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
     // Create a set of filtered client IDs for quick lookup
     const filteredClientIds = new Set(filteredClients.map(c => c.id!));
     // Create a client name map
-    const clientNameMap = new Map(allClients.map(c => [c.id!, c.name]));
+    const clientNameMap = new Map(allClients.map(c => [c.id!, c.clientName]));
 
     // ========== 1. Get roster entries (recurring task visits) ==========
     const rosterFilters: any = {};
@@ -297,7 +297,7 @@ export async function GET(request: NextRequest) {
 
       clientReports.push({
         clientId: client.id!,
-        clientName: client.name,
+        clientName: client.clientName,
         monthlyData,
         totalVisits
       });

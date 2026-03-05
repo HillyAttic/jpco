@@ -9,8 +9,8 @@ import { auth } from '@/lib/firebase';
 
 interface Client {
   id: string;
-  name: string;
-  email?: string;
+  clientName: string;
+  contact?: { email?: string };
 }
 
 interface ClientCompletion {
@@ -462,9 +462,9 @@ export function RecurringTaskClientModal({
                           >
                             <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 sticky left-0 z-10" style={{ backgroundColor: clientIndex % 2 === 0 ? 'white' : '#f9fafb' }}>
                               <div>
-                                <div className="font-semibold">{client.name}</div>
-                                {client.email && (
-                                  <div className="text-xs text-gray-500 dark:text-gray-400">{client.email}</div>
+                                <div className="font-semibold">{client.clientName}</div>
+                                {client.contact?.email && (
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">{client.contact.email}</div>
                                 )}
                               </div>
                             </td>
@@ -493,7 +493,7 @@ export function RecurringTaskClientModal({
                                     checked={isCompleted(client.id, month.key)}
                                     onChange={() => toggleCompletion(client.id, month.key)}
                                     className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer"
-                                    aria-label={`Mark ${client.name} as completed for ${month.label}`}
+                                    aria-label={`Mark ${client.clientName} as completed for ${month.label}`}
                                   />
                                 </div>
                               </td>

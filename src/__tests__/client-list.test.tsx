@@ -33,10 +33,12 @@ const generators = {
 // Generator for a valid client
 const clientGenerator = fc.record({
   id: fc.uuid(),
-  name: generators.name(),
-  email: fc.emailAddress(),
-  phone: generators.phone(),
-  company: generators.company(),
+  clientName: generators.name(),
+  contact: fc.record({
+    email: fc.emailAddress(),
+    phone: generators.phone(),
+  }),
+  businessName: generators.company(),
   status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
   createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
 });
@@ -70,7 +72,7 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
           // Ensure at least one client matches the search term in name
           const matchingClient = {
             ...clients[0],
-            name: `${searchTerm} TestName`,
+            clientName: `${searchTerm} TestName`,
           };
           const allClients = [matchingClient, ...clients.slice(1)];
 
@@ -95,7 +97,7 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
           // Wait for filtering to complete
           await waitFor(() => {
             // The matching client should be displayed
-            expect(screen.getByText(matchingClient.name)).toBeInTheDocument();
+            expect(screen.getByText(matchingClient.clientName)).toBeInTheDocument();
           });
 
           cleanup();
@@ -116,7 +118,7 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
           // Ensure at least one client matches the search term in email
           const matchingClient = {
             ...clients[0],
-            email: `${searchTerm.toLowerCase()}@example.com`,
+            contact: { email: `${searchTerm.toLowerCase()}@example.com` },
           };
           const allClients = [matchingClient, ...clients.slice(1)];
 
@@ -141,7 +143,7 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
           // Wait for filtering to complete
           await waitFor(() => {
             // The matching client should be displayed
-            expect(screen.getByText(matchingClient.email)).toBeInTheDocument();
+            expect(screen.getByText(matchingClient.contact.email)).toBeInTheDocument();
           });
 
           cleanup();
@@ -159,10 +161,10 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
         async (clients, searchTerm) => {
           const user = userEvent.setup();
 
-          // Ensure at least one client matches the search term in company
+          // Ensure at least one client matches the search term in businessName
           const matchingClient = {
             ...clients[0],
-            company: `${searchTerm} Corp`,
+            businessName: `${searchTerm} Corp`,
           };
           const allClients = [matchingClient, ...clients.slice(1)];
 
@@ -187,7 +189,7 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
           // Wait for filtering to complete
           await waitFor(() => {
             // The matching client should be displayed
-            expect(screen.getByText(matchingClient.company)).toBeInTheDocument();
+            expect(screen.getByText(matchingClient.businessName)).toBeInTheDocument();
           });
 
           cleanup();
@@ -206,9 +208,9 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
           const user = userEvent.setup();
 
           // Create clients that match in different fields
-          const nameMatch = { ...clients[0], name: `${searchTerm} Name` };
-          const emailMatch = { ...clients[1], email: `${searchTerm.toLowerCase()}@test.com` };
-          const companyMatch = { ...clients[2], company: `${searchTerm} Inc` };
+          const nameMatch = { ...clients[0], clientName: `${searchTerm} Name` };
+          const emailMatch = { ...clients[1], contact: { email: `${searchTerm.toLowerCase()}@test.com` } };
+          const companyMatch = { ...clients[2], businessName: `${searchTerm} Inc` };
           const allClients = [nameMatch, emailMatch, companyMatch, ...clients.slice(3)];
 
           render(
@@ -232,9 +234,9 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
           // Wait for filtering to complete
           await waitFor(() => {
             // All three matching clients should be displayed
-            expect(screen.getByText(nameMatch.name)).toBeInTheDocument();
-            expect(screen.getByText(emailMatch.email)).toBeInTheDocument();
-            expect(screen.getByText(companyMatch.company)).toBeInTheDocument();
+            expect(screen.getByText(nameMatch.clientName)).toBeInTheDocument();
+            expect(screen.getByText(emailMatch.contact.email)).toBeInTheDocument();
+            expect(screen.getByText(companyMatch.businessName)).toBeInTheDocument();
           });
 
           cleanup();
@@ -255,7 +257,7 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
           // Create a client with the search term in uppercase
           const matchingClient = {
             ...clients[0],
-            name: searchTerm.toUpperCase(),
+            clientName: searchTerm.toUpperCase(),
           };
           const allClients = [matchingClient, ...clients.slice(1)];
 
@@ -280,7 +282,7 @@ describe('Feature: management-pages, Property 11: Client Search Accuracy', () =>
           // Wait for filtering to complete
           await waitFor(() => {
             // The matching client should be displayed despite case difference
-            expect(screen.getByText(matchingClient.name)).toBeInTheDocument();
+            expect(screen.getByText(matchingClient.clientName)).toBeInTheDocument();
           });
 
           cleanup();
@@ -308,7 +310,7 @@ describe('Feature: management-pages, Property 19: Real-Time Search Filtering', (
           // Create a client with a known name
           const targetClient = {
             ...clients[0],
-            name: 'TestUser Alpha',
+            clientName: 'TestUser Alpha',
           };
           const allClients = [targetClient, ...clients.slice(1)];
 
@@ -332,7 +334,7 @@ describe('Feature: management-pages, Property 19: Real-Time Search Filtering', (
           await user.type(searchInput, 'Test');
           await waitFor(() => {
             // Target client should be visible
-            expect(screen.getByText(targetClient.name)).toBeInTheDocument();
+            expect(screen.getByText(targetClient.clientName)).toBeInTheDocument();
           });
 
           cleanup();
@@ -350,8 +352,8 @@ describe('Feature: management-pages, Property 19: Real-Time Search Filtering', (
           const user = userEvent.setup();
 
           // Create clients with specific names
-          const clientA = { ...clients[0], name: 'Alpha Client' };
-          const clientB = { ...clients[1], name: 'Beta Client' };
+          const clientA = { ...clients[0], clientName: 'Alpha Client' };
+          const clientB = { ...clients[1], clientName: 'Beta Client' };
           const allClients = [clientA, clientB, ...clients.slice(2)];
 
           render(
@@ -373,15 +375,15 @@ describe('Feature: management-pages, Property 19: Real-Time Search Filtering', (
           // Type "Alpha" to filter to clientA
           await user.type(searchInput, 'Alpha');
           await waitFor(() => {
-            expect(screen.getByText(clientA.name)).toBeInTheDocument();
+            expect(screen.getByText(clientA.clientName)).toBeInTheDocument();
           });
 
           // Clear the search
           await user.clear(searchInput);
           await waitFor(() => {
             // Both clients should be visible again
-            expect(screen.getByText(clientA.name)).toBeInTheDocument();
-            expect(screen.getByText(clientB.name)).toBeInTheDocument();
+            expect(screen.getByText(clientA.clientName)).toBeInTheDocument();
+            expect(screen.getByText(clientB.clientName)).toBeInTheDocument();
           });
 
           cleanup();
@@ -402,7 +404,7 @@ describe('Feature: management-pages, Property 19: Real-Time Search Filtering', (
           // Create a matching client
           const matchingClient = {
             ...clients[0],
-            name: `${searchTerm} TestName`,
+            clientName: `${searchTerm} TestName`,
           };
           const allClients = [matchingClient, ...clients.slice(1)];
 
@@ -427,7 +429,7 @@ describe('Feature: management-pages, Property 19: Real-Time Search Filtering', (
 
           // Results should update immediately without any additional action
           await waitFor(() => {
-            expect(screen.getByText(matchingClient.name)).toBeInTheDocument();
+            expect(screen.getByText(matchingClient.clientName)).toBeInTheDocument();
           });
 
           // Verify there's no submit button for search
@@ -460,7 +462,7 @@ describe('Feature: management-pages, Property 20: Filtered Result Count Accuracy
           // Create some clients that match the search term
           const matchingClients = clients.slice(0, 3).map((client, index) => ({
             ...client,
-            name: `${searchTerm} Client ${index}`,
+            clientName: `${searchTerm} Client ${index}`,
           }));
           const allClients = [...matchingClients, ...clients.slice(3)];
 
@@ -486,9 +488,9 @@ describe('Feature: management-pages, Property 20: Filtered Result Count Accuracy
           await waitFor(() => {
             // Calculate expected count
             const expectedCount = allClients.filter(client =>
-              client.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-              client.company.toLowerCase().includes(searchTerm.toLowerCase())
+              client.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+              (client.contact?.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+              (client.businessName || '').toLowerCase().includes(searchTerm.toLowerCase())
             ).length;
 
             // Verify the count is displayed correctly
@@ -540,9 +542,9 @@ describe('Feature: management-pages, Property 20: Filtered Result Count Accuracy
           const user = userEvent.setup();
 
           // Create clients with specific names
-          const clientA = { ...clients[0], name: 'Alpha Test' };
-          const clientB = { ...clients[1], name: 'Beta Test' };
-          const clientC = { ...clients[2], name: 'Gamma Other' };
+          const clientA = { ...clients[0], clientName: 'Alpha Test' };
+          const clientB = { ...clients[1], clientName: 'Beta Test' };
+          const clientC = { ...clients[2], clientName: 'Gamma Other' };
           const allClients = [clientA, clientB, clientC, ...clients.slice(3)];
 
           render(
@@ -565,9 +567,9 @@ describe('Feature: management-pages, Property 20: Filtered Result Count Accuracy
           await user.type(searchInput, 'Test');
           await waitFor(() => {
             const expectedCount = allClients.filter(c =>
-              c.name.toLowerCase().includes('test') ||
-              c.email.toLowerCase().includes('test') ||
-              c.company.toLowerCase().includes('test')
+              c.clientName.toLowerCase().includes('test') ||
+              (c.contact?.email || '').toLowerCase().includes('test') ||
+              (c.businessName || '').toLowerCase().includes('test')
             ).length;
             expect(expectedCount).toBeGreaterThanOrEqual(2);
             const countText = screen.getByText(new RegExp(`of ${expectedCount} client`, 'i'));

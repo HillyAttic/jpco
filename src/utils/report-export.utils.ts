@@ -46,7 +46,7 @@ export function exportToPDF(data: ExportData): void {
   // Prepare table data
   const headers = ['Client Name', ...months.map(m => `${m.monthName} ${m.year}`)];
   const rows = clients.map(client => {
-    const row = [client.name];
+    const row = [client.clientName];
     months.forEach(month => {
       const status = getCompletionStatus(completions, client.id || '', month.key, month.fullDate);
       row.push(status === 'completed' ? '✓' : status === 'incomplete' ? '✗' : '-');
@@ -104,7 +104,7 @@ export function exportToExcel(data: ExportData): void {
   // Prepare data for the main sheet
   const headers = ['Client Name', ...months.map(m => `${m.monthName} ${m.year}`)];
   const rows = clients.map(client => {
-    const row: any = { 'Client Name': client.name };
+    const row: any = { 'Client Name': client.clientName };
     months.forEach(month => {
       const status = getCompletionStatus(completions, client.id || '', month.key, month.fullDate);
       row[`${month.monthName} ${month.year}`] = 

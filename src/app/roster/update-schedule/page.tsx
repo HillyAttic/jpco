@@ -445,7 +445,7 @@ export default function UpdateSchedulePage() {
           userId: user.uid,
           userName: userProfile.displayName || userProfile.email || 'Unknown',
           clientId: formData.clientId || undefined,
-          clientName: selectedClient?.name || formData.clientName || undefined,
+          clientName: selectedClient?.clientName || formData.clientName || undefined,
           taskDetail: formData.taskDetail,
           timeStart,
           timeEnd,
@@ -475,7 +475,7 @@ export default function UpdateSchedulePage() {
 
   // Filter clients based on search query
   const filteredClients = clients.filter(client =>
-    client.name.toLowerCase().includes(clientSearchQuery.toLowerCase())
+    client.clientName.toLowerCase().includes(clientSearchQuery.toLowerCase())
   );
 
   const handleDateClick = async (date: Date) => {

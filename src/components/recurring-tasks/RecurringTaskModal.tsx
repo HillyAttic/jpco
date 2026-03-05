@@ -66,7 +66,7 @@ export function RecurringTaskModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClients, setSelectedClients] = useState<Client[]>([]);
-  const [clientFilter, setClientFilter] = useState<'all' | 'gstin' | 'tan' | 'pan'>('all');
+  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit'>('all');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
@@ -174,16 +174,26 @@ export function RecurringTaskModal({
   const getFilteredClients = () => {
     let filteredClients = clients;
     
-    // Apply field filter (GSTIN, TAN, PAN)
+    // Apply field filter (Compliance fields only)
     if (clientFilter !== 'all') {
       filteredClients = filteredClients.filter(client => {
         switch (clientFilter) {
-          case 'gstin':
-            return client.gstin && client.gstin.trim() !== '';
-          case 'tan':
-            return client.tan && client.tan.trim() !== '';
-          case 'pan':
-            return client.pan && client.pan.trim() !== '';
+          case 'roc':
+            return !!client.compliance?.roc;
+          case 'gstr1':
+            return !!client.compliance?.gstr1;
+          case 'gst3b':
+            return !!client.compliance?.gst3b;
+          case 'iff':
+            return !!client.compliance?.iff;
+          case 'itr':
+            return !!client.compliance?.itr;
+          case 'taxAudit':
+            return !!client.compliance?.taxAudit;
+          case 'accounting':
+            return !!client.compliance?.accounting;
+          case 'clientVisit':
+            return !!client.compliance?.clientVisit;
           default:
             return true;
         }
@@ -193,12 +203,12 @@ export function RecurringTaskModal({
     // Apply search query
     if (clientSearchQuery.trim() !== '') {
       const query = clientSearchQuery.toLowerCase();
-      filteredClients = filteredClients.filter(client => 
-        client.name.toLowerCase().includes(query) ||
+      filteredClients = filteredClients.filter(client =>
+        client.clientName.toLowerCase().includes(query) ||
         (client.businessName && client.businessName.toLowerCase().includes(query)) ||
-        (client.gstin && client.gstin.toLowerCase().includes(query)) ||
-        (client.tan && client.tan.toLowerCase().includes(query)) ||
-        (client.pan && client.pan.toLowerCase().includes(query))
+        (client.taxIdentifiers?.gstin && client.taxIdentifiers.gstin.toLowerCase().includes(query)) ||
+        (client.taxIdentifiers?.tan && client.taxIdentifiers.tan.toLowerCase().includes(query)) ||
+        (client.taxIdentifiers?.pan && client.taxIdentifiers.pan.toLowerCase().includes(query))
       );
     }
     
@@ -508,9 +518,14 @@ export function RecurringTaskModal({
                 className="mt-1"
               >
                 <option value="all">All Clients</option>
-                <option value="gstin">Only with GSTIN</option>
-                <option value="tan">Only with T.A.N.</option>
-                <option value="pan">Only with P.A.N.</option>
+                <option value="roc">Only with ROC</option>
+                <option value="gstr1">Only with GSTR1</option>
+                <option value="gst3b">Only with GST3B</option>
+                <option value="iff">Only with IFF</option>
+                <option value="itr">Only with ITR</option>
+                <option value="taxAudit">Only with Tax Audit</option>
+                <option value="accounting">Only with Accounting</option>
+                <option value="clientVisit">Only with Client Visit</option>
               </Select>
             </div>
 
@@ -575,12 +590,12 @@ export function RecurringTaskModal({
                         disabled={isLoading}
                       >
                         <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900 dark:text-white">{client.name}</span>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{client.clientName}</span>
                           <span className="text-xs text-gray-600 dark:text-gray-400">
                             {client.businessName || 'No Business Name'}
-                            {client.gstin ? ` • GSTIN: ${client.gstin}` : 
-                             client.tan ? ` • TAN: ${client.tan}` : 
-                             client.pan ? ` • PAN: ${client.pan}` : ''}
+                            {client.taxIdentifiers?.gstin ? ` • GSTIN: ${client.taxIdentifiers.gstin}` :
+                             client.taxIdentifiers?.tan ? ` • TAN: ${client.taxIdentifiers.tan}` :
+                             client.taxIdentifiers?.pan ? ` • PAN: ${client.taxIdentifiers.pan}` : ''}
                           </span>
                         </div>
                       </button>
@@ -616,11 +631,11 @@ export function RecurringTaskModal({
                       className="flex items-center gap-2 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 shadow-sm"
                     >
                       <div className="flex flex-col">
-                        <span className="text-sm font-medium text-gray-900 dark:text-white">{client.name}</span>
+                        <span className="text-sm font-medium text-gray-900 dark:text-white">{client.clientName}</span>
                         <span className="text-xs text-gray-500 dark:text-gray-400">
-                          {client.gstin ? `GSTIN: ${client.gstin}` : 
-                           client.tan ? `TAN: ${client.tan}` : 
-                           client.pan ? `PAN: ${client.pan}` : 
+                          {client.taxIdentifiers?.gstin ? `GSTIN: ${client.taxIdentifiers.gstin}` :
+                           client.taxIdentifiers?.tan ? `TAN: ${client.taxIdentifiers.tan}` :
+                           client.taxIdentifiers?.pan ? `PAN: ${client.taxIdentifiers.pan}` :
                            client.businessName || 'No ID'}
                         </span>
                       </div>
@@ -629,7 +644,7 @@ export function RecurringTaskModal({
                         onClick={() => handleClientRemove(client.id!)}
                         className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1 ml-1 transition-colors"
                         disabled={isLoading}
-                        aria-label={`Remove ${client.name}`}
+                        aria-label={`Remove ${client.clientName}`}
                       >
                         <XMarkIcon className="w-4 h-4" />
                       </button>

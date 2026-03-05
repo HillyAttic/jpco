@@ -138,6 +138,17 @@ export function validateCSVData(
 }
 
 /**
+ * Parse Y/N compliance values to boolean
+ */
+export function parseYN(value: string): boolean {
+  const normalized = value?.toUpperCase().trim();
+  if (!['Y', 'N', 'YES', 'NO'].includes(normalized)) {
+    throw new Error(`Invalid compliance value: "${value}". Must be Y, N, Yes, or No`);
+  }
+  return normalized === 'Y' || normalized === 'YES';
+}
+
+/**
  * Read file as text
  */
 export function readFileAsText(file: File): Promise<string> {

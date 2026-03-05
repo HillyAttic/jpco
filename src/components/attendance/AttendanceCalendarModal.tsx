@@ -58,9 +58,40 @@ export function AttendanceCalendarModal({
       const holidayDates = new Set<string>();
       
       snapshot.docs.forEach(doc => {
-        const date = doc.data().date;
-        if (date) {
-          holidayDates.add(date);
+        const data = doc.data();
+        let dateStr = '';
+        
+        // Convert Timestamp to YYYY-MM-DD string for consistent matching
+        if (data.date && typeof data.date.toDate === 'function') {
+          const dateObj = data.date.toDate();
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          dateStr = `${year}-${month}-${day}`;
+        } else if (typeof data.date === 'string') {
+          // Handle legacy string dates - check if it's ISO format or already YYYY-MM-DD
+          if (data.date.includes('T')) {
+            // ISO format, extract date part
+            const dateObj = new Date(data.date);
+            const year = dateObj.getFullYear();
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            dateStr = `${year}-${month}-${day}`;
+          } else {
+            // Already in YYYY-MM-DD format
+            dateStr = data.date;
+          }
+        } else if (data.date && typeof data.date.seconds !== 'undefined') {
+          // Handle Timestamp object with seconds
+          const dateObj = new Date(data.date.seconds * 1000);
+          const year = dateObj.getFullYear();
+          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+          const day = String(dateObj.getDate()).padStart(2, '0');
+          dateStr = `${year}-${month}-${day}`;
+        }
+        
+        if (dateStr) {
+          holidayDates.add(dateStr);
         }
       });
       
@@ -199,11 +230,11 @@ export function AttendanceCalendarModal({
       case 'absent':
         return 'bg-red-500';
       case 'approved-leave':
-        return 'bg-green-300';
+        return 'bg-purple-500';
       case 'unapproved-leave':
         return 'bg-red-500';
       case 'half-day':
-        return 'bg-green-300';
+        return 'bg-orange-500';
       case 'upcoming':
         return 'bg-white border-2 border-gray-300';
       case 'holiday':
@@ -221,11 +252,11 @@ export function AttendanceCalendarModal({
       case 'absent':
         return 'bg-red-500 border-red-600';
       case 'approved-leave':
-        return 'bg-green-300 border-green-400';
+        return 'bg-purple-500 border-purple-600';
       case 'unapproved-leave':
         return 'bg-red-500 border-red-600';
       case 'half-day':
-        return 'bg-green-300 border-green-400';
+        return 'bg-orange-500 border-orange-600';
       case 'upcoming':
         return 'bg-white border-gray-200';
       case 'holiday':
@@ -297,46 +328,47 @@ export function AttendanceCalendarModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[95vw] sm:w-full">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[98vw] sm:w-full p-4 sm:p-6">
         <DialogHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
-            <DialogTitle className="flex items-center gap-2 flex-1 text-base sm:text-lg">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
+            <DialogTitle className="flex items-center gap-2 flex-1 text-sm sm:text-lg">
               <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-              Attendance Calendar - {employeeName}
+              <span className="truncate">Attendance - {employeeName}</span>
             </DialogTitle>
             <Button
               variant="default"
               size="sm"
               onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto sm:mr-8"
+              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto text-xs sm:text-sm"
             >
-              <Download className="h-4 w-4" />
+              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
               Export
             </Button>
           </div>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
+        <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
           {/* Month Navigation */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
             <Button
               variant="outline"
               size="sm"
               onClick={previousMonth}
-              className="flex items-center gap-1 w-full sm:w-auto"
+              className="flex items-center gap-1 w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
             >
-              <ChevronLeft className="w-4 h-4" />
+              <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
               Previous
             </Button>
 
-            <div className="flex items-center gap-3">
-              <h3 className="text-base sm:text-lg font-semibold">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <h3 className="text-sm sm:text-lg font-semibold">
                 {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
               </h3>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={goToToday}
+                className="text-xs sm:text-sm h-8 sm:h-9"
               >
                 Today
               </Button>
@@ -346,51 +378,51 @@ export function AttendanceCalendarModal({
               variant="outline"
               size="sm"
               onClick={nextMonth}
-              className="flex items-center gap-1 w-full sm:w-auto"
+              className="flex items-center gap-1 w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
             >
               Next
-              <ChevronRight className="w-4 h-4" />
+              <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
             </Button>
           </div>
 
           {/* Statistics */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Circle className="w-3 h-3 fill-green-500 text-green-500" />
-                <span className="text-xs font-medium text-green-900">Present</span>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
+            <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3">
+              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                <Circle className="w-2 h-2 sm:w-3 sm:h-3 fill-green-500 text-green-500" />
+                <span className="text-[10px] sm:text-xs font-medium text-green-900">Present</span>
               </div>
-              <div className="text-2xl font-bold text-green-700">{stats.present}</div>
+              <div className="text-xl sm:text-2xl font-bold text-green-700">{stats.present}</div>
             </div>
 
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Circle className="w-3 h-3 fill-red-500 text-red-500" />
-                <span className="text-xs font-medium text-red-900">Absent</span>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3">
+              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                <Circle className="w-2 h-2 sm:w-3 sm:h-3 fill-red-500 text-red-500" />
+                <span className="text-[10px] sm:text-xs font-medium text-red-900">Absent</span>
               </div>
-              <div className="text-2xl font-bold text-red-700">{stats.absent}</div>
+              <div className="text-xl sm:text-2xl font-bold text-red-700">{stats.absent}</div>
             </div>
 
-            <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <Circle className="w-3 h-3 fill-green-300 text-green-300" />
-                <span className="text-xs font-medium text-green-900">Approved Leave</span>
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3">
+              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                <Circle className="w-2 h-2 sm:w-3 sm:h-3 fill-purple-500 text-purple-500" />
+                <span className="text-[10px] sm:text-xs font-medium text-purple-900">Approved Leave</span>
               </div>
-              <div className="text-2xl font-bold text-green-700">{stats.leaves}</div>
+              <div className="text-xl sm:text-2xl font-bold text-purple-700">{stats.leaves}</div>
             </div>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-medium text-blue-900">Working Days</span>
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3">
+              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                <span className="text-[10px] sm:text-xs font-medium text-blue-900">Working Days</span>
               </div>
-              <div className="text-2xl font-bold text-blue-700">{stats.workingDays}</div>
+              <div className="text-xl sm:text-2xl font-bold text-blue-700">{stats.workingDays}</div>
             </div>
 
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <span className="text-xs font-medium text-purple-900">Attendance</span>
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3">
+              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
+                <span className="text-[10px] sm:text-xs font-medium text-purple-900">Attendance</span>
               </div>
-              <div className="text-2xl font-bold text-purple-700">{stats.attendanceRate}%</div>
+              <div className="text-xl sm:text-2xl font-bold text-purple-700">{stats.attendanceRate}%</div>
             </div>
           </div>
 
@@ -409,10 +441,10 @@ export function AttendanceCalendarModal({
             </div>
 
             {/* Calendar days */}
-            <div className="grid grid-cols-7">
+            <div className="grid grid-cols-7 gap-0">
               {days.map((date, index) => {
                 if (!date) {
-                  return <div key={`empty-${index}`} className="p-2 border-b border-r border-gray-100" />;
+                  return <div key={`empty-${index}`} className="p-1 sm:p-2 border border-gray-100 dark:border-gray-700" />;
                 }
 
                 const status = getDateStatus(date);
@@ -421,17 +453,17 @@ export function AttendanceCalendarModal({
                 return (
                   <div
                     key={date.toISOString()}
-                    className={`relative p-1 sm:p-2 border min-h-[60px] sm:min-h-[80px] transition-all ${
+                    className={`relative p-1 sm:p-2 border border-gray-200 dark:border-gray-700 min-h-[50px] sm:min-h-[80px] transition-all ${
                       getBoxColor(status.status)
                     } ${isToday ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
                   >
                     <div className="flex flex-col items-center justify-center h-full">
-                      <div className={`text-xs sm:text-sm font-medium mb-1 sm:mb-2 ${
+                      <div className={`text-xs sm:text-sm font-medium mb-0.5 sm:mb-2 ${
                         status.status === 'present' ? 'text-white' :
                         status.status === 'absent' ? 'text-white' :
-                        status.status === 'approved-leave' ? 'text-gray-700' :
+                        status.status === 'approved-leave' ? 'text-white' :
                         status.status === 'unapproved-leave' ? 'text-white' :
-                        status.status === 'half-day' ? 'text-gray-700' :
+                        status.status === 'half-day' ? 'text-white' :
                         status.status === 'holiday' ? 'text-white' :
                         'text-gray-700'
                       }`}>
@@ -440,17 +472,17 @@ export function AttendanceCalendarModal({
                       
                       {status.status === 'upcoming' && (
                         <div className="flex items-center justify-center">
-                          <div className="w-6 h-6 sm:w-8 sm:h-8 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-dark flex items-center justify-center">
-                            <div className="w-4 h-4 sm:w-6 sm:h-6 rounded-full bg-white dark:bg-gray-dark"></div>
+                          <div className="w-4 h-4 sm:w-8 sm:h-8 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-dark flex items-center justify-center">
+                            <div className="w-2 h-2 sm:w-6 sm:h-6 rounded-full bg-white dark:bg-gray-dark"></div>
                           </div>
                         </div>
                       )}
 
                       {status.clockIn && (
-                        <div className="mt-1 text-[10px] sm:text-xs text-white text-center font-medium">
+                        <div className="mt-0.5 sm:mt-1 text-[9px] sm:text-xs text-white text-center font-medium">
                           <div className="hidden sm:block">{status.clockIn.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
                           {status.duration && status.duration !== 'In Progress' && (
-                            <div className="text-[10px] sm:text-xs hidden sm:block">{status.duration}</div>
+                            <div className="text-[9px] sm:text-xs hidden sm:block">{status.duration}</div>
                           )}
                         </div>
                       )}
@@ -458,7 +490,7 @@ export function AttendanceCalendarModal({
 
                     {isToday && (
                       <div className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1">
-                        <span className="inline-flex items-center px-1 py-0.5 sm:px-1.5 rounded-full text-[10px] sm:text-xs font-medium bg-blue-600 text-white">
+                        <span className="inline-flex items-center px-1 py-0.5 sm:px-1.5 rounded-full text-[9px] sm:text-xs font-medium bg-blue-600 text-white">
                           Today
                         </span>
                       </div>
@@ -470,25 +502,25 @@ export function AttendanceCalendarModal({
           </div>
 
           {/* Legend */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-sm">
             <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 border border-green-600"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded"></div>
               <span className="text-gray-700 dark:text-gray-300">Present</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 border border-red-600"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
               <span className="text-gray-700 dark:text-gray-300">Absent</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-300 border border-green-400"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-purple-500 rounded"></div>
               <span className="text-gray-700 dark:text-gray-300">Approved Leave</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-300 border border-green-400"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-orange-500 rounded"></div>
               <span className="text-gray-700 dark:text-gray-300">Half Day</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 border border-red-600"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
               <span className="text-gray-700 dark:text-gray-300">Unapproved Leave</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
@@ -498,14 +530,14 @@ export function AttendanceCalendarModal({
               <span className="text-gray-700 dark:text-gray-300">Upcoming</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-500 border border-blue-600"></div>
+              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-500 rounded"></div>
               <span className="text-gray-700 dark:text-gray-300">Sunday/Holiday</span>
             </div>
           </div>
         </div>
 
-        <div className="flex justify-end pt-4 border-t">
-          <Button onClick={onClose} variant="outline">
+        <div className="flex justify-end pt-3 sm:pt-4 border-t">
+          <Button onClick={onClose} variant="outline" size="sm" className="text-xs sm:text-sm">
             Close
           </Button>
         </div>

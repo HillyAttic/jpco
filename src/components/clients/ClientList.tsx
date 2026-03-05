@@ -46,12 +46,12 @@ export function ClientList({
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
       filtered = filtered.filter(client =>
-        client.name.toLowerCase().includes(query) ||
-        (client.email && client.email.toLowerCase().includes(query)) ||
+        client.clientName.toLowerCase().includes(query) ||
+        (client.contact?.email && client.contact.email.toLowerCase().includes(query)) ||
         (client.businessName && client.businessName.toLowerCase().includes(query)) ||
-        (client.phone && client.phone.toLowerCase().includes(query)) ||
-        (client.gstin && client.gstin.toLowerCase().includes(query)) ||
-        (client.pan && client.pan.toLowerCase().includes(query))
+        (client.contact?.phone && client.contact.phone.toLowerCase().includes(query)) ||
+        (client.taxIdentifiers?.gstin && client.taxIdentifiers.gstin.toLowerCase().includes(query)) ||
+        (client.taxIdentifiers?.pan && client.taxIdentifiers.pan.toLowerCase().includes(query))
       );
     }
 

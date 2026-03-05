@@ -65,17 +65,21 @@ describe('Feature: management-pages, Property 2: Update Operation Consistency', 
       fc.asyncProperty(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
         async (clientData) => {
           const client: Client = {
-            ...clientData,
-            avatarUrl: undefined,
+            id: clientData.id,
+            clientName: clientData.clientName,
+            businessName: clientData.businessName,
+            contact: { email: clientData.email, phone: clientData.phone },
+            status: clientData.status,
+            createdAt: clientData.createdAt,
           };
 
           render(
@@ -89,21 +93,17 @@ describe('Feature: management-pages, Property 2: Update Operation Consistency', 
 
           // Wait for form to be populated
           await waitFor(() => {
-            // Verify name field is pre-populated
-            const nameInput = screen.getByLabelText(/full name/i) as HTMLInputElement;
-            expect(nameInput.value).toBe(client.name);
+            // Verify clientName field is pre-populated
+            const nameInput = screen.getByLabelText(/client name/i) as HTMLInputElement;
+            expect(nameInput.value).toBe(client.clientName);
 
             // Verify email field is pre-populated
             const emailInput = screen.getByLabelText(/email/i) as HTMLInputElement;
-            expect(emailInput.value).toBe(client.email);
+            expect(emailInput.value).toBe(client.contact?.email);
 
             // Verify phone field is pre-populated
             const phoneInput = screen.getByLabelText(/phone/i) as HTMLInputElement;
-            expect(phoneInput.value).toBe(client.phone);
-
-            // Verify company field is pre-populated
-            const companyInput = screen.getByLabelText(/company/i) as HTMLInputElement;
-            expect(companyInput.value).toBe(client.company);
+            expect(phoneInput.value).toBe(client.contact?.phone);
 
             // Verify status field is pre-populated
             const statusSelect = screen.getByLabelText(/status/i) as HTMLSelectElement;

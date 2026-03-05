@@ -38,14 +38,14 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
           <div className="flex items-start gap-4 flex-1">
             <div className="w-12 h-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
               <span className="text-blue-600 dark:text-blue-300 font-semibold text-lg">
-                {getInitials(client.name)}
+                {getInitials(client.clientName)}
               </span>
             </div>
             
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
-                  {client.name}
+                  {client.clientName}
                 </h3>
                 <Badge
                   variant={client.status === 'active' ? 'success' : 'default'}
@@ -63,7 +63,7 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
               variant="ghost"
               onClick={() => onEdit(client)}
               className="text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-              aria-label={`Edit ${client.name}`}
+              aria-label={`Edit ${client.clientName}`}
             >
               <PencilSquareIcon className="w-4 h-4" />
             </Button>
@@ -72,7 +72,7 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
               variant="ghost"
               onClick={() => onDelete(client.id!)}
               className="text-red-600 hover:text-red-700 hover:bg-red-50"
-              aria-label={`Delete ${client.name}`}
+              aria-label={`Delete ${client.clientName}`}
             >
               <TrashIcon className="w-4 h-4" />
             </Button>
@@ -82,27 +82,27 @@ export function ClientCard({ client, onEdit, onDelete }: ClientCardProps) {
         {/* Contact Information */}
         <div className="space-y-2">
           {/* Email */}
-          {client.email && (
+          {client.contact?.email && (
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <EnvelopeIcon className="w-4 h-4 flex-shrink-0" />
-              <a 
-                href={`mailto:${client.email}`}
+              <a
+                href={`mailto:${client.contact.email}`}
                 className="hover:text-blue-600 truncate"
               >
-                {client.email}
+                {client.contact.email}
               </a>
             </div>
           )}
 
           {/* Phone */}
-          {client.phone && (
+          {client.contact?.phone && (
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
               <PhoneIcon className="w-4 h-4 flex-shrink-0" />
-              <a 
-                href={`tel:${client.phone}`}
+              <a
+                href={`tel:${client.contact.phone}`}
                 className="hover:text-blue-600"
               >
-                {client.phone}
+                {client.contact.phone}
               </a>
             </div>
           )}

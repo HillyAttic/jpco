@@ -70,7 +70,7 @@ export async function PATCH(
               // Record client visit using Admin SDK
               await adminDb.collection('client-visits').add({
                 clientId,
-                clientName: client.name || '',
+                clientName: client.clientName || client.name || '',
                 employeeId: mapping.userId,
                 employeeName: mapping.userName,
                 visitDate: Timestamp.now(),

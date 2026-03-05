@@ -46,11 +46,12 @@ describe('Feature: management-pages, Property 3: Delete Operation Confirmation',
       fc.asyncProperty(
         fc.record({
           id: fc.uuid(),
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
-          avatarUrl: fc.option(fc.webUrl(), { nil: undefined }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
           updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -120,10 +121,12 @@ describe('Feature: management-pages, Property 3: Delete Operation Confirmation',
       fc.asyncProperty(
         fc.record({
           id: fc.uuid(),
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
           updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -178,10 +181,12 @@ describe('Feature: management-pages, Property 3: Delete Operation Confirmation',
       fc.asyncProperty(
         fc.record({
           id: fc.uuid(),
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           avatarUrl: fc.option(fc.webUrl(), { nil: undefined }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -210,10 +215,10 @@ describe('Feature: management-pages, Property 3: Delete Operation Confirmation',
 
           // Verify all client properties are preserved
           const currentClient = result.current.clients.find(c => c.id === client.id);
-          expect(currentClient?.name).toBe(client.name);
-          expect(currentClient?.email).toBe(client.email);
-          expect(currentClient?.phone).toBe(client.phone);
-          expect(currentClient?.company).toBe(client.company);
+          expect(currentClient?.clientName).toBe(client.clientName);
+          expect(currentClient?.contact?.email).toBe(client.contact?.email);
+          expect(currentClient?.contact?.phone).toBe(client.contact?.phone);
+          expect(currentClient?.businessName).toBe(client.businessName);
           expect(currentClient?.status).toBe(client.status);
         }
       ),
@@ -238,11 +243,12 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
     await fc.assert(
       fc.asyncProperty(
         fc.record({
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
-          avatarUrl: fc.option(fc.webUrl(), { nil: undefined }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
         }),
         async (clientData) => {
@@ -297,17 +303,19 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
       fc.asyncProperty(
         fc.record({
           id: fc.uuid(),
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
           updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
         fc.record({
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({ email: fc.emailAddress() }),
         }),
         async (originalClient, updateData) => {
           // Mock initial fetch with original client
@@ -323,8 +331,8 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
           }, { timeout: 3000 });
 
           // Store original values
-          const originalName = originalClient.name;
-          const originalEmail = originalClient.email;
+          const originalName = originalClient.clientName;
+          const originalEmail = originalClient.contact?.email;
 
           // Mock failed update response
           (global.fetch as jest.Mock).mockResolvedValueOnce({
@@ -344,8 +352,8 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
           // Verify optimistic update was rolled back
           await waitFor(() => {
             const client = result.current.clients.find(c => c.id === originalClient.id);
-            expect(client?.name).toBe(originalName);
-            expect(client?.email).toBe(originalEmail);
+            expect(client?.clientName).toBe(originalName);
+            expect(client?.contact?.email).toBe(originalEmail);
           }, { timeout: 3000 });
 
           // Verify error was set
@@ -361,10 +369,12 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
       fc.asyncProperty(
         fc.record({
           id: fc.uuid(),
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
           updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -401,9 +411,9 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
           await waitFor(() => {
             const restoredClient = result.current.clients.find(c => c.id === client.id);
             expect(restoredClient).toBeDefined();
-            expect(restoredClient?.name).toBe(client.name);
-            expect(restoredClient?.email).toBe(client.email);
-            expect(restoredClient?.company).toBe(client.company);
+            expect(restoredClient?.clientName).toBe(client.clientName);
+            expect(restoredClient?.contact?.email).toBe(client.contact?.email);
+            expect(restoredClient?.businessName).toBe(client.businessName);
           }, { timeout: 3000 });
 
           // Verify error was set
@@ -419,18 +429,19 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
       fc.asyncProperty(
         fc.record({
           id: fc.uuid(),
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          email: fc.emailAddress(),
-          phone: fc.string({ minLength: 10, maxLength: 15 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
-          avatarUrl: fc.option(fc.webUrl(), { nil: undefined }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          contact: fc.record({
+            email: fc.emailAddress(),
+            phone: fc.string({ minLength: 10, maxLength: 15 }),
+          }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
           updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
         fc.record({
-          name: fc.string({ minLength: 1, maxLength: 100 }),
-          company: fc.string({ minLength: 1, maxLength: 100 }),
+          clientName: fc.string({ minLength: 1, maxLength: 100 }),
+          businessName: fc.string({ minLength: 1, maxLength: 100 }),
         }),
         async (originalClient, updateData) => {
           // Mock initial fetch
@@ -468,11 +479,10 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
             const restoredClient = result.current.clients.find(c => c.id === originalClient.id);
             expect(restoredClient).toBeDefined();
             expect(restoredClient?.id).toBe(originalProps.id);
-            expect(restoredClient?.name).toBe(originalProps.name);
-            expect(restoredClient?.email).toBe(originalProps.email);
-            expect(restoredClient?.phone).toBe(originalProps.phone);
-            expect(restoredClient?.company).toBe(originalProps.company);
-            expect(restoredClient?.avatarUrl).toBe(originalProps.avatarUrl);
+            expect(restoredClient?.clientName).toBe(originalProps.clientName);
+            expect(restoredClient?.contact?.email).toBe(originalProps.contact?.email);
+            expect(restoredClient?.contact?.phone).toBe(originalProps.contact?.phone);
+            expect(restoredClient?.businessName).toBe(originalProps.businessName);
             expect(restoredClient?.status).toBe(originalProps.status);
             expect(restoredClient?.createdAt).toEqual(originalProps.createdAt);
           }, { timeout: 3000 });
@@ -488,10 +498,12 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
         fc.array(
           fc.record({
             id: fc.uuid(),
-            name: fc.string({ minLength: 1, maxLength: 100 }),
-            email: fc.emailAddress(),
-            phone: fc.string({ minLength: 10, maxLength: 15 }),
-            company: fc.string({ minLength: 1, maxLength: 100 }),
+            clientName: fc.string({ minLength: 1, maxLength: 100 }),
+            contact: fc.record({
+              email: fc.emailAddress(),
+              phone: fc.string({ minLength: 10, maxLength: 15 }),
+            }),
+            businessName: fc.string({ minLength: 1, maxLength: 100 }),
             status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
             createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
             updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -525,7 +537,7 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
 
             await act(async () => {
               try {
-                await result.current.updateClient(client.id, { name: `Updated ${i}` });
+                await result.current.updateClient(client.id, { clientName: `Updated ${i}` });
               } catch (error) {
                 // Expected to fail
               }
@@ -539,8 +551,8 @@ describe('Feature: management-pages, Property 53: Optimistic Update Rollback', (
             clients.forEach(originalClient => {
               const currentClient = result.current.clients.find(c => c.id === originalClient.id);
               expect(currentClient).toBeDefined();
-              expect(currentClient?.name).toBe(originalClient.name);
-              expect(currentClient?.email).toBe(originalClient.email);
+              expect(currentClient?.clientName).toBe(originalClient.clientName);
+              expect(currentClient?.contact?.email).toBe(originalClient.contact?.email);
             });
           }, { timeout: 3000 });
         }

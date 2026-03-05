@@ -18,7 +18,7 @@ import { PhotoIcon } from '@heroicons/react/24/outline';
 
 // Form-specific schema with required status
 const clientFormSchema = z.object({
-  name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
+  clientName: z.string().min(1, 'Client name is required').max(100, 'Name must be less than 100 characters'),
   businessName: z.string().optional(),
   pan: z.string().optional(),
   tan: z.string().optional(),
@@ -30,6 +30,14 @@ const clientFormSchema = z.object({
   state: z.string().optional(),
   country: z.string().optional(),
   zipCode: z.string().optional(),
+  complianceRoc: z.boolean().optional(),
+  complianceGstr1: z.boolean().optional(),
+  complianceGst3b: z.boolean().optional(),
+  complianceIff: z.boolean().optional(),
+  complianceItr: z.boolean().optional(),
+  complianceTaxAudit: z.boolean().optional(),
+  complianceAccounting: z.boolean().optional(),
+  complianceClientVisit: z.boolean().optional(),
   status: z.enum(['active', 'inactive']),
 });
 
@@ -67,7 +75,7 @@ export function ClientModal({
   } = useForm<ClientFormData>({
     resolver: zodResolver(clientFormSchema),
     defaultValues: {
-      name: '',
+      clientName: '',
       businessName: '',
       pan: '',
       tan: '',
@@ -79,6 +87,14 @@ export function ClientModal({
       state: '',
       country: '',
       zipCode: '',
+      complianceRoc: false,
+      complianceGstr1: false,
+      complianceGst3b: false,
+      complianceIff: false,
+      complianceItr: false,
+      complianceTaxAudit: false,
+      complianceAccounting: false,
+      complianceClientVisit: false,
       status: 'active',
     },
   });
@@ -94,30 +110,38 @@ export function ClientModal({
       .slice(0, 2);
   };
 
-  const currentName = watch('name');
+  const currentName = watch('clientName');
 
   // Update form when client prop changes (edit mode)
   useEffect(() => {
     if (client) {
       reset({
-        name: client.name,
+        clientName: client.clientName,
         businessName: client.businessName,
-        pan: client.pan || '',
-        tan: client.tan || '',
-        gstin: client.gstin || '',
-        email: client.email,
-        phone: client.phone,
-        address: client.address || '',
-        city: client.city || '',
-        state: client.state || '',
-        country: client.country || '',
-        zipCode: client.zipCode || '',
+        pan: client.taxIdentifiers?.pan || '',
+        tan: client.taxIdentifiers?.tan || '',
+        gstin: client.taxIdentifiers?.gstin || '',
+        email: client.contact?.email,
+        phone: client.contact?.phone,
+        address: client.address?.line1 || '',
+        city: client.address?.city || '',
+        state: client.address?.state || '',
+        country: client.address?.country || '',
+        zipCode: client.address?.zipCode || '',
+        complianceRoc: client.compliance?.roc,
+        complianceGstr1: client.compliance?.gstr1,
+        complianceGst3b: client.compliance?.gst3b,
+        complianceIff: client.compliance?.iff,
+        complianceItr: client.compliance?.itr,
+        complianceTaxAudit: client.compliance?.taxAudit,
+        complianceAccounting: client.compliance?.accounting,
+        complianceClientVisit: client.compliance?.clientVisit,
         status: client.status,
       });
       setAvatarPreview(null);
     } else {
       reset({
-        name: '',
+        clientName: '',
         businessName: '',
         pan: '',
         tan: '',
@@ -129,6 +153,14 @@ export function ClientModal({
         state: '',
         country: '',
         zipCode: '',
+        complianceRoc: false,
+        complianceGstr1: false,
+        complianceGst3b: false,
+        complianceIff: false,
+        complianceItr: false,
+        complianceTaxAudit: false,
+        complianceAccounting: false,
+        complianceClientVisit: false,
         status: 'active',
       });
       setAvatarPreview(null);
@@ -180,11 +212,11 @@ export function ClientModal({
           {/* Client Name */}
           <div>
             <Input
-              id="name"
-              label="Full Name"
-              {...register('name')}
+              id="clientName"
+              label="Client Name"
+              {...register('clientName')}
               placeholder="Enter client name"
-              error={errors.name?.message}
+              error={errors.clientName?.message}
               required
               disabled={isLoading}
             />
@@ -315,6 +347,33 @@ export function ClientModal({
                 error={errors.zipCode?.message}
                 disabled={isLoading}
               />
+            </div>
+          </div>
+
+          {/* Compliance */}
+          <div>
+            <Label>Compliance Services</Label>
+            <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-3">
+              {([
+                { field: 'complianceRoc', label: 'ROC' },
+                { field: 'complianceGstr1', label: 'GSTR1' },
+                { field: 'complianceGst3b', label: 'GST3B' },
+                { field: 'complianceIff', label: 'IFF' },
+                { field: 'complianceItr', label: 'ITR' },
+                { field: 'complianceTaxAudit', label: 'Tax Audit' },
+                { field: 'complianceAccounting', label: 'Accounting' },
+                { field: 'complianceClientVisit', label: 'Client Visit' },
+              ] as const).map(({ field, label }) => (
+                <label key={field} className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    {...register(field)}
+                    disabled={isLoading}
+                    className="rounded border-gray-300 dark:border-gray-600"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">{label}</span>
+                </label>
+              ))}
             </div>
           </div>
 

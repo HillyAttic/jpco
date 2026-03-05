@@ -21,6 +21,27 @@ const mockHandlers = {
   onSelect: jest.fn(),
 };
 
+// Helper to build a Client from flat test data
+function makeClient(data: {
+  id?: string;
+  clientName: string;
+  businessName?: string;
+  email?: string;
+  phone?: string;
+  status: 'active' | 'inactive';
+  createdAt?: Date;
+  avatarUrl?: string;
+}): Client {
+  return {
+    id: data.id,
+    clientName: data.clientName,
+    businessName: data.businessName,
+    contact: (data.email || data.phone) ? { email: data.email, phone: data.phone } : undefined,
+    status: data.status,
+    createdAt: data.createdAt,
+  };
+}
+
 // Reusable generators with proper validation to avoid special characters
 const generators = {
   name: () => fc.stringMatching(/^[A-Za-z]{2,25}( [A-Za-z]{2,25})?$/),
@@ -68,22 +89,19 @@ describe('Feature: management-pages, Property 22: Avatar Fallback Display', () =
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
         (clientData) => {
           // Create client without avatarUrl
-          const client: Client = {
-            ...clientData,
-            avatarUrl: undefined,
-          };
+          const client: Client = makeClient(clientData);
 
           // Calculate expected initials
-          const expectedInitials = client.name
+          const expectedInitials = client.clientName
             .split(' ')
             .map(part => part[0])
             .join('')
@@ -109,22 +127,19 @@ describe('Feature: management-pages, Property 22: Avatar Fallback Display', () =
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.singleWordName(),
+          clientName: generators.singleWordName(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
         (clientData) => {
-          const client: Client = {
-            ...clientData,
-            avatarUrl: undefined,
-          };
+          const client: Client = makeClient(clientData);
 
           // The component's getInitials function splits by space and takes first char of each part
           // For single-word names, it splits to one part, maps to first char, resulting in one letter
-          const expectedInitials = client.name
+          const expectedInitials = client.clientName
             .split(' ')
             .map(part => part[0])
             .join('')
@@ -150,17 +165,13 @@ describe('Feature: management-pages, Property 22: Avatar Fallback Display', () =
           lastName: generators.lastName(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
         (clientData) => {
           const fullName = `${clientData.firstName} ${clientData.lastName}`;
-          const client: Client = {
-            ...clientData,
-            name: fullName,
-            avatarUrl: undefined,
-          };
+          const client: Client = makeClient({ ...clientData, clientName: fullName });
 
           // Expected initials: first letter of first name + first letter of last name
           const expectedInitials = (
@@ -182,15 +193,16 @@ describe('Feature: management-pages, Property 22: Avatar Fallback Display', () =
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           avatarUrl: fc.webUrl(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
-        (client) => {
+        (clientData) => {
+          const client = makeClient(clientData);
           renderAndTest(client, (container) => {
             // Avatar element should exist (look for rounded-full class)
             const avatarElement = container.querySelector('.rounded-full');
@@ -198,7 +210,7 @@ describe('Feature: management-pages, Property 22: Avatar Fallback Display', () =
 
             // The avatar should have the src attribute with the URL (if img element exists)
             const imgElement = container.querySelector('img');
-            if (imgElement && client.avatarUrl) {
+            if (imgElement) {
               expect(imgElement).toHaveAttribute('src');
             }
           });
@@ -221,31 +233,32 @@ describe('Feature: management-pages, Property 24: Client Card Completeness', () 
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           avatarUrl: fc.option(fc.webUrl(), { nil: undefined }),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
-        (client) => {
+        (clientData) => {
+          const client = makeClient(clientData);
           renderAndTest(client, () => {
             // Verify avatar is displayed (check for rounded-full avatar container)
             const avatarContainer = document.querySelector('.rounded-full');
             expect(avatarContainer).toBeInTheDocument();
 
             // Verify name is displayed
-            expect(screen.getByText(client.name)).toBeInTheDocument();
+            expect(screen.getByText(clientData.clientName)).toBeInTheDocument();
 
             // Verify email is displayed
-            expect(screen.getByText(client.email)).toBeInTheDocument();
+            expect(screen.getByText(clientData.email)).toBeInTheDocument();
 
             // Verify phone is displayed
-            expect(screen.getByText(client.phone)).toBeInTheDocument();
+            expect(screen.getByText(clientData.phone)).toBeInTheDocument();
 
-            // Verify company is displayed
-            expect(screen.getByText(client.company)).toBeInTheDocument();
+            // Verify businessName is displayed
+            expect(screen.getByText(clientData.businessName)).toBeInTheDocument();
 
             // Verify status badge is displayed
             const statusText = client.status === 'active' ? 'active' : 'inactive';
@@ -262,14 +275,15 @@ describe('Feature: management-pages, Property 24: Client Card Completeness', () 
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
-        (client) => {
+        (clientData) => {
+          const client = makeClient(clientData);
           renderAndTest(client, () => {
             // Verify creation date is displayed
             const formattedDate = new Date(client.createdAt!).toLocaleDateString();
@@ -286,21 +300,22 @@ describe('Feature: management-pages, Property 24: Client Card Completeness', () 
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
-        (client) => {
+        (clientData) => {
+          const client = makeClient(clientData);
           renderAndTest(client, () => {
             // Verify edit button is present
-            const editButton = screen.getByLabelText(`Edit ${client.name}`);
+            const editButton = screen.getByLabelText(`Edit ${clientData.clientName}`);
             expect(editButton).toBeInTheDocument();
 
             // Verify delete button is present
-            const deleteButton = screen.getByLabelText(`Delete ${client.name}`);
+            const deleteButton = screen.getByLabelText(`Delete ${clientData.clientName}`);
             expect(deleteButton).toBeInTheDocument();
           });
         }
@@ -314,22 +329,23 @@ describe('Feature: management-pages, Property 24: Client Card Completeness', () 
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
-        (client) => {
+        (clientData) => {
+          const client = makeClient(clientData);
           renderAndTest(client, () => {
             // Verify email link
-            const emailLink = screen.getByText(client.email).closest('a');
-            expect(emailLink).toHaveAttribute('href', `mailto:${client.email}`);
+            const emailLink = screen.getByText(clientData.email).closest('a');
+            expect(emailLink).toHaveAttribute('href', `mailto:${clientData.email}`);
 
             // Verify phone link
-            const phoneLink = screen.getByText(client.phone).closest('a');
-            expect(phoneLink).toHaveAttribute('href', `tel:${client.phone}`);
+            const phoneLink = screen.getByText(clientData.phone).closest('a');
+            expect(phoneLink).toHaveAttribute('href', `tel:${clientData.phone}`);
           });
         }
       ),
@@ -342,14 +358,15 @@ describe('Feature: management-pages, Property 24: Client Card Completeness', () 
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
-        (client) => {
+        (clientData) => {
+          const client = makeClient(clientData);
           const { container } = render(
             <ClientCard
               client={client}
@@ -361,7 +378,7 @@ describe('Feature: management-pages, Property 24: Client Card Completeness', () 
 
           try {
             // Verify selection checkbox is present
-            const checkbox = screen.getByLabelText(`Select ${client.name}`);
+            const checkbox = screen.getByLabelText(`Select ${clientData.clientName}`);
             expect(checkbox).toBeInTheDocument();
             expect(checkbox).toHaveAttribute('type', 'checkbox');
           } finally {
@@ -378,20 +395,21 @@ describe('Feature: management-pages, Property 24: Client Card Completeness', () 
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
-        (client) => {
+        (clientData) => {
+          const client = makeClient(clientData);
           renderAndTest(client, (container) => {
-            // Verify email, phone, and company information are all displayed
+            // Verify email, phone, and businessName information are all displayed
             // The component uses icons from heroicons, so we check for the text content
-            expect(screen.getByText(client.email)).toBeInTheDocument();
-            expect(screen.getByText(client.phone)).toBeInTheDocument();
-            expect(screen.getByText(client.company)).toBeInTheDocument();
+            expect(screen.getByText(clientData.email)).toBeInTheDocument();
+            expect(screen.getByText(clientData.phone)).toBeInTheDocument();
+            expect(screen.getByText(clientData.businessName)).toBeInTheDocument();
           });
         }
       ),
@@ -404,14 +422,15 @@ describe('Feature: management-pages, Property 24: Client Card Completeness', () 
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
-        (client) => {
+        (clientData) => {
+          const client = makeClient(clientData);
           renderAndTest(client, () => {
             // Get the status text
             const statusText = client.status;
@@ -431,14 +450,15 @@ describe('Feature: management-pages, Property 24: Client Card Completeness', () 
       fc.property(
         fc.record({
           id: fc.uuid(),
-          name: generators.name(),
+          clientName: generators.name(),
           email: fc.emailAddress(),
           phone: generators.phone(),
-          company: generators.company(),
+          businessName: generators.company(),
           status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
           createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
         }),
-        (client) => {
+        (clientData) => {
+          const client = makeClient(clientData);
           renderAndTest(client, () => {
             // Get the expected status text for this client
             const expectedStatusText = client.status;

@@ -139,7 +139,7 @@ export function TaskListView({
         const clientMap: Record<string, string> = {};
         clients.forEach(client => {
           if (client.id) {
-            clientMap[client.id] = client.name;
+            clientMap[client.id] = client.clientName;
           }
         });
         

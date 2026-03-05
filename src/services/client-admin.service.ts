@@ -7,18 +7,34 @@ import { createAdminService } from './admin-base.service';
 
 export interface Client {
   id?: string;
-  name: string;
+  clientName: string;
   businessName?: string;
-  pan?: string;
-  tan?: string;
-  gstin?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  zipCode?: string;
+  taxIdentifiers?: {
+    pan?: string;
+    tan?: string;
+    gstin?: string;
+  };
+  contact?: {
+    email?: string;
+    phone?: string;
+  };
+  address?: {
+    line1?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
+  };
+  compliance?: {
+    roc: boolean;
+    gstr1: boolean;
+    gst3b: boolean;
+    iff: boolean;
+    itr: boolean;
+    taxAudit: boolean;
+    accounting: boolean;
+    clientVisit: boolean;
+  };
   status: 'active' | 'inactive';
   createdAt?: Date;
   updatedAt?: Date;
@@ -72,10 +88,10 @@ export const clientAdminService = {
       const searchLower = filters.search.toLowerCase();
       clients = clients.filter(
         (client) =>
-          client.name.toLowerCase().includes(searchLower) ||
+          client.clientName.toLowerCase().includes(searchLower) ||
           client.businessName?.toLowerCase().includes(searchLower) ||
-          client.email?.toLowerCase().includes(searchLower) ||
-          client.phone?.toLowerCase().includes(searchLower)
+          client.contact?.email?.toLowerCase().includes(searchLower) ||
+          client.contact?.phone?.toLowerCase().includes(searchLower)
       );
     }
 

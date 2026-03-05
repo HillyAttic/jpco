@@ -53,19 +53,23 @@ import {
 
 // Helper arbitraries for generating valid client data
 const validClientArbitrary = fc.record({
-  name: fc.stringMatching(/^[A-Z][a-z]+ [A-Z][a-z]+$/), // e.g., "John Doe"
-  email: fc.emailAddress(),
-  phone: fc.stringMatching(/^\d{3}-\d{3}-\d{4}$/), // e.g., "555-123-4567"
-  company: fc.stringMatching(/^[A-Z][a-z]+ (Inc|LLC|Corp)$/), // e.g., "Acme Inc"
+  clientName: fc.stringMatching(/^[A-Z][a-z]+ [A-Z][a-z]+$/), // e.g., "John Doe"
+  contact: fc.record({
+    email: fc.emailAddress(),
+    phone: fc.stringMatching(/^\d{3}-\d{3}-\d{4}$/), // e.g., "555-123-4567"
+  }),
+  businessName: fc.stringMatching(/^[A-Z][a-z]+ (Inc|LLC|Corp)$/), // e.g., "Acme Inc"
   status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
 });
 
 const validClientWithIdArbitrary = fc.record({
   id: fc.uuid(),
-  name: fc.stringMatching(/^[A-Z][a-z]+ [A-Z][a-z]+$/),
-  email: fc.emailAddress(),
-  phone: fc.stringMatching(/^\d{3}-\d{3}-\d{4}$/),
-  company: fc.stringMatching(/^[A-Z][a-z]+ (Inc|LLC|Corp)$/),
+  clientName: fc.stringMatching(/^[A-Z][a-z]+ [A-Z][a-z]+$/),
+  contact: fc.record({
+    email: fc.emailAddress(),
+    phone: fc.stringMatching(/^\d{3}-\d{3}-\d{4}$/),
+  }),
+  businessName: fc.stringMatching(/^[A-Z][a-z]+ (Inc|LLC|Corp)$/),
   status: fc.constantFrom('active', 'inactive') as fc.Arbitrary<'active' | 'inactive'>,
   createdAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
   updatedAt: fc.date({ min: new Date('2020-01-01'), max: new Date() }),
@@ -118,10 +122,10 @@ describe('Feature: management-pages, Property 1: Create Operation Persistence', 
           // Verify the client was created with an ID
           expect(createdClient).toBeDefined();
           expect(createdClient.id).toBe(mockId);
-          expect(createdClient.name).toBe(clientData.name);
-          expect(createdClient.email).toBe(clientData.email);
-          expect(createdClient.phone).toBe(clientData.phone);
-          expect(createdClient.company).toBe(clientData.company);
+          expect(createdClient.clientName).toBe(clientData.clientName);
+          expect((createdClient as any).contact?.email).toBe(clientData.contact?.email);
+          expect((createdClient as any).contact?.phone).toBe(clientData.contact?.phone);
+          expect((createdClient as any).businessName).toBe(clientData.businessName);
           expect(createdClient.status).toBe(clientData.status);
 
           // Verify addDoc was called
@@ -162,15 +166,11 @@ describe('Feature: management-pages, Property 1: Create Operation Persistence', 
           const createdClient = await service.create(clientData);
 
           // Verify all properties are persisted
-          expect(createdClient.name).toBe(clientData.name);
-          expect(createdClient.email).toBe(clientData.email);
-          expect(createdClient.phone).toBe(clientData.phone);
-          expect(createdClient.company).toBe(clientData.company);
+          expect(createdClient.clientName).toBe(clientData.clientName);
+          expect((createdClient as any).contact?.email).toBe(clientData.contact?.email);
+          expect((createdClient as any).contact?.phone).toBe(clientData.contact?.phone);
+          expect((createdClient as any).businessName).toBe(clientData.businessName);
           expect(createdClient.status).toBe(clientData.status);
-          
-          if (clientData.avatarUrl) {
-            expect(createdClient.avatarUrl).toBe(clientData.avatarUrl);
-          }
         }
       ),
       { numRuns: 100 }
@@ -217,10 +217,10 @@ describe('Feature: management-pages, Property 1: Create Operation Persistence', 
           // Verify retrieved client matches created client
           expect(retrievedClient).toBeDefined();
           expect(retrievedClient?.id).toBe(createdClient.id);
-          expect(retrievedClient?.name).toBe(createdClient.name);
-          expect(retrievedClient?.email).toBe(createdClient.email);
-          expect(retrievedClient?.phone).toBe(createdClient.phone);
-          expect(retrievedClient?.company).toBe(createdClient.company);
+          expect(retrievedClient?.clientName).toBe(createdClient.clientName);
+          expect((retrievedClient as any)?.contact?.email).toBe((createdClient as any).contact?.email);
+          expect((retrievedClient as any)?.contact?.phone).toBe((createdClient as any).contact?.phone);
+          expect((retrievedClient as any)?.businessName).toBe((createdClient as any).businessName);
           expect(retrievedClient?.status).toBe(createdClient.status);
         }
       ),
@@ -373,10 +373,10 @@ describe('Feature: management-pages, Property 18: Filter Clear Restoration', () 
           allClients.forEach(originalClient => {
             const restored = restoredClients.find(c => c.id === originalClient.id);
             expect(restored).toBeDefined();
-            expect(restored?.name).toBe(originalClient.name);
-            expect(restored?.email).toBe(originalClient.email);
-            expect(restored?.phone).toBe(originalClient.phone);
-            expect(restored?.company).toBe(originalClient.company);
+            expect(restored?.clientName).toBe(originalClient.clientName);
+            expect((restored as any)?.contact?.email).toBe(originalClient.contact?.email);
+            expect((restored as any)?.contact?.phone).toBe(originalClient.contact?.phone);
+            expect((restored as any)?.businessName).toBe(originalClient.businessName);
             expect(restored?.status).toBe(originalClient.status);
           });
         }

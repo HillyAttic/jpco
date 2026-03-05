@@ -60,7 +60,7 @@ export function TaskModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
-  const [clientFilter, setClientFilter] = useState<'all' | 'gstin' | 'tan' | 'pan'>('all');
+  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit'>('all');
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
@@ -170,12 +170,22 @@ export function TaskModal({
     
     return clients.filter(client => {
       switch (clientFilter) {
-        case 'gstin':
-          return client.gstin && client.gstin.trim() !== '';
-        case 'tan':
-          return client.tan && client.tan.trim() !== '';
-        case 'pan':
-          return client.pan && client.pan.trim() !== '';
+        case 'roc':
+          return !!client.compliance?.roc;
+        case 'gstr1':
+          return !!client.compliance?.gstr1;
+        case 'gst3b':
+          return !!client.compliance?.gst3b;
+        case 'iff':
+          return !!client.compliance?.iff;
+        case 'itr':
+          return !!client.compliance?.itr;
+        case 'taxAudit':
+          return !!client.compliance?.taxAudit;
+        case 'accounting':
+          return !!client.compliance?.accounting;
+        case 'clientVisit':
+          return !!client.compliance?.clientVisit;
         default:
           return true;
       }
@@ -493,9 +503,14 @@ export function TaskModal({
                 className="mt-1"
               >
                 <option value="all">All Clients</option>
-                <option value="gstin">Only with GSTIN</option>
-                <option value="tan">Only with T.A.N.</option>
-                <option value="pan">Only with P.A.N.</option>
+                <option value="roc">Only with ROC</option>
+                <option value="gstr1">Only with GSTR1</option>
+                <option value="gst3b">Only with GST3B</option>
+                <option value="iff">Only with IFF</option>
+                <option value="itr">Only with ITR</option>
+                <option value="taxAudit">Only with Tax Audit</option>
+                <option value="accounting">Only with Accounting</option>
+                <option value="clientVisit">Only with Client Visit</option>
               </Select>
             </div>
 
@@ -508,11 +523,11 @@ export function TaskModal({
               <option value="">Select a client (optional)</option>
               {getFilteredClients().map((client) => (
                 <option key={client.id} value={client.id}>
-                  {client.name}
+                  {client.clientName}
                   {client.businessName ? ` - ${client.businessName}` : ''}
-                  {client.gstin ? ` • GSTIN: ${client.gstin}` : 
-                   client.tan ? ` • TAN: ${client.tan}` : 
-                   client.pan ? ` • PAN: ${client.pan}` : ''}
+                  {client.taxIdentifiers?.gstin ? ` • GSTIN: ${client.taxIdentifiers.gstin}` :
+                   client.taxIdentifiers?.tan ? ` • TAN: ${client.taxIdentifiers.tan}` :
+                   client.taxIdentifiers?.pan ? ` • PAN: ${client.taxIdentifiers.pan}` : ''}
                 </option>
               ))}
             </Select>

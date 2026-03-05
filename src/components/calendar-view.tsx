@@ -210,7 +210,7 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
           console.log('[Calendar] Loaded clients:', {
             totalClients: allClients.length,
             assignedClients: assignedClients.length,
-            clientNames: assignedClients.map((c: any) => c.name)
+            clientNames: assignedClients.map((c: any) => c.clientName)
           });
 
           setClients(assignedClients);

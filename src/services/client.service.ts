@@ -7,25 +7,42 @@ import { createFirebaseService, QueryOptions } from './firebase.service';
 
 export interface Client {
   id?: string;
-  name: string;
+  clientNumber?: string; // CLN001, CLN002, etc.
+  clientName: string;
   businessName?: string;
-  pan?: string;
-  tan?: string;
-  gstin?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
-  state?: string;
-  country?: string;
-  zipCode?: string;
+  taxIdentifiers?: {
+    pan?: string;
+    tan?: string;
+    gstin?: string;
+  };
+  contact?: {
+    email?: string;
+    phone?: string;
+  };
+  address?: {
+    line1?: string;
+    city?: string;
+    state?: string;
+    country?: string;
+    zipCode?: string;
+  };
+  compliance?: {
+    roc: boolean;
+    gstr1: boolean;
+    gst3b: boolean;
+    iff: boolean;
+    itr: boolean;
+    taxAudit: boolean;
+    accounting: boolean;
+    clientVisit: boolean;
+  };
   status: 'active' | 'inactive';
   createdAt?: Date;
   updatedAt?: Date;
 }
 
 export interface ClientFormData {
-  name: string;
+  clientName: string;
   businessName?: string;
   pan?: string;
   tan?: string;
@@ -37,10 +54,18 @@ export interface ClientFormData {
   state?: string;
   country?: string;
   zipCode?: string;
+  complianceRoc?: boolean;
+  complianceGstr1?: boolean;
+  complianceGst3b?: boolean;
+  complianceIff?: boolean;
+  complianceItr?: boolean;
+  complianceTaxAudit?: boolean;
+  complianceAccounting?: boolean;
+  complianceClientVisit?: boolean;
 }
 
 export interface ClientImportRow {
-  Name: string;
+  'Client Name': string;
   'Business Name'?: string;
   'P.A.N.'?: string;
   'T.A.N.'?: string;
@@ -52,6 +77,14 @@ export interface ClientImportRow {
   State?: string;
   Country?: string;
   'Zip Code'?: string;
+  ROC?: string;
+  GSTR1?: string;
+  GST3B?: string;
+  IFF?: string;
+  ITR?: string;
+  'Tax Audit'?: string;
+  Accounting?: string;
+  'Client Visit'?: string;
 }
 
 // Create the Firebase service instance for clients
@@ -99,7 +132,7 @@ export const clientService = {
     // Apply search filter (client-side)
     if (filters?.search) {
       clients = await clientFirebaseService.searchMultipleFields(
-        ['name', 'businessName', 'email', 'phone', 'gstin', 'pan'],
+        ['clientName', 'businessName', 'contact.email', 'contact.phone', 'taxIdentifiers.gstin', 'taxIdentifiers.pan'],
         filters.search,
         options
       );
@@ -136,7 +169,37 @@ export const clientService = {
    * Create a new client
    */
   async create(data: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>): Promise<Client> {
+    // Generate client number if not provided
+    if (!data.clientNumber) {
+      const clientNumber = await this.generateClientNumber();
+      data = { ...data, clientNumber };
+    }
     return clientFirebaseService.create(data);
+  },
+
+  /**
+   * Generate next client number (CLN001, CLN002, etc.)
+   */
+  async generateClientNumber(): Promise<string> {
+    const clients = await this.getAll();
+    
+    // Find the highest existing client number
+    let maxNumber = 0;
+    clients.forEach(client => {
+      if (client.clientNumber) {
+        const match = client.clientNumber.match(/^CLN(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      }
+    });
+    
+    // Generate next number
+    const nextNumber = maxNumber + 1;
+    return `CLN${String(nextNumber).padStart(3, '0')}`;
   },
 
   /**
@@ -158,7 +221,7 @@ export const clientService = {
    */
   async search(query: string): Promise<Client[]> {
     return clientFirebaseService.searchMultipleFields(
-      ['name', 'businessName', 'email', 'phone', 'gstin', 'pan'],
+      ['clientName', 'businessName', 'contact.email', 'contact.phone', 'taxIdentifiers.gstin', 'taxIdentifiers.pan'],
       query
     );
   },
@@ -177,9 +240,17 @@ export const clientService = {
       errors: [] as Array<{ row: number; error: string; data: any }>,
     };
 
+    // Get the starting client number
+    let nextNumber = await this.getNextClientNumber();
+
     for (let i = 0; i < clients.length; i++) {
       try {
-        await clientFirebaseService.create(clients[i]);
+        // Add client number if not provided
+        const clientData = clients[i].clientNumber 
+          ? clients[i] 
+          : { ...clients[i], clientNumber: `CLN${String(nextNumber++).padStart(3, '0')}` };
+        
+        await clientFirebaseService.create(clientData);
         results.success++;
       } catch (error) {
         results.failed++;
@@ -192,6 +263,28 @@ export const clientService = {
     }
 
     return results;
+  },
+
+  /**
+   * Get next available client number
+   */
+  async getNextClientNumber(): Promise<number> {
+    const clients = await this.getAll();
+    
+    let maxNumber = 0;
+    clients.forEach(client => {
+      if (client.clientNumber) {
+        const match = client.clientNumber.match(/^CLN(\d+)$/);
+        if (match) {
+          const num = parseInt(match[1], 10);
+          if (num > maxNumber) {
+            maxNumber = num;
+          }
+        }
+      }
+    });
+    
+    return maxNumber + 1;
   },
 
   /**

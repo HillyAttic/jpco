@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
 
     // Step 3: Get all clients for name mapping
     const allClients = await clientAdminService.getAll();
-    const clientMap = new Map(allClients.map(c => [c.id!, c.name]));
+    const clientMap = new Map(allClients.map(c => [c.id!, c.clientName]));
 
     // Step 4: Build client-wise scheduled visits
     const clientVisitsMap = new Map<string, ClientScheduledVisits>();

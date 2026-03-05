@@ -430,7 +430,7 @@ function TaskReportModal({ task, clients, completions, onClose }: TaskReportModa
                 {clients.map((client) => (
                   <tr key={client.id} className="hover:bg-gray-50 dark:bg-gray-800">
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-dark">
-                      {client.name}
+                      {client.clientName}
                     </td>
                     {months.map((month) => {
                       const status = getCompletionStatus(completionData, client.id || '', month.key, month.fullDate);
@@ -665,7 +665,7 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TeamMemb
                   {displayClients.map((client) => (
                     <tr key={client.id} className="hover:bg-gray-50 dark:bg-gray-800">
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-dark">
-                        {client.name}
+                        {client.clientName}
                       </td>
                       {months.map((month) => {
                         const status = getCompletionStatus(completionData, client.id || '', month.key, month.fullDate);

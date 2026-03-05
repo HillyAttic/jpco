@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { CloudArrowUpIcon, DocumentArrowDownIcon, XMarkIcon } from '@heroicons/react/24/outline';
-import { parseCSV, readFileAsText, validateCSVData } from '@/utils/csv-parser';
+import { parseCSV, parseYN, readFileAsText, validateCSVData } from '@/utils/csv-parser';
 import { Client, ClientImportRow, clientService } from '@/services/client.service';
 
 interface ClientBulkImportModalProps {
@@ -58,7 +58,7 @@ export function ClientBulkImportModal({
       }
 
       // Validate required fields
-      const validationErrors = validateCSVData(data, ['Name']);
+      const validationErrors = validateCSVData(data, ['Client Name']);
       if (validationErrors.length > 0) {
         setErrors(validationErrors.map(e => `Row ${e.row}, Field '${e.field}': ${e.error}`));
       }
@@ -84,18 +84,34 @@ export function ClientBulkImportModal({
 
       // Convert to Client objects
       const clients: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>[] = data.map(row => ({
-        name: row.Name,
+        clientName: row['Client Name'],
         businessName: row['Business Name'] || undefined,
-        pan: row['P.A.N.'] || undefined,
-        tan: row['T.A.N.'] || undefined,
-        gstin: row.GSTIN || undefined,
-        email: row.Email || undefined,
-        phone: row.Phone || undefined,
-        address: row.Address || undefined,
-        city: row.City || undefined,
-        state: row.State || undefined,
-        country: row.Country || undefined,
-        zipCode: row['Zip Code'] || undefined,
+        taxIdentifiers: (row['P.A.N.'] || row['T.A.N.'] || row.GSTIN) ? {
+          pan: row['P.A.N.'] || undefined,
+          tan: row['T.A.N.'] || undefined,
+          gstin: row.GSTIN || undefined,
+        } : undefined,
+        contact: (row.Email || row.Phone) ? {
+          email: row.Email || undefined,
+          phone: row.Phone || undefined,
+        } : undefined,
+        address: (row.Address || row.City || row.State || row.Country || row['Zip Code']) ? {
+          line1: row.Address || undefined,
+          city: row.City || undefined,
+          state: row.State || undefined,
+          country: row.Country || undefined,
+          zipCode: row['Zip Code'] || undefined,
+        } : undefined,
+        compliance: (row.ROC !== undefined && row.ROC !== '') ? {
+          roc: parseYN(row.ROC ?? 'N'),
+          gstr1: parseYN(row.GSTR1 ?? 'N'),
+          gst3b: parseYN(row.GST3B ?? 'N'),
+          iff: parseYN(row.IFF ?? 'N'),
+          itr: parseYN(row.ITR ?? 'N'),
+          taxAudit: parseYN(row['Tax Audit'] ?? 'N'),
+          accounting: parseYN(row.Accounting ?? 'N'),
+          clientVisit: parseYN(row['Client Visit'] ?? 'N'),
+        } : undefined,
         status: 'active',
       }));
 
@@ -138,7 +154,7 @@ export function ClientBulkImportModal({
 
   const downloadTemplate = () => {
     const headers = [
-      'Name',
+      'Client Name',
       'Business Name',
       'P.A.N.',
       'T.A.N.',
@@ -150,9 +166,39 @@ export function ClientBulkImportModal({
       'State',
       'Country',
       'Zip Code',
+      'ROC',
+      'GSTR1',
+      'GST3B',
+      'IFF',
+      'ITR',
+      'Tax Audit',
+      'Accounting',
+      'Client Visit',
     ];
-    const csvContent = headers.join(',') + '\n';
-    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const exampleRow = [
+      'ABC Pvt Ltd',
+      'ABC Corporation',
+      'ABCDE1234F',
+      'ABCD12345E',
+      '22AAAAA0000A1Z5',
+      'abc@example.com',
+      '+919876543210',
+      'Mumbai Office',
+      'Mumbai',
+      'Maharashtra',
+      'India',
+      '400001',
+      'Y',
+      'Y',
+      'N',
+      'N',
+      'Y',
+      'N',
+      'Y',
+      'N',
+    ];
+    const csvContent = headers.join(',') + '\n' + exampleRow.join(',') + '\n';
+    const blob = new Blob(['\uFEFF' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -181,7 +227,7 @@ export function ClientBulkImportModal({
                   Download CSV Template
                 </h4>
                 <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
-                  Use our template to ensure your data is formatted correctly. Only Name is required, all other fields are optional.
+                  Use our template to ensure your data is formatted correctly. Only Client Name is required. Compliance fields (ROC, GSTR1, GST3B, IFF, ITR, Tax Audit, Accounting, Client Visit) accept Y or N values.
                 </p>
                 <Button
                   variant="outline"
@@ -245,19 +291,35 @@ export function ClientBulkImportModal({
                 <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Name</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Client Name</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Business</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Email</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Phone</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">GSTIN</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">ROC</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">GSTR1</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">GST3B</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">IFF</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">ITR</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Tax Audit</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Accounting</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Client Visit</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                     {previewData.map((row, index) => (
                       <tr key={index}>
-                        <td className="px-3 py-2 whitespace-nowrap">{row.Name}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row['Client Name']}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{row['Business Name']}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{row.Email}</td>
-                        <td className="px-3 py-2 whitespace-nowrap">{row.Phone}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row.GSTIN}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row.ROC}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row.GSTR1}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row.GST3B}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row.IFF}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row.ITR}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row['Tax Audit']}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row.Accounting}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row['Client Visit']}</td>
                       </tr>
                     ))}
                   </tbody>
