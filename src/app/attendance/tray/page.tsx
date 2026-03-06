@@ -455,7 +455,7 @@ export default function AttendanceTrayPage() {
           <p className="text-gray-600 dark:text-gray-400 mt-2 sm:mt-0">View attendance history for all employees</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-end">
-          {isAdmin && (
+          {(isAdmin || isManager) && (
             <Button
               variant="outline"
               size="sm"
@@ -466,7 +466,7 @@ export default function AttendanceTrayPage() {
               Manage Holidays
             </Button>
           )}
-          {isAdmin && (
+          {(isAdmin || isManager) && (
             <Button
               variant="default"
               size="sm"
@@ -738,6 +738,9 @@ export default function AttendanceTrayPage() {
       <AttendanceExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}
+        assignedEmployeeIds={assignedEmployeeIds}
+        isManager={isManager}
+        isAdmin={isAdmin}
       />
 
       {/* Calendar Overview Modal */}
@@ -757,6 +760,10 @@ export default function AttendanceTrayPage() {
       <HolidayManagementModal
         isOpen={showHolidayModal}
         onClose={() => setShowHolidayModal(false)}
+        managerId={user?.uid}
+        isManager={isManager}
+        isAdmin={isAdmin}
+        assignedEmployeeIds={assignedEmployeeIds}
       />
     </div>
   </ManagerGuard>

@@ -42,14 +42,20 @@ interface AttendanceExportModalProps {
   preSelectedEmployeeId?: string;
   preSelectedStartDate?: Date;
   preSelectedEndDate?: Date;
+  assignedEmployeeIds?: string[];
+  isManager?: boolean;
+  isAdmin?: boolean;
 }
 
-export function AttendanceExportModal({ 
-  isOpen, 
+export function AttendanceExportModal({
+  isOpen,
   onClose,
   preSelectedEmployeeId,
   preSelectedStartDate,
-  preSelectedEndDate
+  preSelectedEndDate,
+  assignedEmployeeIds,
+  isManager,
+  isAdmin
 }: AttendanceExportModalProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
@@ -67,8 +73,15 @@ export function AttendanceExportModal({
       setLoading(true);
       try {
         const allEmployees = await employeeService.getAll();
-        const activeEmployees = allEmployees.filter(emp => emp.status === 'active');
-        
+        let activeEmployees = allEmployees.filter(emp => emp.status === 'active');
+
+        // Filter to assigned employees only for managers
+        if (isManager && !isAdmin && assignedEmployeeIds && assignedEmployeeIds.length > 0) {
+          activeEmployees = activeEmployees.filter(emp => emp.id && assignedEmployeeIds.includes(emp.id));
+        } else if (isManager && !isAdmin) {
+          activeEmployees = [];
+        }
+
         // Sort employees: pre-selected first, then alphabetically
         if (preSelectedEmployeeId) {
           const sortedEmployees = activeEmployees.sort((a, b) => {

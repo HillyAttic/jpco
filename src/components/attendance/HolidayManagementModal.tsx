@@ -5,7 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Calendar, Plus, Trash2, Loader2 } from 'lucide-react';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, where, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 
 interface Holiday {
@@ -14,14 +14,20 @@ interface Holiday {
   name: string;
   description?: string;
   createdAt: Date;
+  scope?: 'global' | 'manager';
+  createdBy?: string;
 }
 
 interface HolidayManagementModalProps {
   isOpen: boolean;
   onClose: () => void;
+  managerId?: string;
+  isManager?: boolean;
+  isAdmin?: boolean;
+  assignedEmployeeIds?: string[];
 }
 
-export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementModalProps) {
+export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, isAdmin, assignedEmployeeIds }: HolidayManagementModalProps) {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -31,45 +37,60 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
   const [holidayName, setHolidayName] = useState('');
   const [holidayDescription, setHolidayDescription] = useState('');
 
+  const parseHolidayDate = (data: any): string => {
+    if (data.date && typeof data.date.toDate === 'function') {
+      const dateObj = data.date.toDate();
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    } else if (typeof data.date === 'string') {
+      return data.date;
+    } else if (data.date && typeof data.date.seconds !== 'undefined') {
+      const dateObj = new Date(data.date.seconds * 1000);
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+    }
+    return '';
+  };
+
   // Fetch holidays
   const fetchHolidays = async () => {
     setLoading(true);
     try {
-      const q = query(collection(db, 'holidays'), orderBy('date', 'asc'));
-      const snapshot = await getDocs(q);
-      
-      const holidayList: Holiday[] = snapshot.docs.map(doc => {
-        const data = doc.data();
-        let dateStr = '';
-        
-        // Convert Timestamp to YYYY-MM-DD string for consistent display
-        if (data.date && typeof data.date.toDate === 'function') {
-          const dateObj = data.date.toDate();
-          const year = dateObj.getFullYear();
-          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const day = String(dateObj.getDate()).padStart(2, '0');
-          dateStr = `${year}-${month}-${day}`;
-        } else if (typeof data.date === 'string') {
-          // Handle legacy string dates
-          dateStr = data.date;
-        } else if (data.date && typeof data.date.seconds !== 'undefined') {
-          // Handle Timestamp object with seconds
-          const dateObj = new Date(data.date.seconds * 1000);
-          const year = dateObj.getFullYear();
-          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const day = String(dateObj.getDate()).padStart(2, '0');
-          dateStr = `${year}-${month}-${day}`;
-        }
-        
-        return {
-          id: doc.id,
-          date: dateStr,
-          name: data.name,
-          description: data.description,
-          createdAt: data.createdAt?.toDate() || new Date(),
-        };
-      });
-      
+      // Fetch global holidays (no scope field or scope === 'global')
+      const globalQuery = query(collection(db, 'holidays'), orderBy('date', 'asc'));
+      const globalSnapshot = await getDocs(globalQuery);
+
+      const allDocs = globalSnapshot.docs;
+
+      const holidayList: Holiday[] = allDocs
+        .map(doc => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            date: parseHolidayDate(data),
+            name: data.name,
+            description: data.description,
+            createdAt: data.createdAt?.toDate() || new Date(),
+            scope: data.scope || 'global',
+            createdBy: data.createdBy || undefined,
+          };
+        })
+        .filter(holiday => {
+          // Admins see all holidays
+          if (isAdmin) return true;
+          // Managers see global holidays + their own manager-scoped holidays
+          if (isManager && !isAdmin) {
+            if (!holiday.scope || holiday.scope === 'global') return true;
+            if (holiday.scope === 'manager' && holiday.createdBy === managerId) return true;
+            return false;
+          }
+          return true;
+        });
+
       setHolidays(holidayList);
     } catch (error) {
       console.error('Error fetching holidays:', error);
@@ -100,13 +121,22 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
     try {
       // Convert string date to Timestamp for proper Firestore querying
       const dateObj = new Date(holidayDate + 'T00:00:00');
-      
-      await addDoc(collection(db, 'holidays'), {
+
+      const holidayData: any = {
         date: Timestamp.fromDate(dateObj),
         name: holidayName.trim(),
         description: holidayDescription.trim() || '',
         createdAt: Timestamp.now(),
-      });
+      };
+
+      // Manager-scoped holidays apply only to their assigned employees
+      if (isManager && !isAdmin && managerId) {
+        holidayData.scope = 'manager';
+        holidayData.createdBy = managerId;
+        holidayData.employeeIds = assignedEmployeeIds || [];
+      }
+
+      await addDoc(collection(db, 'holidays'), holidayData);
 
       // Reset form
       setHolidayDate('');
@@ -255,7 +285,18 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
                           </div>
                         </div>
                         <div>
-                          <h4 className="font-semibold text-gray-900 dark:text-white">{holiday.name}</h4>
+                          <h4 className="font-semibold text-gray-900 dark:text-white">
+                            {holiday.name}
+                            {isManager && !isAdmin && (
+                              <span className={`ml-2 text-xs font-normal px-1.5 py-0.5 rounded ${
+                                holiday.scope === 'manager'
+                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                                  : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                              }`}>
+                                {holiday.scope === 'manager' ? 'Team' : 'Global'}
+                              </span>
+                            )}
+                          </h4>
                           <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(holiday.date)}</p>
                           {holiday.description && (
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{holiday.description}</p>
@@ -263,14 +304,17 @@ export function HolidayManagementModal({ isOpen, onClose }: HolidayManagementMod
                         </div>
                       </div>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleDeleteHoliday(holiday.id)}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                    {/* Managers can only delete their own holidays, admins can delete any */}
+                    {(isAdmin || (isManager && holiday.scope === 'manager' && holiday.createdBy === managerId)) && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleDeleteHoliday(holiday.id)}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </div>
