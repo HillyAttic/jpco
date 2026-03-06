@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { 
-  collection, 
-  query, 
-  where, 
-  orderBy, 
-  limit, 
-  getDocs, 
+import {
+  collection,
+  query,
+  where,
+  orderBy,
+  limit,
+  getDocsFromServer,
   Timestamp
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
@@ -162,36 +162,39 @@ export default function AttendanceHistoryPage() {
     setLoading(true);
     
     try {
+      const fetchLimit = page * itemsPerPage + 1; // Fetch one extra to detect "has more"
+
       let q = query(
         collection(db, 'attendance-records'),
         where('employeeId', '==', user.uid),
         orderBy('clockIn', 'desc'),
-        limit(page * itemsPerPage)
+        limit(fetchLimit)
       );
 
-      // Force a fresh fetch by using a fresh query
-      const snapshot = await getDocs(q);
-      
+      const snapshot = await getDocsFromServer(q);
+
       if (snapshot.empty) {
         setAttendances([]);
         setHasMoreData(false);
       } else {
         const allRecords = snapshot.docs.map(doc => {
           const data = { id: doc.id, ...doc.data() };
-          console.log('Raw Firestore data:', data);
-          const converted = convertTimestamps(data);
-          console.log('Converted data:', converted);
-          return converted;
+          return convertTimestamps(data);
         });
-        
+
+        // Detect if more data exists (we fetched one extra record)
+        const expectedLimit = page * itemsPerPage;
+        const hasMore = allRecords.length > expectedLimit;
+
+        // Trim to actual limit (remove the extra detection record)
+        const trimmedRecords = hasMore ? allRecords.slice(0, expectedLimit) : allRecords;
+
         // Get the records for the current page
         const startIndex = (page - 1) * itemsPerPage;
-        const pageRecords = allRecords.slice(startIndex, startIndex + itemsPerPage);
-        
+        const pageRecords = trimmedRecords.slice(startIndex, startIndex + itemsPerPage);
+
         setAttendances(pageRecords);
-        
-        // Check if there are more records
-        setHasMoreData(allRecords.length > page * itemsPerPage);
+        setHasMoreData(hasMore);
       }
     } catch (error) {
       console.error('Error fetching attendance history:', error);

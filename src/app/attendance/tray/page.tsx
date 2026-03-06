@@ -193,68 +193,93 @@ export default function AttendanceTrayPage() {
     try {
       const fetchLimit = page * itemsPerPage + 1; // Fetch one extra to detect "has more"
 
-      let q = query(
-        collection(db, 'attendance-records'),
-        orderBy('clockIn', 'desc'),
-        limit(fetchLimit)
-      );
+      // For managers (non-admin): push employee filter to Firestore query
+      // so limit() applies to THEIR employees' records only, not all employees
+      const isManagerOnly = isManager && !isAdmin;
 
-      // Apply employee filter
-      if (selectedEmployee !== 'all') {
-        q = query(
-          collection(db, 'attendance-records'),
-          where('employeeId', '==', selectedEmployee),
-          orderBy('clockIn', 'desc'),
-          limit(fetchLimit)
-        );
+      if (isManagerOnly && assignedEmployeeIds.length === 0) {
+        // Manager has no assigned employees - nothing to show
+        setAttendances([]);
+        setHasMoreData(false);
+        return;
       }
 
-      // Apply date filter
-      if (dateFilter !== 'all') {
-        const now = new Date();
-        let startDate = new Date();
+      // Helper to build a query for a given set of employee IDs (or all)
+      const buildQuery = (employeeIds?: string[]) => {
+        const coll = collection(db, 'attendance-records');
+        const parts: any[] = [];
 
-        switch (dateFilter) {
-          case 'today':
-            startDate.setHours(0, 0, 0, 0);
-            break;
-          case 'week':
-            startDate.setDate(now.getDate() - 7);
-            break;
-          case 'month':
-            startDate.setMonth(now.getMonth() - 1);
-            break;
-        }
-
+        // Employee filter
         if (selectedEmployee !== 'all') {
-          q = query(
-            collection(db, 'attendance-records'),
-            where('employeeId', '==', selectedEmployee),
-            where('clockIn', '>=', Timestamp.fromDate(startDate)),
-            orderBy('clockIn', 'desc'),
-            limit(fetchLimit)
-          );
-        } else {
-          q = query(
-            collection(db, 'attendance-records'),
-            where('clockIn', '>=', Timestamp.fromDate(startDate)),
-            orderBy('clockIn', 'desc'),
-            limit(fetchLimit)
-          );
+          parts.push(where('employeeId', '==', selectedEmployee));
+        } else if (employeeIds && employeeIds.length > 0) {
+          parts.push(where('employeeId', 'in', employeeIds));
         }
+
+        // Date filter
+        if (dateFilter !== 'all') {
+          const now = new Date();
+          let startDate = new Date();
+          switch (dateFilter) {
+            case 'today':
+              startDate.setHours(0, 0, 0, 0);
+              break;
+            case 'week':
+              startDate.setDate(now.getDate() - 7);
+              break;
+            case 'month':
+              startDate.setMonth(now.getMonth() - 1);
+              break;
+          }
+          parts.push(where('clockIn', '>=', Timestamp.fromDate(startDate)));
+        }
+
+        parts.push(orderBy('clockIn', 'desc'));
+        parts.push(limit(fetchLimit));
+
+        return query(coll, ...parts);
+      };
+
+      let allRecords: AttendanceRecord[] = [];
+
+      if (isManagerOnly && assignedEmployeeIds.length > 30) {
+        // Firestore 'in' supports max 30 values — run parallel batch queries
+        const batches: string[][] = [];
+        for (let i = 0; i < assignedEmployeeIds.length; i += 30) {
+          batches.push(assignedEmployeeIds.slice(i, i + 30));
+        }
+
+        const batchResults = await Promise.all(
+          batches.map(async (batch) => {
+            const batchQuery = buildQuery(batch);
+            const snapshot = await getDocsFromServer(batchQuery);
+            return snapshot.docs.map(doc => convertTimestamps({ id: doc.id, ...doc.data() }));
+          })
+        );
+
+        // Merge, deduplicate, and sort all batch results
+        allRecords = batchResults
+          .flat()
+          .sort((a, b) => (b.clockIn?.getTime() || 0) - (a.clockIn?.getTime() || 0));
+      } else {
+        // Single query: admin sees all, manager sees assigned employees (≤30)
+        const employeeIds = isManagerOnly ? assignedEmployeeIds : undefined;
+        const q = buildQuery(employeeIds);
+        const snapshot = await getDocsFromServer(q);
+
+        if (snapshot.empty) {
+          setAttendances([]);
+          setHasMoreData(false);
+          return;
+        }
+
+        allRecords = snapshot.docs.map(doc => convertTimestamps({ id: doc.id, ...doc.data() }));
       }
 
-      const snapshot = await getDocsFromServer(q);
-
-      if (snapshot.empty) {
+      if (allRecords.length === 0) {
         setAttendances([]);
         setHasMoreData(false);
       } else {
-        const allRecords = snapshot.docs.map(doc => {
-          const data = { id: doc.id, ...doc.data() };
-          return convertTimestamps(data);
-        });
-
         // Detect if more data exists (we fetched one extra record)
         const expectedLimit = page * itemsPerPage;
         const hasMore = allRecords.length > expectedLimit;
@@ -262,20 +287,10 @@ export default function AttendanceTrayPage() {
         // Trim to actual limit (remove the extra detection record)
         const trimmedRecords = hasMore ? allRecords.slice(0, expectedLimit) : allRecords;
 
-        // Filter records for managers - only show assigned employees
-        let filteredRecords = trimmedRecords;
-        if (isManager && !isAdmin && assignedEmployeeIds.length > 0) {
-          filteredRecords = trimmedRecords.filter(record =>
-            assignedEmployeeIds.includes(record.employeeId)
-          );
-        } else if (isManager && !isAdmin && assignedEmployeeIds.length === 0) {
-          // Manager has no assigned employees
-          filteredRecords = [];
-        }
-
         // Apply status filter client-side
+        let filteredRecords = trimmedRecords;
         if (selectedStatus !== 'all') {
-          filteredRecords = filteredRecords.filter(record => {
+          filteredRecords = trimmedRecords.filter(record => {
             if (selectedStatus === 'active') return !record.clockOut;
             if (selectedStatus === 'completed') return !!record.clockOut;
             return true;
