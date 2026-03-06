@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import dynamic from 'next/dynamic';
-import { 
-  collection, 
-  query, 
-  orderBy, 
-  limit, 
-  getDocs, 
+import {
+  collection,
+  query,
+  orderBy,
+  limit,
+  getDocsFromServer,
   where,
   Timestamp
 } from 'firebase/firestore';
@@ -191,10 +191,12 @@ export default function AttendanceTrayPage() {
     setLoading(true);
     
     try {
+      const fetchLimit = page * itemsPerPage + 1; // Fetch one extra to detect "has more"
+
       let q = query(
         collection(db, 'attendance-records'),
         orderBy('clockIn', 'desc'),
-        limit(page * itemsPerPage)
+        limit(fetchLimit)
       );
 
       // Apply employee filter
@@ -203,7 +205,7 @@ export default function AttendanceTrayPage() {
           collection(db, 'attendance-records'),
           where('employeeId', '==', selectedEmployee),
           orderBy('clockIn', 'desc'),
-          limit(page * itemsPerPage)
+          limit(fetchLimit)
         );
       }
 
@@ -211,7 +213,7 @@ export default function AttendanceTrayPage() {
       if (dateFilter !== 'all') {
         const now = new Date();
         let startDate = new Date();
-        
+
         switch (dateFilter) {
           case 'today':
             startDate.setHours(0, 0, 0, 0);
@@ -230,20 +232,20 @@ export default function AttendanceTrayPage() {
             where('employeeId', '==', selectedEmployee),
             where('clockIn', '>=', Timestamp.fromDate(startDate)),
             orderBy('clockIn', 'desc'),
-            limit(page * itemsPerPage)
+            limit(fetchLimit)
           );
         } else {
           q = query(
             collection(db, 'attendance-records'),
             where('clockIn', '>=', Timestamp.fromDate(startDate)),
             orderBy('clockIn', 'desc'),
-            limit(page * itemsPerPage)
+            limit(fetchLimit)
           );
         }
       }
 
-      const snapshot = await getDocs(q);
-      
+      const snapshot = await getDocsFromServer(q);
+
       if (snapshot.empty) {
         setAttendances([]);
         setHasMoreData(false);
@@ -252,18 +254,25 @@ export default function AttendanceTrayPage() {
           const data = { id: doc.id, ...doc.data() };
           return convertTimestamps(data);
         });
-        
+
+        // Detect if more data exists (we fetched one extra record)
+        const expectedLimit = page * itemsPerPage;
+        const hasMore = allRecords.length > expectedLimit;
+
+        // Trim to actual limit (remove the extra detection record)
+        const trimmedRecords = hasMore ? allRecords.slice(0, expectedLimit) : allRecords;
+
         // Filter records for managers - only show assigned employees
-        let filteredRecords = allRecords;
+        let filteredRecords = trimmedRecords;
         if (isManager && !isAdmin && assignedEmployeeIds.length > 0) {
-          filteredRecords = allRecords.filter(record => 
+          filteredRecords = trimmedRecords.filter(record =>
             assignedEmployeeIds.includes(record.employeeId)
           );
         } else if (isManager && !isAdmin && assignedEmployeeIds.length === 0) {
           // Manager has no assigned employees
           filteredRecords = [];
         }
-        
+
         // Apply status filter client-side
         if (selectedStatus !== 'all') {
           filteredRecords = filteredRecords.filter(record => {
@@ -272,13 +281,13 @@ export default function AttendanceTrayPage() {
             return true;
           });
         }
-        
+
         // Get the records for the current page
         const startIndex = (page - 1) * itemsPerPage;
         const pageRecords = filteredRecords.slice(startIndex, startIndex + itemsPerPage);
-        
+
         setAttendances(pageRecords);
-        setHasMoreData(filteredRecords.length > page * itemsPerPage);
+        setHasMoreData(hasMore);
       }
     } catch (error) {
       console.error('Error fetching attendance history:', error);

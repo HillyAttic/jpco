@@ -133,6 +133,11 @@ export class FirebaseService<T extends { id?: string }> {
       return Timestamp.fromDate(data);
     }
 
+    // Preserve Firestore Timestamp objects as-is
+    if (data instanceof Timestamp) {
+      return data;
+    }
+
     // Handle arrays
     if (Array.isArray(data)) {
       return data.map(item => this.prepareForStorage(item));
