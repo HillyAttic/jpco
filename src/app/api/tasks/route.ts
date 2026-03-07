@@ -7,6 +7,15 @@ import admin from '@/lib/firebase-admin';
 import { sendNotification } from '@/lib/notifications/send-notification';
 import { verifyAuthToken } from '@/lib/server-auth';
 
+// Attachment schema
+const attachmentSchema = z.object({
+  name: z.string(),
+  url: z.string().url(),
+  type: z.string(),
+  size: z.number(),
+  storagePath: z.string(),
+});
+
 // Validation schema for task creation
 const createTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200),
@@ -19,6 +28,7 @@ const createTaskSchema = z.object({
   assignedTo: z.array(z.string()).default([]),
   categoryId: z.string().optional(),
   contactId: z.string().optional(),
+  attachments: z.array(attachmentSchema).optional().default([]),
 });
 
 /**

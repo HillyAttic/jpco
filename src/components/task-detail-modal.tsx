@@ -10,9 +10,11 @@ import {
   PaperClipIcon,
   ChatBubbleLeftRightIcon,
   ClockIcon,
-  UserCircleIcon
+  UserCircleIcon,
+  DocumentIcon,
+  ArrowDownTrayIcon
 } from '@heroicons/react/24/outline';
-import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
+import { Task, TaskStatus, TaskPriority, TaskAttachment } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
@@ -26,6 +28,7 @@ interface TaskDetailModalProps {
 interface Comment {
   id: string;
   author: string;
+  authorId?: string;
   content: string;
   createdAt: Date;
 }
@@ -92,6 +95,20 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
     if (task) {
       setEditingTask({ ...task });
       loadComments(task.id);
+
+      // Fetch fresh task data to ensure attachments are included
+      const loadFreshTask = async () => {
+        try {
+          const freshTask = await taskApi.getTaskById(task.id);
+          if (freshTask) {
+            console.log('[TaskDetailModal] Fresh task data:', { id: freshTask.id, attachments: freshTask.attachments });
+            setEditingTask(prev => prev ? { ...prev, attachments: freshTask.attachments } : prev);
+          }
+        } catch (err) {
+          console.error('[TaskDetailModal] Error fetching fresh task data:', err);
+        }
+      };
+      loadFreshTask();
 
       // Set display value with user names
       if (!loadingUsers && task.assignedTo) {
@@ -188,6 +205,18 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
       hour: '2-digit',
       minute: '2-digit'
     });
+  };
+
+  // Resolve comment author: try authorId, then author string (could be email or userId)
+  const resolveCommentAuthor = (comment: Comment): string => {
+    if (comment.authorId && userNames[comment.authorId]) {
+      return userNames[comment.authorId];
+    }
+    // userNames map includes uid->name, email->name, and employeeId->name
+    if (userNames[comment.author]) {
+      return userNames[comment.author];
+    }
+    return comment.author;
   };
 
   if (!editingTask) return null;
@@ -353,6 +382,40 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
             </div>
           </div>
 
+          {/* Attachments Section */}
+          {editingTask.attachments && editingTask.attachments.length > 0 && (
+            <div className="border-t pt-6">
+              <div className="flex items-center mb-4">
+                <PaperClipIcon className="w-5 h-5 mr-2 text-gray-500 dark:text-gray-400" />
+                <h3 className="text-lg font-medium">Attachments ({editingTask.attachments.length})</h3>
+              </div>
+              <div className="space-y-2">
+                {editingTask.attachments.map((attachment: TaskAttachment, index: number) => (
+                  <a
+                    key={attachment.storagePath || index}
+                    href={attachment.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 px-4 py-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                  >
+                    <DocumentIcon className="w-5 h-5 text-gray-400 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {attachment.name}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        {attachment.size < 1024 * 1024
+                          ? `${(attachment.size / 1024).toFixed(1)} KB`
+                          : `${(attachment.size / (1024 * 1024)).toFixed(1)} MB`}
+                      </p>
+                    </div>
+                    <ArrowDownTrayIcon className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0 transition-colors" />
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Comments Section */}
           <div className="border-t pt-6">
             <div className="flex items-center mb-4">
@@ -370,7 +433,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                       <UserCircleIcon className="w-8 h-8 text-gray-400 flex-shrink-0" />
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-medium text-gray-900 dark:text-white">{comment.author}</span>
+                          <span className="font-medium text-gray-900 dark:text-white">{resolveCommentAuthor(comment)}</span>
                           <span className="text-sm text-gray-500 dark:text-gray-400">{formatDate(comment.createdAt)}</span>
                         </div>
                         <p className="mt-1 text-gray-700 dark:text-gray-300">{comment.content}</p>

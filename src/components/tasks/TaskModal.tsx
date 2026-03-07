@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Task } from '@/types/task.types';
+import { Task, TaskAttachment } from '@/types/task.types';
 import { Employee, employeeService } from '@/services/employee.service';
 import { Category, categoryService } from '@/services/category.service';
 import { Client, clientService } from '@/services/client.service';
 import { authenticatedFetch } from '@/lib/api-client';
+import { validateFiles, ALLOWED_EXTENSIONS, MAX_FILES_PER_TASK } from '@/lib/task-attachment.service';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import Select from '@/components/ui/select';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, PaperClipIcon, DocumentIcon } from '@heroicons/react/24/outline';
 import { isKeyboardAccessible } from '@/lib/accessibility';
 
 // Form-specific schema matching the design requirements
@@ -39,7 +40,7 @@ type TaskFormData = z.infer<typeof taskFormSchema>;
 interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: TaskFormData) => Promise<void>;
+  onSubmit: (data: TaskFormData & { pendingFiles?: File[]; existingAttachments?: TaskAttachment[]; removedAttachments?: TaskAttachment[] }) => Promise<void>;
   task?: Task | null;
   isLoading?: boolean;
 }
@@ -64,6 +65,13 @@ export function TaskModal({
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
+
+  // File attachment state
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [existingAttachments, setExistingAttachments] = useState<TaskAttachment[]>([]);
+  const [removedAttachments, setRemovedAttachments] = useState<TaskAttachment[]>([]);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -230,11 +238,17 @@ export function TaskModal({
 
       // Set selected employees for display
       if (task.assignedTo && task.assignedTo.length > 0) {
-        const taskEmployees = employees.filter(emp => 
+        const taskEmployees = employees.filter(emp =>
           task.assignedTo.includes(emp.id!)
         );
         setSelectedEmployees(taskEmployees);
       }
+
+      // Load existing attachments for edit mode
+      setExistingAttachments(task.attachments || []);
+      setPendingFiles([]);
+      setRemovedAttachments([]);
+      setFileError(null);
     } else {
       // Set default date to tomorrow
       const tomorrow = new Date();
@@ -257,8 +271,17 @@ export function TaskModal({
 
   const handleFormSubmit = async (data: TaskFormData) => {
     try {
-      await onSubmit(data);
+      await onSubmit({
+        ...data,
+        pendingFiles,
+        existingAttachments,
+        removedAttachments,
+      });
       reset();
+      setPendingFiles([]);
+      setExistingAttachments([]);
+      setRemovedAttachments([]);
+      setFileError(null);
       onClose();
     } catch (error) {
       console.error('Error submitting task:', error);
@@ -269,7 +292,50 @@ export function TaskModal({
     reset();
     setSelectedEmployees([]);
     setClientFilter('all');
+    setPendingFiles([]);
+    setExistingAttachments([]);
+    setRemovedAttachments([]);
+    setFileError(null);
     onClose();
+  };
+
+  // File handling
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const totalFiles = pendingFiles.length + existingAttachments.length + files.length;
+    if (totalFiles > MAX_FILES_PER_TASK) {
+      setFileError(`Maximum ${MAX_FILES_PER_TASK} files allowed (${existingAttachments.length + pendingFiles.length} already selected)`);
+      return;
+    }
+
+    const error = validateFiles([...pendingFiles, ...files]);
+    if (error) {
+      setFileError(error);
+      return;
+    }
+
+    setFileError(null);
+    setPendingFiles(prev => [...prev, ...files]);
+    // Reset input so same file can be selected again
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleRemovePendingFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+    setFileError(null);
+  };
+
+  const handleRemoveExistingAttachment = (attachment: TaskAttachment) => {
+    setExistingAttachments(prev => prev.filter(a => a.storagePath !== attachment.storagePath));
+    setRemovedAttachments(prev => [...prev, attachment]);
+  };
+
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   // Get minimum date (today)
@@ -314,6 +380,100 @@ export function TaskModal({
             {errors.description && (
               <p className="text-sm text-red-600 mt-1">{errors.description.message}</p>
             )}
+          </div>
+
+          {/* Attachments */}
+          <div>
+            <Label>Attachments</Label>
+            <div className="mt-1 space-y-2">
+              {/* File input trigger */}
+              <div
+                onClick={() => !isLoading && fileInputRef.current?.click()}
+                className="flex items-center justify-center gap-2 w-full px-4 py-3 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors"
+              >
+                <PaperClipIcon className="w-5 h-5 text-gray-400" />
+                <span className="text-sm text-gray-500 dark:text-gray-400">
+                  Click to attach files (PNG, JPG, PDF, Excel, Word) - Max 10MB each
+                </span>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept={ALLOWED_EXTENSIONS}
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={isLoading}
+              />
+
+              {/* File error */}
+              {fileError && (
+                <p className="text-sm text-red-600">{fileError}</p>
+              )}
+
+              {/* Existing attachments (edit mode) */}
+              {existingAttachments.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">Existing attachments</p>
+                  {existingAttachments.map((attachment) => (
+                    <div
+                      key={attachment.storagePath}
+                      className="flex items-center justify-between gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <DocumentIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{attachment.name}</span>
+                        <span className="text-xs text-gray-400 flex-shrink-0">{formatFileSize(attachment.size)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveExistingAttachment(attachment)}
+                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors flex-shrink-0"
+                        disabled={isLoading}
+                        aria-label={`Remove ${attachment.name}`}
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Pending files (new uploads) */}
+              {pendingFiles.length > 0 && (
+                <div className="space-y-1">
+                  <p className="text-xs font-medium text-gray-500 dark:text-gray-400">New files to upload</p>
+                  {pendingFiles.map((file, index) => (
+                    <div
+                      key={`${file.name}-${index}`}
+                      className="flex items-center justify-between gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <DocumentIcon className="w-4 h-4 text-blue-400 flex-shrink-0" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
+                        <span className="text-xs text-gray-400 flex-shrink-0">{formatFileSize(file.size)}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePendingFile(index)}
+                        className="text-red-500 hover:text-red-700 p-1 rounded hover:bg-red-50 transition-colors flex-shrink-0"
+                        disabled={isLoading}
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <XMarkIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* File count */}
+              {(existingAttachments.length > 0 || pendingFiles.length > 0) && (
+                <p className="text-xs text-gray-400">
+                  {existingAttachments.length + pendingFiles.length}/{MAX_FILES_PER_TASK} files
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Due Date - Requirement 2.2 */}

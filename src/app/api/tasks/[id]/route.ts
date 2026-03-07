@@ -5,6 +5,15 @@ import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 import { sendNotification } from '@/lib/notifications/send-notification';
 
+// Attachment schema
+const attachmentSchema = z.object({
+  name: z.string(),
+  url: z.string().url(),
+  type: z.string(),
+  size: z.number(),
+  storagePath: z.string(),
+});
+
 // Validation schema for task update
 const updateTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200).optional(),
@@ -23,6 +32,7 @@ const updateTaskSchema = z.object({
   assignedTo: z.array(z.string()).optional(),
   categoryId: z.string().optional(),
   contactId: z.string().optional().nullable(),
+  attachments: z.array(attachmentSchema).optional(),
 });
 
 /**
@@ -41,25 +51,20 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       return ErrorResponses.unauthorized();
     }
 
-    // Check role-based permissions
-    const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
-      return ErrorResponses.forbidden('Only managers and admins can access this resource');
-    }
-
-    console.log('[API /api/tasks/[id]] GET request received');
-
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
-
     const { id } = await params;
     const task = await nonRecurringTaskAdminService.getById(id);
 
     if (!task) {
       return ErrorResponses.notFound('Task');
+    }
+
+    // Check role-based permissions: admin/manager can access any task,
+    // employees can only access tasks assigned to them
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      if (!task.assignedTo?.includes(authResult.user.uid)) {
+        return ErrorResponses.forbidden('You do not have access to this task');
+      }
     }
 
     console.log('[API /api/tasks/[id]] Task found:', id);
@@ -112,6 +117,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     if (taskData.assignedTo !== undefined) taskToUpdate.assignedTo = taskData.assignedTo;
     if (taskData.categoryId !== undefined) taskToUpdate.categoryId = taskData.categoryId;
     if (taskData.contactId !== undefined) taskToUpdate.contactId = taskData.contactId ?? undefined;
+    if (taskData.attachments !== undefined) taskToUpdate.attachments = taskData.attachments;
 
     // Check if user is assigned to the task or has admin/manager role
     const userRole = authResult.user.claims.role;

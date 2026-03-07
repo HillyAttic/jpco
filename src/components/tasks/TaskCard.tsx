@@ -4,13 +4,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { 
-  PencilSquareIcon, 
-  TrashIcon, 
+import {
+  PencilSquareIcon,
+  TrashIcon,
   CalendarIcon,
   CheckCircleIcon,
   ClockIcon,
-  ExclamationTriangleIcon
+  ExclamationTriangleIcon,
+  PaperClipIcon
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid';
 
@@ -187,6 +188,14 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
                   </div>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Attachments indicator */}
+          {task.attachments && task.attachments.length > 0 && (
+            <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
+              <PaperClipIcon className="w-4 h-4 flex-shrink-0" />
+              <span>{task.attachments.length} attachment{task.attachments.length !== 1 ? 's' : ''}</span>
             </div>
           )}
         </div>

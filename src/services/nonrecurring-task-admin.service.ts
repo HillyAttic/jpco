@@ -200,6 +200,7 @@ export const nonRecurringTaskAdminService = {
       id: doc.id,
       taskId,
       author: doc.data().author,
+      authorId: doc.data().authorId,
       content: doc.data().content,
       createdAt: doc.data().createdAt?.toDate() || new Date(),
     }));

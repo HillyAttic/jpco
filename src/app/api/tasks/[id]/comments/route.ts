@@ -48,11 +48,22 @@ export async function POST(
       return ErrorResponses.badRequest('Content is required');
     }
 
-    // Use display name from auth token if author is not provided or to enforce identity
-    const authorName = authResult.user.email || 'Unknown User';
+    // Look up user's display name from Firestore users collection
+    const { adminDb } = await import('@/lib/firebase-admin');
+    let authorName = authResult.user.email || 'Unknown User';
+    try {
+      const userDoc = await adminDb.collection('users').doc(authResult.user.uid).get();
+      if (userDoc.exists) {
+        const userData = userDoc.data();
+        authorName = userData?.displayName || userData?.name || authorName;
+      }
+    } catch (err) {
+      console.error('Error fetching user name for comment:', err);
+    }
 
     const newComment = await nonRecurringTaskAdminService.addComment(id, {
       author: authorName,
+      authorId: authResult.user.uid,
       content: body.content.trim(),
     });
 

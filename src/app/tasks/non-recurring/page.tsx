@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useTasks } from '@/hooks/use-tasks';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
 import { NonRecurringTask } from '@/services/nonrecurring-task.service';
+import { TaskAttachment } from '@/types/task.types';
+import { uploadTaskAttachments, deleteTaskAttachment } from '@/lib/task-attachment.service';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskListView } from '@/components/tasks/TaskListView';
 import { TaskModal } from '@/components/tasks/TaskModal';
@@ -38,6 +40,7 @@ export default function NonRecurringTasksPage() {
     updateTask,
     deleteTask,
     toggleComplete,
+    refreshTasks,
     searchTasks,
     filterTasks,
   } = useTasks();
@@ -146,7 +149,7 @@ export default function NonRecurringTasksPage() {
   // Handle form submission
   const handleSubmit = async (formData: any) => {
     setIsSubmitting(true);
-    
+
     try {
       // Convert assignedTo string (employee IDs) to array
       const assignedToArray = formData.assignedTo
@@ -154,7 +157,11 @@ export default function NonRecurringTasksPage() {
         .map((id: string) => id.trim())
         .filter((id: string) => id.length > 0);
 
-      const taskData = {
+      const pendingFiles: File[] = formData.pendingFiles || [];
+      const existingAttachments: TaskAttachment[] = formData.existingAttachments || [];
+      const removedAttachments: TaskAttachment[] = formData.removedAttachments || [];
+
+      const taskData: any = {
         title: formData.title,
         description: formData.description,
         dueDate: new Date(formData.dueDate),
@@ -166,9 +173,43 @@ export default function NonRecurringTasksPage() {
       };
 
       if (selectedTask) {
+        // Edit mode: delete removed attachments from storage
+        for (const removed of removedAttachments) {
+          try {
+            await deleteTaskAttachment(removed.storagePath);
+          } catch (err) {
+            console.error('Failed to delete attachment from storage:', err);
+          }
+        }
+
+        // Upload new files
+        let newAttachments: TaskAttachment[] = [];
+        if (pendingFiles.length > 0) {
+          newAttachments = await uploadTaskAttachments(selectedTask.id!, pendingFiles);
+        }
+
+        taskData.attachments = [...existingAttachments, ...newAttachments];
         await updateTask(selectedTask.id!, taskData);
       } else {
-        await createTask(taskData);
+        // Create mode: create task first, then upload files
+        const newTask = await createTask(taskData);
+
+        if (pendingFiles.length > 0 && newTask?.id) {
+          const attachments = await uploadTaskAttachments(newTask.id, pendingFiles);
+          // Use direct API call to persist attachments to Firestore
+          // (bypasses useTasks hook to avoid stale state issues)
+          const { authenticatedFetch } = await import('@/lib/api-client');
+          const response = await authenticatedFetch(`/api/tasks/${newTask.id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ attachments }),
+          });
+          if (!response.ok) {
+            console.error('Failed to save attachment metadata:', await response.text());
+          } else {
+            // Refresh tasks to pick up attachment data
+            await refreshTasks();
+          }
+        }
       }
 
       setIsModalOpen(false);
@@ -251,6 +292,7 @@ export default function NonRecurringTasksPage() {
     categoryId: task.categoryId,
     contactId: task.contactId,
     createdBy: task.createdBy,
+    attachments: task.attachments,
   });
 
   return (

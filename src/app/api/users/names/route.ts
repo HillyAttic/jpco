@@ -29,6 +29,10 @@ export async function GET(request: NextRequest) {
       if (data.employeeId && data.employeeId !== doc.id) {
         nameMap[data.employeeId] = name;
       }
+      // Also map by email for resolving old comment authors stored as email
+      if (data.email && name !== data.email) {
+        nameMap[data.email] = name;
+      }
     });
 
     return NextResponse.json(nameMap, { status: 200 });

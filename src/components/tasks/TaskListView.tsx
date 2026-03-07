@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { PencilIcon, TrashIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, CheckCircleIcon, PaperClipIcon } from '@heroicons/react/24/outline';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 interface Task {
@@ -15,6 +15,7 @@ interface Task {
   categoryId?: string;
   contactId?: string;
   createdBy?: string;
+  attachments?: { name: string; url: string; type: string; size: number; storagePath: string }[];
 }
 
 interface TaskListViewProps {
@@ -280,6 +281,12 @@ export function TaskListView({
                     {task.description}
                   </div>
                 )}
+                {task.attachments && task.attachments.length > 0 && (
+                  <div className="flex items-center gap-0.5 text-gray-400 dark:text-gray-500 mt-0.5">
+                    <PaperClipIcon className="w-3 h-3" />
+                    <span className="text-[10px]">{task.attachments.length}</span>
+                  </div>
+                )}
               </div>
 
               {/* Client */}
@@ -426,12 +433,18 @@ export function TaskListView({
                   {isAdminOrManager ? 'Assigned To:' : 'Assigned By:'}
                 </span>
                 <span className="text-gray-900 dark:text-white font-medium text-right break-words max-w-[60%]">
-                  {isAdminOrManager 
+                  {isAdminOrManager
                     ? getAssignedNames(task.assignedTo)
                     : getCreatorName(task.createdBy)
                   }
                 </span>
               </div>
+              {task.attachments && task.attachments.length > 0 && (
+                <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
+                  <PaperClipIcon className="w-3.5 h-3.5" />
+                  <span>{task.attachments.length} attachment{task.attachments.length !== 1 ? 's' : ''}</span>
+                </div>
+              )}
             </div>
 
             {/* Action Buttons */}

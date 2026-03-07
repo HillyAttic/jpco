@@ -12,6 +12,14 @@ export enum TaskPriority {
   URGENT = "urgent",
 }
 
+export interface TaskAttachment {
+  name: string;       // original filename
+  url: string;        // Firebase Storage download URL
+  type: string;       // MIME type
+  size: number;       // bytes
+  storagePath: string; // path in storage for deletion
+}
+
 export interface Task {
   id: string;
   title: string;
@@ -25,12 +33,14 @@ export interface Task {
   createdBy?: string;
   category?: string;
   commentCount?: number;
+  attachments?: TaskAttachment[];
 }
 
 export interface Comment {
   id: string;
   taskId: string;
   author: string;
+  authorId?: string;
   content: string;
   createdAt: Date;
 }

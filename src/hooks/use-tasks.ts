@@ -19,7 +19,7 @@ interface UseTasksReturn {
   tasks: NonRecurringTask[];
   loading: boolean;
   error: Error | null;
-  createTask: (data: Omit<NonRecurringTask, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
+  createTask: (data: Omit<NonRecurringTask, 'id' | 'createdAt' | 'updatedAt'>) => Promise<NonRecurringTask>;
   updateTask: (id: string, data: Partial<Omit<NonRecurringTask, 'id'>>) => Promise<void>;
   deleteTask: (id: string) => Promise<void>;
   toggleComplete: (id: string) => Promise<void>;
@@ -102,7 +102,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
    * Validates Requirements: 9.3
    */
   const createTask = useCallback(
-    async (data: Omit<NonRecurringTask, 'id' | 'createdAt' | 'updatedAt'>) => {
+    async (data: Omit<NonRecurringTask, 'id' | 'createdAt' | 'updatedAt'>): Promise<NonRecurringTask> => {
       // Generate temporary ID for optimistic update
       const tempId = `temp-${Date.now()}`;
       const optimisticTask: NonRecurringTask = {
@@ -148,6 +148,8 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
             userEmail: user.email || '',
           });
         }
+
+        return newTask;
       } catch (err) {
         // Rollback optimistic update on error (Validates Requirements: 9.5)
         setTasks((prev) => prev.filter((task) => task.id !== tempId));
@@ -165,20 +167,17 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
    */
   const updateTask = useCallback(
     async (id: string, data: Partial<Omit<NonRecurringTask, 'id'>>) => {
-      // Store original task for rollback
-      const originalTask = tasks.find((t) => t.id === id);
-      if (!originalTask) {
-        throw new Error('Task not found');
-      }
-
-      // Optimistic update - update task immediately
-      setTasks((prev) =>
-        prev.map((task) =>
+      // Store original task for rollback (may be null if task was just created)
+      let originalTask: NonRecurringTask | undefined;
+      setTasks((prev) => {
+        originalTask = prev.find((t) => t.id === id);
+        if (!originalTask) return prev;
+        return prev.map((task) =>
           task.id === id
             ? { ...task, ...data, updatedAt: new Date() }
             : task
-        )
-      );
+        );
+      });
 
       try {
         const response = await authenticatedFetch(`/api/tasks/${id}`, {
@@ -193,16 +192,20 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
 
         const updatedTask = await response.json();
 
-        // Replace optimistic update with server response
-        setTasks((prev) =>
-          prev.map((task) => (task.id === id ? updatedTask : task))
-        );
-        
+        // Replace optimistic update with server response, or add if not in state
+        setTasks((prev) => {
+          const exists = prev.some((task) => task.id === id);
+          if (exists) {
+            return prev.map((task) => (task.id === id ? updatedTask : task));
+          }
+          return [updatedTask, ...prev];
+        });
+
         // Log activity
         const user = auth.currentUser;
         if (user) {
           const userName = await getUserName(user.uid, user.email || 'Unknown User');
-          
+
           await activityService.logActivity({
             type: 'updated',
             entityType: 'task',
@@ -215,9 +218,11 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
         }
       } catch (err) {
         // Rollback optimistic update on error (Validates Requirements: 9.5)
-        setTasks((prev) =>
-          prev.map((task) => (task.id === id ? originalTask : task))
-        );
+        if (originalTask) {
+          setTasks((prev) =>
+            prev.map((task) => (task.id === id ? originalTask! : task))
+          );
+        }
         
         const error = err instanceof Error ? err : new Error('Unknown error');
         setError(error);

@@ -6,6 +6,7 @@
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { createFirebaseService, QueryOptions } from './firebase.service';
+import { TaskAttachment } from '@/types/task.types';
 
 export interface NonRecurringTask {
   id?: string;
@@ -18,6 +19,7 @@ export interface NonRecurringTask {
   categoryId?: string; // Category ID reference
   contactId?: string; // Client ID reference
   createdBy?: string; // User ID of the creator
+  attachments?: TaskAttachment[];
   createdAt?: Date;
   updatedAt?: Date;
 }
