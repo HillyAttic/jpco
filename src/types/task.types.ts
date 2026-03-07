@@ -31,6 +31,7 @@ export interface Task {
   updatedAt: Date;
   assignedTo: string[];
   createdBy?: string;
+  contactId?: string;
   category?: string;
   commentCount?: number;
   attachments?: TaskAttachment[];

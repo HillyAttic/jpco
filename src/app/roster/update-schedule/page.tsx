@@ -53,6 +53,7 @@ export default function UpdateSchedulePage() {
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [assignedTasks, setAssignedTasks] = useState<NonRecurringTask[]>([]);
   const [selectedNonRecurringTask, setSelectedNonRecurringTask] = useState<NonRecurringTask | null>(null);
+  const [nonRecurringTaskClientName, setNonRecurringTaskClientName] = useState<string | null>(null);
   const [showTaskActionMenu, setShowTaskActionMenu] = useState(false);
   const [selectedTaskForAction, setSelectedTaskForAction] = useState<RosterEntry | null>(null);
   const [showTaskViewModal, setShowTaskViewModal] = useState(false);
@@ -62,6 +63,23 @@ export default function UpdateSchedulePage() {
       router.push('/auth/sign-in');
     }
   }, [user, authLoading, router]);
+
+  // Fetch client name when a non-recurring task is selected
+  useEffect(() => {
+    const fetchClientName = async () => {
+      if (selectedNonRecurringTask?.contactId) {
+        try {
+          const client = await clientService.getById(selectedNonRecurringTask.contactId);
+          setNonRecurringTaskClientName(client?.clientName || null);
+        } catch {
+          setNonRecurringTaskClientName(null);
+        }
+      } else {
+        setNonRecurringTaskClientName(null);
+      }
+    };
+    fetchClientName();
+  }, [selectedNonRecurringTask]);
 
   useEffect(() => {
     if (user) {
@@ -916,6 +934,12 @@ export default function UpdateSchedulePage() {
                   {new Date(selectedNonRecurringTask.dueDate).toLocaleDateString()}
                 </p>
               </div>
+              {nonRecurringTaskClientName && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-semibold">Client</p>
+                  <p className="text-sm text-gray-900 dark:text-white">{nonRecurringTaskClientName}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -164,7 +164,7 @@ export function Sidebar() {
 
           {/* Navigation */}
           <div className={cn(
-            "mt-6 flex-1 overflow-y-auto pr-3 scrollbar-hide",
+            "mt-6 flex-1 overflow-y-scroll pr-3 custom-sidebar-scrollbar",
             "md:mt-10"
           )}>
             {NAV_DATA.map((section) => {

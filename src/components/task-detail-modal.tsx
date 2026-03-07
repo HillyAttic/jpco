@@ -42,6 +42,7 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [displayValue, setDisplayValue] = useState('');
+  const [clientName, setClientName] = useState<string | null>(null);
 
   // Check if current user is the task creator
   const isTaskCreator = task?.createdBy === user?.uid;
@@ -90,6 +91,29 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
       fetchUserNames();
     }
   }, [open]);
+
+  // Fetch client name when task changes
+  useEffect(() => {
+    const fetchClientName = async () => {
+      if (task?.contactId) {
+        try {
+          const { clientService } = await import('@/services/client.service');
+          const client = await clientService.getById(task.contactId);
+          setClientName(client?.clientName || null);
+        } catch {
+          setClientName(null);
+        }
+      } else {
+        setClientName(null);
+      }
+    };
+
+    if (open) {
+      fetchClientName();
+    } else {
+      setClientName(null);
+    }
+  }, [open, task?.contactId]);
 
   useEffect(() => {
     if (task) {
@@ -380,6 +404,18 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                 </div>
               )}
             </div>
+
+            {/* Client - Read-only, shown when task has a contactId */}
+            {clientName && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Client
+                </label>
+                <div className="w-full px-3 py-2 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-900 dark:text-white">
+                  {clientName}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Attachments Section */}
