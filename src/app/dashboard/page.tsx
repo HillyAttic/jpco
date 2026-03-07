@@ -710,19 +710,29 @@ export default function DashboardPage() {
 
           {kanbanBusinesses.length > 1 && (
             <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-              {kanbanBusinesses.map(b => (
-                <button
-                  key={b.id}
-                  onClick={() => setSelectedKanbanBusinessId(b.id)}
-                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors ${
-                    selectedKanbanBusinessId === b.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-                  }`}
-                >
-                  {b.name}
-                </button>
-              ))}
+              {kanbanBusinesses.map(b => {
+                const businessTaskCount = kanbanTasks.filter(task => task.businessId === b.id).length;
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => setSelectedKanbanBusinessId(b.id)}
+                    className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors flex items-center gap-2 ${
+                      selectedKanbanBusinessId === b.id
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                    }`}
+                  >
+                    {b.name}
+                    <span className={`inline-flex items-center px-1 sm:px-1.5 py-0.5 rounded-full text-[9px] sm:text-xs font-medium ${
+                      selectedKanbanBusinessId === b.id
+                        ? 'bg-white/20 text-white'
+                        : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                    }`}>
+                      {businessTaskCount}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           )}
 
