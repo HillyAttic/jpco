@@ -13,6 +13,8 @@ interface EnhancedKanbanBoardProps {
   onTaskUpdate: (task: KanbanTask) => void;
   onTaskAdd: (task: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'>) => void;
   onTaskDelete: (taskId: string) => void;
+  mobileScrollable?: boolean;
+  compact?: boolean;
 }
 
 const COLUMNS: KanbanColumnType[] = [
@@ -21,7 +23,7 @@ const COLUMNS: KanbanColumnType[] = [
   { id: 'completed', title: 'Completed', color: 'bg-green-50' },
 ];
 
-export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd, onTaskDelete }: EnhancedKanbanBoardProps) {
+export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd, onTaskDelete, mobileScrollable, compact }: EnhancedKanbanBoardProps) {
   const [draggedTask, setDraggedTask] = useState<KanbanTask | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
@@ -189,37 +191,68 @@ export function EnhancedKanbanBoard({ tasks, onTaskUpdate, onTaskAdd, onTaskDele
       </div>
 
       {/* Kanban Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {COLUMNS.map((column) => {
-          const columnTasks = filteredAndSortedTasks.filter(
-            (task) => task.status === column.id
-          );
-          
-          // Hide "In Progress" and "Completed" columns on mobile
-          const isHiddenOnMobile = column.id === 'in-progress' || column.id === 'completed';
-          
-          return (
-            <div
-              key={column.id}
-              className={isHiddenOnMobile ? 'hidden md:block' : ''}
-            >
-              <KanbanColumn
-                id={column.id}
-                title={column.title}
-                color={column.color}
-                tasks={columnTasks}
-                onDragStart={handleDragStart}
-                onDragOver={handleDragOver}
-                onDrop={handleDrop}
-                onTaskClick={handleTaskClick}
-                onStatusChange={handleStatusChange}
-                onDelete={onTaskDelete}
-                onEdit={handleEditTask}
-              />
-            </div>
-          );
-        })}
-      </div>
+      {mobileScrollable ? (
+        <div className="overflow-x-auto -mx-4 px-4 lg:mx-0 lg:px-0 pb-2">
+          <div className="flex gap-4 sm:gap-6 lg:grid lg:grid-cols-3">
+            {COLUMNS.map((column) => {
+              const columnTasks = filteredAndSortedTasks.filter(
+                (task) => task.status === column.id
+              );
+              return (
+                <div key={column.id} className="w-[280px] sm:w-72 flex-shrink-0 lg:w-auto">
+                  <KanbanColumn
+                    id={column.id}
+                    title={column.title}
+                    color={column.color}
+                    tasks={columnTasks}
+                    onDragStart={handleDragStart}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onTaskClick={handleTaskClick}
+                    onStatusChange={handleStatusChange}
+                    onDelete={onTaskDelete}
+                    onEdit={handleEditTask}
+                    compact={compact}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {COLUMNS.map((column) => {
+            const columnTasks = filteredAndSortedTasks.filter(
+              (task) => task.status === column.id
+            );
+
+            // Hide "In Progress" and "Completed" columns on mobile
+            const isHiddenOnMobile = column.id === 'in-progress' || column.id === 'completed';
+
+            return (
+              <div
+                key={column.id}
+                className={isHiddenOnMobile ? 'hidden md:block' : ''}
+              >
+                <KanbanColumn
+                  id={column.id}
+                  title={column.title}
+                  color={column.color}
+                  tasks={columnTasks}
+                  onDragStart={handleDragStart}
+                  onDragOver={handleDragOver}
+                  onDrop={handleDrop}
+                  onTaskClick={handleTaskClick}
+                  onStatusChange={handleStatusChange}
+                  onDelete={onTaskDelete}
+                  onEdit={handleEditTask}
+                  compact={compact}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Modals */}
       <AddTaskModal

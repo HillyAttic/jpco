@@ -45,6 +45,11 @@ export function AddTaskModal({ isOpen, onClose, onSave, editTask }: AddTaskModal
       return;
     }
 
+    if (!formData.description.trim()) {
+      alert('Please enter a task description');
+      return;
+    }
+
     const taskData: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'> = {
       title: formData.title,
       description: formData.description || undefined,
@@ -104,7 +109,7 @@ export function AddTaskModal({ isOpen, onClose, onSave, editTask }: AddTaskModal
           {/* Description */}
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Description
+              Description <span className="text-red-500">*</span>
             </label>
             <textarea
               value={formData.description}
@@ -112,6 +117,7 @@ export function AddTaskModal({ isOpen, onClose, onSave, editTask }: AddTaskModal
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               placeholder="Enter task description"
               rows={3}
+              required
             />
           </div>
 

@@ -44,6 +44,9 @@ import { ProgressiveHydration, SkeletonLoader } from '@/components/ProgressiveHy
 import { useOptimizedFetch, batchFetch } from '@/hooks/use-optimized-fetch';
 import { useDeferredRender } from '@/hooks/use-deferred-value';
 import { processInChunks } from '@/utils/chunk-tasks';
+import { EnhancedKanbanBoard } from '@/components/kanban/EnhancedKanbanBoard';
+import { kanbanService } from '@/services/kanban.service';
+import { KanbanTask, Business } from '@/types/kanban.types';
 
 // Lazy load heavy chart components with progressive hydration
 const TaskDistributionChart = React.lazy(() => 
@@ -121,6 +124,12 @@ export default function DashboardPage() {
 
   // Check if user is admin or manager
   const canViewAllTasks = isAdmin || isManager;
+
+  // Kanban state (admin-only)
+  const [kanbanBusinesses, setKanbanBusinesses] = useState<Business[]>([]);
+  const [kanbanTasks, setKanbanTasks] = useState<KanbanTask[]>([]);
+  const [selectedKanbanBusinessId, setSelectedKanbanBusinessId] = useState<string | null>(null);
+  const [kanbanLoading, setKanbanLoading] = useState(false);
 
   // ✅ OPTIMIZATION: Preload Firebase during idle time
   useEffect(() => {
@@ -237,6 +246,59 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router]);
 
+  // Load kanban data for admin users
+  useEffect(() => {
+    if (!user || !isAdmin) return;
+
+    const loadKanban = async () => {
+      setKanbanLoading(true);
+      try {
+        const businesses = await kanbanService.getUserBusinesses(user.uid);
+        if (businesses.length > 0) {
+          setKanbanBusinesses(businesses);
+          setSelectedKanbanBusinessId(businesses[0].id);
+          const tasks = await kanbanService.getAllUserTasks(user.uid);
+          setKanbanTasks(tasks);
+        }
+      } catch (err) {
+        console.error('Error loading kanban data for dashboard:', err);
+      } finally {
+        setKanbanLoading(false);
+      }
+    };
+
+    loadKanban();
+  }, [user, isAdmin]);
+
+  // Kanban task handlers
+  const handleKanbanTaskUpdate = async (updatedTask: KanbanTask) => {
+    try {
+      await kanbanService.updateTask(updatedTask.id, updatedTask);
+      setKanbanTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+    } catch (err) {
+      console.error('Error updating kanban task:', err);
+    }
+  };
+
+  const handleKanbanTaskAdd = async (taskData: Omit<KanbanTask, 'id' | 'createdAt' | 'businessId'>) => {
+    if (!selectedKanbanBusinessId) return;
+    try {
+      const newTask = await kanbanService.createTask({ ...taskData, businessId: selectedKanbanBusinessId });
+      setKanbanTasks(prev => [...prev, newTask]);
+    } catch (err) {
+      console.error('Error adding kanban task:', err);
+    }
+  };
+
+  const handleKanbanTaskDelete = async (taskId: string) => {
+    try {
+      await kanbanService.deleteTask(taskId);
+      setKanbanTasks(prev => prev.filter(t => t.id !== taskId));
+    } catch (err) {
+      console.error('Error deleting kanban task:', err);
+    }
+  };
+
   // Calculate stats (memoized)
   const stats = useMemo(() => {
     const total = tasks.length;
@@ -252,6 +314,12 @@ export default function DashboardPage() {
     
     return { total, completed, inProgress, todo, overdue };
   }, [tasks]);
+
+  // Kanban tasks for selected business (admin-only)
+  const kanbanCurrentTasks = useMemo(() => {
+    if (!selectedKanbanBusinessId) return [];
+    return kanbanTasks.filter(t => t.businessId === selectedKanbanBusinessId);
+  }, [kanbanTasks, selectedKanbanBusinessId]);
 
   // Get filtered task lists (memoized)
   const overdueTasks = useMemo(() => {
@@ -626,6 +694,52 @@ export default function DashboardPage() {
           subtitle="Past due"
         />
       </div>
+
+      {/* Kanban Board Section - Admin Only */}
+      {isAdmin && (
+        <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-dark p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Kanban Board</h2>
+            <a
+              href="/kanban"
+              className="text-sm text-blue-600 hover:underline dark:text-blue-400 font-medium"
+            >
+              View Full Board →
+            </a>
+          </div>
+
+          {kanbanBusinesses.length > 1 && (
+            <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+              {kanbanBusinesses.map(b => (
+                <button
+                  key={b.id}
+                  onClick={() => setSelectedKanbanBusinessId(b.id)}
+                  className={`px-3 py-1.5 text-sm rounded-full whitespace-nowrap transition-colors ${
+                    selectedKanbanBusinessId === b.id
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  }`}
+                >
+                  {b.name}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {kanbanLoading ? (
+            <SkeletonLoader className="h-64 w-full" />
+          ) : (
+            <EnhancedKanbanBoard
+              tasks={kanbanCurrentTasks}
+              onTaskUpdate={handleKanbanTaskUpdate}
+              onTaskAdd={handleKanbanTaskAdd}
+              onTaskDelete={handleKanbanTaskDelete}
+              mobileScrollable
+              compact
+            />
+          )}
+        </div>
+      )}
 
       {/* ✅ OPTIMIZATION: Charts load progressively */}
       {/* First Row: Task Distribution Chart and Quick Actions in 2-column grid for desktop */}

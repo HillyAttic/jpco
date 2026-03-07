@@ -16,6 +16,7 @@ interface KanbanColumnProps {
   onStatusChange?: (taskId: string, newStatus: KanbanStatus) => void;
   onDelete?: (taskId: string) => void;
   onEdit?: (task: KanbanTask) => void;
+  compact?: boolean;
 }
 
 export function KanbanColumn({
@@ -30,10 +31,11 @@ export function KanbanColumn({
   onStatusChange,
   onDelete,
   onEdit,
+  compact = false,
 }: KanbanColumnProps) {
   return (
     <div
-      className={`${color} rounded-lg p-4 min-h-[600px] transition-all`}
+      className={`${color} rounded-lg p-4 ${compact ? 'min-h-[250px] max-h-[400px]' : 'min-h-[600px]'} w-full transition-all`}
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, id)}
     >
