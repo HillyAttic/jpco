@@ -38,12 +38,6 @@ export async function GET(request: NextRequest) {
 
     console.log('[API /api/employees] GET request received');
 
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
-
     const searchParams = request.nextUrl.searchParams;
     const status = searchParams.get('status') || undefined;
     const search = searchParams.get('search') || undefined;
@@ -51,7 +45,71 @@ export async function GET(request: NextRequest) {
 
     console.log('[API /api/employees] Filters:', { status, search, limit });
 
-    // Use Admin SDK service for server-side operations
+    // Managers only see employees assigned to them via manager-hierarchies
+    if (userRole === 'manager') {
+      const { adminDb } = await import('@/lib/firebase-admin');
+
+      const hierarchySnapshot = await adminDb
+        .collection('manager-hierarchies')
+        .where('managerId', '==', authResult.user.uid)
+        .limit(1)
+        .get();
+
+      if (hierarchySnapshot.empty) {
+        return NextResponse.json({ data: [], total: 0 });
+      }
+
+      const hierarchy = hierarchySnapshot.docs[0].data();
+      const employeeIds: string[] = hierarchy.employeeIds || [];
+
+      if (employeeIds.length === 0) {
+        return NextResponse.json({ data: [], total: 0 });
+      }
+
+      // Fetch employee docs individually (avoids Firestore 'in' 30-item limit)
+      const employeeDocs = await Promise.all(
+        employeeIds.map((id: string) => adminDb.collection('users').doc(id).get())
+      );
+
+      let employees = employeeDocs
+        .filter((doc) => doc.exists)
+        .map((doc) => {
+          const data = doc.data()!;
+          return {
+            id: doc.id,
+            employeeId: data.employeeId || data.uid || doc.id,
+            name: data.displayName || data.name || '',
+            email: data.email || '',
+            phone: data.phoneNumber || data.phone || '',
+            role: employeeAdminService.mapUserRoleToEmployeeRole(data.role),
+            status: (data.isActive === false ? 'on-leave' : 'active') as 'active' | 'on-leave',
+            createdAt: data.createdAt?.toDate?.() || new Date(),
+            updatedAt: data.updatedAt?.toDate?.() || new Date(),
+          };
+        });
+
+      // Apply status filter
+      if (status) {
+        employees = employees.filter((emp) => emp.status === status);
+      }
+
+      // Apply search filter
+      if (search) {
+        const searchLower = search.toLowerCase();
+        employees = employees.filter(
+          (emp) =>
+            emp.name.toLowerCase().includes(searchLower) ||
+            emp.email.toLowerCase().includes(searchLower) ||
+            emp.employeeId.toLowerCase().includes(searchLower)
+        );
+      }
+
+      console.log(`[API /api/employees] Manager ${authResult.user.uid} - Returning ${employees.length} assigned employees`);
+
+      return NextResponse.json({ data: employees, total: employees.length });
+    }
+
+    // Admins see all employees
     const employees = await employeeAdminService.getAll({
       status,
       search,

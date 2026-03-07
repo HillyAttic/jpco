@@ -33,7 +33,15 @@ export async function GET(request: NextRequest) {
       Object.entries(filters).filter(([_, value]) => value !== undefined)
     );
 
-    const teams = await teamAdminService.getAll(cleanFilters);
+    let teams = await teamAdminService.getAll(cleanFilters);
+
+    // Managers only see teams they lead or are a member of
+    if (userRole === 'manager') {
+      const userId = authResult.user.uid;
+      teams = teams.filter(
+        (team: any) => team.leaderId === userId || (team.memberIds && team.memberIds.includes(userId))
+      );
+    }
 
     return NextResponse.json({ success: true, data: teams, count: teams.length });
   } catch (error) {
