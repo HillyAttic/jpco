@@ -127,6 +127,28 @@ export async function POST(request: NextRequest) {
 
     const docRef = await adminDb.collection('leave-requests').add(leaveRequestData);
 
+    // Notify all admins and managers about the new leave request
+    try {
+      const { sendNotification } = await import('@/lib/notifications/send-notification');
+      const adminsSnapshot = await adminDb.collection('users')
+        .where('role', 'in', ['admin', 'manager'])
+        .get();
+      const adminIds = adminsSnapshot.docs.map((d) => d.id);
+      if (adminIds.length > 0) {
+        const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const employeeName = leaveRequestData.employeeName;
+        await sendNotification({
+          userIds: adminIds,
+          title: 'New Leave Request',
+          body: `${employeeName} requested ${leaveType} leave (${totalDays} day${totalDays > 1 ? 's' : ''}) from ${startStr} to ${endStr}`,
+          data: { url: '/admin/leave-approvals', type: 'leave_request' },
+        });
+      }
+    } catch (notifError) {
+      console.error('[leave-requests] Failed to send admin notifications:', notifError);
+    }
+
     return NextResponse.json(
       {
         id: docRef.id,

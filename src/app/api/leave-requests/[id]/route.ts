@@ -112,6 +112,33 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Return the updated document
     const updatedDoc = await adminDb.collection('leave-requests').doc(id).get();
     const data = updatedDoc.data()!;
+
+    // Notify the employee about the decision
+    try {
+      const { sendNotification } = await import('@/lib/notifications/send-notification');
+      const employeeId: string = data.employeeId;
+      if (employeeId) {
+        const leaveType: string = data.leaveType || 'leave';
+        const startDate: Date = data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate);
+        const endDate: Date = data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate);
+        const startStr = startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const endStr = endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        const isApproved = action === 'approve';
+        const notifTitle = isApproved ? 'Leave Request Approved' : 'Leave Request Rejected';
+        const notifBody = isApproved
+          ? `Your ${leaveType} leave from ${startStr} to ${endStr} has been approved.`
+          : `Your ${leaveType} leave from ${startStr} to ${endStr} has been rejected.${reason ? ` Reason: ${reason}` : ''}`;
+        await sendNotification({
+          userIds: [employeeId],
+          title: notifTitle,
+          body: notifBody,
+          data: { url: '/attendance', type: isApproved ? 'leave_approved' : 'leave_rejected' },
+        });
+      }
+    } catch (notifError) {
+      console.error('[leave-requests/[id]] Failed to send employee notification:', notifError);
+    }
+
     const updated = {
       id: updatedDoc.id,
       ...data,
