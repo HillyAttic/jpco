@@ -336,6 +336,22 @@ export async function POST(request: NextRequest) {
     console.log('✅ [POST /api/recurring-tasks] Task created successfully with ID:', newTask.id);
     console.log('🗺️ [POST /api/recurring-tasks] Saved team member mappings:', newTask.teamMemberMappings);
 
+    // Notify assigned team members
+    try {
+      const { sendNotification } = await import('@/lib/notifications/send-notification');
+      const userIds = (newTask.teamMemberMappings || []).map((m: any) => m.userId).filter(Boolean);
+      if (userIds.length > 0) {
+        await sendNotification({
+          userIds,
+          title: 'New Task Assigned',
+          body: `You have been assigned: ${newTask.title}`,
+          data: { url: `/tasks/recurring/${newTask.id}`, type: 'task_assignment', taskId: newTask.id },
+        });
+      }
+    } catch (notifError) {
+      console.error('[recurring-tasks POST] Failed to send assignment notifications:', notifError);
+    }
+
     // Serialize dates for JSON response
     const serializedTask = {
       ...newTask,

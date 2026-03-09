@@ -131,7 +131,25 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     console.log(`✅ [PUT /api/recurring-tasks/${id}] Task updated successfully`);
     console.log(`🗺️ [PUT /api/recurring-tasks/${id}] Saved team member mappings:`, updatedTask.teamMemberMappings);
-    
+
+    // Notify assigned team members if mappings were updated
+    if (taskData.teamMemberMappings && taskData.teamMemberMappings.length > 0) {
+      try {
+        const { sendNotification } = await import('@/lib/notifications/send-notification');
+        const userIds = taskData.teamMemberMappings.map((m: any) => m.userId).filter(Boolean);
+        if (userIds.length > 0) {
+          await sendNotification({
+            userIds,
+            title: 'Task Assignment Updated',
+            body: `You have been assigned: ${updatedTask.title}`,
+            data: { url: `/tasks/recurring/${id}`, type: 'task_assignment', taskId: id },
+          });
+        }
+      } catch (notifError) {
+        console.error(`[recurring-tasks PUT] Failed to send assignment notifications:`, notifError);
+      }
+    }
+
     // Serialize dates for JSON response
     const serializedTask = {
       ...updatedTask,
