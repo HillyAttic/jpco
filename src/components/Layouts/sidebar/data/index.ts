@@ -85,6 +85,12 @@ export const NAV_DATA = [
         requiresRole: ['admin', 'manager'], // Only managers and admins can see this
       },
       {
+        title: "Access Vault",
+        url: "/access-vault",
+        icon: Icons.KeyIcon,
+        items: [],
+      },
+      {
         title: "Attendance",
         url: "/attendance",
         icon: Icons.ClockIcon,
@@ -155,6 +161,13 @@ export const NAV_DATA = [
         icon: Icons.UsersIcon,
         items: [],
         requiresRole: ['admin'], // Only admins can manage hierarchies
+      },
+      {
+        title: "Password Manager",
+        url: "/admin/password-manager",
+        icon: Icons.ShieldLockIcon,
+        items: [],
+        requiresRole: ['admin'], // Only admins can manage credentials
       },
 
       // Authentication menu item hidden - users can access auth pages directly via URL if needed

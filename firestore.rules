@@ -356,6 +356,19 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // CREDENTIAL RECORDS (Password Manager)
+    // All writes go through the Admin SDK via API routes.
+    // Client-side reads are allowed only for users with granted access.
+    match /credential_records/{recordId} {
+      // Only allow read if the user's uid is in the allowedUserIds array
+      // (safety net - in practice the app always uses Admin SDK via API)
+      allow read: if isAuthenticated() &&
+        request.auth.uid in resource.data.allowedUserIds;
+
+      // All writes must go through server-side API (Admin SDK bypasses these rules)
+      allow write: if false;
+    }
+
     // CATCH ALL - Deny everything else
     match /{document=**} {
       allow read, write: if false;
