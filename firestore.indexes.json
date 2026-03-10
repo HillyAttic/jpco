@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "credential_records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "category", "order": "ASCENDING" },
+        { "fieldPath": "clientName", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

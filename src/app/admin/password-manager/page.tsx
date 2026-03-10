@@ -148,7 +148,7 @@ export default function PasswordManagerPage() {
     setSaving(true);
     try {
       const { authenticatedFetch } = await import('@/lib/api-client');
-      const payload = { ...data, category: activeTab as CredentialTab };
+      const payload: Record<string, unknown> = { ...data, category: activeTab as CredentialTab };
       if (editingRecord && !payload.plainPassword) delete payload.plainPassword;
 
       const url = editingRecord

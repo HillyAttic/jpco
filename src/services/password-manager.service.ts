@@ -37,11 +37,10 @@ export const passwordManagerService = {
     const { adminDb } = await import('@/lib/firebase-admin');
     let query: FirebaseFirestore.Query = adminDb.collection(COLLECTION);
     if (filters?.category) {
-      query = query.where('category', '==', filters.category);
+      query = query.where('category', '==', filters.category).orderBy('clientName', 'asc');
     }
     const snapshot = await query.get();
-    const results = snapshot.docs.map(toSafeCredential);
-    return results.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+    return snapshot.docs.map(toSafeCredential);
   },
 
   async getById(id: string): Promise<SafeCredential | null> {
@@ -202,19 +201,23 @@ export const passwordManagerService = {
       const snapshot = await adminDb
         .collection(COLLECTION)
         .where('category', '==', category)
+        .orderBy('clientName', 'asc')
         .get();
-      const results = snapshot.docs.map(toSafeCredential);
-      return results.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+      return snapshot.docs.map(toSafeCredential);
     }
 
     // Fetch all granted categories in parallel
     const snapshots = await Promise.all(
       grantedCategories.map((cat) =>
-        adminDb.collection(COLLECTION).where('category', '==', cat).get()
+        adminDb
+          .collection(COLLECTION)
+          .where('category', '==', cat)
+          .orderBy('clientName', 'asc')
+          .get()
       )
     );
     const results = snapshots.flatMap((snap) => snap.docs.map(toSafeCredential));
-    return results.sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1));
+    return results.sort((a, b) => a.clientName.localeCompare(b.clientName));
   },
 
   /** Decrypts and returns the password — verifies category access first */
@@ -238,5 +241,14 @@ export const passwordManagerService = {
   async hasUserCategoryAccess(userId: string, category: string): Promise<boolean> {
     const categories = await this.getUserCategoryAccess(userId);
     return categories.includes(category);
+  },
+
+  /** Updates the allowedUserIds field on a credential record */
+  async updateAccess(id: string, allowedUserIds: string[]): Promise<void> {
+    const { adminDb } = await import('@/lib/firebase-admin');
+    await adminDb.collection(COLLECTION).doc(id).update({
+      allowedUserIds,
+      updatedAt: Timestamp.now(),
+    });
   },
 };
