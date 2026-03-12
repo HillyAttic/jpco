@@ -74,6 +74,7 @@ export function ClientFilter({
             <option value="taxAudit">Tax Audit</option>
             <option value="accounting">Accounting</option>
             <option value="clientVisit">Client Visit</option>
+            <option value="bank">Bank</option>
           </Select>
         </div>
 

@@ -61,7 +61,8 @@ export function TaskModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
-  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit'>('all');
+  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank'>('all');
+  const [employeeSearch, setEmployeeSearch] = useState('');
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
@@ -194,6 +195,8 @@ export function TaskModal({
           return !!client.compliance?.accounting;
         case 'clientVisit':
           return !!client.compliance?.clientVisit;
+        case 'bank':
+          return !!client.compliance?.bank;
         default:
           return true;
       }
@@ -291,6 +294,7 @@ export function TaskModal({
   const handleClose = () => {
     reset();
     setSelectedEmployees([]);
+    setEmployeeSearch('');
     setClientFilter('all');
     setPendingFiles([]);
     setExistingAttachments([]);
@@ -537,18 +541,36 @@ export function TaskModal({
             {/* Multi-Select Employee List */}
             <div className="mb-3 mt-2">
               <Label className="text-xs mb-2 block">Select Employees (Click to add multiple)</Label>
+              <input
+                type="text"
+                placeholder="Search employees..."
+                value={employeeSearch}
+                onChange={(e) => setEmployeeSearch(e.target.value)}
+                className="w-full px-3 py-2 mb-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
+                disabled={isLoading || loadingEmployees}
+              />
               <div className="border border-gray-300 dark:border-gray-600 rounded-md max-h-48 overflow-y-auto">
                 {loadingEmployees ? (
                   <div className="p-4 text-center text-gray-500 dark:text-gray-400">Loading employees...</div>
-                ) : employees.filter(emp => !selectedEmployees.some(sel => sel.id === emp.id)).length === 0 ? (
+                ) : employees.filter(emp => !selectedEmployees.some(sel => sel.id === emp.id) && (
+                    !employeeSearch ||
+                    emp.name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                    emp.email.toLowerCase().includes(employeeSearch.toLowerCase())
+                  )).length === 0 ? (
                   <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                    {selectedEmployees.length > 0 
+                    {employeeSearch
+                      ? 'No employees match your search'
+                      : selectedEmployees.length > 0
                       ? 'All employees have been selected'
                       : 'No employees available'}
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-200">
-                    {employees.filter(emp => !selectedEmployees.some(sel => sel.id === emp.id)).map((employee) => (
+                    {employees.filter(emp => !selectedEmployees.some(sel => sel.id === emp.id) && (
+                        !employeeSearch ||
+                        emp.name.toLowerCase().includes(employeeSearch.toLowerCase()) ||
+                        emp.email.toLowerCase().includes(employeeSearch.toLowerCase())
+                      )).map((employee) => (
                       <button
                         key={employee.id}
                         type="button"
@@ -671,6 +693,7 @@ export function TaskModal({
                 <option value="taxAudit">Only with Tax Audit</option>
                 <option value="accounting">Only with Accounting</option>
                 <option value="clientVisit">Only with Client Visit</option>
+                <option value="bank">Only with Bank</option>
               </Select>
             </div>
 

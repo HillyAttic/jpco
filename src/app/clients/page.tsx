@@ -57,6 +57,7 @@ export default function ClientsPage() {
           case 'taxAudit': return !!client.compliance?.taxAudit;
           case 'accounting': return !!client.compliance?.accounting;
           case 'clientVisit': return !!client.compliance?.clientVisit;
+          case 'bank': return !!client.compliance?.bank;
           default: return true;
         }
       });
@@ -184,6 +185,7 @@ export default function ClientsPage() {
           taxAudit: data.complianceTaxAudit ?? false,
           accounting: data.complianceAccounting ?? false,
           clientVisit: data.complianceClientVisit ?? false,
+          bank: data.complianceBank ?? false,
         },
         status: data.status,
       };

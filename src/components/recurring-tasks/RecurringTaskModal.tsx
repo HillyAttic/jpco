@@ -66,7 +66,7 @@ export function RecurringTaskModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClients, setSelectedClients] = useState<Client[]>([]);
-  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit'>('all');
+  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank'>('all');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
@@ -194,6 +194,8 @@ export function RecurringTaskModal({
             return !!client.compliance?.accounting;
           case 'clientVisit':
             return !!client.compliance?.clientVisit;
+          case 'bank':
+            return !!client.compliance?.bank;
           default:
             return true;
         }
@@ -526,6 +528,7 @@ export function RecurringTaskModal({
                 <option value="taxAudit">Only with Tax Audit</option>
                 <option value="accounting">Only with Accounting</option>
                 <option value="clientVisit">Only with Client Visit</option>
+                <option value="bank">Only with Bank</option>
               </Select>
             </div>
 

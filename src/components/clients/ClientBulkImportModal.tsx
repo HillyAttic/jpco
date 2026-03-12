@@ -102,7 +102,7 @@ export function ClientBulkImportModal({
           country: row.Country || undefined,
           zipCode: row['Zip Code'] || undefined,
         } : undefined,
-        compliance: (row.ROC !== undefined && row.ROC !== '') ? {
+        compliance: (row.ROC !== undefined || row.GSTR1 !== undefined || row.GST3B !== undefined || row.IFF !== undefined || row.ITR !== undefined || row['Tax Audit'] !== undefined || row.Accounting !== undefined || row['Client Visit'] !== undefined || row.Bank !== undefined) ? {
           roc: parseYN(row.ROC ?? 'N'),
           gstr1: parseYN(row.GSTR1 ?? 'N'),
           gst3b: parseYN(row.GST3B ?? 'N'),
@@ -111,6 +111,7 @@ export function ClientBulkImportModal({
           taxAudit: parseYN(row['Tax Audit'] ?? 'N'),
           accounting: parseYN(row.Accounting ?? 'N'),
           clientVisit: parseYN(row['Client Visit'] ?? 'N'),
+          bank: parseYN(row.Bank ?? 'N'),
         } : undefined,
         status: 'active',
       }));
@@ -174,6 +175,7 @@ export function ClientBulkImportModal({
       'Tax Audit',
       'Accounting',
       'Client Visit',
+      'Bank',
     ];
     const exampleRow = [
       'ABC Pvt Ltd',
@@ -195,6 +197,7 @@ export function ClientBulkImportModal({
       'Y',
       'N',
       'Y',
+      'N',
       'N',
     ];
     const csvContent = headers.join(',') + '\n' + exampleRow.join(',') + '\n';
@@ -227,7 +230,7 @@ export function ClientBulkImportModal({
                   Download CSV Template
                 </h4>
                 <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
-                  Use our template to ensure your data is formatted correctly. Only Client Name is required. Compliance fields (ROC, GSTR1, GST3B, IFF, ITR, Tax Audit, Accounting, Client Visit) accept Y or N values.
+                  Use our template to ensure your data is formatted correctly. Only Client Name is required. Compliance fields (ROC, GSTR1, GST3B, IFF, ITR, Tax Audit, Accounting, Client Visit, Bank) accept Y or N values.
                 </p>
                 <Button
                   variant="outline"
@@ -303,6 +306,7 @@ export function ClientBulkImportModal({
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Tax Audit</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Accounting</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Client Visit</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Bank</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -320,6 +324,7 @@ export function ClientBulkImportModal({
                         <td className="px-3 py-2 whitespace-nowrap">{row['Tax Audit']}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{row.Accounting}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{row['Client Visit']}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row.Bank}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -38,6 +38,7 @@ const clientFormSchema = z.object({
   complianceTaxAudit: z.boolean().optional(),
   complianceAccounting: z.boolean().optional(),
   complianceClientVisit: z.boolean().optional(),
+  complianceBank: z.boolean().optional(),
   status: z.enum(['active', 'inactive']),
 });
 
@@ -95,6 +96,7 @@ export function ClientModal({
       complianceTaxAudit: false,
       complianceAccounting: false,
       complianceClientVisit: false,
+      complianceBank: false,
       status: 'active',
     },
   });
@@ -136,6 +138,7 @@ export function ClientModal({
         complianceTaxAudit: client.compliance?.taxAudit,
         complianceAccounting: client.compliance?.accounting,
         complianceClientVisit: client.compliance?.clientVisit,
+        complianceBank: client.compliance?.bank,
         status: client.status,
       });
       setAvatarPreview(null);
@@ -161,6 +164,7 @@ export function ClientModal({
         complianceTaxAudit: false,
         complianceAccounting: false,
         complianceClientVisit: false,
+        complianceBank: false,
         status: 'active',
       });
       setAvatarPreview(null);
@@ -363,6 +367,7 @@ export function ClientModal({
                 { field: 'complianceTaxAudit', label: 'Tax Audit' },
                 { field: 'complianceAccounting', label: 'Accounting' },
                 { field: 'complianceClientVisit', label: 'Client Visit' },
+                { field: 'complianceBank', label: 'Bank' },
               ] as const).map(({ field, label }) => (
                 <label key={field} className="flex items-center gap-2 cursor-pointer">
                   <input
