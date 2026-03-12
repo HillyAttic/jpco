@@ -145,12 +145,15 @@ export default function AttendanceRosterPage() {
               new Date(a.clockIn).toISOString().split('T')[0] === dateStr
           );
 
-          // Check leave requests
-          const leaveRequests = leaveData.filter(
-            (l: any) => l.employeeId === emp.id &&
-              new Date(l.startDate) <= date &&
-              new Date(l.endDate) >= date
-          );
+          // Check leave requests - compare YYYY-MM-DD strings to avoid timezone mismatch
+          // (ISO strings from API are UTC midnight; local Date objects are local midnight — direct
+          //  Date comparison fails for UTC+5:30 where UTC midnight = 05:30 local > 00:00 local)
+          const leaveRequests = leaveData.filter((l: any) => {
+            if (l.employeeId !== emp.id) return false;
+            const leaveStart = l.startDate.split('T')[0]; // "YYYY-MM-DD"
+            const leaveEnd = l.endDate.split('T')[0];
+            return leaveStart <= dateStr && leaveEnd >= dateStr;
+          });
 
           // Find relevant leave (approved takes precedence)
           const approvedLeave = leaveRequests.find((l: any) => l.status === 'approved');

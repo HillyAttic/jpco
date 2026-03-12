@@ -293,12 +293,6 @@ export function RecurringTaskClientModal({
     return clientCompletions.get(clientId)?.has(monthKey) || false;
   };
 
-  const getCompletionStats = (clientId: string) => {
-    const completed = clientCompletions.get(clientId)?.size || 0;
-    const total = visibleMonths.length;
-    return { completed, total, percentage: Math.round((completed / total) * 100) };
-  };
-
   const handleSave = async () => {
     if (!task || !task.id || !user) {
       console.error('Cannot save: missing task, task.id, or user', { task: task?.id, user: user?.uid });
@@ -380,8 +374,8 @@ export function RecurringTaskClientModal({
   if (!isOpen || !task) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
-      <div className="flex min-h-screen items-center justify-center p-4">
+    <div className="fixed inset-0 z-[60] overflow-y-auto">
+      <div className="flex min-h-screen items-center justify-center p-4 pb-20 sm:pb-4">
         {/* Backdrop */}
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
@@ -436,9 +430,6 @@ export function RecurringTaskClientModal({
                         <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 min-w-[200px]">
                           Client Name
                         </th>
-                        <th className="px-4 py-3 text-center text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 min-w-[100px]">
-                          Progress
-                        </th>
                         {visibleMonths.map(month => (
                           <th 
                             key={month.key}
@@ -454,7 +445,6 @@ export function RecurringTaskClientModal({
                     </thead>
                     <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200">
                       {filteredClients.map((client, clientIndex) => {
-                        const stats = getCompletionStats(client.id);
                         return (
                           <tr 
                             key={client.id}
@@ -466,20 +456,6 @@ export function RecurringTaskClientModal({
                                 {client.contact?.email && (
                                   <div className="text-xs text-gray-500 dark:text-gray-400">{client.contact.email}</div>
                                 )}
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-center border-r border-gray-200 dark:border-gray-700">
-                              <div className="flex flex-col items-center gap-1">
-                                <div className="text-sm font-semibold text-gray-900 dark:text-white">
-                                  {stats.completed}/{stats.total}
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2 max-w-[80px]">
-                                  <div 
-                                    className="bg-green-600 h-2 rounded-full transition-all duration-300"
-                                    style={{ width: `${stats.percentage}%` }}
-                                  />
-                                </div>
-                                <div className="text-xs text-gray-500 dark:text-gray-400">{stats.percentage}%</div>
                               </div>
                             </td>
                             {visibleMonths.map(month => (
@@ -509,21 +485,21 @@ export function RecurringTaskClientModal({
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between">
+          <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="text-sm text-gray-600 dark:text-gray-400">
               Total: {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} × {visibleMonths.length} month{visibleMonths.length !== 1 ? 's' : ''}
             </div>
-            <div className="flex gap-3">
+            <div className="flex gap-3 w-full sm:w-auto">
               <button
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:bg-gray-800 transition-colors"
+                className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:bg-gray-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>

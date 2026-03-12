@@ -94,48 +94,13 @@ export async function PUT(request: NextRequest) {
 
     const { taskCompletionAdminService } = await import('@/services/task-completion-admin.service');
 
-    // Process each completion
-    const results = [];
-    for (const comp of completions) {
-      try {
-        if (comp.isCompleted) {
-          const result = await taskCompletionAdminService.createOrUpdate({
-            recurringTaskId,
-            clientId: comp.clientId,
-            monthKey: comp.monthKey,
-            isCompleted: true,
-            completedAt: new Date(),
-            completedBy: completedBy || authResult.user!.uid,
-            arnNumber: comp.arnNumber,
-            arnName: comp.arnName,
-          });
-          results.push({ success: true, clientId: comp.clientId, monthKey: comp.monthKey });
-        } else {
-          // Find and delete existing completion
-          const existing = await taskCompletionAdminService.getByClientAndTask(comp.clientId, recurringTaskId);
-          const toDelete = existing.find(e => e.monthKey === comp.monthKey);
-          if (toDelete && toDelete.id) {
-            await taskCompletionAdminService.delete(toDelete.id);
-            results.push({ success: true, clientId: comp.clientId, monthKey: comp.monthKey, deleted: true });
-          } else {
-            results.push({ success: true, clientId: comp.clientId, monthKey: comp.monthKey, noAction: true });
-          }
-        }
-      } catch (error) {
-        console.error('[Task Completions API] Error processing completion:', {
-          clientId: comp.clientId,
-          monthKey: comp.monthKey,
-          error,
-        });
-        results.push({ success: false, clientId: comp.clientId, monthKey: comp.monthKey, error: String(error) });
-      }
-    }
+    const results = await taskCompletionAdminService.bulkUpsert(
+      recurringTaskId,
+      completions,
+      completedBy || authResult.user!.uid
+    );
 
-    console.log('[Task Completions API] Bulk update completed:', {
-      total: completions.length,
-      successful: results.filter(r => r.success).length,
-      failed: results.filter(r => !r.success).length,
-    });
+    console.log('[Task Completions API] Bulk update completed:', results);
 
     return NextResponse.json({ success: true, results });
   } catch (error) {

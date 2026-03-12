@@ -135,4 +135,104 @@ export const taskCompletionAdminService = {
       throw error;
     }
   },
+
+  /**
+   * Bulk upsert task completions using Firestore batch writes.
+   * Fetches all existing completions for the task in one query,
+   * then applies all creates/updates/deletes in batches of 499.
+   */
+  async bulkUpsert(
+    recurringTaskId: string,
+    completions: Array<{
+      clientId: string;
+      monthKey: string;
+      isCompleted: boolean;
+      arnNumber?: string;
+      arnName?: string;
+    }>,
+    completedBy: string
+  ): Promise<{ total: number; written: number; deleted: number; skipped: number }> {
+    try {
+      // Step 1: Fetch all existing completions for this task in ONE query
+      const existingSnapshot = await adminDb
+        .collection('task-completions')
+        .where('recurringTaskId', '==', recurringTaskId)
+        .get();
+
+      // Build lookup map: `${clientId}_${monthKey}` → docRef
+      const existingMap = new Map<string, FirebaseFirestore.DocumentReference>();
+      existingSnapshot.docs.forEach(doc => {
+        const data = doc.data();
+        existingMap.set(`${data.clientId}_${data.monthKey}`, doc.ref);
+      });
+
+      const now = new Date();
+      const BATCH_SIZE = 499;
+      let written = 0;
+      let deleted = 0;
+      let skipped = 0;
+
+      // Step 2: Build list of batch operations
+      const ops: Array<() => void> = [];
+      let currentBatch = adminDb.batch();
+      let opsInBatch = 0;
+      const batches: FirebaseFirestore.WriteBatch[] = [currentBatch];
+
+      const flushIfNeeded = () => {
+        if (opsInBatch >= BATCH_SIZE) {
+          currentBatch = adminDb.batch();
+          batches.push(currentBatch);
+          opsInBatch = 0;
+        }
+      };
+
+      for (const comp of completions) {
+        const key = `${comp.clientId}_${comp.monthKey}`;
+        const existingRef = existingMap.get(key);
+
+        if (comp.isCompleted) {
+          const data = {
+            recurringTaskId,
+            clientId: comp.clientId,
+            monthKey: comp.monthKey,
+            isCompleted: true,
+            completedAt: now,
+            completedBy,
+            arnNumber: comp.arnNumber || null,
+            arnName: comp.arnName || null,
+            updatedAt: now,
+          };
+
+          flushIfNeeded();
+          if (existingRef) {
+            currentBatch.update(existingRef, data);
+          } else {
+            const newRef = adminDb.collection('task-completions').doc();
+            currentBatch.set(newRef, { ...data, createdAt: now });
+          }
+          opsInBatch++;
+          written++;
+        } else {
+          if (existingRef) {
+            flushIfNeeded();
+            currentBatch.delete(existingRef);
+            opsInBatch++;
+            deleted++;
+          } else {
+            skipped++;
+          }
+        }
+      }
+
+      // Step 3: Commit all batches sequentially
+      for (const batch of batches) {
+        await batch.commit();
+      }
+
+      return { total: completions.length, written, deleted, skipped };
+    } catch (error) {
+      console.error('[Task Completion Admin] Error in bulkUpsert:', error);
+      throw error;
+    }
+  },
 };
