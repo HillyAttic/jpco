@@ -2,7 +2,7 @@ import React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 
 interface StatCardProps {
-  title: string;
+  title: React.ReactNode;
   value: number | string;
   subtitle: string;
   icon: React.ReactNode;
@@ -32,9 +32,9 @@ export function StatCard({
       className={`hover:shadow-lg transition-shadow duration-200 ${onClick ? 'cursor-pointer hover:border-blue-300 dark:hover:border-blue-600' : ''}`}
       onClick={onClick}
     >
-      <CardHeader className={`flex flex-row items-center justify-between ${compact ? 'pb-1' : 'pb-2'}`}>
-        <CardTitle className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-500 dark:text-gray-400`}>{title}</CardTitle>
-        <div className={`${compact ? 'p-1.5' : 'p-2'} ${iconBgColor} rounded-lg`}>
+      <CardHeader className={`flex flex-row items-center justify-between ${compact ? 'pb-1 space-y-0 px-3 pt-3' : 'pb-2'}`}>
+        <CardTitle className={`${compact ? 'text-xs leading-tight flex-1 min-w-0' : 'text-sm'} font-medium text-gray-500 dark:text-gray-400 pr-2`}>{title}</CardTitle>
+        <div className={`${compact ? 'p-1 flex-shrink-0' : 'p-2'} ${iconBgColor} rounded-lg`}>
           <div className={iconColor}>{icon}</div>
         </div>
       </CardHeader>

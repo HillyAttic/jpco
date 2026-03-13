@@ -8,6 +8,7 @@ import { StatCard } from './StatCard';
 
 interface SimpleStatCardProps {
   title: string;
+  mobileTitle?: string; // Optional shorter title for mobile
   value: number | string;
   icon: React.ReactNode;
   onClick?: () => void;
@@ -41,6 +42,7 @@ const colorMap = {
 
 export function SimpleStatCard({
   title,
+  mobileTitle,
   value,
   icon,
   onClick,
@@ -50,9 +52,17 @@ export function SimpleStatCard({
 }: SimpleStatCardProps) {
   const colors = colorMap[color];
   
+  // Use mobile title on small screens if provided, otherwise use regular title
+  const displayTitle = mobileTitle ? (
+    <>
+      <span className="sm:hidden">{mobileTitle}</span>
+      <span className="hidden sm:inline">{title}</span>
+    </>
+  ) : title;
+  
   return (
     <StatCard
-      title={title}
+      title={displayTitle}
       value={value}
       subtitle={subtitle || (onClick ? 'Click to view details' : '')}
       icon={icon}

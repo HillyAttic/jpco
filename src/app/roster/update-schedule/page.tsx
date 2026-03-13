@@ -11,7 +11,8 @@ import { nonRecurringTaskService, NonRecurringTask } from '@/services/nonrecurri
 import { LeaveRequest } from '@/types/attendance.types';
 import { RosterEntry, MONTHS, getDaysInMonth, TaskType } from '@/types/roster.types';
 import { Button } from '@/components/ui/button';
-import { PlusCircleIcon, TrashIcon, PencilIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { PlusCircleIcon, TrashIcon, PencilIcon, XMarkIcon, DevicePhoneMobileIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline';
+import { RosterMobileCalendarView } from '@/components/roster-mobile-calendar-view';
 
 interface CalendarDay {
   date: Date;
@@ -38,6 +39,7 @@ export default function UpdateSchedulePage() {
   const [editingEntry, setEditingEntry] = useState<RosterEntry | null>(null);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const [taskType, setTaskType] = useState<TaskType>('multi');
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('mobile'); // Default to mobile for admins
   const [formData, setFormData] = useState({
     activityName: '',
     startDate: '',
@@ -549,6 +551,32 @@ export default function UpdateSchedulePage() {
             Manage your personal schedule and activities
           </p>
         </div>
+        
+        {/* View Toggle */}
+        <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <button
+            onClick={() => setViewMode('desktop')}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'desktop'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <ComputerDesktopIcon className="w-4 h-4" />
+            <span>Desktop</span>
+          </button>
+          <button
+            onClick={() => setViewMode('mobile')}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'mobile'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <DevicePhoneMobileIcon className="w-4 h-4" />
+            <span>Mobile</span>
+          </button>
+        </div>
       </div>
 
       {/* Color Legend */}
@@ -571,31 +599,32 @@ export default function UpdateSchedulePage() {
       </div>
 
       {/* Calendar */}
-      <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-700 p-4 md:p-6">
-        {/* Month Navigation */}
-        <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={handlePreviousMonth}
-            className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
-          <h2 className="text-xl font-semibold">
-            {MONTHS[currentMonth - 1]} {currentYear}
-          </h2>
-          <button
-            onClick={handleNextMonth}
-            className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
+      {viewMode === 'desktop' ? (
+        <div className="bg-white dark:bg-gray-dark rounded-xl border border-gray-200 dark:border-gray-700 p-4 md:p-6">
+          {/* Month Navigation */}
+          <div className="flex items-center justify-between mb-6">
+            <button
+              onClick={handlePreviousMonth}
+              className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <h2 className="text-xl font-semibold">
+              {MONTHS[currentMonth - 1]} {currentYear}
+            </h2>
+            <button
+              onClick={handleNextMonth}
+              className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          </div>
 
-        {/* Calendar Grid - Desktop: 7 columns, Mobile: Vertical list */}
+          {/* Calendar Grid - Desktop: 7 columns, Mobile: Vertical list */}
         <div className="md:grid md:grid-cols-7 md:gap-1 space-y-2 md:space-y-0">
           {/* Day Headers - Desktop only */}
           {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
@@ -718,7 +747,19 @@ export default function UpdateSchedulePage() {
           })}
         </div>
       </div>
-
+      ) : (
+        <RosterMobileCalendarView
+          calendarDays={calendarDays}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          onPreviousMonth={handlePreviousMonth}
+          onNextMonth={handleNextMonth}
+          onDateClick={handleDateClick}
+          onTaskClick={handleTaskClick}
+          onAddTask={handleAddTask}
+          getTaskColorClass={getTaskColorClass}
+        />
+      )}
       {/* Task Form Modal */}
       {showModal && (
         <div
@@ -1120,16 +1161,42 @@ export default function UpdateSchedulePage() {
                   day: 'numeric' 
                 })}</span>
               </h3>
-              <button
-                onClick={handleCloseTaskTable}
-                className="p-2 hover:bg-gray-100 dark:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCloseTaskTable();
+                    handleAddTask(selectedDate, 'single');
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  <PlusCircleIcon className="w-4 h-4" />
+                  <span className="hidden sm:inline">Add Task</span>
+                </button>
+                <button
+                  onClick={handleCloseTaskTable}
+                  className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors flex-shrink-0"
+                >
+                  <XMarkIcon className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {selectedDateTasks.length === 0 ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-8">No tasks assigned for this day</p>
+              <div className="text-center py-8">
+                <p className="text-gray-500 dark:text-gray-400 mb-4">No tasks assigned for this day</p>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCloseTaskTable();
+                    handleAddTask(selectedDate, 'single');
+                  }}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                >
+                  <PlusCircleIcon className="w-5 h-5" />
+                  Add Your First Task
+                </button>
+              </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full border-collapse">
@@ -1181,17 +1248,31 @@ export default function UpdateSchedulePage() {
                               <div className="flex gap-2">
                                 <button
                                   onClick={() => {
+                                    setSelectedTaskForAction(task);
+                                    setShowTaskViewModal(true);
+                                    openModal();
+                                  }}
+                                  className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors"
+                                  title="View"
+                                >
+                                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                  </svg>
+                                </button>
+                                <button
+                                  onClick={() => {
                                     handleCloseTaskTable();
                                     handleEditTask(task);
                                   }}
-                                  className="p-1 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  className="p-1 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition-colors"
                                   title="Edit"
                                 >
                                   <PencilIcon className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => handleDeleteTask(task.id!)}
-                                  className="p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  className="p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                   title="Delete"
                                 >
                                   <TrashIcon className="w-4 h-4" />

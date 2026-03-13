@@ -6,10 +6,12 @@ import { taskApi } from '@/services/task.api';
 import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
 import { calculateAllOccurrences } from '@/utils/recurrence-scheduler';
 import { CalendarView } from '@/components/calendar-view';
+import { MobileCalendarView } from '@/components/mobile-calendar-view';
 import { Button } from '@/components/ui/button';
-import { PlusCircleIcon } from '@heroicons/react/24/outline';
+import { PlusCircleIcon, DevicePhoneMobileIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline';
 import { TaskCreationModal } from '@/components/task-creation-modal';
 import { auth } from '@/lib/firebase';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 // Extended task type to include recurring task occurrences
 interface CalendarTask extends Task {
@@ -19,11 +21,13 @@ interface CalendarTask extends Task {
 }
 
 export default function CalendarPage() {
+  const { isAdmin } = useEnhancedAuth();
   const [tasks, setTasks] = useState<CalendarTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [nonRecurringTasks, setNonRecurringTasks] = useState<Task[]>([]);
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('mobile'); // Default to mobile for admins
 
   useEffect(() => {
     loadTasks();
@@ -192,10 +196,40 @@ export default function CalendarPage() {
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Compliance Calendar</h1>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">View your recurring compliance tasks</p>
         </div>
+        
+        {/* View Toggle */}
+        <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+          <button
+            onClick={() => setViewMode('desktop')}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'desktop'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <ComputerDesktopIcon className="w-4 h-4" />
+            <span>Desktop</span>
+          </button>
+          <button
+            onClick={() => setViewMode('mobile')}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+              viewMode === 'mobile'
+                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            }`}
+          >
+            <DevicePhoneMobileIcon className="w-4 h-4" />
+            <span>Mobile</span>
+          </button>
+        </div>
       </div>
 
       {/* Calendar View */}
-      <CalendarView tasks={tasks} />
+      {viewMode === 'desktop' ? (
+        <CalendarView tasks={tasks} />
+      ) : (
+        <MobileCalendarView tasks={tasks} />
+      )}
 
       {/* Create Task Modal */}
       <TaskCreationModal

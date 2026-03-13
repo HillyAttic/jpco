@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Calendar, LayoutDashboard, Bell, ClipboardCheck, Users } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
+import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
 
 interface NavItem {
   href: string;
@@ -45,6 +46,7 @@ const NAV_ITEMS: NavItem[] = [
 export function MobileBottomNav() {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
+  const { isAdmin } = useEnhancedAuth();
 
   return (
     <nav
@@ -57,6 +59,9 @@ export function MobileBottomNav() {
           const isActive = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(item.href + "/"));
           const Icon = item.icon;
           const badge = item.showBadge ? unreadCount : 0;
+          
+          // Change "Roster" to "Meeting" for admin users only
+          const displayLabel = item.label === "Roster" && isAdmin ? "Meeting" : item.label;
 
           return (
             <Link
@@ -69,7 +74,7 @@ export function MobileBottomNav() {
                 // Touch target optimization
                 "min-h-[44px]"
               )}
-              aria-label={item.label}
+              aria-label={displayLabel}
               aria-current={isActive ? "page" : undefined}
             >
               <div className="relative">
@@ -99,7 +104,7 @@ export function MobileBottomNav() {
                     : "text-gray-500 dark:text-gray-400"
                 )}
               >
-                {item.label}
+                {displayLabel}
               </span>
             </Link>
           );
