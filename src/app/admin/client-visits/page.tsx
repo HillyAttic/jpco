@@ -10,6 +10,7 @@ interface VisitRecord {
   employeeId: string;
   startTime: string;
   endTime: string;
+  scheduledDuration?: number;
   taskTitle: string;
   taskType?: 'recurring' | 'non-recurring';
   attendanceStatus?: 'present' | 'absent' | 'incomplete' | 'no-data';
@@ -313,7 +314,9 @@ export default function ClientVisitsPage() {
                                         })}
                                       </div>
                                       <div className="text-xs text-gray-500 dark:text-gray-400">
-                                        {visit.startTime !== '-' ? `${visit.startTime} - ${visit.endTime}` : 'No time set'}
+                                        {visit.startTime !== '-'
+                                          ? `Scheduled: ${visit.startTime} - ${visit.endTime}${visit.scheduledDuration ? ` (${visit.scheduledDuration}h)` : ''}`
+                                          : 'No time set'}
                                       </div>
                                     </div>
                                     {getAttendanceStatusBadge(visit.attendanceStatus)}
@@ -346,6 +349,7 @@ export default function ClientVisitsPage() {
                                   {/* Attendance Details */}
                                   {visit.attendanceDetails && (
                                     <div className="text-xs text-gray-500 dark:text-gray-400 pl-6 space-y-0.5">
+                                      <div className="font-medium text-gray-600 dark:text-gray-400">Actual:</div>
                                       {visit.attendanceDetails.clockIn && (
                                         <div>In: {visit.attendanceDetails.clockIn}</div>
                                       )}

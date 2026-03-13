@@ -7,6 +7,7 @@ interface VisitRecord {
   employeeId: string;
   startTime: string;
   endTime: string;
+  scheduledDuration?: number;
   taskTitle: string;
   taskType?: 'recurring' | 'non-recurring';
   attendanceStatus?: 'present' | 'absent' | 'incomplete' | 'no-data';
@@ -241,6 +242,7 @@ export async function GET(request: NextRequest) {
         employeeId: entry.userId,
         startTime: formatTime(entry.timeStart!),
         endTime: formatTime(entry.timeEnd!),
+        scheduledDuration: entry.durationHours,
         taskTitle: entry.taskDetail || 'Visit',
         taskType: 'recurring',
         attendanceStatus,
