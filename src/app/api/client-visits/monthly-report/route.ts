@@ -320,24 +320,25 @@ export async function GET(request: NextRequest) {
 }
 
 /**
- * Format date to YYYY-MM-DD
+ * Format date to YYYY-MM-DD in IST timezone
  */
 function formatDate(date: Date): string {
-  const d = new Date(date);
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
 }
 
 /**
- * Format time to HH:MM AM/PM
+ * Format time to HH:MM AM/PM in IST timezone
  */
 function formatTime(date: Date): string {
-  const d = new Date(date);
-  let hours = d.getHours();
-  const minutes = String(d.getMinutes()).padStart(2, '0');
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12 || 12;
-  return `${hours}:${minutes} ${ampm}`;
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Kolkata',
+    hour: 'numeric',
+    minute: '2-digit',
+    hour12: true,
+  }).format(date);
 }
