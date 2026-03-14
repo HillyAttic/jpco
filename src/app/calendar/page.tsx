@@ -27,7 +27,7 @@ export default function CalendarPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [nonRecurringTasks, setNonRecurringTasks] = useState<Task[]>([]);
-  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('mobile'); // Default to mobile for admins
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('desktop'); // Default to desktop view
 
   useEffect(() => {
     loadTasks();
