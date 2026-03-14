@@ -11,6 +11,12 @@ const HolidayManagementModal = dynamic(() => import('@/components/attendance/Hol
   ssr: false
 });
 
+// Lazy load the RosterExportModal
+const RosterExportModal = dynamic(() => import('@/components/attendance/RosterExportModal').then(mod => ({ default: mod.RosterExportModal })), {
+  loading: () => null,
+  ssr: false
+});
+
 interface AttendanceDay {
   date: Date;
   status: 'present' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'half-day' | 'holiday' | 'pending';
@@ -43,6 +49,7 @@ export default function AttendanceRosterPage() {
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeAttendance | null>(null);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [showHolidayModal, setShowHolidayModal] = useState(false);
+  const [showExportModal, setShowExportModal] = useState(false);
   const { openModal, closeModal } = useModal();
 
   useEffect(() => {
@@ -287,6 +294,16 @@ export default function AttendanceRosterPage() {
         >
           Manage Holidays
         </button>
+        <button
+          onClick={() => setShowExportModal(true)}
+          disabled={loading || employees.length === 0}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          Export Excel
+        </button>
       </div>
 
       {/* Legend */}
@@ -469,6 +486,15 @@ export default function AttendanceRosterPage() {
           setShowHolidayModal(false);
           fetchAttendanceData(); // Refresh data when modal closes to show new holidays
         }}
+      />
+
+      {/* Roster Export Modal */}
+      <RosterExportModal
+        isOpen={showExportModal}
+        onClose={() => setShowExportModal(false)}
+        employees={employees}
+        month={month}
+        year={year}
       />
     </div>
   );
