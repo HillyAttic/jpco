@@ -642,64 +642,68 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6">
       {/* Stats Cards - Critical, render immediately */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 md:grid-cols-2 md:gap-6 xl:grid-cols-5 xl:gap-6 2xl:gap-7.5">
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 md:grid-cols-5 md:gap-4 lg:gap-5 xl:gap-6">
         <SimpleStatCard
           title="Total Tasks"
           mobileTitle="Total"
           value={stats.total}
-          icon={<ClipboardDocumentListIcon className="w-4 h-4 sm:w-6 sm:h-6" />}
+          icon={<ClipboardDocumentListIcon className="w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7" />}
           onClick={() => {
             setShowAllTasksModal(true);
             openModal(); // Open modal context to hide header
           }}
+          subtitle="All tasks"
           compact={true}
         />
         <SimpleStatCard
           title="Completed"
           mobileTitle="Done"
           value={stats.completed}
-          icon={<CheckCircleIcon className="w-4 h-4 sm:w-6 sm:h-6" />}
+          icon={<CheckCircleIcon className="w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7" />}
           onClick={() => {
             setShowCompletedModal(true);
             openModal();
           }}
           color="green"
+          subtitle="Finished tasks"
           compact={true}
         />
         <SimpleStatCard
           title="In Progress"
           mobileTitle="Active"
           value={stats.inProgress}
-          icon={<ClockIcon className="w-4 h-4 sm:w-6 sm:h-6" />}
+          icon={<ClockIcon className="w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7" />}
           onClick={() => {
             setShowInProgressModal(true);
             openModal();
           }}
           color="orange"
+          subtitle="Currently active"
           compact={true}
         />
         <SimpleStatCard
           title="To Do"
           value={stats.todo}
-          icon={<PlusCircleIcon className="w-4 h-4 sm:w-6 sm:h-6" />}
+          icon={<PlusCircleIcon className="w-4 h-4 sm:w-6 sm:h-6 md:w-7 md:h-7" />}
           onClick={() => {
             setShowTodoModal(true);
             openModal();
           }}
           color="blue"
+          subtitle="Pending tasks"
           compact={true}
         />
         <SimpleStatCard
           title="Overdue"
           mobileTitle="Late"
           value={stats.overdue}
-          icon={<ExclamationTriangleIcon className="w-4 h-4 sm:w-5 sm:h-5" />}
+          icon={<ExclamationTriangleIcon className="w-4 h-4 sm:w-5 sm:h-5 md:w-7 md:h-7" />}
           onClick={() => {
             setShowOverdueModal(true);
             openModal();
           }}
           color="red"
-          subtitle="Past due"
+          subtitle="Past due date"
           compact={true}
         />
       </div>
