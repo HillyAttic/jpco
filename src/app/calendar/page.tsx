@@ -27,7 +27,12 @@ export default function CalendarPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [nonRecurringTasks, setNonRecurringTasks] = useState<Task[]>([]);
-  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('mobile'); // Default to mobile view
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768 ? 'mobile' : 'desktop';
+    }
+    return 'desktop';
+  });
 
   useEffect(() => {
     loadTasks();

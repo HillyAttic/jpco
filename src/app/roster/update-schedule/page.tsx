@@ -39,7 +39,12 @@ export default function UpdateSchedulePage() {
   const [editingEntry, setEditingEntry] = useState<RosterEntry | null>(null);
   const [hoveredDay, setHoveredDay] = useState<number | null>(null);
   const [taskType, setTaskType] = useState<TaskType>('multi');
-  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>('mobile'); // Default to mobile view
+  const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < 768 ? 'mobile' : 'desktop';
+    }
+    return 'desktop';
+  });
   const [formData, setFormData] = useState({
     activityName: '',
     startDate: '',
