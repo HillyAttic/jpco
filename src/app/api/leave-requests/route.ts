@@ -41,10 +41,163 @@ export async function GET(request: NextRequest) {
     // Employees can only see their own requests; managers/admins see all
     if (userRole === 'employee') {
       query = query.where('employeeId', '==', userId);
-    } else if (employeeId) {
-      query = query.where('employeeId', '==', employeeId);
+    } else if (userRole === 'manager') {
+      // Managers can only see requests from their assigned employees
+      const hierarchySnapshot = await adminDb
+        .collection('manager-hierarchies')
+        .where('managerId', '==', userId)
+        .limit(1)
+        .get();
+
+      if (hierarchySnapshot.empty) {
+        // Manager has no employees assigned - return empty
+        return NextResponse.json([], { status: 200 });
+      }
+
+      const hierarchy = hierarchySnapshot.docs[0].data();
+      const employeeIds = hierarchy.employeeIds || [];
+
+      if (employeeIds.length === 0) {
+        return NextResponse.json([], { status: 200 });
+      }
+
+      // Firestore 'in' query supports max 30 items, so we need to chunk if more
+      if (employeeIds.length <= 30) {
+        query = query.where('employeeId', 'in', employeeIds);
+        // Apply status/leaveType filters before orderBy
+        if (status) query = query.where('status', '==', status);
+        if (leaveType) query = query.where('leaveType', '==', leaveType);
+        query = query.orderBy('createdAt', 'desc');
+
+        const snapshot = await query.get();
+
+        // Collect unique approver UIDs missing approverName for backfill
+        const missingApproverIds = new Set<string>();
+        snapshot.docs.forEach((doc) => {
+          const data = doc.data();
+          if (!data.approverName && data.approvedBy) missingApproverIds.add(data.approvedBy);
+        });
+        const approverNameMap: Record<string, string> = {};
+        if (missingApproverIds.size > 0) {
+          const approverDocs = await Promise.all(
+            Array.from(missingApproverIds).map((uid) => adminDb.collection('users').doc(uid).get())
+          );
+          approverDocs.forEach((doc) => {
+            if (doc.exists) {
+              const d = doc.data()!;
+              approverNameMap[doc.id] = d.displayName || d.name || d.email || 'Unknown';
+            }
+          });
+        }
+
+        const requests = snapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            approverName: data.approverName || (data.approvedBy ? approverNameMap[data.approvedBy] : undefined),
+            startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
+            endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+            approvedAt: data.approvedAt?.toDate ? data.approvedAt.toDate().toISOString() : data.approvedAt,
+          };
+        });
+
+        return NextResponse.json(requests, { status: 200 });
+      } else {
+        // For managers with >30 employees, fetch all and filter in memory
+        const allSnapshot = await adminDb
+          .collection('leave-requests')
+          .orderBy('createdAt', 'desc')
+          .get();
+        const employeeIdSet = new Set(employeeIds);
+        let filteredDocs = allSnapshot.docs.filter((doc) => employeeIdSet.has(doc.data().employeeId));
+        if (status) filteredDocs = filteredDocs.filter((doc) => doc.data().status === status);
+        if (leaveType) filteredDocs = filteredDocs.filter((doc) => doc.data().leaveType === leaveType);
+
+        const requests = filteredDocs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            ...data,
+            startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
+            endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+            approvedAt: data.approvedAt?.toDate ? data.approvedAt.toDate().toISOString() : data.approvedAt,
+          };
+        });
+
+        return NextResponse.json(requests, { status: 200 });
+      }
+    } else {
+      // Admin: only show requests from employees NOT assigned to any manager
+      // Collect all employeeIds that are under any manager
+      const allHierarchiesSnapshot = await adminDb.collection('manager-hierarchies').get();
+      const assignedEmployeeIds = new Set<string>();
+      allHierarchiesSnapshot.docs.forEach((doc) => {
+        const ids: string[] = doc.data().employeeIds || [];
+        ids.forEach((id) => assignedEmployeeIds.add(id));
+      });
+
+      if (employeeId) {
+        // Admin is filtering by a specific employee — respect it but still scope
+        if (assignedEmployeeIds.has(employeeId)) {
+          // This employee belongs to a manager, admin shouldn't see them
+          return NextResponse.json([], { status: 200 });
+        }
+        query = query.where('employeeId', '==', employeeId);
+      }
+
+      if (status) query = query.where('status', '==', status);
+      if (leaveType) query = query.where('leaveType', '==', leaveType);
+      query = query.orderBy('createdAt', 'desc');
+
+      const snapshot = await query.get();
+
+      // Filter out requests from employees assigned to any manager
+      const filteredDocs = assignedEmployeeIds.size > 0
+        ? snapshot.docs.filter((doc) => !assignedEmployeeIds.has(doc.data().employeeId))
+        : snapshot.docs;
+
+      // Backfill approverName for old records
+      const missingApproverIds = new Set<string>();
+      filteredDocs.forEach((doc) => {
+        const data = doc.data();
+        if (!data.approverName && data.approvedBy) missingApproverIds.add(data.approvedBy);
+      });
+      const approverNameMap: Record<string, string> = {};
+      if (missingApproverIds.size > 0) {
+        const approverDocs = await Promise.all(
+          Array.from(missingApproverIds).map((uid) => adminDb.collection('users').doc(uid).get())
+        );
+        approverDocs.forEach((doc) => {
+          if (doc.exists) {
+            const d = doc.data()!;
+            approverNameMap[doc.id] = d.displayName || d.name || d.email || 'Unknown';
+          }
+        });
+      }
+
+      const requests = filteredDocs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          approverName: data.approverName || (data.approvedBy ? approverNameMap[data.approvedBy] : undefined),
+          startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
+          endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+          approvedAt: data.approvedAt?.toDate ? data.approvedAt.toDate().toISOString() : data.approvedAt,
+        };
+      });
+
+      return NextResponse.json(requests, { status: 200 });
     }
 
+    // Fallback (employee role path continues here)
     if (status) {
       query = query.where('status', '==', status);
     }
@@ -153,26 +306,42 @@ export async function POST(request: NextRequest) {
 
     const docRef = await adminDb.collection('leave-requests').add(leaveRequestData);
 
-    // Notify all admins and managers about the new leave request
+    // Notify the assigned manager if one exists, otherwise notify all admins
     try {
       const { sendNotification } = await import('@/lib/notifications/send-notification');
-      const adminsSnapshot = await adminDb.collection('users')
-        .where('role', 'in', ['admin', 'manager'])
+      const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      const employeeName = leaveRequestData.employeeName;
+      const notifBody = `${employeeName} requested ${leaveType} leave (${totalDays} day${totalDays > 1 ? 's' : ''}) from ${startStr} to ${endStr}`;
+
+      // Check if this employee has an assigned manager
+      const hierarchySnapshot = await adminDb
+        .collection('manager-hierarchies')
+        .where('employeeIds', 'array-contains', authResult.user.uid)
+        .limit(1)
         .get();
-      const adminIds = adminsSnapshot.docs.map((d) => d.id);
-      if (adminIds.length > 0) {
-        const startStr = start.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const endStr = end.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-        const employeeName = leaveRequestData.employeeName;
+
+      let notifyIds: string[] = [];
+
+      if (!hierarchySnapshot.empty) {
+        // Employee has an assigned manager — notify only that manager
+        notifyIds = [hierarchySnapshot.docs[0].data().managerId];
+      } else {
+        // No manager assigned — notify all admins only
+        const adminsSnapshot = await adminDb.collection('users').where('role', '==', 'admin').get();
+        notifyIds = adminsSnapshot.docs.map((d) => d.id);
+      }
+
+      if (notifyIds.length > 0) {
         await sendNotification({
-          userIds: adminIds,
+          userIds: notifyIds,
           title: 'New Leave Request',
-          body: `${employeeName} requested ${leaveType} leave (${totalDays} day${totalDays > 1 ? 's' : ''}) from ${startStr} to ${endStr}`,
+          body: notifBody,
           data: { url: '/admin/leave-approvals', type: 'leave_request' },
         });
       }
     } catch (notifError) {
-      console.error('[leave-requests] Failed to send admin notifications:', notifError);
+      console.error('[leave-requests] Failed to send notifications:', notifError);
     }
 
     return NextResponse.json(

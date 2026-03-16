@@ -38,7 +38,38 @@ export async function GET(request: NextRequest) {
     // Employees can only see their own records
     if (userRole === 'employee') {
       query = query.where('employeeId', '==', authResult.user.uid);
+    } else if (userRole === 'manager') {
+      // Managers can only see records for their assigned employees
+      const hierarchySnapshot = await adminDb
+        .collection('manager-hierarchies')
+        .where('managerId', '==', authResult.user.uid)
+        .limit(1)
+        .get();
+
+      if (hierarchySnapshot.empty) {
+        return NextResponse.json([], { status: 200 });
+      }
+
+      const employeeIds: string[] = hierarchySnapshot.docs[0].data().employeeIds || [];
+      if (employeeIds.length === 0) {
+        return NextResponse.json([], { status: 200 });
+      }
+
+      // If a specific employeeId is requested, verify it belongs to this manager
+      if (employeeId) {
+        if (!employeeIds.includes(employeeId)) {
+          return ErrorResponses.forbidden('You can only view records for your assigned employees');
+        }
+        query = query.where('employeeId', '==', employeeId);
+      } else if (employeeIds.length <= 30) {
+        query = query.where('employeeId', 'in', employeeIds);
+      } else {
+        // >30 employees: fetch all and filter in memory after query
+        // We'll apply the filter after fetching
+        query = query; // fetch all, filter below
+      }
     } else if (employeeId) {
+      // Admin filtering by specific employee
       query = query.where('employeeId', '==', employeeId);
     }
 
@@ -77,6 +108,22 @@ export async function GET(request: NextRequest) {
         const clockIn = new Date(record.clockIn as string);
         return clockIn <= endDate;
       });
+    }
+
+    // For managers with >30 employees, filter by employeeIds in memory
+    if (userRole === 'manager' && !employeeId) {
+      const hierarchySnapshot = await adminDb
+        .collection('manager-hierarchies')
+        .where('managerId', '==', authResult.user.uid)
+        .limit(1)
+        .get();
+      if (!hierarchySnapshot.empty) {
+        const employeeIds: string[] = hierarchySnapshot.docs[0].data().employeeIds || [];
+        if (employeeIds.length > 30) {
+          const idSet = new Set(employeeIds);
+          records = records.filter((r) => idSet.has(r.employeeId as string));
+        }
+      }
     }
 
     return NextResponse.json(records, { status: 200 });

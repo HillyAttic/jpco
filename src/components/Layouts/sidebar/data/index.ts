@@ -139,14 +139,14 @@ export const NAV_DATA = [
         url: "/admin/leave-approvals",
         icon: Icons.CheckCircleIcon,
         items: [],
-        requiresRole: ['admin'], // Only admins can approve leaves
+        requiresRole: ['admin', 'manager'], // Managers see their assigned employees' requests
       },
       {
         title: "Attendance Sheet",
         url: "/admin/attendance-roster",
         icon: Icons.AttendanceSheetIcon,
         items: [],
-        requiresRole: ['admin'], // Only admins can view full attendance roster
+        requiresRole: ['admin', 'manager'], // Managers see their assigned employees' attendance
       },
       {
         title: "Client Visits",
