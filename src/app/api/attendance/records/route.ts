@@ -121,7 +121,7 @@ export async function GET(request: NextRequest) {
         const employeeIds: string[] = hierarchySnapshot.docs[0].data().employeeIds || [];
         if (employeeIds.length > 30) {
           const idSet = new Set(employeeIds);
-          records = records.filter((r) => idSet.has(r.employeeId as string));
+          records = records.filter((r) => idSet.has((r as any).employeeId as string));
         }
       }
     }
