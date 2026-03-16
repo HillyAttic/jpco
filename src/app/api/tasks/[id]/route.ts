@@ -123,11 +123,15 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const userRole = authResult.user.claims.role;
     const isAuthorized = userRole === 'admin' || userRole === 'manager';
 
-    if (!isAuthorized) {
-      // Get the current task to check if user is assigned
-      const currentTask = await nonRecurringTaskAdminService.getById(id);
+    // Fetch current task before update (needed for permission check and notifications)
+    const currentTask = await nonRecurringTaskAdminService.getById(id);
 
-      if (!currentTask || !currentTask.assignedTo?.includes(authResult.user.uid)) {
+    if (!currentTask) {
+      return ErrorResponses.notFound('Task');
+    }
+
+    if (!isAuthorized) {
+      if (!currentTask.assignedTo?.includes(authResult.user.uid)) {
         return ErrorResponses.forbidden('You must be assigned to this task to update it');
       }
     }
@@ -142,43 +146,84 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     console.log('[API /api/tasks/[id]] Task updated:', id);
 
-    // Send notifications to newly assigned users directly (no fetch needed)
-    if (taskData.assignedTo && taskData.assignedTo.length > 0) {
-      try {
-        // Get the original task to compare assignees
-        const originalTask = await nonRecurringTaskAdminService.getById(id);
+    // Send notifications (fire-and-forget, don't fail the update)
+    try {
+      const notificationPromises: Promise<unknown>[] = [];
 
-        if (originalTask) {
-          // Find newly assigned users
-          const newlyAssigned = taskData.assignedTo.filter(
-            userId => !originalTask.assignedTo?.includes(userId)
-          );
+      // 1. Notify task creator when status changes
+      if (taskData.status && currentTask.status !== taskData.status && currentTask.createdBy && currentTask.createdBy !== authResult.user.uid) {
+        const statusLabel =
+          taskData.status === 'in-progress' ? 'In Progress' :
+          taskData.status === 'completed' ? 'Completed' :
+          taskData.status === 'todo' ? 'To Do' : taskData.status;
 
-          if (newlyAssigned.length > 0) {
-            console.log(`[Task Update API] Sending notifications to ${newlyAssigned.length} newly assigned user(s):`, newlyAssigned);
+        notificationPromises.push(
+          sendNotification({
+            userIds: [currentTask.createdBy],
+            title: 'Task Status Updated',
+            body: `"${currentTask.title}" has been marked as ${statusLabel}`,
+            data: {
+              taskId: id,
+              url: '/tasks',
+              type: 'task_updated',
+            },
+          })
+        );
+      }
 
-            const result = await sendNotification({
+      // 2. Notify newly assigned users
+      if (taskData.assignedTo && taskData.assignedTo.length > 0) {
+        const newlyAssigned = taskData.assignedTo.filter(
+          userId => !currentTask.assignedTo?.includes(userId)
+        );
+
+        if (newlyAssigned.length > 0) {
+          console.log(`[Task Update API] Sending notifications to ${newlyAssigned.length} newly assigned user(s):`, newlyAssigned);
+
+          notificationPromises.push(
+            sendNotification({
               userIds: newlyAssigned,
               title: 'New Task Assigned',
-              body: `You have been assigned to task: ${updatedTask.title}`,
+              body: `You have been assigned to task: ${updatedTask.title || currentTask.title}`,
               data: {
-                taskId: updatedTask.id,
+                taskId: id,
                 url: '/tasks',
                 type: 'task_assigned',
               },
-            });
-
-            console.log('[Task Update API] ✅ Notification result:', {
-              totalTime: `${result.totalTime}ms`,
-              sent: result.sent.length,
-              errors: result.errors.length,
-            });
-          }
+            })
+          );
         }
-      } catch (error) {
-        console.error('[Task Update API] ❌ Error sending task assignment notifications:', error);
-        // Don't fail the task update if notification fails
       }
+
+      // 3. Notify task creator on any other update (title, description, etc.) by non-creator
+      if (notificationPromises.length === 0 && currentTask.createdBy && currentTask.createdBy !== authResult.user.uid) {
+        notificationPromises.push(
+          sendNotification({
+            userIds: [currentTask.createdBy],
+            title: 'Task Updated',
+            body: `"${currentTask.title}" has been updated`,
+            data: {
+              taskId: id,
+              url: '/tasks',
+              type: 'task_updated',
+            },
+          })
+        );
+      }
+
+      if (notificationPromises.length > 0) {
+        const results = await Promise.allSettled(notificationPromises);
+        results.forEach((result, i) => {
+          if (result.status === 'rejected') {
+            console.error(`[Task Update API] ❌ Notification ${i} failed:`, result.reason);
+          } else {
+            console.log(`[Task Update API] ✅ Notification ${i} sent`);
+          }
+        });
+      }
+    } catch (error) {
+      console.error('[Task Update API] ❌ Error sending notifications:', error);
+      // Don't fail the task update if notification fails
     }
 
     return NextResponse.json(updatedTask, { status: 200 });

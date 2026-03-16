@@ -37,6 +37,14 @@ export interface Task {
   attachments?: TaskAttachment[];
 }
 
+export interface CommentAttachment {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+  storagePath: string;
+}
+
 export interface Comment {
   id: string;
   taskId: string;
@@ -44,4 +52,5 @@ export interface Comment {
   authorId?: string;
   content: string;
   createdAt: Date;
+  attachments?: CommentAttachment[];
 }

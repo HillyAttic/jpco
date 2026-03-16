@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,11 +12,13 @@ import {
   ClockIcon,
   UserCircleIcon,
   DocumentIcon,
-  ArrowDownTrayIcon
+  ArrowDownTrayIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { Task, TaskStatus, TaskPriority, TaskAttachment } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
+import { uploadCommentAttachments, validateFiles, ALLOWED_EXTENSIONS } from '@/lib/task-attachment.service';
 
 interface TaskDetailModalProps {
   open: boolean;
@@ -43,6 +45,10 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
   const [loadingUsers, setLoadingUsers] = useState(true);
   const [displayValue, setDisplayValue] = useState('');
   const [clientName, setClientName] = useState<string | null>(null);
+  const [commentFiles, setCommentFiles] = useState<File[]>([]);
+  const [commentFileError, setCommentFileError] = useState<string | null>(null);
+  const [uploadingComment, setUploadingComment] = useState(false);
+  const commentFileInputRef = useRef<HTMLInputElement>(null);
 
   // Check if current user is the task creator
   const isTaskCreator = task?.createdBy === user?.uid;
@@ -114,6 +120,14 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
       setClientName(null);
     }
   }, [open, task?.contactId]);
+
+  // Reset comment attachment state when modal closes
+  useEffect(() => {
+    if (!open) {
+      setCommentFiles([]);
+      setCommentFileError(null);
+    }
+  }, [open]);
 
   useEffect(() => {
     if (task) {
@@ -202,13 +216,49 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
     }
   };
 
+  const handleCommentFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length === 0) return;
+
+    const error = validateFiles(files);
+    if (error) {
+      setCommentFileError(error);
+      return;
+    }
+    setCommentFileError(null);
+    setCommentFiles(prev => {
+      const combined = [...prev, ...files];
+      const overLimit = validateFiles(combined);
+      if (overLimit) {
+        setCommentFileError(overLimit);
+        return prev;
+      }
+      return combined;
+    });
+    // Reset file input so same file can be re-added if removed
+    if (commentFileInputRef.current) commentFileInputRef.current.value = '';
+  };
+
+  const removeCommentFile = (index: number) => {
+    setCommentFiles(prev => prev.filter((_, i) => i !== index));
+    setCommentFileError(null);
+  };
+
   const handleAddComment = async () => {
     if (!editingTask || !newComment.trim()) return;
 
+    setUploadingComment(true);
     try {
+      let attachments: TaskAttachment[] = [];
+
+      if (commentFiles.length > 0) {
+        attachments = await uploadCommentAttachments(editingTask.id, commentFiles);
+      }
+
       const comment = await taskApi.addComment(editingTask.id, {
-        author: 'Current User', // This should come from auth context
-        content: newComment.trim()
+        author: 'Current User', // resolved server-side from auth token
+        content: newComment.trim(),
+        attachments,
       });
 
       setComments(prev => [...prev, {
@@ -216,8 +266,12 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
         createdAt: new Date(comment.createdAt)
       }]);
       setNewComment('');
+      setCommentFiles([]);
+      setCommentFileError(null);
     } catch (error) {
       console.error('Error adding comment:', error);
+    } finally {
+      setUploadingComment(false);
     }
   };
 
@@ -473,6 +527,28 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
                           <span className="text-sm text-gray-500 dark:text-gray-400">{formatDate(comment.createdAt)}</span>
                         </div>
                         <p className="mt-1 text-gray-700 dark:text-gray-300">{comment.content}</p>
+                        {comment.attachments && comment.attachments.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            {comment.attachments.map((att, idx) => (
+                              <a
+                                key={att.storagePath || idx}
+                                href={att.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 px-3 py-2 bg-white dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors group text-sm"
+                              >
+                                <DocumentIcon className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                                <span className="flex-1 truncate text-gray-700 dark:text-gray-300">{att.name}</span>
+                                <span className="text-xs text-gray-400">
+                                  {att.size < 1024 * 1024
+                                    ? `${(att.size / 1024).toFixed(1)} KB`
+                                    : `${(att.size / (1024 * 1024)).toFixed(1)} MB`}
+                                </span>
+                                <ArrowDownTrayIcon className="w-4 h-4 text-gray-400 group-hover:text-blue-500 flex-shrink-0" />
+                              </a>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -480,24 +556,67 @@ export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailMod
               )}
             </div>
 
-            <div className="flex space-x-2">
+            {/* Pending files for comment */}
+            {commentFiles.length > 0 && (
+              <div className="mb-2 space-y-1">
+                {commentFiles.map((file, idx) => (
+                  <div key={idx} className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800 text-sm">
+                    <DocumentIcon className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <span className="flex-1 truncate text-gray-700 dark:text-gray-300">{file.name}</span>
+                    <span className="text-xs text-gray-400">
+                      {file.size < 1024 * 1024
+                        ? `${(file.size / 1024).toFixed(1)} KB`
+                        : `${(file.size / (1024 * 1024)).toFixed(1)} MB`}
+                    </span>
+                    <button onClick={() => removeCommentFile(idx)} className="text-gray-400 hover:text-red-500">
+                      <XMarkIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            {commentFileError && (
+              <p className="text-sm text-red-500 mb-2">{commentFileError}</p>
+            )}
+
+            <div className="space-y-2">
               <Input
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Add a comment..."
-                className="flex-1"
+                className="w-full"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                     handleAddComment();
                   }
                 }}
               />
-              <Button
-                onClick={handleAddComment}
-                disabled={!newComment.trim() || loading}
-              >
-                Post
-              </Button>
+              <div className="flex items-center gap-2">
+                <input
+                  ref={commentFileInputRef}
+                  type="file"
+                  accept={ALLOWED_EXTENSIONS}
+                  multiple
+                  className="hidden"
+                  onChange={handleCommentFileChange}
+                />
+                <button
+                  type="button"
+                  onClick={() => commentFileInputRef.current?.click()}
+                  className="flex items-center gap-1 px-3 py-2 text-sm text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  title="Attach file (PNG, JPG, PDF, Excel, Word)"
+                >
+                  <PaperClipIcon className="w-4 h-4" />
+                  Attach
+                </button>
+                <Button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim() || loading || uploadingComment}
+                  className="ml-auto"
+                >
+                  {uploadingComment ? 'Uploading...' : 'Post'}
+                </Button>
+              </div>
             </div>
           </div>
 

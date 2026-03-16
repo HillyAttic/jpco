@@ -35,7 +35,7 @@ export function KanbanColumn({
 }: KanbanColumnProps) {
   return (
     <div
-      className={`${color} rounded-lg p-4 ${compact ? 'min-h-[250px] max-h-[400px]' : 'min-h-[600px]'} w-full transition-all`}
+      className={`${color} rounded-lg p-4 ${compact ? 'min-h-[250px] max-h-[400px] overflow-y-auto' : 'min-h-[600px]'} w-full transition-all`}
       onDragOver={onDragOver}
       onDrop={(e) => onDrop(e, id)}
     >

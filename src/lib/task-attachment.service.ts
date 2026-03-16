@@ -78,4 +78,37 @@ export async function deleteTaskAttachment(storagePath: string): Promise<void> {
   await deleteObject(fileRef);
 }
 
+export async function uploadCommentAttachments(
+  taskId: string,
+  files: File[]
+): Promise<TaskAttachment[]> {
+  const storage = await getStorage();
+  const { ref, uploadBytes, getDownloadURL } = await getStorageFunctions();
+
+  const attachments: TaskAttachment[] = [];
+
+  for (const file of files) {
+    const timestamp = Date.now();
+    const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const storagePath = `task-comments/${taskId}/${timestamp}_${safeName}`;
+    const fileRef = ref(storage, storagePath);
+
+    await uploadBytes(fileRef, file, {
+      contentType: file.type,
+    });
+
+    const url = await getDownloadURL(fileRef);
+
+    attachments.push({
+      name: file.name,
+      url,
+      type: file.type,
+      size: file.size,
+      storagePath,
+    });
+  }
+
+  return attachments;
+}
+
 export { ALLOWED_EXTENSIONS, MAX_FILES_PER_TASK };

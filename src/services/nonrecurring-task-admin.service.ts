@@ -203,6 +203,7 @@ export const nonRecurringTaskAdminService = {
       authorId: doc.data().authorId,
       content: doc.data().content,
       createdAt: doc.data().createdAt?.toDate() || new Date(),
+      attachments: doc.data().attachments || [],
     }));
   },
 };

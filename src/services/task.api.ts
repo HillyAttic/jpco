@@ -1,4 +1,4 @@
-import { Task, Comment, TaskStatus, TaskPriority } from '@/types/task.types';
+import { Task, Comment, TaskStatus, TaskPriority, CommentAttachment } from '@/types/task.types';
 import { authenticatedFetch } from '@/lib/api-client';
 
 const API_BASE_URL = '/api/tasks';
