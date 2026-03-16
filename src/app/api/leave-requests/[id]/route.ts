@@ -92,8 +92,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     // Use Admin SDK to get approver name and update leave request
     const { adminDb } = await import('@/lib/firebase-admin');
     const userDoc = await adminDb.collection('users').doc(authResult.user.uid).get();
-    const userData = userDoc.data();
+    const userData = userDoc.exists ? userDoc.data() : null;
     const approverName = userData?.displayName || userData?.name || authResult.user.email || 'Unknown';
+    console.log('[leave-requests/[id]] Approver lookup — uid:', authResult.user.uid, 'docExists:', userDoc.exists, 'resolvedName:', approverName);
 
     const updates: Record<string, any> = {
       status: action === 'approve' ? 'approved' : 'rejected',

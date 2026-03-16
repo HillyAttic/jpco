@@ -175,7 +175,7 @@ export default function LeaveApprovalsPage() {
                       <div>{new Date(request.startDate).toLocaleDateString()}</div>
                       <div className="text-gray-500">to {new Date(request.endDate).toLocaleDateString()}</div>
                     </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs truncate">
+                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs whitespace-normal break-words">
                       {request.reason}
                     </td>
                     <td className="px-6 py-4">
@@ -200,9 +200,9 @@ export default function LeaveApprovalsPage() {
                           </button>
                         </div>
                       )}
-                      {request.status !== 'pending' && request.approverName && (
+                      {request.status !== 'pending' && (
                         <div className="text-sm text-gray-500">
-                          By {request.approverName}
+                          By {request.approverName || 'N/A'}
                         </div>
                       )}
                     </td>

@@ -56,11 +56,37 @@ export async function GET(request: NextRequest) {
     query = query.orderBy('createdAt', 'desc');
 
     const snapshot = await query.get();
+
+    // Collect unique approver UIDs that are missing approverName so we can batch-resolve them
+    const missingApproverIds = new Set<string>();
+    snapshot.docs.forEach((doc) => {
+      const data = doc.data();
+      if (!data.approverName && data.approvedBy) {
+        missingApproverIds.add(data.approvedBy);
+      }
+    });
+
+    // Batch fetch approver names for old records
+    const approverNameMap: Record<string, string> = {};
+    if (missingApproverIds.size > 0) {
+      const approverDocs = await Promise.all(
+        Array.from(missingApproverIds).map((uid) => adminDb.collection('users').doc(uid).get())
+      );
+      approverDocs.forEach((doc) => {
+        if (doc.exists) {
+          const d = doc.data()!;
+          approverNameMap[doc.id] = d.displayName || d.name || d.email || 'Unknown';
+        }
+      });
+    }
+
     const requests = snapshot.docs.map((doc) => {
       const data = doc.data();
       return {
         id: doc.id,
         ...data,
+        // Backfill approverName for old records that only have approvedBy UID
+        approverName: data.approverName || (data.approvedBy ? approverNameMap[data.approvedBy] : undefined),
         // Convert Firestore Timestamps to ISO strings for JSON serialization
         startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
         endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
