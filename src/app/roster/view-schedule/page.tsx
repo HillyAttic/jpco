@@ -47,13 +47,13 @@ export default function ViewSchedulePage() {
   const getTaskColorClass = (task: RosterEntry): string => {
     // Check if it's a leave task
     if (task.taskDetail?.startsWith('OFF:')) {
-      return 'bg-yellow-100 text-yellow-800 border-yellow-400 hover:bg-yellow-200';
+      return 'bg-yellow-100 text-yellow-800 border-yellow-400 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-600 dark:hover:bg-yellow-900/50';
     }
-    
+
     const color = getTaskColor(task);
-    if (color === 'green') return 'bg-emerald-100 text-emerald-800 border-emerald-400 hover:bg-emerald-200';
-    if (color === 'yellow') return 'bg-amber-100 text-amber-800 border-amber-400 hover:bg-amber-200';
-    return 'bg-orange-100 text-orange-800 border-orange-400 hover:bg-orange-200';
+    if (color === 'green') return 'bg-emerald-100 text-emerald-800 border-emerald-400 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-emerald-600 dark:hover:bg-emerald-900/50';
+    if (color === 'yellow') return 'bg-amber-100 text-amber-800 border-amber-400 hover:bg-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-600 dark:hover:bg-amber-900/50';
+    return 'bg-orange-100 text-orange-800 border-orange-400 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-orange-600 dark:hover:bg-orange-900/50';
   };
 
   // Helper function to get Excel cell color classes
@@ -434,17 +434,17 @@ export default function ViewSchedulePage() {
         {days.map((calDay, index) => (
           <div
             key={index}
-            className={`min-h-[80px] border border-gray-200 p-1 ${
-              !calDay.isCurrentMonth ? 'bg-gray-50' : 'bg-white'
+            className={`min-h-[80px] border border-gray-200 dark:border-gray-700 p-1 ${
+              !calDay.isCurrentMonth ? 'bg-gray-50 dark:bg-gray-800' : 'bg-white dark:bg-gray-dark'
             }`}
           >
-            <div className={`text-sm ${!calDay.isCurrentMonth ? 'text-gray-400' : 'text-gray-900'}`}>
+            <div className={`text-sm ${!calDay.isCurrentMonth ? 'text-gray-400' : 'text-gray-900 dark:text-gray-100'}`}>
               {calDay.day}
             </div>
             <div className="mt-1 space-y-1">
               {calDay.activities.map((activity: RosterEntry) => {
-                const displayName = activity.taskType === 'multi' 
-                  ? activity.activityName 
+                const displayName = activity.taskType === 'multi'
+                  ? activity.activityName
                   : (activity.clientName || activity.taskDetail);
                 return (
                   <div
@@ -800,6 +800,7 @@ export default function ViewSchedulePage() {
                         .map((task, index) => {
                           const start = task.timeStart || task.startDate;
                           const end = task.timeEnd || task.endDate;
+                          const isMulti = task.taskType === 'multi';
                           
                           return (
                             <tr key={task.id || index} className="hover:bg-gray-50 dark:bg-gray-800">
@@ -817,14 +818,14 @@ export default function ViewSchedulePage() {
                                 {task.taskDetail || task.activityName || '—'}
                               </td>
                               <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white">
-                                {start ? start.toLocaleTimeString('en-US', {
+                                {isMulti ? '09:00 AM' : start ? start.toLocaleTimeString('en-US', {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                   hour12: true
                                 }) : '—'}
                               </td>
                               <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white">
-                                {end ? end.toLocaleTimeString('en-US', {
+                                {isMulti ? '05:00 PM' : end ? end.toLocaleTimeString('en-US', {
                                   hour: '2-digit',
                                   minute: '2-digit',
                                   hour12: true
@@ -1023,8 +1024,8 @@ export default function ViewSchedulePage() {
                     onClick={() => setUserCalendarViewMode('calendar')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                       userCalendarViewMode === 'calendar'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-300 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                     }`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-2">
@@ -1036,8 +1037,8 @@ export default function ViewSchedulePage() {
                     onClick={() => setUserCalendarViewMode('table')}
                     className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
                       userCalendarViewMode === 'table'
-                        ? 'bg-white text-blue-600 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-300 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
                     }`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 inline-block mr-2">
@@ -1065,7 +1066,7 @@ export default function ViewSchedulePage() {
                             setSelectedDayInUserCalendar(null);
                             setTasksForSelectedDay([]);
                           }}
-                          className="text-sm text-gray-600 hover:text-gray-900 dark:text-white"
+                          className="text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
                         >
                           Clear selection
                         </button>
@@ -1101,6 +1102,7 @@ export default function ViewSchedulePage() {
                               .map((task, index) => {
                                 const start = task.timeStart || task.startDate;
                                 const end = task.timeEnd || task.endDate;
+                                const isMulti = task.taskType === 'multi';
                                 
                                 return (
                                   <tr key={task.id || index} className="hover:bg-gray-50 dark:bg-gray-800">
@@ -1118,14 +1120,14 @@ export default function ViewSchedulePage() {
                                       {task.taskDetail || task.activityName || '—'}
                                     </td>
                                     <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
-                                      {start ? start.toLocaleTimeString('en-US', {
+                                      {isMulti ? '09:00 AM' : start ? start.toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit',
                                         hour12: true
                                       }) : '—'}
                                     </td>
                                     <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
-                                      {end ? end.toLocaleTimeString('en-US', {
+                                      {isMulti ? '05:00 PM' : end ? end.toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit',
                                         hour12: true
@@ -1182,6 +1184,7 @@ export default function ViewSchedulePage() {
                               .map((task, index) => {
                                 const start = task.timeStart || task.startDate;
                                 const end = task.timeEnd || task.endDate;
+                                const isMulti = task.taskType === 'multi';
                                 
                                 return (
                                   <tr key={task.id || index} className="hover:bg-gray-50 dark:bg-gray-800">
@@ -1202,14 +1205,14 @@ export default function ViewSchedulePage() {
                                       </div>
                                     </td>
                                     <td className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
-                                      {start ? start.toLocaleTimeString('en-US', {
+                                      {isMulti ? '09:00 AM' : start ? start.toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit',
                                         hour12: true
                                       }) : '—'}
                                     </td>
                                     <td className="border border-gray-300 dark:border-gray-600 px-2 md:px-4 py-2 md:py-3 text-gray-900 dark:text-white text-xs whitespace-nowrap">
-                                      {end ? end.toLocaleTimeString('en-US', {
+                                      {isMulti ? '05:00 PM' : end ? end.toLocaleTimeString('en-US', {
                                         hour: '2-digit',
                                         minute: '2-digit',
                                         hour12: true

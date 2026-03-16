@@ -797,11 +797,14 @@ export default function UpdateSchedulePage() {
                   </button>
                   <button
                     type="button"
-                    disabled
-                    className="flex-1 py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg border bg-gray-100 dark:bg-gray-700 text-gray-400 border-gray-300 dark:border-gray-600 cursor-not-allowed opacity-60"
-                    title="Activity tasks are currently disabled"
+                    onClick={() => setTaskType('multi')}
+                    className={`flex-1 py-2 px-3 sm:px-4 text-sm sm:text-base rounded-lg border ${
+                      taskType === 'multi'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
                   >
-                    <span className="hidden sm:inline">Activity (Coming Soon)</span>
+                    <span className="hidden sm:inline">Activity</span>
                     <span className="sm:hidden">Activity</span>
                   </button>
                 </div>
@@ -1225,6 +1228,7 @@ export default function UpdateSchedulePage() {
                       .map((task) => {
                         const start = task.timeStart || task.startDate;
                         const end = task.timeEnd || task.endDate;
+                        const isMulti = task.taskType === 'multi';
                         
                         return (
                           <tr key={task.id} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:bg-gray-800">
@@ -1238,13 +1242,13 @@ export default function UpdateSchedulePage() {
                               {task.taskDetail || task.activityName}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
-                              {start ? start.toLocaleTimeString('en-US', { 
+                              {isMulti ? '09:00 AM' : start ? start.toLocaleTimeString('en-US', { 
                                 hour: '2-digit', 
                                 minute: '2-digit' 
                               }) : '—'}
                             </td>
                             <td className="py-3 px-4 text-sm text-gray-900 dark:text-white">
-                              {end ? end.toLocaleTimeString('en-US', { 
+                              {isMulti ? '05:00 PM' : end ? end.toLocaleTimeString('en-US', { 
                                 hour: '2-digit', 
                                 minute: '2-digit' 
                               }) : '—'}
