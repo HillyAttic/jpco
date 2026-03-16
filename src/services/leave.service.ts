@@ -391,21 +391,23 @@ export const leaveService = {
   },
 
   /**
-   * Get pending leave requests for a manager
+   * Get pending leave requests for a manager/admin
+   * Routes through the authenticated API so server-side scoping applies:
+   * - Admins only see requests from employees with no assigned manager
+   * - Managers only see requests from their assigned employees
    */
   async getPendingLeaveRequests(managerId: string): Promise<AttendanceLeaveRequest[]> {
     try {
-      const queryOptions: QueryOptions = {
-        filters: [
-          { field: 'status', operator: '==', value: 'pending' }
-        ],
-        orderByField: 'createdAt',
-        orderDirection: 'desc'
-      };
-      
-      const requests = await leaveFirebaseService.getAll(queryOptions);
-      
-      // Transform the data to match AttendanceLeaveRequest interface
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch('/api/leave-requests?status=pending');
+
+      if (!response.ok) {
+        console.error('Failed to fetch pending leave requests:', response.status);
+        return [];
+      }
+
+      const requests: any[] = await response.json();
+
       return requests.map(req => ({
         id: req.id || '',
         employeeId: req.employeeId,
