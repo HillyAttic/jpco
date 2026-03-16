@@ -258,11 +258,11 @@ export function AttendanceCalendarModal({
       case 'half-day':
         return 'bg-orange-500 border-orange-600';
       case 'upcoming':
-        return 'bg-white border-gray-200';
+        return 'bg-white dark:bg-gray-dark border-gray-200 dark:border-gray-600';
       case 'holiday':
         return 'bg-blue-500 border-blue-600';
       default:
-        return 'bg-white border-gray-200';
+        return 'bg-white dark:bg-gray-dark border-gray-200 dark:border-gray-600';
     }
   };
 
@@ -465,7 +465,7 @@ export function AttendanceCalendarModal({
                         status.status === 'unapproved-leave' ? 'text-white' :
                         status.status === 'half-day' ? 'text-white' :
                         status.status === 'holiday' ? 'text-white' :
-                        'text-gray-700'
+                        'text-gray-700 dark:text-gray-300'
                       }`}>
                         {date.getDate()}
                       </div>

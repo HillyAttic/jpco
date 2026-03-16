@@ -28,7 +28,7 @@ export function StatCard({
   compact = false
 }: StatCardProps) {
   return (
-    <Card 
+    <Card
       className={`hover:shadow-lg transition-shadow duration-200 ${onClick ? 'cursor-pointer hover:border-blue-300 dark:hover:border-blue-600' : ''}`}
       onClick={onClick}
     >
@@ -39,7 +39,9 @@ export function StatCard({
         </div>
       </CardHeader>
       <CardContent className={compact ? 'pt-0 md:px-5 md:pb-5' : ''}>
-        <div className={`${compact ? 'text-xl md:text-4xl' : 'text-2xl'} font-bold md:font-normal text-gray-900 md:text-gray-700 dark:text-white`}>{value}</div>
+        <div className={`${compact ? 'text-xl md:text-4xl' : 'text-2xl'} font-bold md:font-normal text-gray-900 md:text-gray-700 dark:text-white`} style={{ fontSize: compact ? undefined : undefined }}>
+          {value}
+        </div>
         {compact && subtitle && (
           <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400 mt-2">{subtitle}</p>
         )}

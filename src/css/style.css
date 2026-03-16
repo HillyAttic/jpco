@@ -789,3 +789,15 @@ img {
     border-width: 0.5px;
   }
 }
+
+/* Custom dashboard stat card styles */
+@media (min-width: 768px) {
+  .md\:text-4xl {
+    font-size: 1.6rem !important;
+    line-height: 2.5rem !important;
+  }
+
+  .md\:font-normal {
+    font-weight: 450 !important;
+  }
+}

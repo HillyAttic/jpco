@@ -377,22 +377,22 @@ export function RecurringTaskClientModal({
     <div className="fixed inset-0 z-[60] overflow-y-auto">
       <div className="flex min-h-screen items-center justify-center p-4 pb-20 sm:pb-4">
         {/* Backdrop */}
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
           onClick={onClose}
         />
 
         {/* Modal */}
-        <div className="relative bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden">
+        <div className="relative bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="sticky top-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 px-6 py-4 flex items-center justify-between z-10">
-            <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">{task.title}</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+          <div className="sticky top-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
+            <div className="flex-1 min-w-0 pr-4">
+              <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">{task.title}</h2>
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Track completion for {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} • {visibleMonths[0]?.label || 'Current month'} only
               </p>
               {task.teamMemberMappings && task.teamMemberMappings.length > 0 && filteredClients.length < clients.length && (
-                <p className="text-xs text-purple-600 mt-1 flex items-center gap-1">
+                <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 flex items-center gap-1">
                   <UserGroupIcon className="w-3 h-3" />
                   Showing only your assigned clients
                 </p>
@@ -400,16 +400,16 @@ export function RecurringTaskClientModal({
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors"
+              className="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 transition-colors flex-shrink-0"
               aria-label="Close modal"
             >
-              <XMarkIcon className="w-6 h-6" />
+              <XMarkIcon className="w-5 h-5 sm:w-6 sm:h-6" />
             </button>
           </div>
 
           {/* Content */}
-          <div className="overflow-auto max-h-[calc(90vh-180px)]">
-            <div className="p-6">
+          <div className="overflow-auto flex-1 max-h-[calc(90vh-180px)]">
+            <div className="p-4 sm:p-6">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
@@ -427,13 +427,13 @@ export function RecurringTaskClientModal({
                   <table className="w-full border-collapse">
                     <thead>
                       <tr className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                        <th className="px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 min-w-[200px]">
+                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 min-w-[150px] sm:min-w-[200px]">
                           Client Name
                         </th>
                         {visibleMonths.map(month => (
-                          <th 
+                          <th
                             key={month.key}
-                            className="px-3 py-3 text-center text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 min-w-[80px]"
+                            className="px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 min-w-[60px] sm:min-w-[80px]"
                           >
                             <div>{month.monthName}</div>
                             <div className="text-xs font-normal text-gray-500 dark:text-gray-400">
@@ -443,32 +443,32 @@ export function RecurringTaskClientModal({
                         ))}
                       </tr>
                     </thead>
-                    <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200 dark:divide-gray-700">
                       {filteredClients.map((client, clientIndex) => {
                         return (
-                          <tr 
+                          <tr
                             key={client.id}
-                            className={clientIndex % 2 === 0 ? 'bg-white' : 'bg-gray-50'}
+                            className={clientIndex % 2 === 0 ? 'bg-white dark:bg-gray-dark' : 'bg-gray-50 dark:bg-gray-800'}
                           >
-                            <td className="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 sticky left-0 z-10" style={{ backgroundColor: clientIndex % 2 === 0 ? 'white' : '#f9fafb' }}>
+                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 sticky left-0 z-10 bg-white dark:bg-gray-dark">
                               <div>
-                                <div className="font-semibold">{client.clientName}</div>
+                                <div className="font-semibold text-xs sm:text-sm">{client.clientName}</div>
                                 {client.contact?.email && (
-                                  <div className="text-xs text-gray-500 dark:text-gray-400">{client.contact.email}</div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px] sm:max-w-none">{client.contact.email}</div>
                                 )}
                               </div>
                             </td>
                             {visibleMonths.map(month => (
-                              <td 
+                              <td
                                 key={month.key}
-                                className="px-3 py-3 text-center"
+                                className="px-2 sm:px-3 py-2 sm:py-3 text-center"
                               >
                                 <div className="flex justify-center">
                                   <input
                                     type="checkbox"
                                     checked={isCompleted(client.id, month.key)}
                                     onChange={() => toggleCompletion(client.id, month.key)}
-                                    className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer"
+                                    className="w-4 h-4 sm:w-5 sm:h-5 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer"
                                     aria-label={`Mark ${client.clientName} as completed for ${month.label}`}
                                   />
                                 </div>
@@ -486,20 +486,20 @@ export function RecurringTaskClientModal({
 
           {/* Footer */}
           <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <div className="text-sm text-gray-600 dark:text-gray-400">
+            <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
               Total: {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} × {visibleMonths.length} month{visibleMonths.length !== 1 ? 's' : ''}
             </div>
             <div className="flex gap-3 w-full sm:w-auto">
               <button
                 onClick={onClose}
-                className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:bg-gray-800 transition-colors"
+                className="flex-1 sm:flex-none px-4 py-2 text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:bg-gray-800 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 sm:flex-none px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none px-4 py-2 text-xs sm:text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {saving ? 'Saving...' : 'Save Changes'}
               </button>

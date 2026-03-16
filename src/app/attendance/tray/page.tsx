@@ -389,9 +389,9 @@ export default function AttendanceTrayPage() {
     if (!record.clockIn) {
       return <Badge variant="secondary">Not Clocked In</Badge>;
     } else if (record.clockOut) {
-      return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100">Completed</Badge>;
+      return <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-100 dark:bg-green-900 dark:text-green-300 dark:hover:bg-green-900">Completed</Badge>;
     } else {
-      return <Badge variant="default" className="bg-blue-100 text-blue-800 hover:bg-blue-100">Active</Badge>;
+      return <Badge variant="default" className="bg-blue-100 text-blue-800 hover:bg-blue-100 dark:bg-blue-900 dark:text-blue-300 dark:hover:bg-blue-900">Active</Badge>;
     }
   };
 
@@ -411,7 +411,7 @@ export default function AttendanceTrayPage() {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <Card className="p-8 text-center">
-          <div className="mx-auto h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center mb-4">
+          <div className="mx-auto h-12 w-12 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center mb-4">
             <Clock className="h-6 w-6 text-blue-600" />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Authentication Required</h2>
@@ -594,7 +594,7 @@ export default function AttendanceTrayPage() {
                   {/* Employee Info */}
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                         <Users className="w-5 h-5 text-blue-600" />
                       </div>
                       <div>

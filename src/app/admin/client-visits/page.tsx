@@ -147,15 +147,15 @@ export default function ClientVisitsPage() {
       {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow">
-          <div className="text-2xl sm:text-3xl font-bold text-blue-600">{clientReports.length}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{clientReports.length}</div>
           <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Clients</div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow">
-          <div className="text-2xl sm:text-3xl font-bold text-green-600">{totalVisitsAcrossClients}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-green-600 dark:text-green-400">{totalVisitsAcrossClients}</div>
           <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Visits</div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow">
-          <div className="text-2xl sm:text-3xl font-bold text-purple-600">
+          <div className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400">
             {clientReports.reduce((sum, c) => sum + c.monthlyData.length, 0)}
           </div>
           <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Active Months</div>
@@ -271,7 +271,7 @@ export default function ClientVisitsPage() {
                         {/* Month Header */}
                         <button
                           onClick={() => toggleMonth(monthKey)}
-                          className="w-full px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-750 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
+                          className="w-full px-4 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 transition"
                         >
                           <div className="flex items-center gap-2">
                             <CalendarIcon className="h-4 w-4 sm:h-5 sm:w-5 text-gray-400 flex-shrink-0" />
@@ -300,7 +300,7 @@ export default function ClientVisitsPage() {
                             {monthData.visits.map((visit, idx) => (
                               <div
                                 key={idx}
-                                className="px-3 sm:px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-750 transition"
+                                className="px-3 sm:px-6 py-3 hover:bg-gray-50 dark:hover:bg-gray-700 transition"
                               >
                                 <div className="flex flex-col gap-2 sm:gap-3">
                                   {/* Date and Time */}
