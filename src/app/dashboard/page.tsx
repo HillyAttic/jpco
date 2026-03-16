@@ -20,7 +20,9 @@ import {
   ExclamationTriangleIcon,
   ClipboardDocumentListIcon,
   UserGroupIcon,
-  CalendarIcon
+  CalendarIcon,
+  ArrowRightIcon,
+  CalendarDaysIcon
 } from '@heroicons/react/24/outline';
 import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
@@ -39,6 +41,9 @@ import { QuickActions } from '@/components/dashboard/QuickActions';
 import { PlanTaskModal } from '@/components/dashboard/PlanTaskModal';
 import { ClientListModal } from '@/components/dashboard/ClientListModal';
 import { TeamMembersModal } from '@/components/dashboard/TeamMembersModal';
+import { DelegateTaskModal } from '@/components/dashboard/DelegateTaskModal';
+import { ScheduleTaskModal } from '@/components/dashboard/ScheduleTaskModal';
+import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import { ProgressiveHydration, SkeletonLoader } from '@/components/ProgressiveHydration';
 import { useOptimizedFetch, batchFetch } from '@/hooks/use-optimized-fetch';
@@ -121,6 +126,10 @@ export default function DashboardPage() {
   const [selectedTaskForClients, setSelectedTaskForClients] = useState<DashboardTask | null>(null);
   const [showTeamMembersModal, setShowTeamMembersModal] = useState(false);
   const [selectedTaskForTeam, setSelectedTaskForTeam] = useState<DashboardTask | null>(null);
+  const [showDelegateModal, setShowDelegateModal] = useState(false);
+  const [selectedTaskForDelegate, setSelectedTaskForDelegate] = useState<DashboardTask | null>(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedTaskForSchedule, setSelectedTaskForSchedule] = useState<DashboardTask | null>(null);
 
   // Check if user is admin or manager
   const canViewAllTasks = isAdmin || isManager;
@@ -535,7 +544,13 @@ export default function DashboardPage() {
     const hasTeamButton = canViewAllTasks && (hasTeamMemberMapping || hasTeamId); // Show team button for admin/manager when task has team member mappings OR teamId
     const hasPlanButton = (userMapping || (!hasTeamMemberMapping && !hasTeamId)) && clientCount > 0; // Show Plan button only if user is mapped OR task has no team assignment
 
-    if (!hasClientsButton && !hasTeamButton && !hasPlanButton) {
+    // Delegate button: visible to all users who have been assigned via team member mapping
+    const hasDelegateButton = hasTeamMemberMapping && (userMapping || canViewAllTasks) && clientCount > 0;
+
+    // Schedule button: visible only to managers if the task has team member mappings
+    const hasScheduleButton = isManager && hasTeamMemberMapping;
+
+    if (!hasClientsButton && !hasTeamButton && !hasPlanButton && !hasDelegateButton && !hasScheduleButton) {
       return null;
     }
 
@@ -556,7 +571,7 @@ export default function DashboardPage() {
             Clients ({clientCount})
           </button>
         )}
-        
+
         {/* Team Button - Show for admin/manager when task has team member mappings or teamId */}
         {hasTeamButton && (
           <button
@@ -572,7 +587,7 @@ export default function DashboardPage() {
             Team {hasTeamMemberMapping ? `(${task.teamMemberMappings?.length || 0})` : ''}
           </button>
         )}
-        
+
         {/* Plan Button - Show if user is assigned and has clients */}
         {hasPlanButton && (
           <button
@@ -585,7 +600,39 @@ export default function DashboardPage() {
             className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
           >
             <CalendarIcon className="w-4 h-4" />
-            Plan Task
+            Plan
+          </button>
+        )}
+
+        {/* Delegate Button - Show to all assigned users */}
+        {hasDelegateButton && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTaskForDelegate(task);
+              setShowDelegateModal(true);
+              openModal();
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:hover:bg-orange-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
+          >
+            <ArrowRightIcon className="w-4 h-4" />
+            Delegate
+          </button>
+        )}
+
+        {/* Schedule Button - Show only to managers */}
+        {hasScheduleButton && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedTaskForSchedule(task);
+              setShowScheduleModal(true);
+              openModal();
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-teal-100 text-teal-700 hover:bg-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
+          >
+            <CalendarDaysIcon className="w-4 h-4" />
+            Schedule
           </button>
         )}
       </div>
@@ -1584,6 +1631,53 @@ export default function DashboardPage() {
           taskTitle={selectedTaskForTeam.title}
           teamMembers={selectedTaskForTeam.teamMemberMappings || []}
           teamId={selectedTaskForTeam.teamId}
+        />
+      )}
+
+      {/* Delegate Task Modal */}
+      {showDelegateModal && selectedTaskForDelegate && (
+        <DelegateTaskModal
+          isOpen={showDelegateModal}
+          onClose={() => {
+            setShowDelegateModal(false);
+            setSelectedTaskForDelegate(null);
+            closeModal();
+          }}
+          taskId={selectedTaskForDelegate.id || ''}
+          taskTitle={selectedTaskForDelegate.title}
+          currentUserId={user?.uid || ''}
+          currentUserName={userProfile?.displayName || user?.email || 'Unknown User'}
+          currentUserRole={isAdmin ? 'admin' : isManager ? 'manager' : 'employee'}
+          assignedClientIds={
+            selectedTaskForDelegate.teamMemberMappings
+              ?.find(m => m.userId === user?.uid)
+              ?.clientIds || selectedTaskForDelegate.contactIds || []
+          }
+          teamMemberMappings={selectedTaskForDelegate.teamMemberMappings}
+          onDelegated={() => {
+            // Refresh tasks to show updated delegation
+            window.location.reload();
+          }}
+        />
+      )}
+
+      {/* Schedule Task Modal (Manager only) */}
+      {showScheduleModal && selectedTaskForSchedule && (
+        <ScheduleTaskModal
+          isOpen={showScheduleModal}
+          onClose={() => {
+            setShowScheduleModal(false);
+            setSelectedTaskForSchedule(null);
+            closeModal();
+          }}
+          taskId={selectedTaskForSchedule.id || ''}
+          taskTitle={selectedTaskForSchedule.title}
+          currentUserId={user?.uid || ''}
+          teamMemberMappings={selectedTaskForSchedule.teamMemberMappings}
+          contactIds={selectedTaskForSchedule.contactIds}
+          onScheduled={() => {
+            toast.success('Schedule saved successfully!');
+          }}
         />
       )}
     </div>
