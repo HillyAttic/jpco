@@ -202,7 +202,7 @@ export default function LeaveApprovalsPage() {
                       )}
                       {request.status !== 'pending' && (
                         <div className="text-sm text-gray-500">
-                          By {request.approverName || 'N/A'}
+                          By {request.approverName || 'Manager'}
                         </div>
                       )}
                     </td>

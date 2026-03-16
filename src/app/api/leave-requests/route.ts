@@ -83,10 +83,8 @@ export async function GET(request: NextRequest) {
             Array.from(missingApproverIds).map((uid) => adminDb.collection('users').doc(uid).get())
           );
           approverDocs.forEach((doc) => {
-            if (doc.exists) {
-              const d = doc.data()!;
-              approverNameMap[doc.id] = d.displayName || d.name || d.email || 'Unknown';
-            }
+            const d = doc.exists ? doc.data()! : null;
+            approverNameMap[doc.id] = (d && (d.displayName || d.name || d.email)) || 'Manager';
           });
         }
 
@@ -95,7 +93,7 @@ export async function GET(request: NextRequest) {
           return {
             id: doc.id,
             ...data,
-            approverName: data.approverName || (data.approvedBy ? approverNameMap[data.approvedBy] : undefined),
+            approverName: data.approverName || (data.approvedBy ? (approverNameMap[data.approvedBy] || 'Manager') : undefined),
             startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
             endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
@@ -116,11 +114,29 @@ export async function GET(request: NextRequest) {
         if (status) filteredDocs = filteredDocs.filter((doc) => doc.data().status === status);
         if (leaveType) filteredDocs = filteredDocs.filter((doc) => doc.data().leaveType === leaveType);
 
+        // Backfill approverName for old records
+        const missingApproverIds30 = new Set<string>();
+        filteredDocs.forEach((doc) => {
+          const data = doc.data();
+          if (!data.approverName && data.approvedBy) missingApproverIds30.add(data.approvedBy);
+        });
+        const approverNameMap30: Record<string, string> = {};
+        if (missingApproverIds30.size > 0) {
+          const approverDocs = await Promise.all(
+            Array.from(missingApproverIds30).map((uid) => adminDb.collection('users').doc(uid).get())
+          );
+          approverDocs.forEach((doc) => {
+            const d = doc.exists ? doc.data()! : null;
+            approverNameMap30[doc.id] = (d && (d.displayName || d.name || d.email)) || 'Manager';
+          });
+        }
+
         const requests = filteredDocs.map((doc) => {
           const data = doc.data();
           return {
             id: doc.id,
             ...data,
+            approverName: data.approverName || (data.approvedBy ? (approverNameMap30[data.approvedBy] || 'Manager') : undefined),
             startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
             endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
@@ -173,10 +189,8 @@ export async function GET(request: NextRequest) {
           Array.from(missingApproverIds).map((uid) => adminDb.collection('users').doc(uid).get())
         );
         approverDocs.forEach((doc) => {
-          if (doc.exists) {
-            const d = doc.data()!;
-            approverNameMap[doc.id] = d.displayName || d.name || d.email || 'Unknown';
-          }
+          const d = doc.exists ? doc.data()! : null;
+          approverNameMap[doc.id] = (d && (d.displayName || d.name || d.email)) || 'Manager';
         });
       }
 
@@ -185,7 +199,7 @@ export async function GET(request: NextRequest) {
         return {
           id: doc.id,
           ...data,
-          approverName: data.approverName || (data.approvedBy ? approverNameMap[data.approvedBy] : undefined),
+          approverName: data.approverName || (data.approvedBy ? (approverNameMap[data.approvedBy] || 'Manager') : undefined),
           startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
           endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
           createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
@@ -226,10 +240,8 @@ export async function GET(request: NextRequest) {
         Array.from(missingApproverIds).map((uid) => adminDb.collection('users').doc(uid).get())
       );
       approverDocs.forEach((doc) => {
-        if (doc.exists) {
-          const d = doc.data()!;
-          approverNameMap[doc.id] = d.displayName || d.name || d.email || 'Unknown';
-        }
+        const d = doc.exists ? doc.data()! : null;
+        approverNameMap[doc.id] = (d && (d.displayName || d.name || d.email)) || 'Manager';
       });
     }
 
@@ -239,7 +251,7 @@ export async function GET(request: NextRequest) {
         id: doc.id,
         ...data,
         // Backfill approverName for old records that only have approvedBy UID
-        approverName: data.approverName || (data.approvedBy ? approverNameMap[data.approvedBy] : undefined),
+        approverName: data.approverName || (data.approvedBy ? (approverNameMap[data.approvedBy] || 'Manager') : undefined),
         // Convert Firestore Timestamps to ISO strings for JSON serialization
         startDate: data.startDate?.toDate ? data.startDate.toDate().toISOString() : data.startDate,
         endDate: data.endDate?.toDate ? data.endDate.toDate().toISOString() : data.endDate,
