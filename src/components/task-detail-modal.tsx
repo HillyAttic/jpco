@@ -27,12 +27,21 @@ interface TaskDetailModalProps {
   onUpdate?: (updatedTask: Task) => void;
 }
 
+interface CommentAttachmentLocal {
+  name: string;
+  url: string;
+  type: string;
+  size: number;
+  storagePath?: string;
+}
+
 interface Comment {
   id: string;
   author: string;
   authorId?: string;
   content: string;
   createdAt: Date;
+  attachments?: CommentAttachmentLocal[];
 }
 
 export function TaskDetailModal({ open, onClose, task, onUpdate }: TaskDetailModalProps) {
