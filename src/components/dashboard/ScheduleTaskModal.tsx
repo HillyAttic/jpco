@@ -68,19 +68,19 @@ export function ScheduleTaskModal({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
-  // Get clients available for selected employee based on team member mapping
+  // Get clients available for the selected employee.
+  // Priority: employee's own mapping clientIds → task-level contactIds → all loaded clients.
   const getClientsForEmployee = (employeeId: string): Client[] => {
     if (!employeeId) return [];
 
-    // Find the mapping for this employee
-    const mapping = teamMemberMappings?.find(m => m.userId === employeeId);
-    if (mapping) {
-      return allClients.filter(c => c.id && mapping.clientIds.includes(c.id));
+    // If this employee has their own mapping with clients, use those
+    const empMapping = teamMemberMappings?.find(m => m.userId === employeeId);
+    if (empMapping && empMapping.clientIds.length > 0) {
+      return allClients.filter(c => c.id && empMapping.clientIds.includes(c.id));
     }
 
-    // If no mapping, show all task clients
-    const taskClientIds = contactIds || [];
-    return allClients.filter(c => c.id && taskClientIds.includes(c.id));
+    // Otherwise fall back to the full task client list (all clients already loaded)
+    return allClients;
   };
 
   // Load employees and clients
@@ -90,28 +90,30 @@ export function ScheduleTaskModal({
     const loadData = async () => {
       setLoading(true);
       try {
-        // Load employees under this manager
+        // Load ALL employees under this manager from the hierarchy.
+        // We intentionally do NOT filter by teamMemberMappings here — the
+        // admin may have assigned the task to the manager directly, meaning
+        // only the manager is in teamMemberMappings. The Schedule modal lets
+        // the manager distribute work to their entire team.
         const empResponse = await authenticatedFetch('/api/manager-hierarchy/my-employees');
         if (empResponse.ok) {
           const emps: ScheduleEmployee[] = await empResponse.json();
-          // Filter to only employees in the team member mappings if available
-          if (teamMemberMappings && teamMemberMappings.length > 0) {
-            const mappedUserIds = new Set(teamMemberMappings.map(m => m.userId));
-            setEmployees(emps.filter(e => mappedUserIds.has(e.id)));
-          } else {
-            setEmployees(emps);
-          }
+          setEmployees(emps);
         }
 
-        // Load all clients for the task
+        // Load all clients for the task.
+        // Union of: every mapping's clientIds + task-level contactIds.
         const allTaskClients = await clientService.getAll({ status: 'active', limit: 1000 });
         const taskClientIds = new Set<string>();
 
-        // Collect all client IDs from mappings and contactIds
         teamMemberMappings?.forEach(m => m.clientIds.forEach(id => taskClientIds.add(id)));
         contactIds?.forEach(id => taskClientIds.add(id));
 
-        setAllClients(allTaskClients.filter(c => c.id && taskClientIds.has(c.id)));
+        // If we have an explicit client list, filter to it; otherwise show all (shouldn't happen)
+        const filtered = taskClientIds.size > 0
+          ? allTaskClients.filter(c => c.id && taskClientIds.has(c.id))
+          : allTaskClients;
+        setAllClients(filtered);
       } catch (error) {
         console.error('Error loading schedule data:', error);
         toast.error('Failed to load scheduling data');

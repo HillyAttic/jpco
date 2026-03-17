@@ -119,25 +119,33 @@ export async function GET(request: NextRequest) {
       
       console.log(`[Recurring Tasks API] Manager ${userId} manages ${managedEmployeeIds.size} employees`);
       
-      // Filter tasks: created by manager OR assigned to managed employees
+      // Filter tasks: created by manager OR directly assigned to manager OR assigned to managed employees
       tasks = tasks.filter(task => {
         // Check if task was created by this manager
         const isCreatedByManager = task.createdBy === userId;
-        
-        // Check if task is assigned to any managed employee
+
+        // Check if task is DIRECTLY assigned to this manager via team member mapping
+        const isDirectlyAssignedToManager = task.teamMemberMappings &&
+          Array.isArray(task.teamMemberMappings) &&
+          task.teamMemberMappings.some(mapping => mapping.userId === userId);
+
+        // Check if task is assigned to any managed employee via team member mappings
         const isAssignedToManagedEmployee = task.teamMemberMappings &&
           Array.isArray(task.teamMemberMappings) &&
           task.teamMemberMappings.some(mapping => managedEmployeeIds.has(mapping.userId));
-        
+
+        const willShow = isCreatedByManager || isDirectlyAssignedToManager || isAssignedToManagedEmployee;
+
         console.log(`[Recurring Tasks API] Task "${task.title}":`, {
           taskId: task.id,
           createdBy: task.createdBy,
           isCreatedByManager,
+          isDirectlyAssignedToManager,
           isAssignedToManagedEmployee,
-          willShow: isCreatedByManager || isAssignedToManagedEmployee
+          willShow,
         });
-        
-        return isCreatedByManager || isAssignedToManagedEmployee;
+
+        return willShow;
       });
       
       console.log(`[Recurring Tasks API] Manager ${userId} filtered tasks: ${tasks.length}`);

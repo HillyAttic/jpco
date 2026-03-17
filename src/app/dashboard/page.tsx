@@ -152,24 +152,32 @@ export default function DashboardPage() {
     { cacheTime: 5 * 60 * 1000, dedupe: true, retry: 3 }
   );
 
+  // Memoize the recurring-tasks fetcher so its reference only changes when
+  // the user UID changes — prevents unnecessary re-fetches on every render.
+  const recurringTasksFetcher = React.useCallback(async () => {
+    const auth = await getAuthLazy();
+    const currentUser = auth.currentUser;
+    if (!currentUser) return [];
+
+    const token = await currentUser.getIdToken(false);
+    const response = await fetch('/api/recurring-tasks', {
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      }
+    });
+    return response.ok ? response.json() : [];
+  }, [user?.uid]); // only re-create when the uid actually changes
+
   // ✅ OPTIMIZATION: Fetch recurring tasks with optimized fetch
+  // Key includes user uid so each user gets their own cache slot.
+  // When user is null (auth not yet ready) we skip the fetch and return []
+  // without poisoning any user-specific cache.
   const { data: recurringTasks, loading: recurringLoading } = useOptimizedFetch(
-    'dashboard-recurring-tasks',
-    async () => {
-      const auth = await getAuthLazy();
-      const currentUser = auth.currentUser;
-      if (!currentUser) return [];
-      
-      const token = await currentUser.getIdToken(false); // Use cached token
-      const response = await fetch('/api/recurring-tasks', {
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        }
-      });
-      return response.ok ? response.json() : [];
-    },
-    { cacheTime: 5 * 60 * 1000, dedupe: true }
+    user ? `dashboard-recurring-tasks-${user.uid}` : 'dashboard-recurring-tasks-anonymous',
+    recurringTasksFetcher,
+    // Don't cache the anonymous-user fetch; only cache when we have a real uid
+    { cacheTime: user ? 5 * 60 * 1000 : 0, dedupe: true }
   );
 
   // ✅ OPTIMIZATION: Defer rendering of non-critical components
