@@ -66,7 +66,7 @@ export function RecurringTaskModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClients, setSelectedClients] = useState<Client[]>([]);
-  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank'>('all');
+  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank' | 'tcs' | 'tds' | 'statutoryAudit'>('all');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
@@ -196,12 +196,18 @@ export function RecurringTaskModal({
             return !!client.compliance?.clientVisit;
           case 'bank':
             return !!client.compliance?.bank;
+          case 'tcs':
+            return !!client.compliance?.tcs;
+          case 'tds':
+            return !!client.compliance?.tds;
+          case 'statutoryAudit':
+            return !!client.compliance?.statutoryAudit;
           default:
             return true;
         }
       });
     }
-    
+
     // Apply search query
     if (clientSearchQuery.trim() !== '') {
       const query = clientSearchQuery.toLowerCase();
@@ -529,6 +535,9 @@ export function RecurringTaskModal({
                 <option value="accounting">Only with Accounting</option>
                 <option value="clientVisit">Only with Client Visit</option>
                 <option value="bank">Only with Bank</option>
+                <option value="tcs">Only with TCS</option>
+                <option value="tds">Only with TDS</option>
+                <option value="statutoryAudit">Only with Statutory Audit</option>
               </Select>
             </div>
 

@@ -33,6 +33,9 @@ const createClientSchema = z.object({
     accounting: z.boolean(),
     clientVisit: z.boolean(),
     bank: z.boolean(),
+    tcs: z.boolean().optional(),
+    tds: z.boolean().optional(),
+    statutoryAudit: z.boolean().optional(),
   }).optional(),
   status: z.enum(['active', 'inactive']).default('active'),
 });

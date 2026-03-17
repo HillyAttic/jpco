@@ -75,6 +75,9 @@ export function ClientFilter({
             <option value="accounting">Accounting</option>
             <option value="clientVisit">Client Visit</option>
             <option value="bank">Bank</option>
+            <option value="tcs">TCS</option>
+            <option value="tds">TDS</option>
+            <option value="statutoryAudit">Statutory Audit</option>
           </Select>
         </div>
 

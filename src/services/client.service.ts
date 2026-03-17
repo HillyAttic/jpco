@@ -36,6 +36,9 @@ export interface Client {
     accounting: boolean;
     clientVisit: boolean;
     bank: boolean;
+    tcs: boolean;
+    tds: boolean;
+    statutoryAudit: boolean;
   };
   status: 'active' | 'inactive';
   createdAt?: Date;
@@ -64,6 +67,9 @@ export interface ClientFormData {
   complianceAccounting?: boolean;
   complianceClientVisit?: boolean;
   complianceBank?: boolean;
+  complianceTcs?: boolean;
+  complianceTds?: boolean;
+  complianceStatutoryAudit?: boolean;
 }
 
 export interface ClientImportRow {
@@ -88,6 +94,9 @@ export interface ClientImportRow {
   Accounting?: string;
   'Client Visit'?: string;
   Bank?: string;
+  TCS?: string;
+  TDS?: string;
+  'Statutory Audit'?: string;
 }
 
 // Create the Firebase service instance for clients

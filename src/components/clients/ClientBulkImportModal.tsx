@@ -102,7 +102,7 @@ export function ClientBulkImportModal({
           country: row.Country || undefined,
           zipCode: row['Zip Code'] || undefined,
         } : undefined,
-        compliance: (row.ROC !== undefined || row.GSTR1 !== undefined || row.GST3B !== undefined || row.IFF !== undefined || row.ITR !== undefined || row['Tax Audit'] !== undefined || row.Accounting !== undefined || row['Client Visit'] !== undefined || row.Bank !== undefined) ? {
+        compliance: (row.ROC !== undefined || row.GSTR1 !== undefined || row.GST3B !== undefined || row.IFF !== undefined || row.ITR !== undefined || row['Tax Audit'] !== undefined || row.Accounting !== undefined || row['Client Visit'] !== undefined || row.Bank !== undefined || row.TCS !== undefined || row.TDS !== undefined || row['Statutory Audit'] !== undefined) ? {
           roc: parseYN(row.ROC ?? 'N'),
           gstr1: parseYN(row.GSTR1 ?? 'N'),
           gst3b: parseYN(row.GST3B ?? 'N'),
@@ -112,6 +112,9 @@ export function ClientBulkImportModal({
           accounting: parseYN(row.Accounting ?? 'N'),
           clientVisit: parseYN(row['Client Visit'] ?? 'N'),
           bank: parseYN(row.Bank ?? 'N'),
+          tcs: parseYN(row.TCS ?? 'N'),
+          tds: parseYN(row.TDS ?? 'N'),
+          statutoryAudit: parseYN(row['Statutory Audit'] ?? 'N'),
         } : undefined,
         status: 'active',
       }));
@@ -176,6 +179,9 @@ export function ClientBulkImportModal({
       'Accounting',
       'Client Visit',
       'Bank',
+      'TCS',
+      'TDS',
+      'Statutory Audit',
     ];
     const exampleRow = [
       'ABC Pvt Ltd',
@@ -197,6 +203,9 @@ export function ClientBulkImportModal({
       'Y',
       'N',
       'Y',
+      'N',
+      'N',
+      'N',
       'N',
       'N',
     ];
@@ -230,7 +239,7 @@ export function ClientBulkImportModal({
                   Download CSV Template
                 </h4>
                 <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
-                  Use our template to ensure your data is formatted correctly. Only Client Name is required. Compliance fields (ROC, GSTR1, GST3B, IFF, ITR, Tax Audit, Accounting, Client Visit, Bank) accept Y or N values.
+                  Use our template to ensure your data is formatted correctly. Only Client Name is required. Compliance fields (ROC, GSTR1, GST3B, IFF, ITR, Tax Audit, Accounting, Client Visit, Bank, TCS, TDS, Statutory Audit) accept Y or N values.
                 </p>
                 <Button
                   variant="outline"

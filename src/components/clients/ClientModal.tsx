@@ -39,6 +39,9 @@ const clientFormSchema = z.object({
   complianceAccounting: z.boolean().optional(),
   complianceClientVisit: z.boolean().optional(),
   complianceBank: z.boolean().optional(),
+  complianceTcs: z.boolean().optional(),
+  complianceTds: z.boolean().optional(),
+  complianceStatutoryAudit: z.boolean().optional(),
   status: z.enum(['active', 'inactive']),
 });
 
@@ -139,6 +142,9 @@ export function ClientModal({
         complianceAccounting: client.compliance?.accounting,
         complianceClientVisit: client.compliance?.clientVisit,
         complianceBank: client.compliance?.bank,
+        complianceTcs: client.compliance?.tcs,
+        complianceTds: client.compliance?.tds,
+        complianceStatutoryAudit: client.compliance?.statutoryAudit,
         status: client.status,
       });
       setAvatarPreview(null);
@@ -165,6 +171,9 @@ export function ClientModal({
         complianceAccounting: false,
         complianceClientVisit: false,
         complianceBank: false,
+        complianceTcs: false,
+        complianceTds: false,
+        complianceStatutoryAudit: false,
         status: 'active',
       });
       setAvatarPreview(null);
@@ -368,6 +377,9 @@ export function ClientModal({
                 { field: 'complianceAccounting', label: 'Accounting' },
                 { field: 'complianceClientVisit', label: 'Client Visit' },
                 { field: 'complianceBank', label: 'Bank' },
+                { field: 'complianceTcs', label: 'TCS' },
+                { field: 'complianceTds', label: 'TDS' },
+                { field: 'complianceStatutoryAudit', label: 'Statutory Audit' },
               ] as const).map(({ field, label }) => (
                 <label key={field} className="flex items-center gap-2 cursor-pointer">
                   <input
