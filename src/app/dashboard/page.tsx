@@ -1833,7 +1833,7 @@ export default function DashboardPage() {
           </div>
         ) : (
           <TaskReportModal
-            task={selectedTaskForReport as RecurringTask}
+            task={selectedTaskForReport as unknown as RecurringTask}
             clients={reportModalClients}
             completions={reportModalCompletions}
             onClose={() => {
