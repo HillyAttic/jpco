@@ -157,11 +157,21 @@ export default function DashboardPage() {
     preloadFirebase();
   }, []);
 
+  // ✅ OPTIMIZATION: Memoize the non-recurring-tasks fetcher so its reference only changes
+  // when the user UID changes — prevents stale cache hits from unauthenticated fetches.
+  const nonRecurringTasksFetcher = React.useCallback(async () => {
+    const auth = await getAuthLazy();
+    const currentUser = auth.currentUser;
+    if (!currentUser) return [];
+    return taskApi.getTasks();
+  }, [user?.uid]);
+
   // ✅ OPTIMIZATION: Use optimized fetch with caching for tasks
+  // Key is user-specific to prevent serving one user's (empty) cache to another.
   const { data: nonRecurringTasks, loading: tasksLoading, error: tasksError } = useOptimizedFetch(
-    'dashboard-non-recurring-tasks',
-    () => taskApi.getTasks(),
-    { cacheTime: 5 * 60 * 1000, dedupe: true, retry: 3 }
+    user ? `dashboard-non-recurring-tasks-${user.uid}` : 'dashboard-non-recurring-tasks-anonymous',
+    nonRecurringTasksFetcher,
+    { cacheTime: user ? 5 * 60 * 1000 : 0, dedupe: true, retry: 3 }
   );
 
   // Memoize the recurring-tasks fetcher so its reference only changes when

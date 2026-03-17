@@ -63,50 +63,55 @@ export async function GET(request: NextRequest) {
     // Fetch all tasks
     let tasks = await nonRecurringTaskAdminService.getAll(filters);
 
+    console.log(`[GET /api/tasks] Total tasks from Firestore: ${tasks.length}, user: uid=${userId}, role=${userRole}`);
+
     // Filter tasks based on user role
     if (userRole === 'admin') {
-      // Admins only see tasks they created
-      tasks = tasks.filter(task => task.createdBy === userId);
-      console.log(`Admin ${userId} filtered tasks (created by them):`, tasks.length);
+      // Admins see all tasks (they created OR assigned to anyone)
+      console.log(`[GET /api/tasks] Admin ${userId} - returning all ${tasks.length} tasks`);
     } else if (userRole === 'manager') {
-      // Managers see tasks they created OR tasks assigned to their managed employees
+      // Managers see tasks they created OR tasks assigned to them or their managed employees
       const { adminDb } = await import('@/lib/firebase-admin');
-      
+
       // Get employees managed by this manager
       const hierarchySnapshot = await adminDb
         .collection('manager-hierarchies')
         .where('managerId', '==', userId)
         .limit(1)
         .get();
-      
+
       const managedEmployeeIds = new Set<string>();
+      managedEmployeeIds.add(userId); // Include manager themselves
       if (!hierarchySnapshot.empty) {
         const hierarchy = hierarchySnapshot.docs[0].data();
         (hierarchy.employeeIds || []).forEach((id: string) => managedEmployeeIds.add(id));
       }
-      
-      // Filter tasks: created by manager OR assigned to managed employees
+
+      // Filter tasks: created by manager OR assigned to manager/managed employees
       tasks = tasks.filter(task => {
         const isCreatedByManager = task.createdBy === userId;
-        const isAssignedToManagedEmployee = task.assignedTo && 
+        const isAssignedToManagedEmployee = task.assignedTo &&
           Array.isArray(task.assignedTo) &&
           task.assignedTo.some(assigneeId => managedEmployeeIds.has(assigneeId));
-        
+
         return isCreatedByManager || isAssignedToManagedEmployee;
       });
-      
-      console.log(`Manager ${userId} filtered tasks:`, tasks.length);
+
+      console.log(`[GET /api/tasks] Manager ${userId} filtered tasks: ${tasks.length}`);
     } else {
-      // Employees only see tasks assigned to them
-      tasks = tasks.filter(task => {
-        // Check if task has assignedTo array and if it includes the user's ID
-        if (!task.assignedTo || !Array.isArray(task.assignedTo)) {
-          return false;
-        }
-        return task.assignedTo.includes(userId);
+      // Employees see tasks assigned to them OR created by them
+      console.log(`[GET /api/tasks] Employee ${userId} checking ${tasks.length} tasks for assignment match...`);
+      tasks.forEach((t, i) => {
+        console.log(`[GET /api/tasks]   Task[${i}]: id=${t.id}, title="${t.title}", assignedTo=${JSON.stringify(t.assignedTo)}, createdBy=${t.createdBy}`);
       });
 
-      console.log(`Employee ${userId} filtered tasks:`, tasks.length);
+      tasks = tasks.filter(task => {
+        const isAssignedToUser = task.assignedTo && Array.isArray(task.assignedTo) && task.assignedTo.includes(userId);
+        const isCreatedByUser = task.createdBy === userId;
+        return isAssignedToUser || isCreatedByUser;
+      });
+
+      console.log(`[GET /api/tasks] Employee ${userId} filtered tasks: ${tasks.length}`);
     }
 
     return NextResponse.json(tasks, { status: 200 });

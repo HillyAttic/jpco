@@ -30,6 +30,7 @@ interface ClientMonthlyReport {
   clientName: string;
   monthlyData: MonthlyVisits[];
   totalVisits: number;
+  isBank: boolean;
 }
 
 /**
@@ -301,7 +302,8 @@ export async function GET(request: NextRequest) {
         clientId: client.id!,
         clientName: client.clientName,
         monthlyData,
-        totalVisits
+        totalVisits,
+        isBank: client.compliance?.bank ?? false,
       });
     }
 

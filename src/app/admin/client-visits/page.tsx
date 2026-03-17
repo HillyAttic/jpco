@@ -33,6 +33,7 @@ interface ClientMonthlyReport {
   clientName: string;
   monthlyData: MonthlyVisits[];
   totalVisits: number;
+  isBank?: boolean;
 }
 
 export default function ClientVisitsPage() {
@@ -43,6 +44,7 @@ export default function ClientVisitsPage() {
   const [endDate, setEndDate] = useState('');
   const [expandedClients, setExpandedClients] = useState<Set<string>>(new Set());
   const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<'visits' | 'bank'>('visits');
 
   useEffect(() => {
     fetchClientReports();
@@ -104,7 +106,10 @@ export default function ClientVisitsPage() {
     setExpandedMonths(newExpanded);
   };
 
-  const totalVisitsAcrossClients = clientReports.reduce((sum, client) => sum + client.totalVisits, 0);
+  const regularClients = clientReports.filter(c => !c.isBank);
+  const bankClients = clientReports.filter(c => c.isBank);
+  const activeClients = activeTab === 'visits' ? regularClients : bankClients;
+  const totalVisitsAcrossClients = activeClients.reduce((sum, client) => sum + client.totalVisits, 0);
 
   const getAttendanceStatusBadge = (status?: string) => {
     switch (status) {
@@ -144,10 +149,44 @@ export default function ClientVisitsPage() {
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Monthly visit reports organized by client</p>
       </div>
 
+      {/* Tabs */}
+      <div className="flex gap-1 mb-4 sm:mb-6 border-b border-gray-200 dark:border-gray-700">
+        <button
+          onClick={() => setActiveTab('visits')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition ${
+            activeTab === 'visits'
+              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-b-white dark:border-b-gray-800 border-gray-200 dark:border-gray-700 -mb-px'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Client Visits
+          {regularClients.length > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              {regularClients.length}
+            </span>
+          )}
+        </button>
+        <button
+          onClick={() => setActiveTab('bank')}
+          className={`px-4 py-2 text-sm font-medium rounded-t-lg transition ${
+            activeTab === 'bank'
+              ? 'bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-b-white dark:border-b-gray-800 border-gray-200 dark:border-gray-700 -mb-px'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+          }`}
+        >
+          Bank
+          {bankClients.length > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300">
+              {bankClients.length}
+            </span>
+          )}
+        </button>
+      </div>
+
       {/* Summary Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-6">
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow">
-          <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{clientReports.length}</div>
+          <div className="text-2xl sm:text-3xl font-bold text-blue-600 dark:text-blue-400">{activeClients.length}</div>
           <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Clients</div>
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow">
@@ -156,7 +195,7 @@ export default function ClientVisitsPage() {
         </div>
         <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-lg shadow">
           <div className="text-2xl sm:text-3xl font-bold text-purple-600 dark:text-purple-400">
-            {clientReports.reduce((sum, c) => sum + c.monthlyData.length, 0)}
+            {activeClients.reduce((sum, c) => sum + c.monthlyData.length, 0)}
           </div>
           <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Active Months</div>
         </div>
@@ -213,7 +252,7 @@ export default function ClientVisitsPage() {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-sm sm:text-base text-gray-600 dark:text-gray-400">Loading client reports...</p>
         </div>
-      ) : clientReports.length === 0 ? (
+      ) : activeClients.length === 0 ? (
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8 sm:p-12 text-center">
           <p className="text-sm sm:text-base text-gray-500 dark:text-gray-400">No client visits found</p>
           {searchTerm && (
@@ -224,7 +263,7 @@ export default function ClientVisitsPage() {
         </div>
       ) : (
         <div className="space-y-3 sm:space-y-4">
-          {clientReports.map((client) => (
+          {activeClients.map((client) => (
             <div
               key={client.clientId}
               className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden"

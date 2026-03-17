@@ -48,10 +48,10 @@ export function TaskCreationModal({ open, onClose, onTaskCreated }: TaskCreation
   const fetchEmployees = async () => {
     try {
       setLoadingEmployees(true);
-      const response = await authenticatedFetch('/api/employees');
+      const response = await authenticatedFetch('/api/manager-hierarchy/my-employees');
       if (response.ok) {
         const data = await response.json();
-        setEmployees(data);
+        setEmployees(Array.isArray(data) ? data : data.data || []);
       }
     } catch (error) {
       console.error('Error fetching employees:', error);
