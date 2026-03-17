@@ -13,22 +13,23 @@
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
-import { 
-  PlusCircleIcon, 
-  ClockIcon, 
-  CheckCircleIcon, 
+import {
+  PlusCircleIcon,
+  ClockIcon,
+  CheckCircleIcon,
   ExclamationTriangleIcon,
   ClipboardDocumentListIcon,
   UserGroupIcon,
   CalendarIcon,
   ArrowRightIcon,
-  CalendarDaysIcon
+  CalendarDaysIcon,
+  ChartBarIcon
 } from '@heroicons/react/24/outline';
 import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { activityService } from '@/services/activity.service';
-import { clientService } from '@/services/client.service';
+import { clientService, Client } from '@/services/client.service';
 import { employeeService } from '@/services/employee.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useModal } from '@/contexts/modal-context';
@@ -52,6 +53,9 @@ import { processInChunks } from '@/utils/chunk-tasks';
 import { EnhancedKanbanBoard } from '@/components/kanban/EnhancedKanbanBoard';
 import { kanbanService } from '@/services/kanban.service';
 import { KanbanTask, Business } from '@/types/kanban.types';
+import { TaskReportModal } from '@/components/reports/TaskReportModal';
+import { generateMonths } from '@/utils/report-utils';
+import { ClientTaskCompletion } from '@/services/task-completion.service';
 
 // Lazy load heavy chart components with progressive hydration
 const TaskDistributionChart = React.lazy(() => 
@@ -130,6 +134,14 @@ export default function DashboardPage() {
   const [selectedTaskForDelegate, setSelectedTaskForDelegate] = useState<DashboardTask | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedTaskForSchedule, setSelectedTaskForSchedule] = useState<DashboardTask | null>(null);
+
+  // Completion stats and inline report modal
+  const [taskCompletionStats, setTaskCompletionStats] = useState<Map<string, { completed: number; total: number }>>(new Map());
+  const [selectedTaskForReport, setSelectedTaskForReport] = useState<DashboardTask | null>(null);
+  const [showDashboardReportModal, setShowDashboardReportModal] = useState(false);
+  const [reportModalClients, setReportModalClients] = useState<Client[]>([]);
+  const [reportModalCompletions, setReportModalCompletions] = useState<ClientTaskCompletion[]>([]);
+  const [reportModalLoading, setReportModalLoading] = useState(false);
 
   // Check if user is admin or manager
   const canViewAllTasks = isAdmin || isManager;
@@ -254,6 +266,71 @@ export default function DashboardPage() {
     const name = await getClientName(clientId);
     setClientNamesCache(prev => ({ ...prev, [clientId]: name }));
     return name;
+  };
+
+  // Fetch current-period completion counts for all recurring tasks
+  const fetchCompletionStats = async () => {
+    const recurringOnly = tasks.filter(t => t.isRecurring && t.id);
+    if (recurringOnly.length === 0) return;
+    const auth = await getAuthLazy();
+    const token = await auth.currentUser?.getIdToken(false);
+    if (!token) return;
+    const headers = { 'Authorization': `Bearer ${token}` };
+    const newStats = new Map<string, { completed: number; total: number }>();
+    await Promise.all(
+      recurringOnly.map(async (task) => {
+        try {
+          const res = await fetch(`/api/task-completions?recurringTaskId=${task.id}`, { headers });
+          if (!res.ok) return;
+          const completions: ClientTaskCompletion[] = await res.json();
+          const months = generateMonths(task.recurrencePattern!);
+          const currentPeriodKey = months[0]?.key;
+          if (!currentPeriodKey) return;
+          const completed = completions.filter(c => c.isCompleted && c.monthKey === currentPeriodKey).length;
+          const hasTeamMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
+          const total = hasTeamMapping
+            ? task.teamMemberMappings!.reduce((s: number, m: { clientIds: string[] }) => s + m.clientIds.length, 0)
+            : (task.contactIds?.length || 0);
+          newStats.set(task.id!, { completed, total });
+        } catch {
+          // silently skip failed stat fetches
+        }
+      })
+    );
+    setTaskCompletionStats(newStats);
+  };
+
+  // Open inline report modal for a recurring task
+  const openReportModal = async (task: DashboardTask) => {
+    if (!task.id) return;
+    setSelectedTaskForReport(task);
+    setShowDashboardReportModal(true);
+    setReportModalLoading(true);
+    openModal();
+    try {
+      const auth = await getAuthLazy();
+      const token = await auth.currentUser?.getIdToken(false);
+      if (!token) return;
+      const headers = { 'Authorization': `Bearer ${token}` };
+      const [allClients, completionsRes] = await Promise.all([
+        clientService.getAll(),
+        fetch(`/api/task-completions?recurringTaskId=${task.id}`, { headers }),
+      ]);
+      const completions: ClientTaskCompletion[] = completionsRes.ok ? await completionsRes.json() : [];
+      const hasTeamMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
+      const allMappedIds = hasTeamMapping
+        ? new Set(task.teamMemberMappings!.flatMap((m: { clientIds: string[] }) => m.clientIds))
+        : null;
+      const filtered = (allClients as Client[]).filter((c: Client) => c.id &&
+        (allMappedIds ? allMappedIds.has(c.id) : task.contactIds?.includes(c.id))
+      );
+      setReportModalClients(filtered);
+      setReportModalCompletions(completions);
+    } catch {
+      toast.error('Failed to load report data');
+    } finally {
+      setReportModalLoading(false);
+    }
   };
 
   // Redirect if not authenticated
@@ -558,11 +635,37 @@ export default function DashboardPage() {
     // Schedule button: visible only to managers if the task has team member mappings
     const hasScheduleButton = isManager && hasTeamMemberMapping;
 
-    if (!hasClientsButton && !hasTeamButton && !hasPlanButton && !hasDelegateButton && !hasScheduleButton) {
+    const hasViewReportButton = task.isRecurring && (task.createdBy === user?.uid || canViewAllTasks);
+    const hasGoToReportsButton = isManager && task.isRecurring;
+
+    if (!hasClientsButton && !hasTeamButton && !hasPlanButton && !hasDelegateButton && !hasScheduleButton && !hasViewReportButton && !hasGoToReportsButton) {
       return null;
     }
 
+    const completionStats = taskCompletionStats.get(task.id!);
+    const completionPct = completionStats && completionStats.total > 0
+      ? Math.round((completionStats.completed / completionStats.total) * 100)
+      : 0;
+
     return (
+      <>
+        {/* Completion progress bar — task creator or admin/manager */}
+        {hasViewReportButton && completionStats && (
+          <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-xs text-gray-600 dark:text-gray-400">
+                {completionStats.completed}/{completionStats.total} clients completed ({completionPct}%)
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+              <div
+                className="bg-green-500 h-2 rounded-full transition-all"
+                style={{ width: `${completionPct}%` }}
+              />
+            </div>
+          </div>
+        )}
+
       <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
         {/* Clients Button - Show client count for user's assigned clients */}
         {hasClientsButton && (
@@ -643,7 +746,36 @@ export default function DashboardPage() {
             Schedule
           </button>
         )}
+
+        {/* View Report Button — task creator or admin/manager */}
+        {hasViewReportButton && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              openReportModal(task);
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-cyan-100 text-cyan-700 hover:bg-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:hover:bg-cyan-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
+          >
+            <ChartBarIcon className="w-4 h-4" />
+            View Report
+          </button>
+        )}
+
+        {/* Go to Reports Button — managers only */}
+        {hasGoToReportsButton && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push('/reports');
+            }}
+            className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
+          >
+            <ArrowRightIcon className="w-4 h-4" />
+            Go to Reports
+          </button>
+        )}
       </div>
+      </>
     );
   };
 
@@ -706,6 +838,7 @@ export default function DashboardPage() {
           onClick={() => {
             setShowAllTasksModal(true);
             openModal(); // Open modal context to hide header
+            fetchCompletionStats();
           }}
           subtitle="All tasks"
           compact={true}
@@ -1687,6 +1820,31 @@ export default function DashboardPage() {
             toast.success('Schedule saved successfully!');
           }}
         />
+      )}
+
+      {/* Inline Report Modal */}
+      {showDashboardReportModal && selectedTaskForReport && (
+        reportModalLoading ? (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+            <div className="bg-white dark:bg-gray-dark rounded-lg p-8 flex flex-col items-center gap-3">
+              <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-cyan-600" />
+              <span className="text-sm text-gray-600 dark:text-gray-400">Loading report...</span>
+            </div>
+          </div>
+        ) : (
+          <TaskReportModal
+            task={selectedTaskForReport as RecurringTask}
+            clients={reportModalClients}
+            completions={reportModalCompletions}
+            onClose={() => {
+              setShowDashboardReportModal(false);
+              setSelectedTaskForReport(null);
+              setReportModalClients([]);
+              setReportModalCompletions([]);
+              closeModal();
+            }}
+          />
+        )
       )}
     </div>
   );
