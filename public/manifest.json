@@ -28,13 +28,13 @@
     },
     {
       "src": "/images/logo/logo-maskable-192.png",
-      "sizes": "230x230",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     },
     {
       "src": "/images/logo/logo-maskable-512.png",
-      "sizes": "614x614",
+      "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"
     }
@@ -42,14 +42,14 @@
   "screenshots": [
     {
       "src": "/images/screenshots/desktop-dashboard.png",
-      "sizes": "1280x720",
+      "sizes": "1895x873",
       "type": "image/png",
       "form_factor": "wide",
       "label": "Desktop Dashboard View"
     },
     {
       "src": "/images/screenshots/mobile-dashboard.png",
-      "sizes": "390x844",
+      "sizes": "430x767",
       "type": "image/png",
       "form_factor": "narrow",
       "label": "Mobile Dashboard View"

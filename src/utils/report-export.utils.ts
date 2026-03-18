@@ -43,17 +43,20 @@ export function exportToPDF(data: ExportData): void {
   doc.text(`Total Clients: ${clients.length}`, 14, 27);
   doc.text(`Generated: ${format(new Date(), 'MMM dd, yyyy HH:mm')}`, 14, 32);
   
-  // Prepare table data
+  // Prepare table data — store statuses for use in didDrawCell (jsPDF default fonts don't support Unicode ✓/✗)
   const headers = ['Client Name', ...months.map(m => `${m.monthName} ${m.year}`)];
-  const rows = clients.map(client => {
-    const row = [client.clientName];
-    months.forEach(month => {
+  const statusMap: ('completed' | 'incomplete' | 'future')[][] = [];
+  const rows = clients.map((client, ri) => {
+    statusMap[ri] = [];
+    const row: string[] = [client.clientName];
+    months.forEach((month, mi) => {
       const status = getCompletionStatus(completions, client.id || '', month.key, month.fullDate);
-      row.push(status === 'completed' ? '✓' : status === 'incomplete' ? '✗' : '-');
+      statusMap[ri][mi] = status;
+      row.push(''); // empty — symbols drawn manually in didDrawCell
     });
     return row;
   });
-  
+
   // Add table
   autoTable(doc, {
     head: [headers],
@@ -66,24 +69,47 @@ export function exportToPDF(data: ExportData): void {
     },
     didParseCell: function(data) {
       if (data.section === 'body' && data.column.index > 0) {
-        const cellValue = data.cell.text[0];
-        if (cellValue === '✓') {
-          data.cell.styles.textColor = [22, 163, 74]; // green
-          data.cell.styles.fontStyle = 'bold';
-        } else if (cellValue === '✗') {
-          data.cell.styles.textColor = [220, 38, 38]; // red
-          data.cell.styles.fontStyle = 'bold';
-        } else if (cellValue === '-') {
-          data.cell.styles.textColor = [156, 163, 175]; // gray
+        const status = statusMap[data.row.index]?.[data.column.index - 1];
+        if (status === 'completed') {
+          data.cell.styles.fillColor = [220, 252, 231]; // light green bg
+        } else if (status === 'incomplete') {
+          data.cell.styles.fillColor = [254, 226, 226]; // light red bg
         }
       }
-    }
+    },
+    didDrawCell: function(data) {
+      if (data.section === 'body' && data.column.index > 0) {
+        const status = statusMap[data.row.index]?.[data.column.index - 1];
+        const cx = data.cell.x + data.cell.width / 2;
+        const cy = data.cell.y + data.cell.height / 2;
+        const s = 1.8;
+
+        if (status === 'completed') {
+          // Draw green checkmark ✓
+          doc.setDrawColor(22, 163, 74);
+          doc.setLineWidth(0.8);
+          doc.line(cx - s, cy + 0.2, cx - s * 0.25, cy + s * 0.85);
+          doc.line(cx - s * 0.25, cy + s * 0.85, cx + s, cy - s * 0.75);
+        } else if (status === 'incomplete') {
+          // Draw red cross ✗
+          doc.setDrawColor(220, 38, 38);
+          doc.setLineWidth(0.8);
+          doc.line(cx - s * 0.7, cy - s * 0.7, cx + s * 0.7, cy + s * 0.7);
+          doc.line(cx + s * 0.7, cy - s * 0.7, cx - s * 0.7, cy + s * 0.7);
+        } else {
+          // Draw gray dash for future
+          doc.setDrawColor(156, 163, 175);
+          doc.setLineWidth(0.5);
+          doc.line(cx - s * 0.5, cy, cx + s * 0.5, cy);
+        }
+      }
+    },
   });
-  
+
   // Add legend
   const finalY = (doc as any).lastAutoTable.finalY || 38;
   doc.setFontSize(9);
-  doc.text('Legend: ✓ = Completed | ✗ = Incomplete | - = Future', 14, finalY + 10);
+  doc.text('Legend: Green (tick) = Completed  |  Red (cross) = Incomplete  |  Gray dash = Future', 14, finalY + 10);
   
   // Save the PDF
   const fileName = isTeamMemberView

@@ -48,7 +48,7 @@ export function KanbanColumn({
       </div>
 
       {/* Tasks */}
-      <div className="space-y-0">
+      <div className="space-y-3">
         {tasks.length === 0 ? (
           <div className="text-center py-12 text-gray-400">
             <svg

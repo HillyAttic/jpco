@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { Client } from '@/services/client.service';
 import { ClientTaskCompletion } from '@/services/task-completion.service';
 import { XMarkIcon, CheckIcon, XCircleIcon, UserGroupIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { isFuture, isToday, startOfMonth } from 'date-fns';
 import { exportToPDF, exportToExcel } from '@/utils/report-export.utils';
-import { generateMonths, buildCompletionData, getCompletionStatus, MonthData } from '@/utils/report-utils';
+import { generateMonths, buildCompletionData, getCompletionStatus, type MonthData } from '@/utils/report-utils';
 
 export interface TaskReportModalProps {
   task: RecurringTask;
@@ -26,18 +26,204 @@ interface TeamMemberReport {
   totalExpected: number;
 }
 
+type StatusFilter = 'all' | 'filed' | 'not_filed';
+
+const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+function generateFinancialYears(): string[] {
+  const years: string[] = [];
+  for (let startYear = 2025; startYear <= 2035; startYear++) {
+    years.push(`${startYear}-${String(startYear + 1).slice(-2)}`);
+  }
+  return years;
+}
+
+function buildMonthData(month: number, year: number): MonthData {
+  const date = new Date(year, month, 1);
+  return {
+    key: `${year}-${String(month + 1).padStart(2, '0')}`,
+    monthName: date.toLocaleDateString('en-US', { month: 'short' }),
+    year: year.toString(),
+    fullDate: date,
+  };
+}
+
+function applyRecurrenceFilter(months: MonthData[], recurrencePattern: string): MonthData[] {
+  switch (recurrencePattern) {
+    case 'quarterly':   return months.filter((_, i) => i % 3 === 0);
+    case 'half-yearly': return months.filter((_, i) => i % 6 === 0);
+    case 'yearly':      return months.filter((_, i) => i % 12 === 0);
+    default:            return months;
+  }
+}
+
+/** All months from Apr 2025 (FY 2025-26 start) to 2 years ahead — covers full history + near future */
+function generateAllExportMonths(recurrencePattern: string): MonthData[] {
+  const endYear = new Date().getFullYear() + 2;
+  const all: MonthData[] = [];
+  // Start Apr 2025
+  for (let year = 2025; year <= endYear; year++) {
+    const firstMonth = year === 2025 ? 3 : 0; // Apr for first year, Jan otherwise
+    for (let month = firstMonth; month <= 11; month++) {
+      all.push(buildMonthData(month, year));
+    }
+  }
+  return applyRecurrenceFilter(all, recurrencePattern);
+}
+
+/** All months for a specific Indian financial year (Apr → Mar) */
+function generateFYMonths(fy: string, recurrencePattern: string): MonthData[] {
+  const startYear = parseInt(fy.split('-')[0]);
+  const fyMonths: MonthData[] = [
+    ...Array.from({ length: 9 }, (_, i) => buildMonthData(3 + i, startYear)),        // Apr–Dec
+    ...Array.from({ length: 3 }, (_, i) => buildMonthData(i, startYear + 1)),        // Jan–Mar
+  ];
+  return applyRecurrenceFilter(fyMonths, recurrencePattern);
+}
+
+// ---------- Export Dialog ----------
+
+interface ExportDialogProps {
+  task: RecurringTask;
+  clients: Client[];
+  completions: ClientTaskCompletion[];
+  isTeamMemberView?: boolean;
+  teamMemberName?: string;
+  onClose: () => void;
+}
+
+function ExportDialog({ task, clients, completions, isTeamMemberView, teamMemberName, onClose }: ExportDialogProps) {
+  const [exportYear, setExportYear] = useState('all');
+  const [exportMonth, setExportMonth] = useState('all');
+  const financialYears = generateFinancialYears();
+
+  const getExportMonths = (): MonthData[] => {
+    const baseMonths =
+      exportYear === 'all'
+        ? generateAllExportMonths(task.recurrencePattern)   // Apr 2025 → 2 yrs forward (full history)
+        : generateFYMonths(exportYear, task.recurrencePattern);
+
+    if (exportMonth === 'all') return baseMonths;
+    return baseMonths.filter(m => m.monthName === exportMonth);
+  };
+
+  const handleExport = (format: 'pdf' | 'excel') => {
+    const months = getExportMonths();
+    const exportData = { task, clients, completions, months, isTeamMemberView, teamMemberName };
+    if (format === 'pdf') exportToPDF(exportData);
+    else exportToExcel(exportData);
+    onClose();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black bg-opacity-50">
+      <div className="bg-white dark:bg-gray-dark rounded-xl shadow-2xl p-6 w-full max-w-sm border border-gray-200 dark:border-gray-700">
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Export Report</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <XMarkIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Financial Year
+            </label>
+            <select
+              value={exportYear}
+              onChange={e => setExportYear(e.target.value)}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Years</option>
+              {financialYears.map(fy => (
+                <option key={fy} value={fy}>{fy}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Month
+            </label>
+            <select
+              value={exportMonth}
+              onChange={e => setExportMonth(e.target.value)}
+              className="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Months</option>
+              {MONTH_NAMES.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-6">
+          <button
+            onClick={() => handleExport('pdf')}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+          >
+            <ArrowDownTrayIcon className="w-4 h-4" />
+            PDF
+          </button>
+          <button
+            onClick={() => handleExport('excel')}
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+          >
+            <ArrowDownTrayIcon className="w-4 h-4" />
+            Excel
+          </button>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------- Filter Tabs ----------
+
+function StatusFilterTabs({ value, onChange }: { value: StatusFilter; onChange: (v: StatusFilter) => void }) {
+  return (
+    <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+      {(['all', 'filed', 'not_filed'] as StatusFilter[]).map(f => (
+        <button
+          key={f}
+          onClick={() => onChange(f)}
+          className={`px-3 py-1 rounded-md text-xs font-medium transition-colors ${
+            value === f
+              ? 'bg-white dark:bg-gray-dark text-gray-900 dark:text-white shadow-sm'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+          }`}
+        >
+          {f === 'all' ? 'All' : f === 'filed' ? 'Filed' : 'Not Filed'}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ---------- Team Member Report Modal ----------
+
 function TeamMemberReportModal({ task, clients, completions, onClose }: TaskReportModalProps) {
   const months = generateMonths(task.recurrencePattern);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [showExportDialog, setShowExportDialog] = useState(false);
 
-  // Build team member reports
   const teamMemberReports: TeamMemberReport[] = (task.teamMemberMappings || []).map(mapping => {
     const memberClients = clients.filter(c => c.id && mapping.clientIds.includes(c.id));
-    const memberCompletions = completions.filter(comp =>
-      comp.isCompleted && mapping.clientIds.includes(comp.clientId)
+    const memberCompletions = completions.filter(
+      comp => comp.isCompleted && mapping.clientIds.includes(comp.clientId)
     );
-
-    const totalExpected = memberClients.length * months.filter(m => !isFuture(m.fullDate) || isToday(startOfMonth(m.fullDate))).length;
+    const totalExpected =
+      memberClients.length *
+      months.filter(m => !isFuture(m.fullDate) || isToday(startOfMonth(m.fullDate))).length;
     const completedCount = memberCompletions.length;
     const completionRate = totalExpected > 0 ? Math.round((completedCount / totalExpected) * 100) : 0;
 
@@ -56,52 +242,57 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
     ? teamMemberReports.find(r => r.userId === selectedMemberId)
     : null;
 
-  const displayClients = selectedMember ? selectedMember.clients : clients;
-  const completionData = buildCompletionData(completions, displayClients, months);
+  const baseClients = selectedMember ? selectedMember.clients : clients;
+  const completionData = buildCompletionData(completions, baseClients, months);
 
-  const handleExportPDF = () => {
-    exportToPDF({
-      task,
-      clients: displayClients,
-      completions,
-      months,
-      isTeamMemberView: !!selectedMember,
-      teamMemberName: selectedMember?.userName,
+  const filteredClients = useMemo(() => {
+    if (statusFilter === 'all') return baseClients;
+    return baseClients.filter(client => {
+      const hasFiled = completions.some(c => c.clientId === client.id && c.isCompleted);
+      return statusFilter === 'filed' ? hasFiled : !hasFiled;
     });
-  };
+  }, [baseClients, completions, statusFilter]);
 
-  const handleExportExcel = () => {
-    exportToExcel({
-      task,
-      clients: displayClients,
-      completions,
-      months,
-      isTeamMemberView: !!selectedMember,
-      teamMemberName: selectedMember?.userName,
-    });
-  };
+  const exportClients = selectedMember ? selectedMember.clients : clients;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose} />
 
-        <div className="inline-block w-full max-w-6xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-dark rounded-lg shadow-xl">
+        <div className="inline-block w-full max-w-6xl my-8 text-left align-middle transition-all transform bg-white dark:bg-gray-dark rounded-lg shadow-xl overflow-hidden">
+          {/* Sticky Header */}
           <div className="sticky top-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 z-10">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
-              <div>
+            {/* Title row */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-4">
+              <div className="min-w-0">
                 <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white break-words">{task.title}</h2>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                   Team Member Reports • {task.recurrencePattern} recurrence
                 </p>
               </div>
-              <button
-                onClick={onClose}
-                className="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors self-end sm:self-auto"
-                aria-label="Close modal"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setShowExportDialog(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                >
+                  <ArrowDownTrayIcon className="w-4 h-4" />
+                  <span>Export</span>
+                </button>
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  aria-label="Close modal"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+
+            {/* Filter row */}
+            <div className="flex items-center gap-3 mb-4">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Filter:</span>
+              <StatusFilterTabs value={statusFilter} onChange={setStatusFilter} />
             </div>
 
             {/* Team Member Summary Cards */}
@@ -110,10 +301,11 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
                 <button
                   key={report.userId}
                   onClick={() => setSelectedMemberId(selectedMemberId === report.userId ? null : report.userId)}
-                  className={`p-3 sm:p-4 rounded-lg border-2 transition-all text-left ${selectedMemberId === report.userId
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 bg-white hover:border-blue-300'
-                    }`}
+                  className={`p-3 sm:p-4 rounded-lg border-2 transition-all text-left ${
+                    selectedMemberId === report.userId
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-dark hover:border-blue-300'
+                  }`}
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2 min-w-0">
@@ -135,7 +327,7 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
                       <div
                         className="bg-green-600 h-2 rounded-full transition-all"
                         style={{ width: `${report.completionRate}%` }}
-                      ></div>
+                      />
                     </div>
                     <span className="text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">{report.completionRate}%</span>
                   </div>
@@ -144,22 +336,25 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
             </div>
 
             {selectedMember && (
-              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                <p className="text-xs sm:text-sm font-medium text-blue-900">
+              <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                <p className="text-xs sm:text-sm font-medium text-blue-900 dark:text-blue-300">
                   Showing {selectedMember.clients.length} client{selectedMember.clients.length !== 1 ? 's' : ''} assigned to {selectedMember.userName}
                 </p>
-                <p className="text-xs text-blue-700 mt-1">
+                <p className="text-xs text-blue-700 dark:text-blue-400 mt-1">
                   Completion: {selectedMember.completedCount} of {selectedMember.totalExpected} ({selectedMember.completionRate}%)
                 </p>
               </div>
             )}
           </div>
 
-          <div className="p-6 overflow-x-auto">
-            {displayClients.length === 0 ? (
+          {/* Scrollable content */}
+          <div className="overflow-y-auto max-h-[calc(100vh-420px)] overflow-x-auto">
+            {filteredClients.length === 0 ? (
               <div className="text-center py-12">
                 <p className="text-gray-500 dark:text-gray-400">
-                  {selectedMember
+                  {statusFilter !== 'all'
+                    ? `No clients with "${statusFilter === 'filed' ? 'Filed' : 'Not Filed'}" status`
+                    : selectedMember
                     ? `No clients assigned to ${selectedMember.userName}`
                     : 'No clients assigned to this task'}
                 </p>
@@ -171,7 +366,7 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-800 z-10">
                       Client Name
                     </th>
-                    {months.map((month) => (
+                    {months.map(month => (
                       <th
                         key={month.key}
                         className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
@@ -183,24 +378,18 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200">
-                  {displayClients.map((client) => (
-                    <tr key={client.id} className="hover:bg-gray-50 dark:bg-gray-800">
+                  {filteredClients.map(client => (
+                    <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
                       <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-dark">
                         {client.clientName}
                       </td>
-                      {months.map((month) => {
+                      {months.map(month => {
                         const status = getCompletionStatus(completionData, client.id || '', month.key, month.fullDate);
                         return (
                           <td key={month.key} className="px-4 py-4 whitespace-nowrap text-center">
-                            {status === 'completed' && (
-                              <CheckIcon className="w-5 h-5 text-green-600 mx-auto" />
-                            )}
-                            {status === 'incomplete' && (
-                              <XCircleIcon className="w-5 h-5 text-red-600 mx-auto" />
-                            )}
-                            {status === 'future' && (
-                              <span className="text-gray-400">-</span>
-                            )}
+                            {status === 'completed' && <CheckIcon className="w-5 h-5 text-green-600 mx-auto" />}
+                            {status === 'incomplete' && <XCircleIcon className="w-5 h-5 text-red-600 mx-auto" />}
+                            {status === 'future' && <span className="text-gray-400">-</span>}
                           </td>
                         );
                       })}
@@ -211,188 +400,200 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
             )}
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-800 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm">
-              <div className="flex items-center">
-                <CheckIcon className="w-4 h-4 text-green-600 mr-2" />
-                <span className="text-gray-700 dark:text-gray-300">Completed</span>
-              </div>
-              <div className="flex items-center">
-                <XCircleIcon className="w-4 h-4 text-red-600 mr-2" />
-                <span className="text-gray-700 dark:text-gray-300">Incomplete</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-gray-400 mr-2">-</span>
-                <span className="text-gray-700 dark:text-gray-300">Future</span>
-              </div>
+          {/* Legend footer */}
+          <div className="bg-gray-50 dark:bg-gray-800 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center">
+              <CheckIcon className="w-4 h-4 text-green-600 mr-2" />
+              <span className="text-gray-700 dark:text-gray-300">Completed</span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleExportPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" />
-                <span>PDF</span>
-              </button>
-              <button
-                onClick={handleExportExcel}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" />
-                <span>Excel</span>
-              </button>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-200 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Close
-              </button>
+            <div className="flex items-center">
+              <XCircleIcon className="w-4 h-4 text-red-600 mr-2" />
+              <span className="text-gray-700 dark:text-gray-300">Incomplete</span>
+            </div>
+            <div className="flex items-center">
+              <span className="text-gray-400 mr-2">-</span>
+              <span className="text-gray-700 dark:text-gray-300">Future</span>
             </div>
           </div>
         </div>
       </div>
+
+      {showExportDialog && (
+        <ExportDialog
+          task={task}
+          clients={exportClients}
+          completions={completions}
+          isTeamMemberView={!!selectedMember}
+          teamMemberName={selectedMember?.userName}
+          onClose={() => setShowExportDialog(false)}
+        />
+      )}
     </div>
   );
 }
+
+// ---------- Regular Task Report Modal ----------
 
 export function TaskReportModal({ task, clients, completions, onClose }: TaskReportModalProps) {
   const months = generateMonths(task.recurrencePattern);
   const hasTeamMemberMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
 
-  // If task has team member mappings, show team member reports
   if (hasTeamMemberMapping) {
     return <TeamMemberReportModal task={task} clients={clients} completions={completions} onClose={onClose} />;
   }
 
-  // Otherwise show regular client report
   const completionData = buildCompletionData(completions, clients, months);
 
-  const handleExportPDF = () => {
-    exportToPDF({
-      task,
-      clients,
-      completions,
-      months,
-    });
-  };
+  return (
+    <RegularTaskReportModal
+      task={task}
+      clients={clients}
+      completions={completions}
+      completionData={completionData}
+      months={months}
+      onClose={onClose}
+    />
+  );
+}
 
-  const handleExportExcel = () => {
-    exportToExcel({
-      task,
-      clients,
-      completions,
-      months,
+interface RegularModalProps extends TaskReportModalProps {
+  completionData: Map<string, Map<string, boolean>>;
+  months: MonthData[];
+}
+
+function RegularTaskReportModal({ task, clients, completions, completionData, months, onClose }: RegularModalProps) {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
+  const [showExportDialog, setShowExportDialog] = useState(false);
+
+  const filteredClients = useMemo(() => {
+    if (statusFilter === 'all') return clients;
+    return clients.filter(client => {
+      const hasFiled = completions.some(c => c.clientId === client.id && c.isCompleted);
+      return statusFilter === 'filed' ? hasFiled : !hasFiled;
     });
-  };
+  }, [clients, completions, statusFilter]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose}></div>
+        <div className="fixed inset-0 transition-opacity bg-gray-500 bg-opacity-75" onClick={onClose} />
 
-        <div className="inline-block w-full max-w-6xl my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-dark rounded-lg shadow-xl">
-          <div className="sticky top-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 z-10">
-            <div>
-              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white break-words">{task.title}</h2>
-              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Track completion for {clients.length} clients • {task.recurrencePattern} recurrence
-              </p>
+        <div className="inline-block w-full max-w-6xl my-8 text-left align-middle transition-all transform bg-white dark:bg-gray-dark rounded-lg shadow-xl overflow-hidden">
+          {/* Sticky Header */}
+          <div className="sticky top-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4 z-10">
+            {/* Title + actions row */}
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+              <div className="min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white break-words">{task.title}</h2>
+                <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+                  Track completion for {clients.length} clients • {task.recurrencePattern} recurrence
+                </p>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button
+                  onClick={() => setShowExportDialog(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
+                >
+                  <ArrowDownTrayIcon className="w-4 h-4" />
+                  <span>Export</span>
+                </button>
+                <button
+                  onClick={onClose}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+                  aria-label="Close modal"
+                >
+                  <XMarkIcon className="w-6 h-6" />
+                </button>
+              </div>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 dark:text-gray-400 transition-colors self-end sm:self-auto"
-              aria-label="Close modal"
-            >
-              <XMarkIcon className="w-6 h-6" />
-            </button>
+
+            {/* Filter row */}
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Filter:</span>
+              <StatusFilterTabs value={statusFilter} onChange={setStatusFilter} />
+              {statusFilter !== 'all' && (
+                <span className="text-xs text-gray-500 dark:text-gray-400">
+                  {filteredClients.length} of {clients.length} clients
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="p-6 overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50 dark:bg-gray-800">
-                <tr>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-800 z-10">
-                    Client Name
-                  </th>
-                  {months.map((month) => (
-                    <th
-                      key={month.key}
-                      className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                    >
-                      <div>{month.monthName}</div>
-                      <div className="text-xs font-normal text-gray-400">{month.year}</div>
+          {/* Scrollable table */}
+          <div className="overflow-y-auto max-h-[calc(100vh-320px)] overflow-x-auto">
+            {filteredClients.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-gray-500 dark:text-gray-400">
+                  No clients with &ldquo;{statusFilter === 'filed' ? 'Filed' : 'Not Filed'}&rdquo; status
+                </p>
+              </div>
+            ) : (
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50 dark:bg-gray-800">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider sticky left-0 bg-gray-50 dark:bg-gray-800 z-10">
+                      Client Name
                     </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200">
-                {clients.map((client) => (
-                  <tr key={client.id} className="hover:bg-gray-50 dark:bg-gray-800">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-dark">
-                      {client.clientName}
-                    </td>
-                    {months.map((month) => {
-                      const status = getCompletionStatus(completionData, client.id || '', month.key, month.fullDate);
-                      return (
-                        <td key={month.key} className="px-4 py-4 whitespace-nowrap text-center">
-                          {status === 'completed' && (
-                            <CheckIcon className="w-5 h-5 text-green-600 mx-auto" />
-                          )}
-                          {status === 'incomplete' && (
-                            <XCircleIcon className="w-5 h-5 text-red-600 mx-auto" />
-                          )}
-                          {status === 'future' && (
-                            <span className="text-gray-400">-</span>
-                          )}
-                        </td>
-                      );
-                    })}
+                    {months.map(month => (
+                      <th
+                        key={month.key}
+                        className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                      >
+                        <div>{month.monthName}</div>
+                        <div className="text-xs font-normal text-gray-400">{month.year}</div>
+                      </th>
+                    ))}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200">
+                  {filteredClients.map(client => (
+                    <tr key={client.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-gray-dark">
+                        {client.clientName}
+                      </td>
+                      {months.map(month => {
+                        const status = getCompletionStatus(completionData, client.id || '', month.key, month.fullDate);
+                        return (
+                          <td key={month.key} className="px-4 py-4 whitespace-nowrap text-center">
+                            {status === 'completed' && <CheckIcon className="w-5 h-5 text-green-600 mx-auto" />}
+                            {status === 'incomplete' && <XCircleIcon className="w-5 h-5 text-red-600 mx-auto" />}
+                            {status === 'future' && <span className="text-gray-400">-</span>}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
 
-          <div className="bg-gray-50 dark:bg-gray-800 px-4 sm:px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm">
-              <div className="flex items-center">
-                <CheckIcon className="w-4 h-4 text-green-600 mr-2" />
-                <span className="text-gray-700 dark:text-gray-300">Completed</span>
-              </div>
-              <div className="flex items-center">
-                <XCircleIcon className="w-4 h-4 text-red-600 mr-2" />
-                <span className="text-gray-700 dark:text-gray-300">Incomplete</span>
-              </div>
-              <div className="flex items-center">
-                <span className="text-gray-400 mr-2">-</span>
-                <span className="text-gray-700 dark:text-gray-300">Future</span>
-              </div>
+          {/* Legend footer */}
+          <div className="bg-gray-50 dark:bg-gray-800 px-4 sm:px-6 py-3 flex flex-wrap items-center gap-3 sm:gap-6 text-xs sm:text-sm border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center">
+              <CheckIcon className="w-4 h-4 text-green-600 mr-2" />
+              <span className="text-gray-700 dark:text-gray-300">Completed</span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={handleExportPDF}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" />
-                <span>PDF</span>
-              </button>
-              <button
-                onClick={handleExportExcel}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
-              >
-                <ArrowDownTrayIcon className="w-4 h-4" />
-                <span>Excel</span>
-              </button>
-              <button
-                onClick={onClose}
-                className="px-4 py-2 bg-gray-200 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 transition-colors"
-              >
-                Close
-              </button>
+            <div className="flex items-center">
+              <XCircleIcon className="w-4 h-4 text-red-600 mr-2" />
+              <span className="text-gray-700 dark:text-gray-300">Incomplete</span>
+            </div>
+            <div className="flex items-center">
+              <span className="text-gray-400 mr-2">-</span>
+              <span className="text-gray-700 dark:text-gray-300">Future</span>
             </div>
           </div>
         </div>
       </div>
+
+      {showExportDialog && (
+        <ExportDialog
+          task={task}
+          clients={clients}
+          completions={completions}
+          onClose={() => setShowExportDialog(false)}
+        />
+      )}
     </div>
   );
 }
