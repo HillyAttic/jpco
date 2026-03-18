@@ -34,6 +34,10 @@ export interface Client {
     taxAudit: boolean;
     accounting: boolean;
     clientVisit: boolean;
+    bank: boolean;
+    tcs: boolean;
+    tds: boolean;
+    statutoryAudit: boolean;
   };
   status: 'active' | 'inactive';
   createdAt?: Date;

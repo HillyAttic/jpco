@@ -33,9 +33,9 @@ const updateClientSchema = z.object({
     accounting: z.boolean(),
     clientVisit: z.boolean(),
     bank: z.boolean(),
-    tcs: z.boolean().optional(),
-    tds: z.boolean().optional(),
-    statutoryAudit: z.boolean().optional(),
+    tcs: z.boolean().default(false),
+    tds: z.boolean().default(false),
+    statutoryAudit: z.boolean().default(false),
   }).optional(),
   status: z.enum(['active', 'inactive']).optional(),
 });
