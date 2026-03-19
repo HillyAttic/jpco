@@ -13,6 +13,7 @@ interface UseClientsReturn {
   createClient: (data: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>;
   updateClient: (id: string, data: Partial<Omit<Client, 'id'>>) => Promise<void>;
   deleteClient: (id: string) => Promise<void>;
+  bulkDeleteClients: (ids: string[]) => Promise<void>;
   refreshClients: () => Promise<void>;
   searchClients: (query: string) => void;
   filterClients: (filters: { status?: string }) => void;
@@ -213,6 +214,39 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
   );
 
   /**
+   * Delete multiple clients with optimistic update
+   */
+  const bulkDeleteClients = useCallback(
+    async (ids: string[]) => {
+      // Store original clients for rollback
+      const originalClients = clients.filter((c) => ids.includes(c.id));
+      
+      // Optimistic update - remove clients immediately
+      setClients((prev) => prev.filter((client) => !ids.includes(client.id)));
+
+      try {
+        const response = await authenticatedFetch('/api/clients/bulk-delete', {
+          method: 'POST',
+          body: JSON.stringify({ ids }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to delete clients');
+        }
+      } catch (err) {
+        // Rollback optimistic update on error
+        setClients((prev) => [...prev, ...originalClients]);
+        
+        const error = err instanceof Error ? err : new Error('Unknown error');
+        setError(error);
+        throw error;
+      }
+    },
+    [clients]
+  );
+
+  /**
    * Refresh clients from server
    */
   const refreshClients = useCallback(async () => {
@@ -240,6 +274,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
     createClient,
     updateClient,
     deleteClient,
+    bulkDeleteClients,
     refreshClients,
     searchClients,
     filterClients,

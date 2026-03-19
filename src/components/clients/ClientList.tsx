@@ -14,6 +14,9 @@ interface ClientListProps {
   onDelete: (id: string) => void;
   isLoading?: boolean;
   viewMode?: 'grid' | 'list';
+  selectedIds?: Set<string>;
+  onToggleSelection?: (id: string) => void;
+  onToggleSelectAll?: () => void;
 }
 
 /**
@@ -26,7 +29,10 @@ export function ClientList({
   onEdit, 
   onDelete, 
   isLoading = false,
-  viewMode = 'list'
+  viewMode = 'list',
+  selectedIds = new Set(),
+  onToggleSelection,
+  onToggleSelectAll,
 }: ClientListProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
@@ -164,6 +170,9 @@ export function ClientList({
           clients={paginatedClients}
           onEdit={onEdit}
           onDelete={onDelete}
+          selectedIds={selectedIds}
+          onToggleSelection={onToggleSelection}
+          onToggleSelectAll={onToggleSelectAll}
         />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

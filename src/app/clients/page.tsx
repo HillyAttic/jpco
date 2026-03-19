@@ -23,6 +23,7 @@ export default function ClientsPage() {
     createClient,
     updateClient,
     deleteClient,
+    bulkDeleteClients,
   } = useClients();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -31,6 +32,7 @@ export default function ClientsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [filters, setFilters] = useState<ClientFilterState>({
     status: 'all',
     filterBy: 'all',
@@ -154,6 +156,53 @@ export default function ClientsPage() {
   };
 
   /**
+   * Handle bulk delete with confirmation
+   */
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return;
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete ${selectedIds.size} client(s)? This action cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    try {
+      await bulkDeleteClients(Array.from(selectedIds));
+      setSelectedIds(new Set());
+    } catch (error) {
+      console.error('Error deleting clients:', error);
+      alert('Failed to delete clients. Please try again.');
+    }
+  };
+
+  /**
+   * Handle selection toggle
+   */
+  const handleToggleSelection = (id: string) => {
+    setSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
+
+  /**
+   * Handle select all toggle
+   */
+  const handleToggleSelectAll = () => {
+    if (selectedIds.size === filteredClients.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredClients.map(c => c.id!)));
+    }
+  };
+
+  /**
    * Handle form submission (create or update)
    */
   const handleSubmit = async (data: any) => {
@@ -235,6 +284,16 @@ export default function ClientsPage() {
 
         {/* Add New Client Button */}
         <div className="flex items-center gap-3">
+          {selectedIds.size > 0 && (
+            <Button
+              onClick={handleBulkDelete}
+              variant="destructive"
+              className="flex items-center gap-2"
+              size="lg"
+            >
+              Delete Selected ({selectedIds.size})
+            </Button>
+          )}
           <Button
             onClick={handleImport}
             variant="outline"
@@ -297,6 +356,9 @@ export default function ClientsPage() {
         onDelete={handleDelete}
         isLoading={loading}
         viewMode={viewMode}
+        selectedIds={selectedIds}
+        onToggleSelection={handleToggleSelection}
+        onToggleSelectAll={handleToggleSelectAll}
       />
 
       {/* Client Modal (Create/Edit) */}
