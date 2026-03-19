@@ -219,10 +219,10 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
   const bulkDeleteClients = useCallback(
     async (ids: string[]) => {
       // Store original clients for rollback
-      const originalClients = clients.filter((c) => ids.includes(c.id));
+      const originalClients = clients.filter((c) => c.id && ids.includes(c.id));
       
       // Optimistic update - remove clients immediately
-      setClients((prev) => prev.filter((client) => !ids.includes(client.id)));
+      setClients((prev) => prev.filter((client) => !client.id || !ids.includes(client.id)));
 
       try {
         const response = await authenticatedFetch('/api/clients/bulk-delete', {
