@@ -305,25 +305,29 @@ export default function NonRecurringTasksPage() {
             <p className="text-sm md:text-base text-gray-600 dark:text-gray-400 mt-1 md:mt-2">Manage one-time tasks and track their progress</p>
           </div>
           
-          <Button
-            onClick={handleCreateNew}
-            className="flex items-center justify-center gap-2 text-white w-full md:w-auto md:self-end"
-            aria-label="Add new task"
-          >
-            <PlusIcon className="w-5 h-5" />
-            <span>Add New Task</span>
-          </Button>
+          {isAdminOrManager && (
+            <Button
+              onClick={handleCreateNew}
+              className="flex items-center justify-center gap-2 text-white w-full md:w-auto md:self-end"
+              aria-label="Add new task"
+            >
+              <PlusIcon className="w-5 h-5" />
+              <span>Add New Task</span>
+            </Button>
+          )}
         </div>
 
-        {/* Task Statistics - Requirement 2.10 */}
-        {loading ? (
-          <StatsGridSkeleton count={4} />
-        ) : (
-          <TaskStatsCard tasks={tasks.map(convertToTaskType)} />
-        )}
+        {/* Task Statistics - Requirement 2.10 - Hidden on mobile */}
+        <div className="hidden md:block">
+          {loading ? (
+            <StatsGridSkeleton count={4} />
+          ) : (
+            <TaskStatsCard tasks={tasks.map(convertToTaskType)} />
+          )}
+        </div>
 
-        {/* Search Bar */}
-        <div className="relative">
+        {/* Search Bar - Hidden on mobile */}
+        <div className="relative hidden md:block">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
           </div>
@@ -337,12 +341,14 @@ export default function NonRecurringTasksPage() {
           />
         </div>
 
-        {/* Task Filter - Requirements 2.7, 2.8 */}
-        <TaskFilter
-          filters={filters}
-          onFilterChange={handleFilterChange}
-          onClearFilters={handleClearFilters}
-        />
+        {/* Task Filter - Requirements 2.7, 2.8 - Hidden on mobile */}
+        <div className="hidden md:block">
+          <TaskFilter
+            filters={filters}
+            onFilterChange={handleFilterChange}
+            onClearFilters={handleClearFilters}
+          />
+        </div>
 
         {/* Error Display */}
         {error && (
@@ -353,9 +359,9 @@ export default function NonRecurringTasksPage() {
           </div>
         )}
 
-        {/* View Toggle Buttons */}
+        {/* View Toggle Buttons - Hidden on mobile */}
         {!loading && tasks.length > 0 && (
-          <div className="flex justify-end">
+          <div className="hidden md:flex justify-end">
             <div className="flex items-center space-x-2">
               <button
                 onClick={() => setViewMode('grid')}
