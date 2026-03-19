@@ -1052,7 +1052,7 @@ export default function DashboardPage() {
       {/* Modals - Only render when needed */}
       {showTaskTypeDialog && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 !mt-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowTaskTypeDialog(false);
             closeModal(); // Close modal context to show header
@@ -1096,17 +1096,17 @@ export default function DashboardPage() {
       {/* All Tasks Modal */}
       {showAllTasksModal && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 !mt-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowAllTasksModal(false);
             closeModal(); // Close modal context to show header
           }}
         >
           <div 
-            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between gap-2 sm:gap-4">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   <div className="p-1.5 sm:p-2 bg-blue-600 rounded-lg flex-shrink-0">
@@ -1140,7 +1140,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+            <div className="flex-1 min-h-0 p-4 overflow-y-auto">
               {tasks.length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                   No tasks found
@@ -1256,17 +1256,17 @@ export default function DashboardPage() {
       {/* Completed Tasks Modal */}
       {showCompletedModal && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 !mt-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowCompletedModal(false);
             closeModal();
           }}
         >
           <div 
-            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between gap-2 sm:gap-4">
                 <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
                   <div className="p-1.5 sm:p-2 bg-green-600 rounded-lg flex-shrink-0">
@@ -1297,7 +1297,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+            <div className="flex-1 min-h-0 p-4 overflow-y-auto">
               {completedTasks.length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                   No completed tasks
@@ -1371,17 +1371,17 @@ export default function DashboardPage() {
       {/* In Progress Tasks Modal */}
       {showInProgressModal && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 !mt-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowInProgressModal(false);
             closeModal();
           }}
         >
           <div 
-            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <ClockIcon className="w-5 h-5 sm:w-6 sm:h-6 text-orange-600" />
@@ -1400,7 +1400,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+            <div className="flex-1 min-h-0 p-4 overflow-y-auto">
               {inProgressTasks.length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                   No tasks in progress
@@ -1492,17 +1492,17 @@ export default function DashboardPage() {
       {/* To Do Tasks Modal */}
       {showTodoModal && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 !mt-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowTodoModal(false);
             closeModal();
           }}
         >
           <div 
-            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <PlusCircleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-blue-600" />
@@ -1521,7 +1521,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+            <div className="flex-1 min-h-0 p-4 overflow-y-auto">
               {todoTasks.length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                   No pending tasks
@@ -1613,19 +1613,19 @@ export default function DashboardPage() {
       {/* Overdue Tasks Modal */}
       {showOverdueModal && (
         <div 
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 !mt-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={() => {
             setShowOverdueModal(false);
             closeModal();
           }}
         >
           <div 
-            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[80vh] overflow-hidden"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[85vh] flex flex-col overflow-hidden"
             onClick={(e) => {
               e.stopPropagation();
             }}
           >
-            <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
+            <div className="flex-shrink-0 px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <h3 className="text-base sm:text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                   <ExclamationTriangleIcon className="w-5 h-5 sm:w-6 sm:h-6 text-red-600" />
@@ -1644,7 +1644,7 @@ export default function DashboardPage() {
                 </button>
               </div>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[calc(80vh-100px)]">
+            <div className="flex-1 min-h-0 p-4 overflow-y-auto">
               {overdueTasks.length === 0 ? (
                 <p className="text-center text-gray-500 dark:text-gray-400 py-8">
                   No overdue tasks
