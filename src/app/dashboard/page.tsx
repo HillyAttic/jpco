@@ -384,7 +384,7 @@ export default function DashboardPage() {
 
   // Fetch pending invoices count
   useEffect(() => {
-    if (!user || !isAdmin) return;
+    if (!user || !isAdmin || userProfile?.role !== 'admin') return;
 
     const fetchPendingInvoicesCount = async () => {
       try {
@@ -396,7 +396,7 @@ export default function DashboardPage() {
     };
 
     fetchPendingInvoicesCount();
-  }, [user, isAdmin]);
+  }, [user, isAdmin, userProfile]);
 
   // Fetch pending leave approvals count
   useEffect(() => {
