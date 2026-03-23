@@ -436,87 +436,39 @@ export const leaveService = {
    */
   async createLeaveRequest(data: any): Promise<AttendanceLeaveRequest> {
     try {
-      // Import the calculator for validation
-      const { LeaveBalanceCalculator } = await import('./leave-balance-calculator.service');
-      
-      // Get employee's existing requests for validation
-      const existingRequests = await this.getAll({ employeeId: data.employeeId });
-      
-      // Validate the leave request
-      const validation = LeaveBalanceCalculator.validateLeaveRequest(
-        data.leaveTypeId,
-        new Date(data.startDate),
-        new Date(data.endDate),
-        existingRequests
-      );
-      
-      if (!validation.valid) {
-        throw new Error(validation.message || 'Leave request validation failed');
-      }
-      
-      // Calculate duration
-      const start = new Date(data.startDate);
-      const end = new Date(data.endDate);
-      const diffTime = Math.abs(end.getTime() - start.getTime());
-      const duration = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      const { authenticatedFetch } = await import('@/lib/api-client');
 
-      const transformedData = {
-        employeeId: data.employeeId,
-        employeeName: data.employeeName,
-        employeeEmail: data.employeeEmail || '',
-        leaveType: data.leaveTypeId,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        totalDays: duration,
-        reason: data.reason,
-        status: 'pending' as LeaveStatus,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-      
-      const created = await leaveFirebaseService.create(transformedData);
-      
-      // Send push notification to all admins
-      try {
-        const { pushNotificationService } = await import('./push-notification.service');
-        const { employeeService } = await import('./employee.service');
-        
-        // Get all admin users
-        const allEmployees = await employeeService.getAll({ status: 'active' });
-        const adminIds = allEmployees
-          .filter(emp => emp.role === 'Admin')
-          .map(emp => emp.id)
-          .filter((id): id is string => id !== undefined);
-        
-        if (adminIds.length > 0) {
-          await pushNotificationService.notifyLeaveRequest(
-            adminIds,
-            data.employeeName,
-            data.leaveTypeId.replace('-', ' ').replace(/\b\w/g, (l: string) => l.toUpperCase()),
-            start,
-            end,
-            duration
-          );
-          console.log(`[Leave] Sent leave request notification to ${adminIds.length} admin(s)`);
-        }
-      } catch (error) {
-        console.error('Error sending leave request notification:', error);
-        // Don't fail the request if notification fails
+      const response = await authenticatedFetch('/api/leave-requests', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leaveType: data.leaveTypeId,
+          startDate: data.startDate instanceof Date ? data.startDate.toISOString() : data.startDate,
+          endDate: data.endDate instanceof Date ? data.endDate.toISOString() : data.endDate,
+          reason: data.reason,
+        }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to create leave request');
       }
-      
+
+      const created = await response.json();
+
       return {
-        id: created.id || '',
+        id: created.id,
         employeeId: created.employeeId,
         employeeName: created.employeeName,
         leaveTypeId: created.leaveType || 'general',
         leaveTypeName: created.leaveType || 'General',
-        startDate: created.startDate,
-        endDate: created.endDate,
+        startDate: new Date(created.startDate),
+        endDate: new Date(created.endDate),
         duration: created.totalDays,
         reason: created.reason,
         status: created.status as AttendanceLeaveStatus,
-        createdAt: created.createdAt || new Date(),
-        updatedAt: created.updatedAt || new Date()
+        createdAt: new Date(created.createdAt),
+        updatedAt: new Date(created.updatedAt),
       };
     } catch (error) {
       console.error('Error creating leave request:', error);
