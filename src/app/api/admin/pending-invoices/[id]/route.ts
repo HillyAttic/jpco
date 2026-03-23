@@ -15,7 +15,7 @@ export async function GET(
     }
 
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
+    if (userRole !== 'admin') {
       return ErrorResponses.forbidden('Only managers and admins can access this resource');
     }
 
@@ -53,7 +53,7 @@ export async function PUT(
     }
 
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
+    if (userRole !== 'admin') {
       return ErrorResponses.forbidden('Only managers and admins can update pending invoices');
     }
 
@@ -102,7 +102,7 @@ export async function DELETE(
     }
 
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
+    if (userRole !== 'admin') {
       return ErrorResponses.forbidden('Only managers and admins can delete pending invoices');
     }
 

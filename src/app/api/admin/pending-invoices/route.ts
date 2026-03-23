@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
     }
 
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
-      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    if (userRole !== 'admin') {
+      return ErrorResponses.forbidden('Only admins can access this resource');
     }
 
     const { adminDb } = await import('@/lib/firebase-admin');
@@ -53,8 +53,8 @@ export async function POST(request: NextRequest) {
     }
 
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
-      return ErrorResponses.forbidden('Only managers and admins can create pending invoices');
+    if (userRole !== 'admin') {
+      return ErrorResponses.forbidden('Only admins can create pending invoices');
     }
 
     const { adminDb } = await import('@/lib/firebase-admin');

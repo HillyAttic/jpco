@@ -174,7 +174,7 @@ export const NAV_DATA = [
         url: "/admin/pending-invoices",
         icon: Icons.InvoiceIcon,
         items: [],
-        requiresRole: ['admin', 'manager'],
+        requiresRole: ['admin'],
       },
 
       // Authentication menu item hidden - users can access auth pages directly via URL if needed

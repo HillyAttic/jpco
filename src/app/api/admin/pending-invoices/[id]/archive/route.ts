@@ -15,7 +15,7 @@ export async function PATCH(
     }
 
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
+    if (userRole !== 'admin') {
       return ErrorResponses.forbidden('Only managers and admins can archive pending invoices');
     }
 
