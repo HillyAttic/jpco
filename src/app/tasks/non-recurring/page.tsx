@@ -4,12 +4,13 @@ import React, { useState } from 'react';
 import { useTasks } from '@/hooks/use-tasks';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
 import { NonRecurringTask } from '@/services/nonrecurring-task.service';
-import { TaskAttachment } from '@/types/task.types';
+import { TaskAttachment, Task } from '@/types/task.types';
 import { uploadTaskAttachments, deleteTaskAttachment } from '@/lib/task-attachment.service';
 import { TaskCard } from '@/components/tasks/TaskCard';
 import { TaskListView } from '@/components/tasks/TaskListView';
 import { TaskModal } from '@/components/tasks/TaskModal';
 import { TaskStatusModal } from '@/components/tasks/TaskStatusModal';
+import { TaskDetailModal } from '@/components/task-detail-modal';
 import { TaskFilter, TaskFilterState } from '@/components/tasks/TaskFilter';
 import { TaskStatsCard } from '@/components/tasks/TaskStatsCard';
 import { BulkActionToolbar } from '@/components/ui/BulkActionToolbar';
@@ -65,6 +66,8 @@ export default function NonRecurringTasksPage() {
     status: 'all',
     priority: 'all',
   });
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [selectedDetailTask, setSelectedDetailTask] = useState<Task | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState<string | null>(null);
@@ -278,22 +281,33 @@ export default function NonRecurringTasksPage() {
   };
 
   // Convert NonRecurringTask to Task type for components
-  const convertToTaskType = (task: NonRecurringTask): any => ({
+  const convertToTaskType = (task: NonRecurringTask): Task => ({
     id: task.id!,
     title: task.title,
     description: task.description,
-    status: task.status,
-    priority: task.priority,
+    status: task.status as any,
+    priority: task.priority as any,
     dueDate: task.dueDate,
-    createdAt: task.createdAt,
-    updatedAt: task.updatedAt,
+    createdAt: task.createdAt!,
+    updatedAt: task.updatedAt!,
     assignedTo: task.assignedTo,
     category: task.categoryId,
-    categoryId: task.categoryId,
     contactId: task.contactId,
     createdBy: task.createdBy,
     attachments: task.attachments,
+    commentCount: task.commentCount,
   });
+
+  // Open the detail modal (comments + attachments) for a task
+  const handleViewDetails = (task: NonRecurringTask) => {
+    setSelectedDetailTask(convertToTaskType(task));
+    setIsDetailModalOpen(true);
+  };
+
+  // Called when TaskDetailModal updates the task — refresh the list to stay in sync
+  const handleTaskDetailUpdate = (_updatedTask: Task) => {
+    refreshTasks();
+  };
 
   return (
     <ErrorBoundary>
@@ -397,6 +411,10 @@ export default function NonRecurringTasksPage() {
               }}
               onDelete={handleDelete}
               onToggleComplete={handleToggleComplete}
+              onView={(task) => {
+                const originalTask = tasks.find(t => t.id === task.id);
+                if (originalTask) handleViewDetails(originalTask);
+              }}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -407,6 +425,7 @@ export default function NonRecurringTasksPage() {
                   onEdit={() => handleEdit(task)}
                   onDelete={handleDelete}
                   onToggleComplete={handleToggleComplete}
+                  onView={() => handleViewDetails(task)}
                   selected={isSelected(task.id!)}
                   onSelect={toggleSelection}
                 />
@@ -489,6 +508,17 @@ export default function NonRecurringTasksPage() {
             status: selectedTask.status,
           } : null}
           isLoading={isSubmitting}
+        />
+
+        {/* Task Detail Modal — comments, attachments, full activity */}
+        <TaskDetailModal
+          open={isDetailModalOpen}
+          onClose={() => {
+            setIsDetailModalOpen(false);
+            setSelectedDetailTask(null);
+          }}
+          task={selectedDetailTask}
+          onUpdate={handleTaskDetailUpdate}
         />
       </div>
     </ErrorBoundary>

@@ -11,7 +11,9 @@ import {
   CheckCircleIcon,
   ClockIcon,
   ExclamationTriangleIcon,
-  PaperClipIcon
+  PaperClipIcon,
+  EyeIcon,
+  ChatBubbleLeftRightIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid';
 
@@ -20,6 +22,7 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onToggleComplete: (id: string) => void;
+  onView?: (task: Task) => void;
   selected?: boolean;
   onSelect?: (id: string, selected: boolean) => void;
 }
@@ -29,7 +32,7 @@ interface TaskCardProps {
  * Displays task information with priority badges, overdue indicators, and action buttons
  * Validates Requirements: 2.4, 2.5, 2.6, 2.9
  */
-export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = false, onSelect }: TaskCardProps) {
+export function TaskCard({ task, onEdit, onDelete, onToggleComplete, onView, selected = false, onSelect }: TaskCardProps) {
   // Check if task is overdue (Requirement 2.5)
   const isOverdue = task.status !== 'completed' && new Date(task.dueDate) < new Date();
   
@@ -79,7 +82,7 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
   const isCompleted = task.status === 'completed';
 
   return (
-    <Card className={`group hover:shadow-lg transition-all duration-200 ${isOverdue ? 'border-red-300 bg-red-50/30' : ''} ${selected ? 'ring-2 ring-blue-500' : ''}`}>
+    <Card className={`group hover:shadow-lg transition-all duration-200 ${isOverdue ? 'border-red-300 bg-red-50/30' : ((task.commentCount != null && task.commentCount > 0) || (task.attachments && task.attachments.length > 0)) ? 'border-blue-300 dark:border-blue-700 bg-blue-50/30 dark:bg-blue-900/10' : ''} ${selected ? 'ring-2 ring-blue-500' : ''}`}>
       <CardContent className="p-6">
         {/* Selection Checkbox */}
         {onSelect && (
@@ -121,6 +124,18 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            {onView && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => onView(task)}
+                className="text-purple-600 hover:text-purple-700 hover:bg-purple-50"
+                aria-label={`View details for ${task.title}`}
+                title="View details, comments & attachments"
+              >
+                <EyeIcon className="w-4 h-4" />
+              </Button>
+            )}
             <Button
               size="sm"
               variant="ghost"
@@ -191,22 +206,45 @@ export function TaskCard({ task, onEdit, onDelete, onToggleComplete, selected = 
             </div>
           )}
 
-          {/* Attachments indicator */}
-          {task.attachments && task.attachments.length > 0 && (
-            <div className="flex items-center gap-1.5 text-sm text-gray-600 dark:text-gray-400">
-              <PaperClipIcon className="w-4 h-4 flex-shrink-0" />
-              <span>{task.attachments.length} attachment{task.attachments.length !== 1 ? 's' : ''}</span>
+          {/* Attachments & comments indicators */}
+          {((task.attachments && task.attachments.length > 0) || (task.commentCount != null && task.commentCount > 0)) && (
+            <div className="flex items-center gap-2 flex-wrap">
+              {task.attachments && task.attachments.length > 0 && (
+                <span className="inline-flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded-full px-2 py-0.5">
+                  <PaperClipIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                  {task.attachments.length} attachment{task.attachments.length !== 1 ? 's' : ''}
+                </span>
+              )}
+              {task.commentCount != null && task.commentCount > 0 && (
+                <span className="inline-flex items-center gap-1 text-sm text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded-full px-2 py-0.5">
+                  <ChatBubbleLeftRightIcon className="w-3.5 h-3.5 flex-shrink-0" />
+                  {task.commentCount} comment{task.commentCount !== 1 ? 's' : ''}
+                </span>
+              )}
             </div>
           )}
         </div>
 
-        {/* Complete/Incomplete Toggle - Requirement 2.6 */}
-        <div className="pt-4 border-t">
+        {/* Actions Footer - Requirement 2.6 */}
+        <div className="pt-4 border-t flex gap-2">
+          {onView && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onView(task)}
+              className="flex-shrink-0 text-purple-600 border-purple-200 hover:bg-purple-50"
+              aria-label={`View details for ${task.title}`}
+              title="View details, comments & attachments"
+            >
+              <EyeIcon className="w-4 h-4 mr-1" />
+              Details
+            </Button>
+          )}
           <Button
             variant={isCompleted ? 'secondary' : 'primary'}
             size="sm"
             onClick={() => onToggleComplete(task.id)}
-            className="w-full"
+            className="flex-1"
             aria-label={isCompleted ? 'Mark as incomplete' : 'Mark as complete'}
           >
             {isCompleted ? (

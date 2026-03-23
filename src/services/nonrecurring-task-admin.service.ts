@@ -4,6 +4,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import * as admin from 'firebase-admin';
 import { NonRecurringTask } from './nonrecurring-task.service';
 import { Comment } from '@/types/task.types';
 
@@ -62,6 +63,29 @@ export const nonRecurringTaskAdminService = {
       tasks = tasks.filter(task =>
         task.title?.toLowerCase().includes(searchLower) ||
         task.description?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Backfill commentCount for tasks that don't have it stored yet
+    // (lazy migration — runs once per task, then caches the value in Firestore)
+    const missing = tasks.filter(t => t.commentCount === undefined);
+    if (missing.length > 0) {
+      await Promise.all(
+        missing.map(async (task) => {
+          try {
+            const commentsSnap = await adminDb
+              .collection('tasks')
+              .doc(task.id!)
+              .collection('comments')
+              .get();
+            const count = commentsSnap.size;
+            task.commentCount = count;
+            // Write back so future fetches skip this step
+            adminDb.collection('tasks').doc(task.id!).update({ commentCount: count }).catch(() => {});
+          } catch {
+            task.commentCount = 0;
+          }
+        })
       );
     }
 
@@ -174,10 +198,12 @@ export const nonRecurringTaskAdminService = {
 
     const commentRef = await taskRef.collection('comments').add(commentData);
 
-    // Update comment count on task (optional, but good for UI)
-    // await taskRef.update({ 
-    //   commentCount: admin.firestore.FieldValue.increment(1) 
-    // });
+    // Update comment count on task for badge display in UI
+    await taskRef.update({
+      commentCount: admin.firestore.FieldValue.increment(1),
+    }).catch(() => {
+      // Non-blocking: if update fails, comment was still added
+    });
 
     return {
       id: commentRef.id,

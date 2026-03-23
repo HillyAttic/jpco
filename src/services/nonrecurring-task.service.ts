@@ -20,6 +20,7 @@ export interface NonRecurringTask {
   contactId?: string; // Client ID reference
   createdBy?: string; // User ID of the creator
   attachments?: TaskAttachment[];
+  commentCount?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }

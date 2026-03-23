@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
-import { PencilIcon, TrashIcon, CheckCircleIcon, PaperClipIcon } from '@heroicons/react/24/outline';
+import { PencilIcon, TrashIcon, CheckCircleIcon, PaperClipIcon, EyeIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 interface Task {
@@ -16,6 +16,7 @@ interface Task {
   contactId?: string;
   createdBy?: string;
   attachments?: { name: string; url: string; type: string; size: number; storagePath: string }[];
+  commentCount?: number;
 }
 
 interface TaskListViewProps {
@@ -23,17 +24,19 @@ interface TaskListViewProps {
   onEdit: (task: Task) => void;
   onDelete: (id: string) => void;
   onToggleComplete: (id: string) => void;
+  onView?: (task: Task) => void;
 }
 
 /**
  * TaskListView Component
  * Displays tasks in a table/list format
  */
-export function TaskListView({ 
-  tasks, 
-  onEdit, 
-  onDelete, 
-  onToggleComplete
+export function TaskListView({
+  tasks,
+  onEdit,
+  onDelete,
+  onToggleComplete,
+  onView,
 }: TaskListViewProps) {
   const { isAdmin, isManager } = useEnhancedAuth();
   const isAdminOrManager = isAdmin || isManager;
@@ -269,7 +272,11 @@ export function TaskListView({
           {tasks.map((task) => (
             <div
               key={task.id}
-              className="grid grid-cols-12 gap-2 px-3 py-2.5 text-[11px] transition-colors bg-white dark:bg-gray-dark hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-800"
+              className={`grid grid-cols-12 gap-2 px-3 py-2.5 text-[11px] transition-colors hover:bg-gray-50 dark:hover:bg-gray-800 border-l-2 ${
+                (task.commentCount != null && task.commentCount > 0) || (task.attachments && task.attachments.length > 0)
+                  ? 'border-l-blue-400 bg-blue-50/30 dark:bg-blue-900/10'
+                  : 'border-l-transparent bg-white dark:bg-gray-dark'
+              }`}
             >
               {/* Title */}
               <div className="col-span-2">
@@ -281,12 +288,20 @@ export function TaskListView({
                     {task.description}
                   </div>
                 )}
-                {task.attachments && task.attachments.length > 0 && (
-                  <div className="flex items-center gap-0.5 text-gray-400 dark:text-gray-500 mt-0.5">
-                    <PaperClipIcon className="w-3 h-3" />
-                    <span className="text-[10px]">{task.attachments.length}</span>
-                  </div>
-                )}
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {task.attachments && task.attachments.length > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded px-1 py-0.5">
+                      <PaperClipIcon className="w-3 h-3" />
+                      {task.attachments.length}
+                    </span>
+                  )}
+                  {task.commentCount != null && task.commentCount > 0 && (
+                    <span className="inline-flex items-center gap-0.5 text-[10px] text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded px-1 py-0.5">
+                      <ChatBubbleLeftRightIcon className="w-3 h-3" />
+                      {task.commentCount}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {/* Client */}
@@ -339,6 +354,16 @@ export function TaskListView({
 
               {/* Actions */}
               <div className="col-span-1 flex items-center gap-1 justify-end">
+                {onView && (
+                  <button
+                    onClick={() => onView(task)}
+                    className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 p-1"
+                    aria-label="View details"
+                    title="View details, comments & attachments"
+                  >
+                    <EyeIcon className="w-4 h-4" />
+                  </button>
+                )}
                 <button
                   onClick={() => onToggleComplete(task.id)}
                   className={`p-1 ${
@@ -380,7 +405,11 @@ export function TaskListView({
         {tasks.map((task) => (
           <div
             key={task.id}
-            className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2.5"
+            className={`rounded-lg border p-3 space-y-2.5 ${
+              (task.commentCount != null && task.commentCount > 0) || (task.attachments && task.attachments.length > 0)
+                ? 'border-blue-300 dark:border-blue-700 bg-blue-50/40 dark:bg-blue-900/10'
+                : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-dark'
+            }`}
           >
             {/* Title and Description */}
             <div>
@@ -439,16 +468,34 @@ export function TaskListView({
                   }
                 </span>
               </div>
-              {task.attachments && task.attachments.length > 0 && (
-                <div className="flex items-center gap-1 text-gray-500 dark:text-gray-400">
-                  <PaperClipIcon className="w-3.5 h-3.5" />
-                  <span>{task.attachments.length} attachment{task.attachments.length !== 1 ? 's' : ''}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2 flex-wrap">
+                {task.attachments && task.attachments.length > 0 && (
+                  <span className="inline-flex items-center gap-1 text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 rounded px-1.5 py-0.5 text-[11px]">
+                    <PaperClipIcon className="w-3.5 h-3.5" />
+                    {task.attachments.length} attachment{task.attachments.length !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {task.commentCount != null && task.commentCount > 0 && (
+                  <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 rounded px-1.5 py-0.5 text-[11px]">
+                    <ChatBubbleLeftRightIcon className="w-3.5 h-3.5" />
+                    {task.commentCount} comment{task.commentCount !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
             </div>
 
             {/* Action Buttons */}
             <div className="flex gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+              {onView && (
+                <button
+                  onClick={() => onView(task)}
+                  className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50 transition-colors min-h-[40px]"
+                  aria-label="View details"
+                >
+                  <EyeIcon className="w-4 h-4" />
+                  <span className="text-xs">View</span>
+                </button>
+              )}
               <button
                 onClick={() => onToggleComplete(task.id)}
                 className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg font-medium transition-colors min-h-[40px] ${
