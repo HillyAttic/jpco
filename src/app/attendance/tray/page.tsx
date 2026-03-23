@@ -626,52 +626,50 @@ export default function AttendanceTrayPage() {
                   </div>
                 </div>
 
-                {/* Location Info */}
-                {(record.location?.clockIn || record.location?.clockOut) && (
-                  <div className="mt-4 pt-4 border-t border-gray-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4 text-xs">
-                        {record.location?.clockIn && (
-                          <button
-                            onClick={() => handleLocationClick(
-                              record.location!.clockIn!.latitude,
-                              record.location!.clockIn!.longitude,
-                              `${record.employeeName} - Clock In Location`
-                            )}
-                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                          >
-                            <MapPin className="h-3 w-3" />
-                            <span>Map (In)</span>
-                          </button>
-                        )}
-                        {record.location?.clockOut && (
-                          <button
-                            onClick={() => handleLocationClick(
-                              record.location!.clockOut!.latitude,
-                              record.location!.clockOut!.longitude,
-                              `${record.employeeName} - Clock Out Location`
-                            )}
-                            className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
-                          >
-                            <MapPin className="h-3 w-3" />
-                            <span>Map (Out)</span>
-                          </button>
-                        )}
-                      </div>
-                      
-                      {/* Calendar Overview Button */}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleCalendarClick(record.employeeId, record.employeeName)}
-                        className="flex items-center gap-1 text-xs"
-                      >
-                        <Calendar className="h-3 w-3" />
-                        Calendar Overview
-                      </Button>
+                {/* Bottom row: location links + calendar button */}
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4 text-xs">
+                      {record.location?.clockIn && (
+                        <button
+                          onClick={() => handleLocationClick(
+                            record.location!.clockIn!.latitude,
+                            record.location!.clockIn!.longitude,
+                            `${record.employeeName} - Clock In Location`
+                          )}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        >
+                          <MapPin className="h-3 w-3" />
+                          <span>Map (In)</span>
+                        </button>
+                      )}
+                      {record.location?.clockOut && (
+                        <button
+                          onClick={() => handleLocationClick(
+                            record.location!.clockOut!.latitude,
+                            record.location!.clockOut!.longitude,
+                            `${record.employeeName} - Clock Out Location`
+                          )}
+                          className="flex items-center gap-1 text-blue-600 hover:text-blue-800 hover:underline cursor-pointer"
+                        >
+                          <MapPin className="h-3 w-3" />
+                          <span>Map (Out)</span>
+                        </button>
+                      )}
                     </div>
+
+                    {/* Calendar Overview Button - always visible */}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleCalendarClick(record.employeeId, record.employeeName)}
+                      className="flex items-center gap-1 text-xs"
+                    >
+                      <Calendar className="h-3 w-3" />
+                      Calendar Overview
+                    </Button>
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           ))}

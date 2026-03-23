@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Calendar, ChevronLeft, ChevronRight, X, Circle, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { AttendanceExportModal } from './AttendanceExportModal';
@@ -13,23 +13,16 @@ interface AttendanceCalendarModalProps {
   onClose: () => void;
   employeeId: string;
   employeeName: string;
+  employeeEmail?: string;
 }
 
 interface DayStatus {
   date: Date;
   status: 'present' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'half-day' | 'upcoming' | 'holiday';
-  clockIn?: Date;
-  clockOut?: Date;
   duration?: string;
+  hours?: number;
   leaveType?: 'full' | 'half';
   leaveStatus?: 'approved' | 'pending' | 'rejected';
-}
-
-interface Holiday {
-  id: string;
-  date: string;
-  name: string;
-  description?: string;
 }
 
 export function AttendanceCalendarModal({
@@ -37,6 +30,7 @@ export function AttendanceCalendarModal({
   onClose,
   employeeId,
   employeeName,
+  employeeEmail,
 }: AttendanceCalendarModalProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [attendanceData, setAttendanceData] = useState<Map<string, DayStatus>>(new Map());
@@ -44,11 +38,10 @@ export function AttendanceCalendarModal({
   const [loading, setLoading] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  // Fetch attendance data for the current month
   useEffect(() => {
     if (isOpen && employeeId) {
-      fetchMonthAttendance();
       fetchHolidays();
+      fetchMonthAttendance();
     }
   }, [isOpen, employeeId, currentMonth]);
 
@@ -56,45 +49,22 @@ export function AttendanceCalendarModal({
     try {
       const snapshot = await getDocs(collection(db, 'holidays'));
       const holidayDates = new Set<string>();
-      
       snapshot.docs.forEach(doc => {
         const data = doc.data();
         let dateStr = '';
-        
-        // Convert Timestamp to YYYY-MM-DD string for consistent matching
         if (data.date && typeof data.date.toDate === 'function') {
-          const dateObj = data.date.toDate();
-          const year = dateObj.getFullYear();
-          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const day = String(dateObj.getDate()).padStart(2, '0');
-          dateStr = `${year}-${month}-${day}`;
+          const d = data.date.toDate();
+          dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         } else if (typeof data.date === 'string') {
-          // Handle legacy string dates - check if it's ISO format or already YYYY-MM-DD
-          if (data.date.includes('T')) {
-            // ISO format, extract date part
-            const dateObj = new Date(data.date);
-            const year = dateObj.getFullYear();
-            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-            const day = String(dateObj.getDate()).padStart(2, '0');
-            dateStr = `${year}-${month}-${day}`;
-          } else {
-            // Already in YYYY-MM-DD format
-            dateStr = data.date;
-          }
-        } else if (data.date && typeof data.date.seconds !== 'undefined') {
-          // Handle Timestamp object with seconds
-          const dateObj = new Date(data.date.seconds * 1000);
-          const year = dateObj.getFullYear();
-          const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-          const day = String(dateObj.getDate()).padStart(2, '0');
-          dateStr = `${year}-${month}-${day}`;
+          dateStr = data.date.includes('T')
+            ? (() => { const d = new Date(data.date); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()
+            : data.date;
+        } else if (data.date?.seconds) {
+          const d = new Date(data.date.seconds * 1000);
+          dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
-        
-        if (dateStr) {
-          holidayDates.add(dateStr);
-        }
+        if (dateStr) holidayDates.add(dateStr);
       });
-      
       setHolidays(holidayDates);
     } catch (error) {
       console.error('Error fetching holidays:', error);
@@ -106,17 +76,16 @@ export function AttendanceCalendarModal({
     try {
       const startOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
       startOfMonth.setHours(0, 0, 0, 0);
-      
       const endOfMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0);
       endOfMonth.setHours(23, 59, 59, 999);
 
+      // Fetch attendance records from Firestore
       const q = query(
         collection(db, 'attendance-records'),
         where('employeeId', '==', employeeId),
         where('clockIn', '>=', Timestamp.fromDate(startOfMonth)),
         where('clockIn', '<=', Timestamp.fromDate(endOfMonth))
       );
-
       const snapshot = await getDocs(q);
       const dataMap = new Map<string, DayStatus>();
 
@@ -124,32 +93,73 @@ export function AttendanceCalendarModal({
         const data = doc.data();
         const clockIn = data.clockIn?.toDate();
         const clockOut = data.clockOut?.toDate();
-        
-        if (clockIn) {
-          // Create date key in local timezone (YYYY-MM-DD format)
-          const year = clockIn.getFullYear();
-          const month = String(clockIn.getMonth() + 1).padStart(2, '0');
-          const day = String(clockIn.getDate()).padStart(2, '0');
-          const dateKey = `${year}-${month}-${day}`;
-          
-          // Calculate duration
-          let duration = 'In Progress';
-          if (clockOut) {
-            const diffMs = clockOut.getTime() - clockIn.getTime();
-            const hours = Math.floor(diffMs / 3600000);
-            const minutes = Math.floor((diffMs % 3600000) / 60000);
-            duration = `${hours}h ${minutes}m`;
-          }
+        if (!clockIn) return;
 
-          dataMap.set(dateKey, {
-            date: clockIn,
-            status: 'present',
-            clockIn,
-            clockOut,
-            duration,
-          });
+        const y = clockIn.getFullYear();
+        const m = String(clockIn.getMonth() + 1).padStart(2, '0');
+        const d = String(clockIn.getDate()).padStart(2, '0');
+        const dateKey = `${y}-${m}-${d}`;
+
+        let duration = 'In Progress';
+        let hours = 0;
+        if (clockOut) {
+          const diffMs = clockOut.getTime() - clockIn.getTime();
+          const h = Math.floor(diffMs / 3600000);
+          const min = Math.floor((diffMs % 3600000) / 60000);
+          duration = `${h}h ${min}m`;
+          hours = Math.round((diffMs / 3600000) * 10) / 10;
         }
+
+        dataMap.set(dateKey, { date: clockIn, status: 'present', duration, hours });
       });
+
+      // Fetch approved leave requests via API (bypasses Firestore security rules)
+      try {
+        const { authenticatedFetch } = await import('@/lib/api-client');
+        const leaveRes = await authenticatedFetch(
+          `/api/leave-requests?startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}`
+        );
+        if (leaveRes.ok) {
+          const leaveRaw = await leaveRes.json();
+          const leaveData: any[] = Array.isArray(leaveRaw)
+            ? leaveRaw
+            : Array.isArray(leaveRaw?.data)
+              ? leaveRaw.data
+              : [];
+
+          leaveData
+            .filter((l: any) => l.employeeId === employeeId && l.status === 'approved')
+            .forEach((leave: any) => {
+              const leaveStart = leave.startDate?.split('T')[0];
+              const leaveEnd = leave.endDate?.split('T')[0];
+              if (!leaveStart || !leaveEnd) return;
+
+              const cur = new Date(leaveStart + 'T00:00:00');
+              const end = new Date(leaveEnd + 'T00:00:00');
+
+              while (cur <= end) {
+                const y = cur.getFullYear();
+                const m = String(cur.getMonth() + 1).padStart(2, '0');
+                const d = String(cur.getDate()).padStart(2, '0');
+                const dateKey = `${y}-${m}-${d}`;
+
+                // Present takes precedence over leave
+                if (!dataMap.has(dateKey)) {
+                  const isHalfDay = leave.leaveType === 'half-day';
+                  dataMap.set(dateKey, {
+                    date: new Date(cur),
+                    status: isHalfDay ? 'half-day' : 'approved-leave',
+                    leaveType: isHalfDay ? 'half' : 'full',
+                    leaveStatus: 'approved',
+                  });
+                }
+                cur.setDate(cur.getDate() + 1);
+              }
+            });
+        }
+      } catch (leaveError) {
+        console.error('Error fetching leave requests:', leaveError);
+      }
 
       setAttendanceData(dataMap);
     } catch (error) {
@@ -159,168 +169,89 @@ export function AttendanceCalendarModal({
     }
   };
 
-  // Get days in month
   const getDaysInMonth = () => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
     const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
     const startingDayOfWeek = firstDay.getDay();
 
     const days: (Date | null)[] = [];
-
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null);
-    }
-
-    // Add all days of the month
-    for (let day = 1; day <= daysInMonth; day++) {
-      days.push(new Date(year, month, day));
-    }
-
+    for (let i = 0; i < startingDayOfWeek; i++) days.push(null);
+    for (let day = 1; day <= daysInMonth; day++) days.push(new Date(year, month, day));
     return days;
   };
 
-  // Get status for a specific date
   const getDateStatus = (date: Date): DayStatus => {
-    // Create date key in local timezone (YYYY-MM-DD format)
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    const dateKey = `${year}-${month}-${day}`;
-    
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, '0');
+    const d = String(date.getDate()).padStart(2, '0');
+    const dateKey = `${y}-${m}-${d}`;
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const checkDate = new Date(date);
     checkDate.setHours(0, 0, 0, 0);
 
-    // Check if it's a future date
-    if (checkDate > today) {
-      return { date, status: 'upcoming' };
-    }
-
-    // Check if it's a holiday from the holidays collection
-    if (holidays.has(dateKey)) {
-      return { date, status: 'holiday' };
-    }
-
-    // Check if it's Sunday (Sunday = 0) - only day off
-    // Sundays are always holidays, even if there's attendance data
-    const dayOfWeek = date.getDay();
-    if (dayOfWeek === 0) {
-      return { date, status: 'holiday' };
-    }
-
-    // Check if attendance record exists
-    if (attendanceData.has(dateKey)) {
-      return attendanceData.get(dateKey)!;
-    }
-
-    // If it's a past weekday with no record, mark as absent
+    if (checkDate > today) return { date, status: 'upcoming' };
+    if (holidays.has(dateKey)) return { date, status: 'holiday' };
+    if (date.getDay() === 0) return { date, status: 'holiday' };
+    if (attendanceData.has(dateKey)) return attendanceData.get(dateKey)!;
     return { date, status: 'absent' };
   };
 
-  // Get color for status
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'present':
-        return 'bg-green-500';
-      case 'absent':
-        return 'bg-red-500';
-      case 'approved-leave':
-        return 'bg-purple-500';
-      case 'unapproved-leave':
-        return 'bg-red-500';
-      case 'half-day':
-        return 'bg-orange-500';
-      case 'upcoming':
-        return 'bg-white border-2 border-gray-300';
-      case 'holiday':
-        return 'bg-blue-500';
-      default:
-        return 'bg-gray-300';
+      case 'present': return 'bg-green-500';
+      case 'absent': return 'bg-red-500';
+      case 'approved-leave': return 'bg-purple-500';
+      case 'unapproved-leave': return 'bg-red-500';
+      case 'half-day': return 'bg-orange-500';
+      case 'holiday': return 'bg-blue-500';
+      case 'upcoming': return 'bg-gray-200';
+      default: return 'bg-gray-300';
     }
   };
 
-  // Get box background color for status
-  const getBoxColor = (status: string) => {
+  const getStatusLabel = (status: string) => {
     switch (status) {
-      case 'present':
-        return 'bg-green-500 border-green-600';
-      case 'absent':
-        return 'bg-red-500 border-red-600';
-      case 'approved-leave':
-        return 'bg-purple-500 border-purple-600';
-      case 'unapproved-leave':
-        return 'bg-red-500 border-red-600';
-      case 'half-day':
-        return 'bg-orange-500 border-orange-600';
-      case 'upcoming':
-        return 'bg-white dark:bg-gray-dark border-gray-200 dark:border-gray-600';
-      case 'holiday':
-        return 'bg-blue-500 border-blue-600';
-      default:
-        return 'bg-white dark:bg-gray-dark border-gray-200 dark:border-gray-600';
+      case 'approved-leave': return 'Leave';
+      case 'unapproved-leave': return 'Unapproved';
+      case 'half-day': return 'Half Day';
+      case 'upcoming': return 'upcoming';
+      default: return status;
     }
   };
 
-  // Navigate months
-  const previousMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
-  };
-
-  const nextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
-  };
-
-  const goToToday = () => {
-    setCurrentMonth(new Date());
-  };
-
-  // Calculate statistics
   const calculateStats = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    let present = 0;
-    let absent = 0;
-    let leaves = 0;
-    let workingDays = 0;
+    let present = 0, absent = 0, approvedLeave = 0, halfDay = 0, unapprovedLeave = 0, holidayCount = 0, totalHours = 0;
 
     const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
-    
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day);
       date.setHours(0, 0, 0, 0);
-      
-      // Only count up to today
-      if (date > today) break;
-      
-      // Create date key in local timezone
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const dayStr = String(date.getDate()).padStart(2, '0');
-      const dateKey = `${year}-${month}-${dayStr}`;
-      
-      const dayOfWeek = date.getDay();
-      
-      // Skip Sundays (0) and holidays - not working days
-      if (dayOfWeek === 0 || holidays.has(dateKey)) continue;
-      
-      workingDays++;
       const status = getDateStatus(date);
-      
-      if (status.status === 'present') present++;
-      else if (status.status === 'absent') absent++;
-      else if (status.status === 'approved-leave' || status.status === 'unapproved-leave') leaves++;
+
+      switch (status.status) {
+        case 'present':
+          present++;
+          totalHours += status.hours ?? 0;
+          break;
+        case 'absent': absent++; break;
+        case 'approved-leave': approvedLeave++; break;
+        case 'half-day': halfDay++; break;
+        case 'unapproved-leave': unapprovedLeave++; break;
+        case 'holiday': holidayCount++; break;
+      }
     }
-
-    const attendanceRate = workingDays > 0 ? Math.round((present / workingDays) * 100) : 0;
-
-    return { present, absent, leaves, workingDays, attendanceRate };
+    return { present, absent, approvedLeave, halfDay, unapprovedLeave, holidays: holidayCount, totalHours };
   };
+
+  const previousMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+  const goToToday = () => setCurrentMonth(new Date());
 
   const stats = calculateStats();
   const days = getDaysInMonth();
@@ -328,222 +259,151 @@ export function AttendanceCalendarModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[98vw] sm:w-full p-4 sm:p-6">
-        <DialogHeader>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4">
-            <DialogTitle className="flex items-center gap-2 flex-1 text-sm sm:text-lg">
-              <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
-              <span className="truncate">Attendance - {employeeName}</span>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto w-[98vw] sm:w-full p-3 sm:p-6">
+        {/* Header */}
+        <div className="flex justify-between items-start mb-4 sm:mb-5 gap-2 pr-8">
+          <div className="flex-1 min-w-0">
+            <DialogTitle className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">
+              {employeeName}
             </DialogTitle>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white w-full sm:w-auto text-xs sm:text-sm"
-            >
-              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-              Export
+            {employeeEmail && (
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{employeeEmail}</p>
+            )}
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+              {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} — Attendance Overview
+            </p>
+          </div>
+        </div>
+
+        {/* Month Navigation + Export */}
+        <div className="flex items-center justify-between gap-2 mb-4 sm:mb-6">
+          <Button variant="outline" size="sm" onClick={previousMonth} className="flex items-center gap-1 text-xs sm:text-sm">
+            <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
+            <span className="hidden sm:inline">Previous</span>
+          </Button>
+
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
+              {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </h3>
+            <Button variant="outline" size="sm" onClick={goToToday} className="text-xs h-7 sm:h-8 px-2">
+              Today
             </Button>
           </div>
-        </DialogHeader>
 
-        <div className="space-y-4 sm:space-y-6 py-2 sm:py-4">
-          {/* Month Navigation */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={previousMonth}
-              className="flex items-center gap-1 w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
-            >
-              <ChevronLeft className="w-3 h-3 sm:w-4 sm:h-4" />
-              Previous
-            </Button>
-
-            <div className="flex items-center gap-2 sm:gap-3">
-              <h3 className="text-sm sm:text-lg font-semibold">
-                {currentMonth.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
-              </h3>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={goToToday}
-                className="text-xs sm:text-sm h-8 sm:h-9"
-              >
-                Today
-              </Button>
-            </div>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={nextMonth}
-              className="flex items-center gap-1 w-full sm:w-auto text-xs sm:text-sm h-8 sm:h-9"
-            >
-              Next
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={nextMonth} className="flex items-center gap-1 text-xs sm:text-sm">
+              <span className="hidden sm:inline">Next</span>
               <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
             </Button>
+            <Button
+              size="sm"
+              onClick={() => setShowExportModal(true)}
+              className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm"
+            >
+              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
+              <span className="hidden sm:inline">Export</span>
+            </Button>
           </div>
+        </div>
 
-          {/* Statistics */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
-            <div className="bg-green-50 border border-green-200 rounded-lg p-2 sm:p-3">
-              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
-                <Circle className="w-2 h-2 sm:w-3 sm:h-3 fill-green-500 text-green-500" />
-                <span className="text-[10px] sm:text-xs font-medium text-green-900">Present</span>
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-green-700">{stats.present}</div>
-            </div>
-
-            <div className="bg-red-50 border border-red-200 rounded-lg p-2 sm:p-3">
-              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
-                <Circle className="w-2 h-2 sm:w-3 sm:h-3 fill-red-500 text-red-500" />
-                <span className="text-[10px] sm:text-xs font-medium text-red-900">Absent</span>
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-red-700">{stats.absent}</div>
-            </div>
-
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3">
-              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
-                <Circle className="w-2 h-2 sm:w-3 sm:h-3 fill-purple-500 text-purple-500" />
-                <span className="text-[10px] sm:text-xs font-medium text-purple-900">Approved Leave</span>
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-purple-700">{stats.leaves}</div>
-            </div>
-
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-2 sm:p-3">
-              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
-                <span className="text-[10px] sm:text-xs font-medium text-blue-900">Working Days</span>
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-blue-700">{stats.workingDays}</div>
-            </div>
-
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-2 sm:p-3">
-              <div className="flex items-center gap-1 sm:gap-2 mb-0.5 sm:mb-1">
-                <span className="text-[10px] sm:text-xs font-medium text-purple-900">Attendance</span>
-              </div>
-              <div className="text-xl sm:text-2xl font-bold text-purple-700">{stats.attendanceRate}%</div>
-            </div>
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           </div>
+        ) : (
+          <>
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+              <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-green-600">{stats.present}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Present</div>
+              </div>
+              <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-red-600">{stats.absent}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Absent</div>
+              </div>
+              <div className="bg-purple-50 dark:bg-purple-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-purple-600">{stats.approvedLeave}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Approved Leave</div>
+              </div>
+              <div className="bg-orange-50 dark:bg-orange-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-orange-600">{stats.halfDay}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Half Day</div>
+              </div>
+              <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-red-600">{stats.unapprovedLeave}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unapproved</div>
+              </div>
+              <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-blue-600">{stats.holidays}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Holidays</div>
+              </div>
+              <div className="bg-gray-50 dark:bg-gray-700 p-2 sm:p-4 rounded-lg col-span-2">
+                <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{stats.totalHours.toFixed(1)}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Hours</div>
+              </div>
+            </div>
 
-          {/* Calendar Grid */}
-          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            {/* Week day headers - Hidden on mobile */}
-            <div className="hidden sm:grid grid-cols-7 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-              {weekDays.map(day => (
-                <div
-                  key={day}
-                  className="p-2 text-center text-xs font-semibold text-gray-600 dark:text-gray-400"
-                >
-                  {day}
+            {/* Calendar Grid */}
+            <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+              {/* Weekday headers */}
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 min-w-[280px]">
+                {weekDays.map(day => (
+                  <div key={day} className="text-center text-[10px] sm:text-xs font-semibold text-gray-500 dark:text-gray-400 py-1">
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-[280px]">
+                {days.map((date, index) => {
+                  if (!date) return <div key={`empty-${index}`} />;
+
+                  const status = getDateStatus(date);
+                  const isToday = date.toDateString() === new Date().toDateString();
+
+                  return (
+                    <div
+                      key={date.toISOString()}
+                      className={`p-1.5 sm:p-3 rounded-lg border ${getStatusColor(status.status)} bg-opacity-20 border-opacity-50 ${isToday ? 'ring-2 ring-blue-500' : ''}`}
+                    >
+                      <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
+                        {date.getDate()}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 capitalize truncate">
+                        {getStatusLabel(status.status)}
+                      </div>
+                      {status.status === 'present' && status.duration && status.duration !== 'In Progress' && (
+                        <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">{status.duration}</div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Legend */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-sm mt-4">
+              {[
+                { color: 'bg-green-500', label: 'Present' },
+                { color: 'bg-red-500', label: 'Absent' },
+                { color: 'bg-purple-500', label: 'Approved Leave' },
+                { color: 'bg-orange-500', label: 'Half Day' },
+                { color: 'bg-red-500', label: 'Unapproved' },
+                { color: 'bg-blue-500', label: 'Holiday' },
+                { color: 'bg-gray-200', label: 'Upcoming' },
+              ].map(({ color, label }) => (
+                <div key={label} className="flex items-center gap-1 sm:gap-2">
+                  <div className={`w-3 h-3 sm:w-4 sm:h-4 ${color} rounded`}></div>
+                  <span className="text-gray-700 dark:text-gray-300">{label}</span>
                 </div>
               ))}
             </div>
-
-            {/* Calendar days */}
-            <div className="grid grid-cols-7 gap-0">
-              {days.map((date, index) => {
-                if (!date) {
-                  return <div key={`empty-${index}`} className="p-1 sm:p-2 border border-gray-100 dark:border-gray-700" />;
-                }
-
-                const status = getDateStatus(date);
-                const isToday = date.toDateString() === new Date().toDateString();
-
-                return (
-                  <div
-                    key={date.toISOString()}
-                    className={`relative p-1 sm:p-2 border border-gray-200 dark:border-gray-700 min-h-[50px] sm:min-h-[80px] transition-all ${
-                      getBoxColor(status.status)
-                    } ${isToday ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
-                  >
-                    <div className="flex flex-col items-center justify-center h-full">
-                      <div className={`text-xs sm:text-sm font-medium mb-0.5 sm:mb-2 ${
-                        status.status === 'present' ? 'text-white' :
-                        status.status === 'absent' ? 'text-white' :
-                        status.status === 'approved-leave' ? 'text-white' :
-                        status.status === 'unapproved-leave' ? 'text-white' :
-                        status.status === 'half-day' ? 'text-white' :
-                        status.status === 'holiday' ? 'text-white' :
-                        'text-gray-700 dark:text-gray-300'
-                      }`}>
-                        {date.getDate()}
-                      </div>
-                      
-                      {status.status === 'upcoming' && (
-                        <div className="flex items-center justify-center">
-                          <div className="w-4 h-4 sm:w-8 sm:h-8 rounded-full border-2 border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-dark flex items-center justify-center">
-                            <div className="w-2 h-2 sm:w-6 sm:h-6 rounded-full bg-white dark:bg-gray-dark"></div>
-                          </div>
-                        </div>
-                      )}
-
-                      {status.clockIn && (
-                        <div className="mt-0.5 sm:mt-1 text-[9px] sm:text-xs text-white text-center font-medium">
-                          <div className="hidden sm:block">{status.clockIn.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
-                          {status.duration && status.duration !== 'In Progress' && (
-                            <div className="text-[9px] sm:text-xs hidden sm:block">{status.duration}</div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {isToday && (
-                      <div className="absolute top-0.5 right-0.5 sm:top-1 sm:right-1">
-                        <span className="inline-flex items-center px-1 py-0.5 sm:px-1.5 rounded-full text-[9px] sm:text-xs font-medium bg-blue-600 text-white">
-                          Today
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Legend */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[10px] sm:text-sm">
-            <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-green-500 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">Present</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">Absent</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-purple-500 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">Approved Leave</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-orange-500 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">Half Day</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-red-500 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">Unapproved Leave</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-white dark:bg-gray-dark border-2 border-gray-300 dark:border-gray-600 rounded-full flex items-center justify-center">
-                <div className="w-1.5 h-1.5 sm:w-2.5 sm:h-2.5 rounded-full bg-white dark:bg-gray-dark"></div>
-              </div>
-              <span className="text-gray-700 dark:text-gray-300">Upcoming</span>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              <div className="w-3 h-3 sm:w-4 sm:h-4 bg-blue-500 rounded"></div>
-              <span className="text-gray-700 dark:text-gray-300">Sunday/Holiday</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex justify-end pt-3 sm:pt-4 border-t">
-          <Button onClick={onClose} variant="outline" size="sm" className="text-xs sm:text-sm">
-            Close
-          </Button>
-        </div>
+          </>
+        )}
       </DialogContent>
 
-      {/* Export Modal */}
       <AttendanceExportModal
         isOpen={showExportModal}
         onClose={() => setShowExportModal(false)}

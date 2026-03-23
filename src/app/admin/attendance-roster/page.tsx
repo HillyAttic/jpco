@@ -240,6 +240,15 @@ export default function AttendanceRosterPage() {
     }
   };
 
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case 'approved-leave': return 'Leave';
+      case 'unapproved-leave': return 'Unapproved';
+      case 'half-day': return 'Half Day';
+      default: return status;
+    }
+  };
+
   const getDaysInMonth = () => {
     return new Date(year, month + 1, 0).getDate();
   };
@@ -467,8 +476,8 @@ export default function AttendanceRosterPage() {
                     className={`p-1.5 sm:p-3 rounded-lg border ${getStatusColor(day.status)} bg-opacity-20 border-opacity-50`}
                   >
                     <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{day.date.getDate()}</div>
-                    <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 capitalize truncate">{day.status}</div>
-                    {day.hours && day.hours > 0 && (
+                    <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 capitalize truncate">{getStatusLabel(day.status)}</div>
+                    {day.hours > 0 && (
                       <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">{day.hours.toFixed(1)}h</div>
                     )}
                   </div>
