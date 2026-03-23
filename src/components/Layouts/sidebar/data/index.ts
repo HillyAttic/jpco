@@ -169,6 +169,13 @@ export const NAV_DATA = [
         items: [],
         requiresRole: ['admin'], // Only admins can manage credentials
       },
+      {
+        title: "Pending Invoices",
+        url: "/admin/pending-invoices",
+        icon: Icons.InvoiceIcon,
+        items: [],
+        requiresRole: ['admin', 'manager'],
+      },
 
       // Authentication menu item hidden - users can access auth pages directly via URL if needed
       // {
