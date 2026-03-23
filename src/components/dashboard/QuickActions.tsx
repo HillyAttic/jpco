@@ -31,6 +31,8 @@ interface QuickActionsProps {
   isAdminOrManager?: boolean;
   isManager?: boolean;
   isAdmin?: boolean;
+  pendingInvoicesCount?: number;
+  pendingLeaveApprovalsCount?: number;
 }
 
 export function QuickActions({
@@ -44,6 +46,8 @@ export function QuickActions({
   isAdminOrManager = false,
   isManager = false,
   isAdmin = false,
+  pendingInvoicesCount = 0,
+  pendingLeaveApprovalsCount = 0,
 }: QuickActionsProps) {
   const router = useRouter();
   
@@ -68,11 +72,12 @@ export function QuickActions({
       showForManager: false
     },
     {
-      label: 'Projects',
+      label: 'Pending Invoices',
       icon: <FolderIcon className="w-5 h-5" />,
-      onClick: () => router.push('/categories'),
+      onClick: () => router.push('/admin/pending-invoices'),
       color: 'bg-indigo-600 hover:bg-indigo-700',
-      showForManager: false
+      showForManager: false,
+      badge: pendingInvoicesCount > 0 ? pendingInvoicesCount : undefined
     },
     {
       label: 'View Roster',
@@ -107,7 +112,8 @@ export function QuickActions({
       icon: <CheckCircleIcon className="w-5 h-5" />,
       onClick: () => router.push('/admin/leave-approvals'),
       color: 'bg-orange-600 hover:bg-orange-700',
-      showForManager: false
+      showForManager: false,
+      badge: pendingLeaveApprovalsCount > 0 ? pendingLeaveApprovalsCount : undefined
     },
     {
       label: 'Compliance',
@@ -155,10 +161,15 @@ export function QuickActions({
             <Button
               key={index}
               onClick={action.onClick}
-              className={`${action.color} text-white flex items-center justify-center gap-2 py-3`}
+              className={`${action.color} text-white flex items-center justify-center gap-2 py-3 relative`}
             >
               {action.icon}
               <span className="text-sm font-medium">{action.label}</span>
+              {action.badge && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">
+                  {action.badge}
+                </span>
+              )}
             </Button>
           ))}
         </div>

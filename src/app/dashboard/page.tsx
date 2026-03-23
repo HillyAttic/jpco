@@ -31,6 +31,8 @@ import { RecurringTask } from '@/services/recurring-task.service';
 import { activityService } from '@/services/activity.service';
 import { clientService, Client } from '@/services/client.service';
 import { employeeService } from '@/services/employee.service';
+import { pendingInvoiceService } from '@/services/pending-invoice.service';
+import { leaveService } from '@/services/leave.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useModal } from '@/contexts/modal-context';
 import { getDbLazy, getAuthLazy, preloadFirebase } from '@/lib/firebase-optimized';
@@ -142,6 +144,12 @@ export default function DashboardPage() {
   const [reportModalClients, setReportModalClients] = useState<Client[]>([]);
   const [reportModalCompletions, setReportModalCompletions] = useState<ClientTaskCompletion[]>([]);
   const [reportModalLoading, setReportModalLoading] = useState(false);
+
+  // Pending invoices count
+  const [pendingInvoicesCount, setPendingInvoicesCount] = useState(0);
+  
+  // Pending leave approvals count
+  const [pendingLeaveApprovalsCount, setPendingLeaveApprovalsCount] = useState(0);
 
   // Check if user is admin or manager
   const canViewAllTasks = isAdmin || isManager;
@@ -373,6 +381,77 @@ export default function DashboardPage() {
 
     loadKanban();
   }, [user, isAdmin]);
+
+  // Fetch pending invoices count
+  useEffect(() => {
+    if (!user || !isAdmin) return;
+
+    const fetchPendingInvoicesCount = async () => {
+      try {
+        const invoices = await pendingInvoiceService.getAll('pending');
+        setPendingInvoicesCount(invoices.length);
+      } catch (err) {
+        console.error('Error fetching pending invoices count:', err);
+      }
+    };
+
+    fetchPendingInvoicesCount();
+  }, [user, isAdmin]);
+
+  // Fetch pending leave approvals count
+  useEffect(() => {
+    if (!user || (!isAdmin && !isManager)) return;
+
+    const fetchPendingLeaveApprovalsCount = async () => {
+      try {
+        const leaveRequests = await leaveService.getAll({ status: 'pending' });
+        
+        // If manager, filter by hierarchy
+        if (isManager && !isAdmin) {
+          const { managerHierarchyService } = await import('@/services/manager-hierarchy.service');
+          const hierarchy = await managerHierarchyService.getByManagerId(user.uid);
+          
+          if (hierarchy && hierarchy.employeeIds.length > 0) {
+            // Filter leave requests for employees under this manager
+            const filteredRequests = leaveRequests.filter(request => 
+              hierarchy.employeeIds.includes(request.employeeId)
+            );
+            setPendingLeaveApprovalsCount(filteredRequests.length);
+          } else {
+            setPendingLeaveApprovalsCount(0);
+          }
+          return;
+        }
+        
+        // If admin, show only:
+        // 1. Leave requests from managers
+        // 2. Leave requests from employees NOT assigned under any manager
+        if (isAdmin) {
+          const { managerHierarchyService } = await import('@/services/manager-hierarchy.service');
+          const allHierarchies = await managerHierarchyService.getAll();
+          
+          // Get all employee IDs that are assigned under any manager
+          const assignedEmployeeIds = new Set<string>();
+          allHierarchies.forEach(hierarchy => {
+            hierarchy.employeeIds.forEach(empId => assignedEmployeeIds.add(empId));
+          });
+          
+          // Get all manager IDs
+          const managerIds = new Set(allHierarchies.map(h => h.managerId));
+          
+          // Filter leave requests: show only managers or unassigned employees
+          const filteredRequests = leaveRequests.filter(request => 
+            managerIds.has(request.employeeId) || !assignedEmployeeIds.has(request.employeeId)
+          );
+          setPendingLeaveApprovalsCount(filteredRequests.length);
+        }
+      } catch (err) {
+        console.error('Error fetching pending leave approvals count:', err);
+      }
+    };
+
+    fetchPendingLeaveApprovalsCount();
+  }, [user, isAdmin, isManager]);
 
   // Kanban task handlers
   const handleKanbanTaskUpdate = async (updatedTask: KanbanTask) => {
@@ -996,6 +1075,8 @@ export default function DashboardPage() {
           isAdminOrManager={canViewAllTasks}
           isManager={isManager}
           isAdmin={isAdmin}
+          pendingInvoicesCount={pendingInvoicesCount}
+          pendingLeaveApprovalsCount={pendingLeaveApprovalsCount}
         />
       </div>
 
