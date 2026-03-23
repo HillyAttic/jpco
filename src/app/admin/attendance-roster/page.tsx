@@ -477,8 +477,8 @@ export default function AttendanceRosterPage() {
                   >
                     <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{day.date.getDate()}</div>
                     <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 capitalize truncate">{getStatusLabel(day.status)}</div>
-                    {day.hours > 0 && (
-                      <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">{day.hours.toFixed(1)}h</div>
+                    {(day.hours ?? 0) > 0 && (
+                      <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">{(day.hours ?? 0).toFixed(1)}h</div>
                     )}
                   </div>
                 ))}

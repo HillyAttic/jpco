@@ -2,22 +2,7 @@ import { useState, useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { PencilIcon, TrashIcon, CheckCircleIcon, PaperClipIcon, EyeIcon, ChatBubbleLeftRightIcon } from '@heroicons/react/24/outline';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
-
-interface Task {
-  id: string;
-  title: string;
-  description: string;
-  status: 'pending' | 'in-progress' | 'completed';
-  priority: 'low' | 'medium' | 'high';
-  dueDate?: Date;
-  assignedTo?: string[];
-  category?: string;
-  categoryId?: string;
-  contactId?: string;
-  createdBy?: string;
-  attachments?: { name: string; url: string; type: string; size: number; storagePath: string }[];
-  commentCount?: number;
-}
+import { Task } from '@/types/task.types';
 
 interface TaskListViewProps {
   tasks: Task[];
@@ -313,8 +298,8 @@ export function TaskListView({
 
               {/* Category */}
               <div className="col-span-1 text-gray-700 dark:text-gray-300 flex items-center">
-                <span className="truncate" title={getCategoryName(task.categoryId || task.category)}>
-                  {getCategoryName(task.categoryId || task.category)}
+                <span className="truncate" title={getCategoryName(task.category)}>
+                  {getCategoryName(task.category)}
                 </span>
               </div>
 
@@ -443,11 +428,11 @@ export function TaskListView({
                   </span>
                 </div>
               )}
-              {(task.categoryId || task.category) && (
+              {(task.category) && (
                 <div className="flex justify-between gap-2">
                   <span className="text-gray-500 dark:text-gray-400 flex-shrink-0">Category:</span>
                   <span className="text-gray-900 dark:text-white font-medium text-right break-words">
-                    {getCategoryName(task.categoryId || task.category)}
+                    {getCategoryName(task.category)}
                   </span>
                 </div>
               )}
