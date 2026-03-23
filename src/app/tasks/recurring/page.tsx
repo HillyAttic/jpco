@@ -4,11 +4,15 @@ import React, { useState, useEffect } from 'react';
 import { useRecurringTasks } from '@/hooks/use-recurring-tasks';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
+import { useModal } from '@/contexts/modal-context';
 import { teamService } from '@/services/team.service';
 import { RecurringTask } from '@/services/recurring-task.service';
+import { clientService, Client } from '@/services/client.service';
+import { ClientTaskCompletion } from '@/services/task-completion.service';
 import { RecurringTaskCard } from '@/components/recurring-tasks/RecurringTaskCard';
 import { RecurringTaskListView } from '@/components/recurring-tasks/RecurringTaskListView';
 import { RecurringTaskModal } from '@/components/recurring-tasks/RecurringTaskModal';
+import { TaskReportModal } from '@/components/reports/TaskReportModal';
 import { BulkActionToolbar } from '@/components/ui/BulkActionToolbar';
 import { BulkDeleteDialog } from '@/components/ui/BulkDeleteDialog';
 import { NoDataEmptyState } from '@/components/ui/empty-state';
@@ -16,6 +20,7 @@ import { CardGridSkeleton } from '@/components/ui/loading-skeletons';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from '@heroicons/react/24/outline';
+import { auth } from '@/lib/firebase';
 
 /**
  * Recurring Tasks Page
@@ -24,6 +29,7 @@ import { PlusIcon } from '@heroicons/react/24/outline';
  */
 export default function RecurringTasksPage() {
   const { isAdmin, isManager } = useEnhancedAuth();
+  const { openModal, closeModal } = useModal();
   const canManageTasks = isAdmin || isManager;
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
   const {
@@ -56,6 +62,21 @@ export default function RecurringTasksPage() {
   const [isBulkDeleteDialogOpen, setIsBulkDeleteDialogOpen] = useState(false);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
+
+  // Report modal state
+  const [reportTask, setReportTask] = useState<RecurringTask | null>(null);
+  const [reportClients, setReportClients] = useState<Client[]>([]);
+  const [reportCompletions, setReportCompletions] = useState<ClientTaskCompletion[]>([]);
+  const [isReportLoading, setIsReportLoading] = useState(false);
+
+  // Control modal context for report loading and display
+  useEffect(() => {
+    if (isReportLoading || reportTask) {
+      openModal();
+    } else {
+      closeModal();
+    }
+  }, [isReportLoading, reportTask, openModal, closeModal]);
 
   // Load team names for display
   useEffect(() => {
@@ -237,9 +258,43 @@ export default function RecurringTasksPage() {
   };
 
   /**
-   * Handle bulk export
-   * Validates Requirements: 10.3
+   * Handle view report for a recurring task
    */
+  const handleViewReport = async (task: RecurringTask) => {
+    setIsReportLoading(true);
+    setReportTask(task);
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+      const token = await user.getIdToken();
+      const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` };
+
+      const [allClients, completionsRes] = await Promise.all([
+        clientService.getAll(),
+        fetch(`/api/task-completions?recurringTaskId=${task.id}`, { headers }),
+      ]);
+
+      const completions: ClientTaskCompletion[] = completionsRes.ok ? await completionsRes.json() : [];
+
+      // Filter clients relevant to this task
+      let taskClients: Client[];
+      if (task.teamMemberMappings && task.teamMemberMappings.length > 0) {
+        const mappedIds = new Set<string>();
+        task.teamMemberMappings.forEach(m => m.clientIds.forEach(id => mappedIds.add(id)));
+        taskClients = allClients.filter(c => c.id && mappedIds.has(c.id));
+      } else {
+        taskClients = allClients.filter(c => c.id && task.contactIds?.includes(c.id));
+      }
+
+      setReportClients(taskClients);
+      setReportCompletions(completions);
+    } catch (error) {
+      console.error('Error loading report data:', error);
+    } finally {
+      setIsReportLoading(false);
+    }
+  };
+
   return (
     <ErrorBoundary>
       <div className="space-y-6">
@@ -313,6 +368,7 @@ export default function RecurringTasksPage() {
               onDelete={handleDelete}
               onPause={handlePause}
               onResume={handleResume}
+              onViewReport={handleViewReport}
               selected={Array.from(selectedIds)}
               onSelect={(id) => toggleSelection(id, !selectedIds.has(id))}
               canManageTasks={canManageTasks}
@@ -413,6 +469,23 @@ export default function RecurringTasksPage() {
           </div>
         )}
       </div>
+
+      {/* Report loading overlay */}
+      {isReportLoading && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white"></div>
+        </div>
+      )}
+
+      {/* Task Report Modal */}
+      {reportTask && !isReportLoading && (
+        <TaskReportModal
+          task={reportTask}
+          clients={reportClients}
+          completions={reportCompletions}
+          onClose={() => setReportTask(null)}
+        />
+      )}
     </ErrorBoundary>
   );
 }

@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import Select from '@/components/ui/select';
 import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { TeamMemberMappingDialog } from './TeamMemberMappingDialog';
+import { useModal } from '@/contexts/modal-context';
 
 // Form-specific schema matching the design requirements
 // Requirement 3.2, 3.8
@@ -62,6 +63,7 @@ export function RecurringTaskModal({
   task,
   isLoading = false,
 }: RecurringTaskModalProps) {
+  const { openModal, closeModal } = useModal();
   const [teams, setTeams] = useState<Team[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -100,6 +102,15 @@ export function RecurringTaskModal({
 
   const startDate = watch('startDate');
   const teamId = watch('teamId');
+
+  // Notify global modal context when this modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      openModal();
+    } else {
+      closeModal();
+    }
+  }, [isOpen, openModal, closeModal]);
 
   // Clear selected clients when team changes
   useEffect(() => {
