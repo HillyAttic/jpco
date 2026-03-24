@@ -246,7 +246,9 @@ export const teamAdminService = {
    * Get teams by member ID
    */
   async getTeamsByMember(memberId: string): Promise<Team[]> {
-    const allTeams = await baseService.getAll();
+    const rawTeams = await baseService.getAll();
+    // Populate members so team.members reflects accurate data (not stale Firestore cache)
+    const allTeams = await Promise.all(rawTeams.map(populateTeamMembers));
     console.log(`[Team Admin Service] Getting teams for member: ${memberId}`);
     console.log(`[Team Admin Service] Total teams in database: ${allTeams.length}`);
 

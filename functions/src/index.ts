@@ -107,7 +107,7 @@ export const syncAllUserRoles = onCall(async (request) => {
         console.error(`Error syncing user ${userDoc.id}:`, error);
       }
     }
-
+    
     return {
       success: true,
       message: `Synced ${successCount} users successfully, ${errorCount} errors`,
@@ -160,4 +160,4 @@ export const syncUserRoleOnUpdate = onDocumentWritten(
       return { success: false, error: error.message };
     }
   }
-);
+); 

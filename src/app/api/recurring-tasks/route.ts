@@ -101,25 +101,31 @@ export async function GET(request: NextRequest) {
       // Admins see all recurring tasks
       console.log(`Admin ${userId} viewing all recurring tasks:`, tasks.length);
     } else if (userRole === 'manager') {
-      // Managers see tasks they created OR tasks assigned to their managed employees
+      // Managers see tasks they created OR tasks assigned to their managed employees OR team-assigned tasks
       const { adminDb } = await import('@/lib/firebase-admin');
-      
+      const { teamAdminService } = await import('@/services/team-admin.service');
+
       // Get employees managed by this manager
       const hierarchySnapshot = await adminDb
         .collection('manager-hierarchies')
         .where('managerId', '==', userId)
         .limit(1)
         .get();
-      
+
       const managedEmployeeIds = new Set<string>();
       if (!hierarchySnapshot.empty) {
         const hierarchy = hierarchySnapshot.docs[0].data();
         (hierarchy.employeeIds || []).forEach((id: string) => managedEmployeeIds.add(id));
       }
-      
+
       console.log(`[Recurring Tasks API] Manager ${userId} manages ${managedEmployeeIds.size} employees`);
-      
-      // Filter tasks: created by manager OR directly assigned to manager OR assigned to managed employees
+
+      // Get teams this manager is a member or leader of
+      const managerTeams = await teamAdminService.getTeamsByMember(userId);
+      const managerTeamIds = new Set(managerTeams.map((t: any) => t.id).filter(Boolean));
+      console.log(`[Recurring Tasks API] Manager ${userId} is in ${managerTeamIds.size} teams`);
+
+      // Filter tasks: created by manager OR directly assigned to manager OR assigned to managed employees OR team-assigned
       tasks = tasks.filter(task => {
         // Check if task was created by this manager
         const isCreatedByManager = task.createdBy === userId;
@@ -134,7 +140,10 @@ export async function GET(request: NextRequest) {
           Array.isArray(task.teamMemberMappings) &&
           task.teamMemberMappings.some(mapping => managedEmployeeIds.has(mapping.userId));
 
-        const willShow = isCreatedByManager || isDirectlyAssignedToManager || isAssignedToManagedEmployee;
+        // Check if task's teamId is a team the manager belongs to
+        const isManagerTeamAssigned = task.teamId && managerTeamIds.has(task.teamId);
+
+        const willShow = isCreatedByManager || isDirectlyAssignedToManager || isAssignedToManagedEmployee || isManagerTeamAssigned;
 
         console.log(`[Recurring Tasks API] Task "${task.title}":`, {
           taskId: task.id,
@@ -142,12 +151,13 @@ export async function GET(request: NextRequest) {
           isCreatedByManager,
           isDirectlyAssignedToManager,
           isAssignedToManagedEmployee,
+          isManagerTeamAssigned,
           willShow,
         });
 
         return willShow;
       });
-      
+
       console.log(`[Recurring Tasks API] Manager ${userId} filtered tasks: ${tasks.length}`);
     } else if (userRole === 'employee') {
       // Employees see only their assigned tasks
@@ -221,23 +231,51 @@ export async function GET(request: NextRequest) {
       console.log(`[Recurring Tasks API] User teams:`, userTeams.map(t => ({ id: t.id, name: t.name })));
       console.log(`[Recurring Tasks API] User team IDs:`, userTeamIds);
 
+      // Pre-fetch team documents for all unique teamIds in the tasks list.
+      // This is a direct fallback: even if getTeamsByMember misses a team,
+      // we can verify membership by checking the hydrated team document directly.
+      const uniqueTaskTeamIds = [...new Set(tasks.map((t: any) => t.teamId).filter(Boolean))];
+      const teamCache = new Map<string, any>();
+      await Promise.all(uniqueTaskTeamIds.map(async (tid: any) => {
+        try {
+          const team = await teamAdminService.getById(tid);
+          if (team) teamCache.set(tid, team);
+        } catch (err) {
+          console.error(`[Recurring Tasks API] Error fetching team ${tid}:`, err);
+        }
+      }));
+
+      const userIdsArray = Array.from(userIds);
+
       // Employees see tasks that are:
       // 1. Directly assigned to them (in contactIds), OR
-      // 2. Assigned to a team they are a member of, OR
-      // 3. Assigned to them via team member mappings
+      // 2. Assigned to a team they are a member of (via getTeamsByMember), OR
+      // 3. Direct team membership check from the team document (fallback), OR
+      // 4. Assigned to them via team member mappings
       tasks = tasks.filter(task => {
         // Check if task is directly assigned to user (check all possible user IDs)
         const isDirectlyAssigned = task.contactIds &&
           Array.isArray(task.contactIds) &&
-          Array.from(userIds).some(id => task.contactIds.includes(id));
+          userIdsArray.some(id => task.contactIds.includes(id));
 
-        // Check if task is assigned to a team the user is a member of
+        // Check if task is assigned to a team the user is a member of (via pre-computed list)
         const isTeamAssigned = task.teamId && userTeamIds.includes(task.teamId);
+
+        // Direct fallback: check the specific team document for membership
+        const isDirectTeamMember = task.teamId && !isTeamAssigned && (() => {
+          const t = teamCache.get(task.teamId);
+          if (!t) return false;
+          return userIdsArray.some(uid =>
+            (t.memberIds && t.memberIds.includes(uid)) ||
+            (t.members && Array.isArray(t.members) && t.members.some((m: any) => m.id === uid)) ||
+            t.leaderId === uid
+          );
+        })();
 
         // Check if task has team member mappings for this user
         const isMappedToUser = task.teamMemberMappings &&
           Array.isArray(task.teamMemberMappings) &&
-          task.teamMemberMappings.some(mapping => Array.from(userIds).includes(mapping.userId));
+          task.teamMemberMappings.some(mapping => userIdsArray.includes(mapping.userId));
 
         console.log(`[Recurring Tasks API] Task "${task.title}":`, {
           taskId: task.id,
@@ -246,11 +284,12 @@ export async function GET(request: NextRequest) {
           hasMappings: !!task.teamMemberMappings,
           isDirectlyAssigned,
           isTeamAssigned,
+          isDirectTeamMember,
           isMappedToUser,
-          willShow: isDirectlyAssigned || isTeamAssigned || isMappedToUser
+          willShow: isDirectlyAssigned || isTeamAssigned || isDirectTeamMember || isMappedToUser
         });
 
-        return isDirectlyAssigned || isTeamAssigned || isMappedToUser;
+        return isDirectlyAssigned || isTeamAssigned || isDirectTeamMember || isMappedToUser;
       });
 
       console.log(`[Recurring Tasks API] Team member ${userId} filtered recurring tasks: ${tasks.length} (Calendar view: ${isCalendarView})`);
@@ -343,22 +382,6 @@ export async function POST(request: NextRequest) {
     const newTask = await recurringTaskAdminService.create(taskToCreate as any);
     console.log('✅ [POST /api/recurring-tasks] Task created successfully with ID:', newTask.id);
     console.log('🗺️ [POST /api/recurring-tasks] Saved team member mappings:', newTask.teamMemberMappings);
-
-    // Notify assigned team members
-    try {
-      const { sendNotification } = await import('@/lib/notifications/send-notification');
-      const userIds = (newTask.teamMemberMappings || []).map((m: any) => m.userId).filter(Boolean);
-      if (userIds.length > 0) {
-        await sendNotification({
-          userIds,
-          title: 'New Task Assigned',
-          body: `You have been assigned: ${newTask.title}`,
-          data: { url: `/tasks/recurring/${newTask.id}`, type: 'task_assignment', taskId: newTask.id },
-        });
-      }
-    } catch (notifError) {
-      console.error('[recurring-tasks POST] Failed to send assignment notifications:', notifError);
-    }
 
     // Serialize dates for JSON response
     const serializedTask = {

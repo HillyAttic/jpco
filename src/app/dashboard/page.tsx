@@ -266,6 +266,15 @@ export default function DashboardPage() {
     }
   }, [tasks]);
 
+  // Auto-fetch completion stats whenever tasks load so progress bars
+  // appear regardless of which modal card the user opens first
+  useEffect(() => {
+    const hasRecurring = tasks.some(t => t.isRecurring && t.id);
+    if (hasRecurring) {
+      fetchCompletionStats();
+    }
+  }, [tasks]);
+
   // Helper to get user name from cache or fetch it
   const getCachedUserName = async (userId: string): Promise<string> => {
     if (userNamesCache[userId]) {

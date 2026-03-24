@@ -152,23 +152,6 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     });
 
-    // Send notification to the delegated user
-    try {
-      const { sendNotification } = await import('@/lib/notifications/send-notification');
-      await sendNotification({
-        userIds: [delegateToUserId],
-        title: 'Task Delegated to You',
-        body: `${delegatedByUserName} has delegated "${taskData.title}" to you${reason ? ` - Reason: ${reason}` : ''}`,
-        data: {
-          url: '/dashboard',
-          type: 'task_delegation',
-          taskId,
-        },
-      });
-    } catch (notifError) {
-      console.error('[Delegate API] Failed to send notification:', notifError);
-    }
-
     return NextResponse.json(
       {
         message: 'Task delegated successfully',
