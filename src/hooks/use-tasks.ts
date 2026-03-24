@@ -89,13 +89,13 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
   }, [searchQuery, filters]);
 
   /**
-   * Initial fetch on mount
+   * Fetch tasks when filters or search query changes
    */
   useEffect(() => {
     if (initialFetch) {
       fetchTasks();
     }
-  }, [initialFetch, fetchTasks]);
+  }, [initialFetch, searchQuery, filters.status, filters.priority, filters.category]);
 
   /**
    * Create a new task with optimistic update and authentication

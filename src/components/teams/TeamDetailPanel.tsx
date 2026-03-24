@@ -5,16 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import Select from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from '@/components/ui/dialog';
+
 import {
   UserGroupIcon,
   UserIcon,
@@ -38,9 +29,6 @@ interface TeamDetailPanelProps {
 export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanelProps) {
   const [currentTeam, setCurrentTeam] = useState<Team>(team);
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [isAddMemberModalOpen, setIsAddMemberModalOpen] = useState(false);
-  const [newMemberRole, setNewMemberRole] = useState('');
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -84,73 +72,9 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
     loadEmployees();
   }, []);
 
-  // Get available employees (not already in team and not the leader)
-  const getAvailableEmployees = () => {
-    return employees.filter(emp => 
-      !currentTeam.members.some(member => member.id === emp.id) &&
-      emp.id !== currentTeam.leaderId
-    );
-  };
 
-  // Handle adding a member - Requirement 4.5
-  const handleAddMember = async () => {
-    if (!selectedEmployeeId) {
-      setError('Please select an employee');
-      return;
-    }
 
-    setLoading(true);
-    setError(null);
 
-    try {
-      const selectedEmployee = employees.find(emp => emp.id === selectedEmployeeId);
-      if (!selectedEmployee) {
-        throw new Error('Selected employee not found');
-      }
-
-      const newMember: TeamMember = {
-        id: selectedEmployee.id!,
-        name: selectedEmployee.name,
-        avatar: undefined, // Avatar removed from Employee interface
-        role: selectedEmployee.role, // Use employee's role instead of custom role
-      };
-
-      const updatedTeam = await teamService.addMember(currentTeam.id!, newMember);
-      setCurrentTeam(updatedTeam);
-      onTeamUpdate?.(updatedTeam);
-
-      // Reset form and close modal
-      setSelectedEmployeeId('');
-      setNewMemberRole('');
-      setIsAddMemberModalOpen(false);
-    } catch (error) {
-      console.error('Error adding member:', error);
-      setError(error instanceof Error ? error.message : 'Failed to add member');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Handle removing a member - Requirement 4.6
-  const handleRemoveMember = async (memberId: string) => {
-    if (!confirm('Are you sure you want to remove this member from the team?')) {
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
-    try {
-      const updatedTeam = await teamService.removeMember(currentTeam.id!, memberId);
-      setCurrentTeam(updatedTeam);
-      onTeamUpdate?.(updatedTeam);
-    } catch (error) {
-      console.error('Error removing member:', error);
-      setError(error instanceof Error ? error.message : 'Failed to remove member');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Get leader information
   const getLeaderInfo = () => {
@@ -253,21 +177,11 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
 
       {/* Team Members - Requirement 4.4 (complete member list with roles) */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <UserGroupIcon className="w-4 h-4" />
             Team Members ({currentTeam.members.length})
           </CardTitle>
-          {/* Add Member Button - Requirement 4.5 */}
-          <Button
-            onClick={() => setIsAddMemberModalOpen(true)}
-            size="sm"
-            disabled={loading}
-            className="flex items-center gap-2"
-          >
-            <PlusIcon className="w-4 h-4" />
-            Add Member
-          </Button>
         </CardHeader>
         <CardContent>
           {currentTeam.members.length === 0 ? (
@@ -281,33 +195,17 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
               {currentTeam.members.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-800 rounded-md"
+                  className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-800 rounded-md"
                 >
-                  <div className="flex items-center gap-2">
-                    <Avatar
-                      src={member.avatar}
-                      alt={member.name}
-                      fallback={getInitials(member.name)}
-                      size="sm"
-                    />
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white text-sm">{member.name}</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-400">{member.role}</p>
-                    </div>
-                  </div>
-                  
-                  {/* Member Actions - Requirements 4.5, 4.6 */}
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveMember(member.id)}
-                      disabled={loading}
-                      className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      title="Remove member"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </Button>
+                  <Avatar
+                    src={member.avatar}
+                    alt={member.name}
+                    fallback={getInitials(member.name)}
+                    size="sm"
+                  />
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white text-sm">{member.name}</p>
+                    <p className="text-xs text-gray-600 dark:text-gray-400">{member.role}</p>
                   </div>
                 </div>
               ))}
@@ -316,66 +214,7 @@ export function TeamDetailPanel({ team, onTeamUpdate, onClose }: TeamDetailPanel
         </CardContent>
       </Card>
 
-      {/* Add Member Modal - Requirement 4.5 */}
-      <Dialog open={isAddMemberModalOpen} onOpenChange={setIsAddMemberModalOpen}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Add Team Member</DialogTitle>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            {/* Employee Selection */}
-            <div>
-              <Label htmlFor="employee">Select Employee</Label>
-              <Select
-                id="employee"
-                value={selectedEmployeeId}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setSelectedEmployeeId(e.target.value)}
-                disabled={loading}
-                className="mt-1"
-              >
-                <option value="">Choose an employee...</option>
-                {getAvailableEmployees().map((employee) => (
-                  <option key={employee.id} value={employee.id}>
-                    {employee.name} - {employee.role}
-                  </option>
-                ))}
-              </Select>
-              {getAvailableEmployees().length === 0 && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                  No available employees to add
-                </p>
-              )}
-            </div>
 
-            {error && (
-              <p className="text-sm text-red-600">{error}</p>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsAddMemberModalOpen(false);
-                setSelectedEmployeeId('');
-                setNewMemberRole('');
-                setError(null);
-              }}
-              disabled={loading}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleAddMember}
-              disabled={loading || !selectedEmployeeId}
-              loading={loading}
-            >
-              Add Member
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
