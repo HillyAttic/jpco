@@ -3,16 +3,20 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { 
-  PencilSquareIcon, 
-  TrashIcon, 
+import {
+  PencilSquareIcon,
+  TrashIcon,
   CalendarIcon,
   ClockIcon,
   ExclamationTriangleIcon,
   PlayIcon,
   PauseIcon,
   ArrowPathIcon,
-  CheckCircleIcon as CheckCircleOutlineIcon
+  CheckCircleIcon as CheckCircleOutlineIcon,
+  UserGroupIcon,
+  CalendarDaysIcon,
+  ArrowRightIcon,
+  ChartBarIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid';
 
@@ -24,6 +28,17 @@ interface RecurringTaskCardProps {
   onResume: (id: string) => void;
   selected?: boolean;
   onSelect?: (id: string, selected: boolean) => void;
+  // Action button handlers (for team-member-mapped tasks)
+  currentUserId?: string;
+  canViewAllTasks?: boolean;
+  isManager?: boolean;
+  onClientsClick?: (task: RecurringTask) => void;
+  onTeamClick?: (task: RecurringTask) => void;
+  onPlanClick?: (task: RecurringTask) => void;
+  onDelegateClick?: (task: RecurringTask) => void;
+  onScheduleClick?: (task: RecurringTask) => void;
+  onViewReport?: (task: RecurringTask) => void;
+  onGoToReportsClick?: (task: RecurringTask) => void;
 }
 
 /**
@@ -32,14 +47,24 @@ interface RecurringTaskCardProps {
  * completion history, pause/resume controls, and progress indicator
  * Validates Requirements: 3.3, 3.6, 3.7, 3.9
  */
-export function RecurringTaskCard({ 
-  task, 
-  onEdit, 
-  onDelete, 
-  onPause, 
+export function RecurringTaskCard({
+  task,
+  onEdit,
+  onDelete,
+  onPause,
   onResume,
   selected = false,
-  onSelect
+  onSelect,
+  currentUserId,
+  canViewAllTasks = false,
+  isManager = false,
+  onClientsClick,
+  onTeamClick,
+  onPlanClick,
+  onDelegateClick,
+  onScheduleClick,
+  onViewReport,
+  onGoToReportsClick,
 }: RecurringTaskCardProps) {
   // Check if task is overdue
   const isOverdue = task.status !== 'completed' && new Date(task.dueDate) < new Date();
@@ -342,6 +367,65 @@ export function RecurringTaskCard({
             </Button>
           )}
         </div>
+
+        {/* Action buttons for team-member-mapped tasks */}
+        {(() => {
+          const hasTeamMemberMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
+          if (!hasTeamMemberMapping) return null;
+          const userMapping = currentUserId ? task.teamMemberMappings?.find(m => m.userId === currentUserId) : null;
+          const clientCount = userMapping
+            ? userMapping.clientIds.length
+            : canViewAllTasks
+              ? task.teamMemberMappings!.reduce((s, m) => s + m.clientIds.length, 0)
+              : 0;
+          const hasClientsButton = clientCount > 0;
+          const hasTeamButton = canViewAllTasks;
+          const hasPlanButton = !!userMapping && clientCount > 0;
+          const hasDelegateButton = (!!userMapping || canViewAllTasks) && clientCount > 0;
+          const hasScheduleButton = isManager;
+          const hasViewReportButton = canViewAllTasks;
+          const hasGoToReportsButton = isManager;
+          if (!hasClientsButton && !hasTeamButton && !hasPlanButton && !hasDelegateButton && !hasScheduleButton && !hasViewReportButton && !hasGoToReportsButton) return null;
+          return (
+            <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
+              {hasClientsButton && onClientsClick && (
+                <button onClick={() => onClientsClick(task)} className="px-3 py-1.5 text-xs font-medium bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:bg-indigo-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]">
+                  <UserGroupIcon className="w-4 h-4" />Clients ({clientCount})
+                </button>
+              )}
+              {hasTeamButton && onTeamClick && (
+                <button onClick={() => onTeamClick(task)} className="px-3 py-1.5 text-xs font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:hover:bg-purple-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]">
+                  <UserGroupIcon className="w-4 h-4" />Team ({task.teamMemberMappings?.length || 0})
+                </button>
+              )}
+              {hasPlanButton && onPlanClick && (
+                <button onClick={() => onPlanClick(task)} className="px-3 py-1.5 text-xs font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300 dark:hover:bg-green-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]">
+                  <CalendarIcon className="w-4 h-4" />Plan
+                </button>
+              )}
+              {hasDelegateButton && onDelegateClick && (
+                <button onClick={() => onDelegateClick(task)} className="px-3 py-1.5 text-xs font-medium bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:hover:bg-orange-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]">
+                  <ArrowRightIcon className="w-4 h-4" />Delegate
+                </button>
+              )}
+              {hasScheduleButton && onScheduleClick && (
+                <button onClick={() => onScheduleClick(task)} className="px-3 py-1.5 text-xs font-medium bg-teal-100 text-teal-700 hover:bg-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]">
+                  <CalendarDaysIcon className="w-4 h-4" />Schedule
+                </button>
+              )}
+              {hasViewReportButton && onViewReport && (
+                <button onClick={() => onViewReport(task)} className="px-3 py-1.5 text-xs font-medium bg-cyan-100 text-cyan-700 hover:bg-cyan-200 dark:bg-cyan-900/30 dark:text-cyan-300 dark:hover:bg-cyan-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]">
+                  <ChartBarIcon className="w-4 h-4" />View Report
+                </button>
+              )}
+              {hasGoToReportsButton && onGoToReportsClick && (
+                <button onClick={() => onGoToReportsClick(task)} className="px-3 py-1.5 text-xs font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600 rounded-md transition-colors flex items-center gap-1 min-h-[35px]">
+                  <ArrowRightIcon className="w-4 h-4" />Go to Reports
+                </button>
+              )}
+            </div>
+          );
+        })()}
 
         {/* Footer with creation date */}
         {task.createdAt && (

@@ -13,6 +13,11 @@ import { RecurringTaskCard } from '@/components/recurring-tasks/RecurringTaskCar
 import { RecurringTaskListView } from '@/components/recurring-tasks/RecurringTaskListView';
 import { RecurringTaskModal } from '@/components/recurring-tasks/RecurringTaskModal';
 import { TaskReportModal } from '@/components/reports/TaskReportModal';
+import { PlanTaskModal } from '@/components/dashboard/PlanTaskModal';
+import { ClientListModal } from '@/components/dashboard/ClientListModal';
+import { TeamMembersModal } from '@/components/dashboard/TeamMembersModal';
+import { DelegateTaskModal } from '@/components/dashboard/DelegateTaskModal';
+import { ScheduleTaskModal } from '@/components/dashboard/ScheduleTaskModal';
 import { BulkActionToolbar } from '@/components/ui/BulkActionToolbar';
 import { BulkDeleteDialog } from '@/components/ui/BulkDeleteDialog';
 import { NoDataEmptyState } from '@/components/ui/empty-state';
@@ -21,6 +26,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Button } from '@/components/ui/button';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { auth } from '@/lib/firebase';
+import { useRouter } from 'next/navigation';
 
 /**
  * Recurring Tasks Page
@@ -28,9 +34,11 @@ import { auth } from '@/lib/firebase';
  * Validates Requirements: 3.1, 3.2, 10.1, 10.2, 10.3, 10.4
  */
 export default function RecurringTasksPage() {
-  const { isAdmin, isManager } = useEnhancedAuth();
+  const { isAdmin, isManager, user, userProfile } = useEnhancedAuth();
   const { openModal, closeModal } = useModal();
+  const router = useRouter();
   const canManageTasks = isAdmin || isManager;
+  const canViewAllTasks = isAdmin || isManager;
   const [teamNames, setTeamNames] = useState<Record<string, string>>({});
   const {
     tasks,
@@ -68,6 +76,18 @@ export default function RecurringTasksPage() {
   const [reportClients, setReportClients] = useState<Client[]>([]);
   const [reportCompletions, setReportCompletions] = useState<ClientTaskCompletion[]>([]);
   const [isReportLoading, setIsReportLoading] = useState(false);
+
+  // Dashboard action modal state
+  const [showPlanTaskModal, setShowPlanTaskModal] = useState(false);
+  const [selectedTaskForPlanning, setSelectedTaskForPlanning] = useState<RecurringTask | null>(null);
+  const [showClientListModal, setShowClientListModal] = useState(false);
+  const [selectedTaskForClients, setSelectedTaskForClients] = useState<RecurringTask | null>(null);
+  const [showTeamMembersModal, setShowTeamMembersModal] = useState(false);
+  const [selectedTaskForTeam, setSelectedTaskForTeam] = useState<RecurringTask | null>(null);
+  const [showDelegateModal, setShowDelegateModal] = useState(false);
+  const [selectedTaskForDelegate, setSelectedTaskForDelegate] = useState<RecurringTask | null>(null);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedTaskForSchedule, setSelectedTaskForSchedule] = useState<RecurringTask | null>(null);
 
   // Control modal context for report loading and display
   useEffect(() => {
@@ -295,6 +315,41 @@ export default function RecurringTasksPage() {
     }
   };
 
+  // Common action button props for list and card views
+  const actionButtonProps = {
+    currentUserId: user?.uid,
+    canViewAllTasks,
+    isManager,
+    onClientsClick: (task: RecurringTask) => {
+      setSelectedTaskForClients(task);
+      setShowClientListModal(true);
+      openModal();
+    },
+    onTeamClick: (task: RecurringTask) => {
+      setSelectedTaskForTeam(task);
+      setShowTeamMembersModal(true);
+      openModal();
+    },
+    onPlanClick: (task: RecurringTask) => {
+      setSelectedTaskForPlanning(task);
+      setShowPlanTaskModal(true);
+      openModal();
+    },
+    onDelegateClick: (task: RecurringTask) => {
+      setSelectedTaskForDelegate(task);
+      setShowDelegateModal(true);
+      openModal();
+    },
+    onScheduleClick: (task: RecurringTask) => {
+      setSelectedTaskForSchedule(task);
+      setShowScheduleModal(true);
+      openModal();
+    },
+    onGoToReportsClick: () => {
+      router.push('/reports');
+    },
+  };
+
   return (
     <ErrorBoundary>
       <div className="space-y-6">
@@ -373,6 +428,7 @@ export default function RecurringTasksPage() {
               onSelect={(id) => toggleSelection(id, !selectedIds.has(id))}
               canManageTasks={canManageTasks}
               teamNames={teamNames}
+              {...actionButtonProps}
             />
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -386,6 +442,8 @@ export default function RecurringTasksPage() {
                   onResume={handleResume}
                   selected={isSelected(task.id!)}
                   onSelect={toggleSelection}
+                  onViewReport={handleViewReport}
+                  {...actionButtonProps}
                 />
               ))}
             </div>
@@ -469,6 +527,82 @@ export default function RecurringTasksPage() {
           </div>
         )}
       </div>
+
+      {/* Plan Task Modal */}
+      {showPlanTaskModal && selectedTaskForPlanning && (
+        <PlanTaskModal
+          isOpen={showPlanTaskModal}
+          onClose={() => { setShowPlanTaskModal(false); setSelectedTaskForPlanning(null); closeModal(); }}
+          assignedClientIds={selectedTaskForPlanning.teamMemberMappings?.find(m => m.userId === user?.uid)?.clientIds || []}
+          userId={user?.uid || ''}
+          userName={userProfile?.displayName || user?.email || 'Unknown User'}
+          taskTitle={selectedTaskForPlanning.title}
+          recurringTaskId={selectedTaskForPlanning.id}
+        />
+      )}
+
+      {/* Client List Modal */}
+      {showClientListModal && selectedTaskForClients && (
+        <ClientListModal
+          isOpen={showClientListModal}
+          onClose={() => { setShowClientListModal(false); setSelectedTaskForClients(null); closeModal(); }}
+          taskTitle={selectedTaskForClients.title}
+          clientIds={
+            selectedTaskForClients.teamMemberMappings && user
+              ? selectedTaskForClients.teamMemberMappings.find(m => m.userId === user.uid)?.clientIds || selectedTaskForClients.contactIds || []
+              : selectedTaskForClients.contactIds || []
+          }
+          isTeamMemberMapping={!!selectedTaskForClients.teamMemberMappings && selectedTaskForClients.teamMemberMappings.length > 0}
+          teamMemberName={
+            selectedTaskForClients.teamMemberMappings && user
+              ? selectedTaskForClients.teamMemberMappings.find(m => m.userId === user.uid)?.userName
+              : undefined
+          }
+        />
+      )}
+
+      {/* Team Members Modal */}
+      {showTeamMembersModal && selectedTaskForTeam && (
+        <TeamMembersModal
+          isOpen={showTeamMembersModal}
+          onClose={() => { setShowTeamMembersModal(false); setSelectedTaskForTeam(null); closeModal(); }}
+          taskTitle={selectedTaskForTeam.title}
+          teamMembers={selectedTaskForTeam.teamMemberMappings || []}
+          teamId={selectedTaskForTeam.teamId}
+        />
+      )}
+
+      {/* Delegate Task Modal */}
+      {showDelegateModal && selectedTaskForDelegate && (
+        <DelegateTaskModal
+          isOpen={showDelegateModal}
+          onClose={() => { setShowDelegateModal(false); setSelectedTaskForDelegate(null); closeModal(); }}
+          taskId={selectedTaskForDelegate.id || ''}
+          taskTitle={selectedTaskForDelegate.title}
+          currentUserId={user?.uid || ''}
+          currentUserName={userProfile?.displayName || user?.email || 'Unknown User'}
+          currentUserRole={isAdmin ? 'admin' : isManager ? 'manager' : 'employee'}
+          assignedClientIds={
+            selectedTaskForDelegate.teamMemberMappings?.find(m => m.userId === user?.uid)?.clientIds || selectedTaskForDelegate.contactIds || []
+          }
+          teamMemberMappings={selectedTaskForDelegate.teamMemberMappings}
+          onDelegated={() => { window.location.reload(); }}
+        />
+      )}
+
+      {/* Schedule Task Modal */}
+      {showScheduleModal && selectedTaskForSchedule && (
+        <ScheduleTaskModal
+          isOpen={showScheduleModal}
+          onClose={() => { setShowScheduleModal(false); setSelectedTaskForSchedule(null); closeModal(); }}
+          taskId={selectedTaskForSchedule.id || ''}
+          taskTitle={selectedTaskForSchedule.title}
+          currentUserId={user?.uid || ''}
+          teamMemberMappings={selectedTaskForSchedule.teamMemberMappings}
+          contactIds={selectedTaskForSchedule.contactIds}
+          onScheduled={() => {}}
+        />
+      )}
 
       {/* Report loading overlay */}
       {isReportLoading && (
