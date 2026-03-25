@@ -200,23 +200,25 @@ export default function TeamsPage() {
       <ErrorBoundary>
         <div className="space-y-6">
         {/* Page Header - Requirement 4.1 */}
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Teams</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Teams</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
               Manage your organization's teams and members
             </p>
           </div>
-          
+
           {/* Add New Team Button - Requirement 4.2 */}
-          <Button
-            onClick={() => setIsCreateModalOpen(true)}
-            className="flex items-center gap-2 text-white"
-            disabled={loading}
-          >
-            <PlusIcon className="w-5 h-5" />
-            Add New Team
-          </Button>
+          <div className="self-start sm:self-auto">
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex items-center gap-2 text-white"
+              disabled={loading}
+            >
+              <PlusIcon className="w-5 h-5" />
+              Add New Team
+            </Button>
+          </div>
         </div>
 
         {/* Error Display */}
@@ -243,7 +245,7 @@ export default function TeamsPage() {
         )}
 
         {/* Team Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-3">
@@ -356,7 +358,7 @@ export default function TeamsPage() {
             ) : (
               /* List View */
               <div className="bg-white dark:bg-gray-dark rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+                <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-3 bg-gray-50 dark:bg-gray-800 text-sm font-medium text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
                   <div className="col-span-4">Team Name</div>
                   <div className="col-span-3">Leader</div>
                   <div className="col-span-2">Members</div>
@@ -365,49 +367,82 @@ export default function TeamsPage() {
                 </div>
                 <div className="divide-y divide-gray-200 dark:divide-gray-700">
                   {teams.map((team) => (
-                    <div 
-                      key={team.id} 
-                      className="grid grid-cols-12 gap-4 px-6 py-4 text-sm bg-white dark:bg-gray-dark hover:bg-gray-50 dark:bg-gray-800 dark:hover:bg-gray-800 transition-colors"
+                    <div
+                      key={team.id}
+                      className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 px-4 md:px-6 py-4 text-sm bg-white dark:bg-gray-dark hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
-                      <div className="col-span-4">
-                        <div className="font-medium text-gray-900 dark:text-white">{team.name}</div>
-                        <div className="text-gray-500 dark:text-gray-400 text-xs mt-1 truncate">
-                          {team.description || 'No description'}
+                      {/* Mobile card view */}
+                      <div className="md:hidden space-y-2">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <div className="font-medium text-gray-900 dark:text-white">{team.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                              {team.description || 'No description'}
+                            </div>
+                          </div>
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ml-2 ${team.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
+                            {team.status}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600 dark:text-gray-400 space-y-0.5">
+                          <div>Leader: <span className="text-gray-800 dark:text-gray-200">{team.leaderName || 'Unassigned'}</span></div>
+                          <div>{team.members.length} {team.members.length === 1 ? 'member' : 'members'}</div>
+                        </div>
+                        <div className="flex gap-3 pt-1">
+                          <button
+                            onClick={() => handleViewDetails(team.id!)}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm font-medium"
+                            aria-label="View details"
+                          >View</button>
+                          <button
+                            onClick={() => handleEditClick(team)}
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm font-medium"
+                            aria-label="Edit team"
+                          >Edit</button>
+                          <button
+                            onClick={() => handleDeleteTeam(team.id!)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm font-medium"
+                            aria-label="Delete team"
+                          >Delete</button>
                         </div>
                       </div>
-                      <div className="col-span-3 text-gray-700 dark:text-gray-300">
-                        {team.leaderName || 'Unassigned'}
-                      </div>
-                      <div className="col-span-2 text-gray-700 dark:text-gray-300">
-                        {team.members.length}
-                      </div>
-                      <div className="col-span-1">
-                        <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${team.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
-                          {team.status}
-                        </span>
-                      </div>
-                      <div className="col-span-2 flex space-x-2">
-                        <button 
-                          onClick={() => handleViewDetails(team.id!)}
-                          className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
-                          aria-label="View details"
-                        >
-                          View
-                        </button>
-                        <button 
-                          onClick={() => handleEditClick(team)}
-                          className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm"
-                          aria-label="Edit team"
-                        >
-                          Edit
-                        </button>
-                        <button 
-                          onClick={() => handleDeleteTeam(team.id!)}
-                          className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm"
-                          aria-label="Delete team"
-                        >
-                          Delete
-                        </button>
+
+                      {/* Desktop grid view */}
+                      <div className="hidden md:contents">
+                        <div className="col-span-4">
+                          <div className="font-medium text-gray-900 dark:text-white">{team.name}</div>
+                          <div className="text-gray-500 dark:text-gray-400 text-xs mt-1 truncate">
+                            {team.description || 'No description'}
+                          </div>
+                        </div>
+                        <div className="col-span-3 text-gray-700 dark:text-gray-300 flex items-center">
+                          {team.leaderName || 'Unassigned'}
+                        </div>
+                        <div className="col-span-2 text-gray-700 dark:text-gray-300 flex items-center">
+                          {team.members.length}
+                        </div>
+                        <div className="col-span-1 flex items-center">
+                          <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${team.status === 'active' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}`}>
+                            {team.status}
+                          </span>
+                        </div>
+                        <div className="col-span-2 flex items-center space-x-2">
+                          <button
+                            onClick={() => handleViewDetails(team.id!)}
+                            className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 text-sm"
+                            aria-label="View details"
+                          >View</button>
+                          <button
+                            onClick={() => handleEditClick(team)}
+                            className="text-indigo-600 hover:text-indigo-900 dark:text-indigo-400 dark:hover:text-indigo-300 text-sm"
+                            aria-label="Edit team"
+                          >Edit</button>
+                          <button
+                            onClick={() => handleDeleteTeam(team.id!)}
+                            className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 text-sm"
+                            aria-label="Delete team"
+                          >Delete</button>
+                        </div>
                       </div>
                     </div>
                   ))}

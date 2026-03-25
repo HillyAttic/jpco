@@ -49,9 +49,9 @@ export function ClientListView({
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300">S.No</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Client Name</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300">P.A.N.</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300">T.A.N.</th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300">GSTIN</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 hidden sm:table-cell">P.A.N.</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 hidden sm:table-cell">T.A.N.</th>
+            <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300 hidden sm:table-cell">GSTIN</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Status</th>
             <th className="px-4 py-3 text-left text-xs font-medium text-gray-700 dark:text-gray-300">Actions</th>
           </tr>
@@ -81,17 +81,17 @@ export function ClientListView({
                   {client.clientName}
                 </div>
               </td>
-              <td className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
+              <td className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300 hidden sm:table-cell">
                 <div className="truncate" title={client.taxIdentifiers?.pan || '-'}>
                   {client.taxIdentifiers?.pan || '-'}
                 </div>
               </td>
-              <td className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
+              <td className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300 hidden sm:table-cell">
                 <div className="truncate" title={client.taxIdentifiers?.tan || '-'}>
                   {client.taxIdentifiers?.tan || '-'}
                 </div>
               </td>
-              <td className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300">
+              <td className="px-4 py-3 text-xs text-gray-700 dark:text-gray-300 hidden sm:table-cell">
                 <div className="truncate" title={client.taxIdentifiers?.gstin || '-'}>
                   {client.taxIdentifiers?.gstin || '-'}
                 </div>

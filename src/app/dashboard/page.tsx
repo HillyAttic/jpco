@@ -538,30 +538,52 @@ export default function DashboardPage() {
       const { managerHierarchyService } = await import('@/services/manager-hierarchy.service');
       return managerHierarchyService.getByManagerId(user.uid);
     },
-    { 
-      cacheTime: 5 * 60 * 1000, 
+    {
+      cacheTime: 5 * 60 * 1000,
+      dedupe: true
+    }
+  );
+
+  // Fetch all hierarchies for admin to filter team performance
+  const { data: allHierarchiesForPerf } = useOptimizedFetch(
+    'manager-hierarchy-all',
+    async () => {
+      if (!isAdmin) return null;
+      const { managerHierarchyService } = await import('@/services/manager-hierarchy.service');
+      return managerHierarchyService.getAll();
+    },
+    {
+      cacheTime: 5 * 60 * 1000,
       dedupe: true
     }
   );
 
   // Calculate team performance data (memoized)
   // For managers: show only assigned team members
-  // For admins: show all employees
+  // For admins: show only employees assigned in any hierarchy
   const teamPerformanceData = useMemo(() => {
     if (!employees || employees.length === 0) return [];
 
     // Filter employees based on role
     let filteredEmployees = employees;
     let assignedEmployeeIds: Set<string> | null = null;
-    
-    if (isManager && !isAdmin && managerHierarchy) {
-      // For managers, only show assigned employees
-      assignedEmployeeIds = new Set(managerHierarchy.employeeIds || []);
+
+    if (isAdmin) {
+      // For admins, only show employees assigned in any manager hierarchy
+      if (!allHierarchiesForPerf) return [];
+      assignedEmployeeIds = new Set<string>();
+      allHierarchiesForPerf.forEach(h => h.employeeIds.forEach(id => assignedEmployeeIds!.add(id)));
+      if (assignedEmployeeIds.size === 0) return [];
+      filteredEmployees = employees.filter(emp => assignedEmployeeIds!.has(emp.id!));
+    } else if (isManager) {
+      // For managers, only show assigned employees — if no hierarchy or no employees assigned, show nothing
+      if (!managerHierarchy || !managerHierarchy.employeeIds?.length) return [];
+      assignedEmployeeIds = new Set(managerHierarchy.employeeIds);
       filteredEmployees = employees.filter(emp => assignedEmployeeIds!.has(emp.id!));
     }
 
-    // If manager has no assigned employees, return empty array
-    if (isManager && !isAdmin && filteredEmployees.length === 0) {
+    // If no assigned employees, return empty array
+    if (filteredEmployees.length === 0) {
       return [];
     }
 
@@ -615,7 +637,7 @@ export default function DashboardPage() {
         const totalB = b.tasksCompleted + b.tasksInProgress + b.tasksPending;
         return totalB - totalA;
       });
-  }, [tasks, employees, isManager, isAdmin, managerHierarchy]);
+  }, [tasks, employees, isManager, isAdmin, managerHierarchy, allHierarchiesForPerf]);
 
   // Calculate weekly progress data (memoized)
   const weeklyProgressData = useMemo(() => {
