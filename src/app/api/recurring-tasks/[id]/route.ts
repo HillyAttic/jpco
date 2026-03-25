@@ -95,8 +95,11 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params;
     const body = await request.json();
-    
+
     console.log(`📥 [PUT /api/recurring-tasks/${id}] Received body:`, JSON.stringify(body, null, 2));
+
+    // Fetch existing task before update (to diff assignees for notifications)
+    const existingTask = await recurringTaskAdminService.getById(id);
 
     // Validate request body
     const validationResult = updateRecurringTaskSchema.safeParse(body);
@@ -131,6 +134,62 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     
     console.log(`✅ [PUT /api/recurring-tasks/${id}] Task updated successfully`);
     console.log(`🗺️ [PUT /api/recurring-tasks/${id}] Saved team member mappings:`, updatedTask.teamMemberMappings);
+
+    // Send notifications to newly assigned users only
+    try {
+      const { sendNotification } = await import('@/lib/notifications/send-notification');
+      const { teamAdminService } = await import('@/services/team-admin.service');
+
+      // Collect old assigned user IDs
+      const oldUserIds = new Set<string>();
+      if (existingTask) {
+        (existingTask.contactIds || []).forEach((uid: string) => oldUserIds.add(uid));
+        ((existingTask as any).teamMemberMappings || []).forEach((m: { userId: string }) => oldUserIds.add(m.userId));
+      }
+
+      // Collect new assigned user IDs
+      const newUserIds = new Set<string>();
+      (taskToUpdate.contactIds || (updatedTask.contactIds || [])).forEach((uid: string) => newUserIds.add(uid));
+      (taskToUpdate.teamMemberMappings || (updatedTask as any).teamMemberMappings || []).forEach((m: { userId: string }) => newUserIds.add(m.userId));
+
+      // Resolve team members if teamId changed or no explicit mappings
+      const newTeamId = taskToUpdate.teamId ?? (updatedTask as any).teamId;
+      if (newTeamId && newUserIds.size === 0) {
+        try {
+          const team = await teamAdminService.getById(newTeamId);
+          if (team) {
+            if (team.memberIds && Array.isArray(team.memberIds)) {
+              team.memberIds.forEach((uid: string) => newUserIds.add(uid));
+            } else if (team.members && Array.isArray(team.members)) {
+              team.members.forEach((m: any) => m.id && newUserIds.add(m.id));
+            }
+            if (team.leaderId) newUserIds.add(team.leaderId);
+          }
+        } catch (teamErr) {
+          console.error(`[PUT /api/recurring-tasks/${id}] Error fetching team members:`, teamErr);
+        }
+      }
+
+      // Only notify newly added users
+      const newlyAddedIds = [...newUserIds].filter(uid => !oldUserIds.has(uid));
+
+      if (newlyAddedIds.length > 0) {
+        const taskTitle = taskToUpdate.title ?? (updatedTask as any).title ?? 'a recurring task';
+        await sendNotification({
+          userIds: newlyAddedIds,
+          title: 'Recurring Task Assigned',
+          body: `You have been assigned a recurring task: ${taskTitle}`,
+          data: {
+            url: '/tasks/recurring',
+            type: 'recurring_task_assigned',
+            taskId: id,
+          },
+        });
+        console.log(`✅ [PUT /api/recurring-tasks/${id}] Notifications sent to ${newlyAddedIds.length} new user(s)`);
+      }
+    } catch (notifErr) {
+      console.error(`[PUT /api/recurring-tasks/${id}] Error sending notifications:`, notifErr);
+    }
 
     // Serialize dates for JSON response
     const serializedTask = {

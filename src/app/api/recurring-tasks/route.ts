@@ -383,6 +383,53 @@ export async function POST(request: NextRequest) {
     console.log('✅ [POST /api/recurring-tasks] Task created successfully with ID:', newTask.id);
     console.log('🗺️ [POST /api/recurring-tasks] Saved team member mappings:', newTask.teamMemberMappings);
 
+    // Send notifications to all assigned users
+    try {
+      const { sendNotification } = await import('@/lib/notifications/send-notification');
+      const { teamAdminService } = await import('@/services/team-admin.service');
+
+      const assignedUserIds = new Set<string>();
+
+      // Add directly assigned users
+      (taskData.contactIds || []).forEach((id: string) => assignedUserIds.add(id));
+
+      // Add users from team member mappings
+      (taskData.teamMemberMappings || []).forEach((m: { userId: string }) => assignedUserIds.add(m.userId));
+
+      // If a team is assigned but no explicit mappings, look up team members
+      if (taskData.teamId && (!taskData.teamMemberMappings || taskData.teamMemberMappings.length === 0)) {
+        try {
+          const team = await teamAdminService.getById(taskData.teamId);
+          if (team) {
+            if (team.memberIds && Array.isArray(team.memberIds)) {
+              team.memberIds.forEach((id: string) => assignedUserIds.add(id));
+            } else if (team.members && Array.isArray(team.members)) {
+              team.members.forEach((m: any) => m.id && assignedUserIds.add(m.id));
+            }
+            if (team.leaderId) assignedUserIds.add(team.leaderId);
+          }
+        } catch (teamErr) {
+          console.error('[POST /api/recurring-tasks] Error fetching team members for notification:', teamErr);
+        }
+      }
+
+      if (assignedUserIds.size > 0) {
+        await sendNotification({
+          userIds: [...assignedUserIds],
+          title: 'New Recurring Task Assigned',
+          body: `You have been assigned a recurring task: ${taskData.title}`,
+          data: {
+            url: '/tasks/recurring',
+            type: 'recurring_task_assigned',
+            taskId: newTask.id,
+          },
+        });
+        console.log(`✅ [POST /api/recurring-tasks] Notifications sent to ${assignedUserIds.size} user(s)`);
+      }
+    } catch (notifErr) {
+      console.error('[POST /api/recurring-tasks] Error sending notifications:', notifErr);
+    }
+
     // Serialize dates for JSON response
     const serializedTask = {
       ...newTask,
