@@ -1,18 +1,19 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useRouter } from 'next/navigation';
 import { myTasksService } from '@/services/my-tasks.service';
 import { MyTask, TaskList, TASK_LIST_COLORS } from '@/types/my-tasks.types';
-import { PlusIcon, TrashIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { Plus, Trash2, Check, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 /**
  * FIRESTORE COMPOSITE INDEXES REQUIRED:
- * 
+ *
  * Collection: my_task_lists
  * - userId (Ascending) + order (Ascending)
- * 
+ *
  * Collection: my_tasks
  * - listId (Ascending) + userId (Ascending) + order (Ascending)
  * - userId (Ascending) + order (Ascending)
@@ -27,22 +28,18 @@ export default function MyTasksPage() {
     const [selectedListId, setSelectedListId] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-
-    // Modal states
     const [showCreateListModal, setShowCreateListModal] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
+    const [showCompleted, setShowCompleted] = useState(false);
+    const [togglingId, setTogglingId] = useState<string | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
-    // Redirect if not authenticated
     useEffect(() => {
-        if (!authLoading && !user) {
-            router.push('/login');
-        }
+        if (!authLoading && !user) router.push('/login');
     }, [user, authLoading, router]);
 
-    // Load data
     useEffect(() => {
         if (!user) return;
-
         const loadData = async () => {
             try {
                 setLoading(true);
@@ -50,14 +47,9 @@ export default function MyTasksPage() {
                     myTasksService.getUserTaskLists(user.uid),
                     myTasksService.getAllUserTasks(user.uid),
                 ]);
-
                 setTaskLists(lists);
                 setTasks(allTasks);
-
-                // Select first list if none selected
-                if (lists.length > 0 && !selectedListId) {
-                    setSelectedListId(lists[0].id);
-                }
+                if (lists.length > 0 && !selectedListId) setSelectedListId(lists[0].id);
             } catch (err) {
                 console.error('Error loading data:', err);
                 setError('Failed to load tasks');
@@ -65,25 +57,17 @@ export default function MyTasksPage() {
                 setLoading(false);
             }
         };
-
         loadData();
     }, [user]);
 
-    // Handlers
     const handleCreateList = async (name: string, color: string) => {
         if (!user) return;
         try {
-            const newList = await myTasksService.createTaskList(user.uid, {
-                name,
-                color,
-                order: taskLists.length,
-            });
+            const newList = await myTasksService.createTaskList(user.uid, { name, color, order: taskLists.length });
             setTaskLists([...taskLists, newList]);
             setSelectedListId(newList.id);
             setShowCreateListModal(false);
-        } catch (err) {
-            console.error('Error creating list:', err);
-        }
+        } catch (err) { console.error(err); }
     };
 
     const handleDeleteList = async (listId: string) => {
@@ -97,9 +81,7 @@ export default function MyTasksPage() {
                 const remaining = taskLists.filter(l => l.id !== listId);
                 setSelectedListId(remaining.length > 0 ? remaining[0].id : null);
             }
-        } catch (err) {
-            console.error('Error deleting list:', err);
-        }
+        } catch (err) { console.error(err); }
     };
 
     const handleAddTask = async () => {
@@ -114,58 +96,51 @@ export default function MyTasksPage() {
             });
             setTasks([...tasks, newTask]);
             setNewTaskTitle('');
-        } catch (err) {
-            console.error('Error creating task:', err);
-        }
+            inputRef.current?.focus();
+        } catch (err) { console.error(err); }
     };
 
     const handleToggleTask = async (task: MyTask) => {
+        if (togglingId === task.id) return;
+        setTogglingId(task.id);
         try {
             await myTasksService.updateTask(task.id, { completed: !task.completed });
             setTasks(tasks.map(t => t.id === task.id ? { ...t, completed: !t.completed } : t));
-        } catch (err) {
-            console.error('Error toggling task:', err);
-        }
+        } catch (err) { console.error(err); }
+        finally { setTogglingId(null); }
     };
 
-    const handleDeleteTask = async (taskId: string) => {
+    const handleDeleteTask = async (taskId: string, e: React.MouseEvent) => {
+        e.stopPropagation();
         try {
             await myTasksService.deleteTask(taskId);
             setTasks(tasks.filter(t => t.id !== taskId));
-        } catch (err) {
-            console.error('Error deleting task:', err);
-        }
+        } catch (err) { console.error(err); }
     };
 
-    // Computed values
     const selectedList = taskLists.find(l => l.id === selectedListId);
     const listTasks = tasks.filter(t => t.listId === selectedListId);
     const activeTasks = listTasks.filter(t => !t.completed);
     const completedTasks = listTasks.filter(t => t.completed);
 
-    // Loading state
     if (authLoading || loading) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4" />
-                    <p className="text-gray-600 dark:text-gray-400">Loading your tasks...</p>
+                <div className="text-center space-y-3">
+                    <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin mx-auto" />
+                    <p className="text-sm text-gray-400">Loading your tasks…</p>
                 </div>
             </div>
         );
     }
 
-    // Error state
     if (error) {
         return (
             <div className="flex items-center justify-center min-h-[60vh]">
-                <div className="text-center">
-                    <p className="text-red-600 mb-4">{error}</p>
-                    <button
-                        onClick={() => window.location.reload()}
-                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                    >
-                        Refresh Page
+                <div className="text-center space-y-4">
+                    <p className="text-red-500 text-sm">{error}</p>
+                    <button onClick={() => window.location.reload()} className="px-5 py-2 bg-primary text-white rounded-xl text-sm font-medium">
+                        Retry
                     </button>
                 </div>
             </div>
@@ -175,183 +150,167 @@ export default function MyTasksPage() {
     if (!user) return null;
 
     return (
-        <div className="max-w-7xl mx-auto">
-            <div className="bg-white dark:bg-gray-dark rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
-                {/* Header */}
-                <div className="border-b border-gray-200 dark:border-gray-700 p-6">
-                    <div className="flex items-center justify-between">
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Tasks</h1>
+        <div className="max-w-2xl mx-auto px-4 pb-28 md:pb-10 pt-2">
+            {/* Page header */}
+            <div className="flex items-center justify-between mb-6">
+                <h1 className="text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">My Tasks</h1>
+                <button
+                    onClick={() => setShowCreateListModal(true)}
+                    className="flex items-center gap-1.5 px-3.5 py-2 bg-primary text-white rounded-xl text-sm font-semibold shadow-sm active:scale-95 transition-transform"
+                >
+                    <Plus className="w-4 h-4" />
+                    New List
+                </button>
+            </div>
+
+            {/* List cards — iOS Reminders style */}
+            {taskLists.length > 0 && (
+                <div className="grid grid-cols-2 gap-3 mb-6 sm:grid-cols-3">
+                    {taskLists.map(list => {
+                        const count = tasks.filter(t => t.listId === list.id && !t.completed).length;
+                        const isSelected = selectedListId === list.id;
+                        return (
+                            <button
+                                key={list.id}
+                                onClick={() => setSelectedListId(list.id)}
+                                className={cn(
+                                    "relative text-left rounded-2xl p-4 transition-all duration-200 active:scale-[0.97]",
+                                    "shadow-sm",
+                                    isSelected
+                                        ? "ring-2 ring-offset-1 dark:ring-offset-[#1c1c1e]"
+                                        : "opacity-80 hover:opacity-100"
+                                )}
+                                style={{
+                                    backgroundColor: list.color + '18',
+                                    ...(isSelected ? { outline: `2px solid ${list.color}`, outlineOffset: '2px' } : {}),
+                                }}
+                            >
+                                <div className="w-9 h-9 rounded-full mb-3 flex items-center justify-center" style={{ backgroundColor: list.color }}>
+                                    <Check className="w-4 h-4 text-white" strokeWidth={3} />
+                                </div>
+                                <p className="text-[22px] font-bold leading-none mb-1" style={{ color: list.color }}>{count}</p>
+                                <p className="text-[13px] font-semibold text-gray-700 dark:text-gray-200 truncate">{list.name}</p>
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+
+            {/* Selected list content */}
+            {selectedList ? (
+                <div className="bg-white dark:bg-[#2c2c2e] rounded-2xl shadow-sm overflow-hidden">
+                    {/* List header */}
+                    <div className="flex items-center justify-between px-4 pt-4 pb-2">
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: selectedList.color }} />
+                            <span className="text-[15px] font-semibold text-gray-800 dark:text-white">{selectedList.name}</span>
+                            <span className="text-[12px] text-gray-400">{activeTasks.length} remaining</span>
+                        </div>
                         <button
-                            onClick={() => setShowCreateListModal(true)}
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                            onClick={() => handleDeleteList(selectedList.id)}
+                            className="p-1.5 text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
+                            title="Delete list"
                         >
-                            <PlusIcon className="w-5 h-5" />
-                            New List
+                            <Trash2 className="w-4 h-4" />
                         </button>
                     </div>
-                </div>
 
-                {/* Lists Tabs */}
-                {taskLists.length > 0 && (
-                    <div className="border-b border-gray-200 dark:border-gray-700 px-6">
-                        <div className="flex gap-2 overflow-x-auto py-3">
-                            {taskLists.map(list => (
-                                <button
-                                    key={list.id}
-                                    onClick={() => setSelectedListId(list.id)}
-                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
-                                        selectedListId === list.id
-                                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                                            : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
-                                    }`}
-                                >
-                                    <div
-                                        className="w-3 h-3 rounded-full"
-                                        data-color={list.color}
-                                        style={{ backgroundColor: list.color }}
-                                    />
-                                    <span className="font-medium">{list.name}</span>
-                                    <span className="text-sm opacity-60">
-                                        {tasks.filter(t => t.listId === list.id && !t.completed).length}
-                                    </span>
-                                </button>
+                    {/* Active tasks */}
+                    {activeTasks.length > 0 && (
+                        <ul className="mt-1">
+                            {activeTasks.map((task, i) => (
+                                <TaskRow
+                                    key={task.id}
+                                    task={task}
+                                    color={selectedList.color}
+                                    isToggling={togglingId === task.id}
+                                    onToggle={() => handleToggleTask(task)}
+                                    onDelete={(e) => handleDeleteTask(task.id, e)}
+                                    showDivider={i < activeTasks.length - 1}
+                                />
                             ))}
-                        </div>
-                    </div>
-                )}
+                        </ul>
+                    )}
 
-                {/* Main Content */}
-                <div className="p-6">
-                    {selectedList ? (
-                        <>
-                            {/* List Header */}
-                            <div className="flex items-center justify-between mb-6">
-                                <div className="flex items-center gap-3">
-                                    <div
-                                        className="w-4 h-4 rounded-full"
-                                        data-color={selectedList.color}
-                                        style={{ backgroundColor: selectedList.color }}
-                                    />
-                                    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-                                        {selectedList.name}
-                                    </h2>
-                                    <span className="text-sm text-gray-500 dark:text-gray-400">
-                                        {activeTasks.length} active
-                                    </span>
-                                </div>
-                                <button
-                                    onClick={() => handleDeleteList(selectedList.id)}
-                                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                                    title="Delete list"
-                                >
-                                    <TrashIcon className="w-5 h-5" />
-                                </button>
-                            </div>
-
-                            {/* Add Task Input */}
-                            <div className="mb-6">
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={newTaskTitle}
-                                        onChange={(e) => setNewTaskTitle(e.target.value)}
-                                        onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
-                                        placeholder="Add a new task..."
-                                        className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                    />
-                                    <button
-                                        onClick={handleAddTask}
-                                        disabled={!newTaskTitle.trim()}
-                                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                    >
-                                        Add
-                                    </button>
-                                </div>
-                            </div>
-
-                            {/* Active Tasks */}
-                            {activeTasks.length > 0 && (
-                                <div className="space-y-2 mb-6">
-                                    {activeTasks.map(task => (
-                                        <div
-                                            key={task.id}
-                                            className="flex items-center gap-2 sm:gap-3 p-2 sm:p-3 bg-gray-50 dark:bg-gray-800 rounded-lg group"
-                                        >
-                                            <button
-                                                onClick={() => handleToggleTask(task)}
-                                                className="flex-shrink-0 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full border border-gray-300 dark:border-gray-600 hover:border-blue-500 transition-colors no-min-size"
-                                            />
-                                            <span className="flex-1 text-base sm:text-lg text-gray-900 dark:text-white">
-                                                {task.title}
-                                            </span>
-                                            <button
-                                                onClick={() => handleDeleteTask(task.id)}
-                                                className="opacity-0 group-hover:opacity-100 p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all"
-                                            >
-                                                <TrashIcon className="w-4 h-4" />
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-
-                            {/* Completed Tasks */}
-                            {completedTasks.length > 0 && (
-                                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                                    <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-3">
-                                        Completed ({completedTasks.length})
-                                    </h3>
-                                    <div className="space-y-2">
-                                        {completedTasks.map(task => (
-                                            <div
-                                                key={task.id}
-                                                className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg group opacity-60"
-                                            >
-                                                <button
-                                                    onClick={() => handleToggleTask(task)}
-                                                    className="flex-shrink-0 w-3.5 h-3.5 sm:w-5 sm:h-5 rounded-full bg-blue-600 flex items-center justify-center no-min-size"
-                                                >
-                                                    <CheckIcon className="w-2 h-2 sm:w-3 sm:h-3 text-white" />
-                                                </button>
-                                                <span className="flex-1 text-base sm:text-lg text-gray-900 dark:text-white line-through">
-                                                    {task.title}
-                                                </span>
-                                                <button
-                                                    onClick={() => handleDeleteTask(task.id)}
-                                                    className="opacity-0 group-hover:opacity-100 p-1 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-all"
-                                                >
-                                                    <TrashIcon className="w-4 h-4" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Empty State */}
-                            {activeTasks.length === 0 && completedTasks.length === 0 && (
-                                <div className="text-center py-12">
-                                    <p className="text-gray-500 dark:text-gray-400">
-                                        No tasks yet. Add one above to get started!
-                                    </p>
-                                </div>
-                            )}
-                        </>
-                    ) : (
-                        <div className="text-center py-12">
-                            <p className="text-gray-500 dark:text-gray-400 mb-4">
-                                No lists yet. Create your first list to get started!
-                            </p>
+                    {/* Add task row */}
+                    <div className="flex items-center gap-3 px-4 py-3 border-t border-gray-100 dark:border-white/[0.06]">
+                        <div className="w-6 h-6 rounded-full border-2 border-dashed flex-shrink-0"
+                            style={{ borderColor: selectedList.color + '80' }} />
+                        <input
+                            ref={inputRef}
+                            type="text"
+                            value={newTaskTitle}
+                            onChange={(e) => setNewTaskTitle(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && handleAddTask()}
+                            placeholder="Add a task…"
+                            className="flex-1 bg-transparent text-[15px] text-gray-800 dark:text-white placeholder-gray-400 focus:outline-none"
+                        />
+                        {newTaskTitle.trim() && (
                             <button
-                                onClick={() => setShowCreateListModal(true)}
-                                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                                onClick={handleAddTask}
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-white transition-transform active:scale-90"
+                                style={{ backgroundColor: selectedList.color }}
                             >
-                                Create List
+                                <Plus className="w-4 h-4" />
                             </button>
+                        )}
+                    </div>
+
+                    {/* Completed section */}
+                    {completedTasks.length > 0 && (
+                        <div className="border-t border-gray-100 dark:border-white/[0.06]">
+                            <button
+                                onClick={() => setShowCompleted(v => !v)}
+                                className="flex items-center justify-between w-full px-4 py-3 text-left"
+                            >
+                                <span className="text-[11px] font-semibold uppercase tracking-widest text-gray-400">
+                                    Completed ({completedTasks.length})
+                                </span>
+                                {showCompleted
+                                    ? <ChevronUp className="w-4 h-4 text-gray-400" />
+                                    : <ChevronDown className="w-4 h-4 text-gray-400" />}
+                            </button>
+                            {showCompleted && (
+                                <ul>
+                                    {completedTasks.map((task, i) => (
+                                        <TaskRow
+                                            key={task.id}
+                                            task={task}
+                                            color={selectedList.color}
+                                            isToggling={togglingId === task.id}
+                                            onToggle={() => handleToggleTask(task)}
+                                            onDelete={(e) => handleDeleteTask(task.id, e)}
+                                            showDivider={i < completedTasks.length - 1}
+                                            completed
+                                        />
+                                    ))}
+                                </ul>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Empty state */}
+                    {activeTasks.length === 0 && completedTasks.length === 0 && (
+                        <div className="px-4 py-10 text-center">
+                            <p className="text-[14px] text-gray-400">No tasks yet — add one above</p>
                         </div>
                     )}
                 </div>
-            </div>
+            ) : (
+                /* No lists state */
+                <div className="text-center py-20 space-y-4">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-white/[0.06] rounded-2xl flex items-center justify-center mx-auto">
+                        <Check className="w-8 h-8 text-gray-300" />
+                    </div>
+                    <p className="text-[15px] text-gray-500 dark:text-gray-400">No lists yet</p>
+                    <button
+                        onClick={() => setShowCreateListModal(true)}
+                        className="px-5 py-2.5 bg-primary text-white rounded-xl text-sm font-semibold"
+                    >
+                        Create your first list
+                    </button>
+                </div>
+            )}
 
             {/* Create List Modal */}
             {showCreateListModal && (
@@ -364,7 +323,64 @@ export default function MyTasksPage() {
     );
 }
 
-// Create List Modal Component
+/* ── Task Row ────────────────────────────────────────────── */
+interface TaskRowProps {
+    task: MyTask;
+    color: string;
+    isToggling: boolean;
+    onToggle: () => void;
+    onDelete: (e: React.MouseEvent) => void;
+    showDivider?: boolean;
+    completed?: boolean;
+}
+
+function TaskRow({ task, color, isToggling, onToggle, onDelete, showDivider, completed }: TaskRowProps) {
+    return (
+        <li
+            className={cn(
+                "flex items-center gap-3 px-4 py-3 cursor-pointer select-none",
+                "active:bg-gray-50 dark:active:bg-white/[0.04] transition-colors",
+                showDivider && "border-b border-gray-100 dark:border-white/[0.05]",
+                completed && "opacity-50"
+            )}
+            onClick={onToggle}
+        >
+            {/* Checkbox */}
+            <div
+                className={cn(
+                    "w-[22px] h-[22px] rounded-full flex-shrink-0 flex items-center justify-center transition-all duration-200",
+                    isToggling && "scale-90 opacity-70",
+                    completed ? "border-0" : "border-2"
+                )}
+                style={completed
+                    ? { backgroundColor: color }
+                    : { borderColor: color }
+                }
+            >
+                {completed && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+            </div>
+
+            {/* Title */}
+            <span className={cn(
+                "flex-1 text-[15px] leading-snug text-gray-800 dark:text-white",
+                completed && "line-through text-gray-400 dark:text-gray-500"
+            )}>
+                {task.title}
+            </span>
+
+            {/* Delete — tap area */}
+            <button
+                onClick={onDelete}
+                className="p-1.5 -mr-1 text-gray-300 hover:text-red-400 dark:text-gray-600 dark:hover:text-red-400 rounded-lg transition-colors active:scale-90"
+                aria-label="Delete task"
+            >
+                <X className="w-4 h-4" />
+            </button>
+        </li>
+    );
+}
+
+/* ── Create List Modal ───────────────────────────────────── */
 interface CreateListModalProps {
     onClose: () => void;
     onCreate: (name: string, color: string) => void;
@@ -374,65 +390,64 @@ function CreateListModal({ onClose, onCreate }: CreateListModalProps) {
     const [name, setName] = useState('');
     const [color, setColor] = useState(TASK_LIST_COLORS[0]);
 
-    const handleSubmit = () => {
-        if (name.trim()) {
-            onCreate(name.trim(), color);
-        }
-    };
-
     return (
         <div
-            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto"
+            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
             onClick={onClose}
         >
+            {/* Backdrop */}
+            <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+
+            {/* Sheet */}
             <div
-                className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-md w-full p-6 my-8"
-                onClick={(e) => e.stopPropagation()}
+                className="relative bg-white dark:bg-[#2c2c2e] rounded-2xl shadow-2xl w-full max-w-md p-6 sm:p-6"
+                onClick={e => e.stopPropagation()}
             >
-                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">
-                    Create New List
-                </h3>
+                <div className="flex items-center justify-between mb-5">
+                    <h3 className="text-[17px] font-semibold text-gray-900 dark:text-white">New List</h3>
+                    <button onClick={onClose} className="w-7 h-7 flex items-center justify-center rounded-full bg-gray-100 dark:bg-white/[0.08] text-gray-500 dark:text-gray-400">
+                        <X className="w-4 h-4" />
+                    </button>
+                </div>
 
                 <input
                     type="text"
                     value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && handleSubmit()}
-                    placeholder="List name..."
+                    onChange={e => setName(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && name.trim() && onCreate(name.trim(), color)}
+                    placeholder="List name"
                     autoFocus
-                    className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+                    className="w-full px-4 py-3 bg-gray-100 dark:bg-white/[0.06] rounded-xl text-[15px] text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-primary mb-5"
                 />
 
-                <div className="mb-6">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                        Choose a color
-                    </label>
-                    <div className="flex flex-wrap gap-2 sm:gap-3 justify-center sm:justify-start">
-                        {TASK_LIST_COLORS.map((c) => (
-                            <button
-                                key={c}
-                                onClick={() => setColor(c)}
-                                className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full transition-transform ${
-                                    color === c ? 'ring-2 ring-offset-2 ring-blue-500 dark:ring-offset-gray-dark scale-110' : 'hover:scale-105'
-                                }`}
-                                style={{ backgroundColor: c }}
-                                aria-label={`Color ${c}`}
-                            />
-                        ))}
-                    </div>
+                <p className="text-[11px] font-semibold uppercase tracking-widest text-gray-400 mb-3">Colour</p>
+                <div className="flex flex-wrap gap-3 mb-6">
+                    {TASK_LIST_COLORS.map(c => (
+                        <button
+                            key={c}
+                            onClick={() => setColor(c)}
+                            className={cn(
+                                "w-9 h-9 rounded-full transition-all active:scale-90",
+                                color === c && "ring-2 ring-offset-2 dark:ring-offset-[#2c2c2e] scale-110"
+                            )}
+                            style={{ backgroundColor: c, outlineColor: c }}
+                            aria-label={`Select colour ${c}`}
+                        />
+                    ))}
                 </div>
 
-                <div className="flex flex-col-reverse sm:flex-row gap-3">
+                <div className="flex gap-3">
                     <button
                         onClick={onClose}
-                        className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                        className="flex-1 py-3 rounded-xl border border-gray-200 dark:border-white/[0.1] text-[15px] font-medium text-gray-600 dark:text-gray-300"
                     >
                         Cancel
                     </button>
                     <button
-                        onClick={handleSubmit}
+                        onClick={() => name.trim() && onCreate(name.trim(), color)}
                         disabled={!name.trim()}
-                        className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="flex-1 py-3 rounded-xl text-[15px] font-semibold text-white disabled:opacity-40 transition-opacity"
+                        style={{ backgroundColor: color }}
                     >
                         Create
                     </button>

@@ -14,7 +14,8 @@
       "Bash(grep:*)",
       "Bash(xargs ls:*)",
       "Bash(npx tsc:*)",
-      "Bash(wc -l /d/jpcopanel/src/components/tasks/*.tsx)"
+      "Bash(wc -l /d/jpcopanel/src/components/tasks/*.tsx)",
+      "Bash(find /d/jpcopanel -type f -name *my-tasks*)"
     ]
   }
 }

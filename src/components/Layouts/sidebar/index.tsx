@@ -90,7 +90,7 @@ export function Sidebar() {
   };
 
   const getSidebarClasses = () => {
-    const baseClasses = "overflow-hidden border-r border-gray-200 bg-white transition-all duration-200 ease-in-out dark:border-gray-800 dark:bg-gray-dark";
+    const baseClasses = "overflow-hidden border-r border-gray-100 bg-white transition-all duration-200 ease-in-out dark:border-white/[0.06] dark:bg-[#1c1c1e]";
     
     if (variant === 'mobile') {
       return cn(
@@ -120,7 +120,7 @@ export function Sidebar() {
       {/* Mobile Overlay */}
       {isMobile && isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 transition-opacity duration-300"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm transition-opacity duration-300"
           onClick={() => setIsOpen(false)}
           onTouchStart={handleTouchStart}
           aria-hidden="true"
@@ -174,7 +174,8 @@ export function Sidebar() {
           {/* Navigation */}
           <div className={cn(
             "mt-6 flex-1 overflow-y-scroll pr-3 custom-sidebar-scrollbar",
-            "md:mt-10"
+            "md:mt-10",
+            "pb-20 md:pb-0"
           )}>
             {NAV_DATA.map((section) => {
               // Filter items based on role and mobile visibility
@@ -203,8 +204,9 @@ export function Sidebar() {
                 <button
                   onClick={() => toggleSection(section.label)}
                   className={cn(
-                    "mb-5 flex w-full items-center justify-between text-sm font-medium text-dark-4 dark:text-dark-6",
-                    "hover:text-dark dark:hover:text-white transition-colors duration-200",
+                    "mb-4 flex w-full items-center justify-between",
+                    "text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500",
+                    "hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200",
                     variant === 'tablet' && !isOpen && "hidden"
                   )}
                   aria-expanded={!isSectionCollapsed}
@@ -221,7 +223,7 @@ export function Sidebar() {
 
                 {!isSectionCollapsed && (
                 <nav role="navigation" aria-label={section.label}>
-                  <ul className="space-y-2">
+                  <ul className="space-y-0.5">
                     {visibleItems.map((item: any) => {
                         // Filter subitems based on role requirements
                         const filteredSubItems = item.items.filter((subItem: any) => {
@@ -230,7 +232,7 @@ export function Sidebar() {
                           }
                           return true;
                         });
-                        
+
                         const menuItemContent = (
                           <li key={item.title}>
                             {filteredSubItems.length ? (
@@ -249,7 +251,7 @@ export function Sidebar() {
                               >
                                 <item.icon
                                   className={cn(
-                                    "size-6 shrink-0",
+                                    "size-5 shrink-0",
                                     variant === 'tablet' && !isOpen && "size-5"
                                   )}
                                   aria-hidden="true"
@@ -298,7 +300,7 @@ export function Sidebar() {
                               return (
                                 <MenuItem
                                   className={cn(
-                                    "flex items-center gap-3 py-3",
+                                    "flex items-center gap-3 py-2.5",
                                     // Touch-optimized sizing
                                     isTouchDevice && "min-h-[44px]",
                                     // Tablet condensed state
@@ -310,7 +312,7 @@ export function Sidebar() {
                                 >
                                   <item.icon
                                     className={cn(
-                                      "size-6 shrink-0",
+                                      "size-5 shrink-0",
                                       variant === 'tablet' && !isOpen && "size-5"
                                     )}
                                     aria-hidden="true"
