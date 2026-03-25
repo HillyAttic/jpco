@@ -1,13 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { useState, useEffect, useRef } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import Select from '@/components/ui/select';
 import { Client, clientService } from '@/services/client.service';
 import { UserProfile } from '@/types/auth.types';
-import { UserManagementService } from '@/services/user-management.service';
 import { authenticatedFetch } from '@/lib/api-client';
-import { XMarkIcon, UserIcon, BuildingOfficeIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserIcon, BuildingOfficeIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { TeamMemberMapping } from '@/services/recurring-task.service';
 
 interface TeamMemberMappingDialogProps {
@@ -16,6 +15,24 @@ interface TeamMemberMappingDialogProps {
   onSave: (mappings: TeamMemberMapping[]) => void;
   initialMappings?: TeamMemberMapping[];
 }
+
+const COMPLIANCE_FILTERS = [
+  { value: 'all', label: 'All Clients' },
+  { value: 'roc', label: 'ROC' },
+  { value: 'gstr1', label: 'GSTR1' },
+  { value: 'gst3b', label: 'GST3B' },
+  { value: 'iff', label: 'IFF' },
+  { value: 'itr', label: 'ITR' },
+  { value: 'taxAudit', label: 'Tax Audit' },
+  { value: 'accounting', label: 'Accounting' },
+  { value: 'clientVisit', label: 'Client Visit' },
+  { value: 'bank', label: 'Bank' },
+  { value: 'tcs', label: 'TCS' },
+  { value: 'tds', label: 'TDS' },
+  { value: 'statutoryAudit', label: 'Statutory Audit' },
+] as const;
+
+type ComplianceKey = 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank' | 'tcs' | 'tds' | 'statutoryAudit';
 
 export function TeamMemberMappingDialog({
   isOpen,
@@ -27,37 +44,31 @@ export function TeamMemberMappingDialog({
   const [clients, setClients] = useState<Client[]>([]);
   const [mappings, setMappings] = useState<TeamMemberMapping[]>(initialMappings);
   const [selectedUserId, setSelectedUserId] = useState<string>('');
-  const [selectedClientIds, setSelectedClientIds] = useState<string[]>([]);
+  const [pendingClientIds, setPendingClientIds] = useState<string[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [loadingClients, setLoadingClients] = useState(false);
+  const [clientSearch, setClientSearch] = useState('');
+  const [complianceFilter, setComplianceFilter] = useState<string>('all');
+  const lastSelectedIndexRef = useRef<number | null>(null);
 
-  // Load users and clients (filtered by manager hierarchy)
+  // Load users and clients
   useEffect(() => {
     const loadData = async () => {
       setLoadingUsers(true);
       setLoadingClients(true);
-      
       try {
-        // Use the new API that respects manager hierarchy for users with authentication
         const [usersResponse, clientsResult] = await Promise.all([
           authenticatedFetch('/api/manager-hierarchy/my-employees'),
           clientService.getAll({ status: 'active', limit: 1000 }),
         ]);
-        
-        if (!usersResponse.ok) {
-          throw new Error('Failed to fetch users');
-        }
-        
+        if (!usersResponse.ok) throw new Error('Failed to fetch users');
         const usersData = await usersResponse.json();
-        
-        // Convert to UserProfile format
         const userProfiles: UserProfile[] = usersData.map((user: any) => ({
           uid: user.id,
           email: user.email,
           displayName: user.name,
           role: user.role,
         }));
-        
         setUsers(userProfiles);
         setClients(clientsResult);
       } catch (error) {
@@ -67,58 +78,104 @@ export function TeamMemberMappingDialog({
         setLoadingClients(false);
       }
     };
-
-    if (isOpen) {
-      loadData();
-    }
+    if (isOpen) loadData();
   }, [isOpen]);
 
-  // Reset initial mappings when dialog opens
+  // Reset state when dialog opens
   useEffect(() => {
     if (isOpen) {
       setMappings(initialMappings);
       setSelectedUserId('');
-      setSelectedClientIds([]);
+      setPendingClientIds([]);
+      setClientSearch('');
+      setComplianceFilter('all');
+      lastSelectedIndexRef.current = null;
     }
   }, [isOpen, initialMappings]);
 
-  // Get available clients (not already assigned to selected user)
-  const getAvailableClients = () => {
-    const currentMapping = mappings.find(m => m.userId === selectedUserId);
-    const assignedClientIds = currentMapping?.clientIds || [];
-    return clients.filter(client => !assignedClientIds.includes(client.id!));
+  // Reset pending selection when user changes
+  useEffect(() => {
+    setPendingClientIds([]);
+    setClientSearch('');
+    setComplianceFilter('all');
+    lastSelectedIndexRef.current = null;
+  }, [selectedUserId]);
+
+  // Get already-assigned client IDs for the selected user
+  const getAssignedClientIds = () => {
+    return mappings.find(m => m.userId === selectedUserId)?.clientIds || [];
   };
 
-  // Handle adding a client to the selected user
-  const handleAddClient = (clientId: string) => {
-    if (!selectedUserId) return;
+  // Get filtered clients (exclude already assigned, apply search & compliance filter)
+  const getFilteredClients = () => {
+    const assignedIds = getAssignedClientIds();
+    return clients.filter(client => {
+      if (assignedIds.includes(client.id!)) return false;
+      if (clientSearch && !client.clientName.toLowerCase().includes(clientSearch.toLowerCase())) return false;
+      if (complianceFilter !== 'all') {
+        const key = complianceFilter as ComplianceKey;
+        if (!client.compliance?.[key]) return false;
+      }
+      return true;
+    });
+  };
 
-    const existingMapping = mappings.find(m => m.userId === selectedUserId);
-    const user = users.find(u => u.uid === selectedUserId);
-    
-    if (!user) return;
+  const filteredClients = getFilteredClients();
 
-    if (existingMapping) {
-      // Update existing mapping
-      setMappings(mappings.map(m => 
-        m.userId === selectedUserId
-          ? { ...m, clientIds: [...m.clientIds, clientId] }
-          : m
-      ));
+  // Handle checkbox click with Ctrl+click range select support
+  const handleClientCheckbox = (clientId: string, index: number, ctrlKey: boolean) => {
+    if (ctrlKey && lastSelectedIndexRef.current !== null) {
+      // Range select between last selected and current
+      const start = Math.min(lastSelectedIndexRef.current, index);
+      const end = Math.max(lastSelectedIndexRef.current, index);
+      const rangeIds = filteredClients.slice(start, end + 1).map(c => c.id!);
+      setPendingClientIds(prev => {
+        const merged = Array.from(new Set([...prev, ...rangeIds]));
+        return merged;
+      });
     } else {
-      // Create new mapping
-      setMappings([
-        ...mappings,
-        {
-          userId: selectedUserId,
-          userName: user.displayName || user.email,
-          clientIds: [clientId],
-        },
-      ]);
+      setPendingClientIds(prev =>
+        prev.includes(clientId) ? prev.filter(id => id !== clientId) : [...prev, clientId]
+      );
+      lastSelectedIndexRef.current = index;
     }
   };
 
-  // Handle removing a client from a user
+  // Select all currently filtered clients
+  const handleSelectAllFiltered = () => {
+    const ids = filteredClients.map(c => c.id!);
+    setPendingClientIds(prev => Array.from(new Set([...prev, ...ids])));
+  };
+
+  // Deselect all pending
+  const handleDeselectAll = () => {
+    setPendingClientIds([]);
+    lastSelectedIndexRef.current = null;
+  };
+
+  // Add pending clients to the mapping
+  const handleAddSelected = () => {
+    if (!selectedUserId || pendingClientIds.length === 0) return;
+    const user = users.find(u => u.uid === selectedUserId);
+    if (!user) return;
+
+    const existingMapping = mappings.find(m => m.userId === selectedUserId);
+    if (existingMapping) {
+      setMappings(mappings.map(m =>
+        m.userId === selectedUserId
+          ? { ...m, clientIds: Array.from(new Set([...m.clientIds, ...pendingClientIds])) }
+          : m
+      ));
+    } else {
+      setMappings([
+        ...mappings,
+        { userId: selectedUserId, userName: user.displayName || user.email, clientIds: pendingClientIds },
+      ]);
+    }
+    setPendingClientIds([]);
+    lastSelectedIndexRef.current = null;
+  };
+
   const handleRemoveClient = (userId: string, clientId: string) => {
     setMappings(mappings.map(m => {
       if (m.userId === userId) {
@@ -126,45 +183,39 @@ export function TeamMemberMappingDialog({
         return { ...m, clientIds: newClientIds };
       }
       return m;
-    }).filter(m => m.clientIds.length > 0)); // Remove mappings with no clients
+    }).filter(m => m.clientIds.length > 0));
   };
 
-  // Handle removing entire user mapping
   const handleRemoveUser = (userId: string) => {
     setMappings(mappings.filter(m => m.userId !== userId));
   };
 
-  // Handle save
   const handleSave = () => {
     onSave(mappings);
     onClose();
   };
 
-  // Get client name by ID
   const getClientName = (clientId: string) => {
-    const client = clients.find(c => c.id === clientId);
-    return client?.clientName || 'Unknown Client';
-  };
-
-  // Get user name by ID
-  const getUserName = (userId: string) => {
-    const user = users.find(u => u.uid === userId);
-    return user?.displayName || user?.email || 'Unknown User';
+    return clients.find(c => c.id === clientId)?.clientName || 'Unknown Client';
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[900px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Team Member Mapping</DialogTitle>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+      {/* Wide landscape dialog: w-[95vw] on desktop, capped at 1100px */}
+      <DialogContent className="w-[95vw] max-w-[1100px] p-0 overflow-hidden max-h-[90vh] flex flex-col">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+          <DialogTitle className="text-lg font-semibold">Team Member Mapping</DialogTitle>
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
             Assign specific clients to team members. Each member will only see tasks for their assigned clients.
           </p>
-        </DialogHeader>
+        </div>
 
-        <div className="space-y-6">
-          {/* Selection Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        {/* Two-column landscape body */}
+        <div className="flex flex-col md:flex-row flex-1 min-h-0 overflow-hidden">
+
+          {/* LEFT — Selection controls */}
+          <div className="md:w-[45%] flex-shrink-0 flex flex-col border-b md:border-b-0 md:border-r border-gray-200 dark:border-gray-700 overflow-y-auto p-5 space-y-4">
             {/* Team Member Selection */}
             <div>
               <Label htmlFor="user-select" className="flex items-center gap-2 mb-2">
@@ -190,111 +241,206 @@ export function TeamMemberMappingDialog({
               )}
             </div>
 
-            {/* Client Selection */}
-            <div>
-              <Label htmlFor="client-select" className="flex items-center gap-2 mb-2">
-                <BuildingOfficeIcon className="w-4 h-4" />
-                Select Clients
-              </Label>
-              <Select
-                id="client-select"
-                value=""
-                onChange={(e) => {
-                  if (e.target.value) {
-                    handleAddClient(e.target.value);
-                  }
-                }}
-                disabled={!selectedUserId || loadingClients}
-                className="w-full"
-              >
-                <option value="">Choose clients to assign...</option>
-                {getAvailableClients().map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.clientName} {client.businessName ? `(${client.businessName})` : ''}
-                  </option>
-                ))}
-              </Select>
-              {!selectedUserId && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Select a team member first</p>
-              )}
-              {loadingClients && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Loading clients...</p>
-              )}
-            </div>
-          </div>
+            {/* Client Multi-Select */}
+            {selectedUserId ? (
+              <div className="flex flex-col flex-1 min-h-0">
+                <Label className="flex items-center gap-2 mb-2">
+                  <BuildingOfficeIcon className="w-4 h-4" />
+                  Select Clients
+                  {pendingClientIds.length > 0 && (
+                    <span className="ml-1 bg-blue-100 text-blue-700 text-xs font-semibold px-2 py-0.5 rounded-full">
+                      {pendingClientIds.length} selected
+                    </span>
+                  )}
+                </Label>
 
-          {/* Current Mappings Display */}
-          <div>
-            <Label className="mb-3 block">Current Mappings ({mappings.length} team members)</Label>
-            
-            {mappings.length === 0 ? (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
-                <UserIcon className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-                <p>No team member mappings yet</p>
-                <p className="text-sm mt-1">Select a team member and assign clients to get started</p>
+                {/* Filters Row */}
+                <div className="flex gap-2 mb-2">
+                  <div className="relative flex-1">
+                    <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search clients..."
+                      value={clientSearch}
+                      onChange={(e) => setClientSearch(e.target.value)}
+                      className="w-full pl-8 pr-3 h-9 rounded-md border border-input bg-background text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    />
+                  </div>
+                  <select
+                    value={complianceFilter}
+                    onChange={(e) => setComplianceFilter(e.target.value)}
+                    className="h-9 rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    {COMPLIANCE_FILTERS.map(f => (
+                      <option key={f.value} value={f.value}>{f.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Bulk action row */}
+                <div className="flex items-center justify-between mb-1 px-0.5">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                    {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} shown
+                    {(clientSearch || complianceFilter !== 'all') && ' (filtered)'}
+                  </span>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleSelectAllFiltered}
+                      disabled={filteredClients.length === 0}
+                      className="text-xs text-blue-600 hover:underline disabled:opacity-40 disabled:cursor-not-allowed"
+                    >
+                      Select All
+                    </button>
+                    {pendingClientIds.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleDeselectAll}
+                        className="text-xs text-gray-500 hover:underline"
+                      >
+                        Deselect All
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Client List */}
+                <div className="border border-gray-200 dark:border-gray-600 rounded-md overflow-y-auto flex-1 min-h-[200px] max-h-[340px] bg-white dark:bg-gray-dark">
+                  {loadingClients ? (
+                    <div className="flex items-center justify-center h-20 text-sm text-gray-500">Loading clients...</div>
+                  ) : filteredClients.length === 0 ? (
+                    <div className="flex items-center justify-center h-20 text-sm text-gray-500">No clients match the filter</div>
+                  ) : (
+                    filteredClients.map((client, index) => {
+                      const isChecked = pendingClientIds.includes(client.id!);
+                      return (
+                        <label
+                          key={client.id}
+                          className={`flex items-center gap-2.5 px-3 py-2 cursor-pointer select-none border-b border-gray-100 dark:border-gray-700 last:border-b-0 hover:bg-blue-50 dark:hover:bg-gray-700 transition-colors ${isChecked ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
+                          title="Hold Ctrl and click to range-select"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => {}}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleClientCheckbox(client.id!, index, e.ctrlKey || e.metaKey);
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          />
+                          <span className="text-sm text-gray-800 dark:text-gray-200 flex-1 truncate">
+                            {client.clientName}
+                          </span>
+                          <div className="flex gap-1 flex-shrink-0">
+                            {client.compliance?.gstr1 && <span className="text-[10px] bg-green-100 text-green-700 rounded px-1">G1</span>}
+                            {client.compliance?.itr && <span className="text-[10px] bg-purple-100 text-purple-700 rounded px-1">ITR</span>}
+                            {client.compliance?.tds && <span className="text-[10px] bg-yellow-100 text-yellow-700 rounded px-1">TDS</span>}
+                          </div>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+
+                {/* Add Button */}
+                <div className="mt-3 flex justify-end">
+                  <Button
+                    type="button"
+                    onClick={handleAddSelected}
+                    disabled={pendingClientIds.length === 0}
+                    className="text-white"
+                    size="sm"
+                  >
+                    Add {pendingClientIds.length > 0 ? `${pendingClientIds.length} ` : ''}Client{pendingClientIds.length !== 1 ? 's' : ''}
+                  </Button>
+                </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                {mappings.map((mapping) => (
-                  <div
-                    key={mapping.userId}
-                    className="p-4 bg-white dark:bg-gray-dark border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm"
-                  >
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <UserIcon className="w-5 h-5 text-blue-600" />
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-white">{mapping.userName}</h4>
-                          <p className="text-xs text-gray-500 dark:text-gray-400">
-                            {mapping.clientIds.length} client{mapping.clientIds.length !== 1 ? 's' : ''} assigned
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveUser(mapping.userId)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                      >
-                        <XMarkIcon className="w-4 h-4" />
-                      </Button>
-                    </div>
-
-                    <div className="flex flex-wrap gap-2">
-                      {mapping.clientIds.map((clientId) => (
-                        <div
-                          key={clientId}
-                          className="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5"
-                        >
-                          <BuildingOfficeIcon className="w-3.5 h-3.5 text-blue-600" />
-                          <span className="text-sm text-gray-900 dark:text-white">{getClientName(clientId)}</span>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveClient(mapping.userId, clientId)}
-                            className="text-red-500 hover:text-red-700 ml-1"
-                            aria-label={`Remove ${getClientName(clientId)}`}
-                          >
-                            <XMarkIcon className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                ))}
+              <div className="flex items-center justify-center flex-1 text-sm text-gray-400 dark:text-gray-500 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg py-10">
+                Select a team member to assign clients
               </div>
             )}
           </div>
+
+          {/* RIGHT — Current mappings */}
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden p-5">
+            <Label className="mb-3 block flex-shrink-0">
+              Current Mappings
+              <span className="ml-2 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs font-semibold px-2 py-0.5 rounded-full">
+                {mappings.length} member{mappings.length !== 1 ? 's' : ''}
+              </span>
+            </Label>
+
+            <div className="flex-1 overflow-y-auto">
+              {mappings.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 border border-dashed border-gray-200 dark:border-gray-700 rounded-lg py-12">
+                  <UserIcon className="w-10 h-10 mb-2 text-gray-300 dark:text-gray-600" />
+                  <p className="text-sm">No mappings yet</p>
+                  <p className="text-xs mt-1">Assign clients to a team member to get started</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {mappings.map((mapping) => (
+                    <div
+                      key={mapping.userId}
+                      className="p-3 bg-white dark:bg-gray-dark border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <UserIcon className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                          <div>
+                            <h4 className="font-medium text-sm text-gray-900 dark:text-white leading-tight">{mapping.userName}</h4>
+                            <p className="text-xs text-gray-500 dark:text-gray-400">
+                              {mapping.clientIds.length} client{mapping.clientIds.length !== 1 ? 's' : ''} assigned
+                            </p>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveUser(mapping.userId)}
+                          className="text-red-400 hover:text-red-600 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors flex-shrink-0"
+                          title="Remove all mappings for this member"
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap gap-1.5">
+                        {mapping.clientIds.map((clientId) => (
+                          <div
+                            key={clientId}
+                            className="flex items-center gap-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded px-2 py-1"
+                          >
+                            <span className="text-xs text-gray-800 dark:text-gray-200 leading-none">{getClientName(clientId)}</span>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveClient(mapping.userId, clientId)}
+                              className="text-red-400 hover:text-red-600 ml-0.5"
+                              aria-label={`Remove ${getClientName(clientId)}`}
+                            >
+                              <XMarkIcon className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        <DialogFooter>
+        {/* Footer */}
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2 flex-shrink-0">
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
           <Button type="button" onClick={handleSave} className="text-white">
             Save Mappings
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );
