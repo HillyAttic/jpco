@@ -205,7 +205,7 @@ export function Sidebar() {
                   onClick={() => toggleSection(section.label)}
                   className={cn(
                     "mb-4 flex w-full items-center justify-between",
-                    "text-[11px] font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500",
+                    "text-sm font-semibold uppercase tracking-widest text-gray-400 dark:text-gray-500",
                     "hover:text-gray-600 dark:hover:text-gray-300 transition-colors duration-200",
                     variant === 'tablet' && !isOpen && "hidden"
                   )}
