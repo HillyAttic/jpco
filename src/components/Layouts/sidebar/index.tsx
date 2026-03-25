@@ -18,6 +18,15 @@ export function Sidebar() {
   const { device, isTouchDevice } = useResponsive();
   const { hasRole } = useAuthEnhanced();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
+  const [collapsedSections, setCollapsedSections] = useState<string[]>(
+    NAV_DATA.map((s) => s.label)
+  );
+
+  const toggleSection = (label: string) => {
+    setCollapsedSections((prev) =>
+      prev.includes(label) ? prev.filter((l) => l !== label) : [...prev, label]
+    );
+  };
 
   const toggleExpanded = (title: string) => {
     setExpandedItems((prev) => (prev.includes(title) ? [] : [title]));
@@ -186,16 +195,31 @@ export function Sidebar() {
                 return null;
               }
 
+              const isSectionCollapsed = collapsedSections.includes(section.label);
+
               return (
               <div key={section.label} className="mb-6">
                 {/* Section header */}
-                <h2 className={cn(
-                  "mb-5 text-sm font-medium text-dark-4 dark:text-dark-6",
-                  variant === 'tablet' && !isOpen && "hidden"
-                )}>
-                  {section.label}
-                </h2>
+                <button
+                  onClick={() => toggleSection(section.label)}
+                  className={cn(
+                    "mb-5 flex w-full items-center justify-between text-sm font-medium text-dark-4 dark:text-dark-6",
+                    "hover:text-dark dark:hover:text-white transition-colors duration-200",
+                    variant === 'tablet' && !isOpen && "hidden"
+                  )}
+                  aria-expanded={!isSectionCollapsed}
+                >
+                  <span>{section.label}</span>
+                  <ChevronUp
+                    className={cn(
+                      "size-4 transition-transform duration-200",
+                      isSectionCollapsed && "rotate-180"
+                    )}
+                    aria-hidden="true"
+                  />
+                </button>
 
+                {!isSectionCollapsed && (
                 <nav role="navigation" aria-label={section.label}>
                   <ul className="space-y-2">
                     {visibleItems.map((item: any) => {
@@ -306,6 +330,7 @@ export function Sidebar() {
                     })}
                   </ul>
                 </nav>
+                )}
               </div>
             );
             })}

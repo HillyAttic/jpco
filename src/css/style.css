@@ -801,3 +801,9 @@ img {
     font-weight: 450 !important;
   }
 }
+
+@media (max-width: 767px) {
+  .mt-6 {
+    margin-top: 3rem;
+  }
+}

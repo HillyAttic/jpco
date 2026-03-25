@@ -59,7 +59,7 @@ export function TeamPerformanceChart({ teamMembers }: TeamPerformanceChartProps)
       <CardHeader className="flex flex-col space-y-1.5 p-3 sm:p-6">
         <CardTitle className="text-lg sm:text-2xl font-semibold leading-none tracking-tight">Team Performance</CardTitle>
       </CardHeader>
-      <CardContent className="p-0 sm:p-6 sm:pt-0">
+      <CardContent className="px-3 pt-0 pb-3 sm:p-6 sm:pt-0">
         {!teamMembers || teamMembers.length === 0 ? (
           <div className="text-center py-8 px-4">
             <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">No team members with assigned tasks yet</p>
@@ -99,7 +99,7 @@ export function TeamPerformanceChart({ teamMembers }: TeamPerformanceChartProps)
                         key={member.id} 
                         className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
                       >
-                        <td className="py-1.5 px-1.5 sm:px-2 min-w-[100px] sm:min-w-0">
+                        <td className="py-1.5 px-1.5 sm:px-2">
                           <span className="text-[10px] sm:text-xs font-medium text-gray-900 dark:text-gray-100 block break-words">
                             {member.name}
                           </span>
