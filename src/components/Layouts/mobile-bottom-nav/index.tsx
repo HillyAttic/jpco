@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
 import { LayoutDashboard, Bell, ClipboardCheck, CalendarRange, CalendarDays } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
@@ -48,13 +49,42 @@ export function MobileBottomNav() {
   const { unreadCount } = useNotifications();
   const { isAdmin } = useEnhancedAuth();
 
+  const [visible, setVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const ticking = useRef(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!ticking.current) {
+        window.requestAnimationFrame(() => {
+          const currentY = window.scrollY;
+          if (currentY < 10) {
+            setVisible(true);
+          } else if (currentY > lastScrollY.current) {
+            setVisible(false);
+          } else {
+            setVisible(true);
+          }
+          lastScrollY.current = currentY;
+          ticking.current = false;
+        });
+        ticking.current = true;
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
   return (
     <nav
       className={cn(
         "fixed bottom-0 left-0 right-0 z-50 md:hidden",
         "bg-white/85 dark:bg-[#1c1c1e]/90 backdrop-blur-2xl",
         "shadow-[0_-0.5px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_-0.5px_0_0_rgba(255,255,255,0.08)]",
-        "pb-[env(safe-area-inset-bottom,0px)]"
+        "pb-[env(safe-area-inset-bottom,0px)]",
+        "transition-transform duration-300 ease-in-out",
+        visible ? "translate-y-0" : "translate-y-full"
       )}
       role="navigation"
       aria-label="Mobile bottom navigation"
