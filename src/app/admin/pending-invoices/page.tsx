@@ -283,35 +283,56 @@ export default function PendingInvoicesPage() {
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-3 border-t border-gray-100 dark:border-gray-700">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleView(invoice)}
-                  className="flex-1 flex items-center justify-center gap-1 text-xs text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 dark:text-blue-400"
-                >
-                  <EyeIcon className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">View</span>
-                </Button>
+              <div className="pt-3 border-t border-gray-100 dark:border-gray-700">
                 {activeTab === 'pending' ? (
-                  <>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleView(invoice)}
+                      className="flex items-center justify-center gap-1 text-xs text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 dark:text-blue-400"
+                    >
+                      <EyeIcon className="w-3.5 h-3.5" />
+                      View
+                    </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleEdit(invoice)}
-                      className="flex-1 flex items-center justify-center gap-1 text-xs"
+                      className="flex items-center justify-center gap-1 text-xs"
                     >
                       <PencilIcon className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Edit</span>
+                      Edit
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => openArchiveConfirm(invoice.id!)}
-                      className="flex-1 flex items-center justify-center gap-1 text-xs text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 dark:text-green-400"
+                      className="flex items-center justify-center gap-1 text-xs text-green-600 hover:text-green-700 border-green-200 hover:border-green-300 dark:text-green-400"
                     >
                       <CheckCircleIcon className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Complete</span>
+                      Complete
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openDeleteConfirm(invoice.id!)}
+                      className="flex items-center justify-center gap-1 text-xs text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 dark:text-red-400"
+                    >
+                      <TrashIcon className="w-3.5 h-3.5" />
+                      Delete
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleView(invoice)}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs text-blue-600 hover:text-blue-700 border-blue-200 hover:border-blue-300 dark:text-blue-400"
+                    >
+                      <EyeIcon className="w-3.5 h-3.5" />
+                      View
                     </Button>
                     <Button
                       variant="outline"
@@ -320,19 +341,9 @@ export default function PendingInvoicesPage() {
                       className="flex-1 flex items-center justify-center gap-1 text-xs text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 dark:text-red-400"
                     >
                       <TrashIcon className="w-3.5 h-3.5" />
-                      <span className="hidden sm:inline">Delete</span>
+                      Delete
                     </Button>
-                  </>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => openDeleteConfirm(invoice.id!)}
-                    className="flex-1 flex items-center justify-center gap-1 text-xs text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 dark:text-red-400"
-                  >
-                    <TrashIcon className="w-3.5 h-3.5" />
-                    <span className="hidden sm:inline">Delete</span>
-                  </Button>
+                  </div>
                 )}
               </div>
             </div>
