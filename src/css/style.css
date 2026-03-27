@@ -199,6 +199,43 @@
 
 .flatpickr-calendar {
   @apply !p-6 !shadow-3 dark:!bg-gray-dark dark:!text-dark-6 dark:!shadow-card 2xsm:!w-auto;
+  z-index: 999999 !important;
+}
+
+/* Inline flatpickr inside Schedule Task modal — fills its container on all screen sizes */
+.flatpickr-inline-wrapper .flatpickr-calendar.inline {
+  @apply !shadow-none rounded-lg border border-gray-200 dark:!border-gray-600;
+  position: relative !important;
+  top: auto !important;
+  z-index: auto !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  /* Override the global !p-6 with smaller padding on mobile */
+  padding: 12px !important;
+}
+@media (min-width: 640px) {
+  .flatpickr-inline-wrapper .flatpickr-calendar.inline {
+    padding: 16px !important;
+  }
+}
+.flatpickr-inline-wrapper .flatpickr-calendar.inline .flatpickr-days,
+.flatpickr-inline-wrapper .flatpickr-calendar.inline .dayContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+}
+.flatpickr-inline-wrapper .flatpickr-calendar.inline .flatpickr-day {
+  flex: 1 !important;
+  max-width: none !important;
+  height: 32px !important;
+  line-height: 32px !important;
+  font-size: 13px !important;
+}
+.flatpickr-inline-wrapper .flatpickr-calendar.inline .flatpickr-weekday {
+  font-size: 11px !important;
+}
+.flatpickr-inline-wrapper .flatpickr-calendar.inline .flatpickr-month {
+  height: 36px !important;
 }
 
 .flatpickr-day {
