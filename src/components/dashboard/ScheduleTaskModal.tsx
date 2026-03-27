@@ -304,11 +304,11 @@ export function ScheduleTaskModal({
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 bg-gray-50 dark:bg-gray-800">
                 <Label className="mb-2 sm:mb-3 block font-semibold text-sm sm:text-base">Add Schedule Entry</Label>
 
-                {/* Two-column layout on md+: form fields left, calendar right. Single column on mobile. */}
-                <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
+                {/* Two-column equal grid on md+: form fields left, calendar right. Single column on mobile. */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
 
                   {/* LEFT — Employee, Client, Time, Add button */}
-                  <div className="flex flex-col gap-3 sm:gap-4 md:w-56 lg:w-64 flex-shrink-0">
+                  <div className="flex flex-col gap-3 sm:gap-4">
                     {/* Employee */}
                     <div>
                       <Label htmlFor="scheduleEmployee" className="flex items-center gap-2 mb-2">
