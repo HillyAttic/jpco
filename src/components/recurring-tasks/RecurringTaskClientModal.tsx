@@ -103,6 +103,16 @@ export function RecurringTaskClientModal({
     
     // Check if task has team member mappings
     if (task.teamMemberMappings && task.teamMemberMappings.length > 0) {
+      // Check if user is admin or manager - they should see all clients
+      if (userProfile?.role === 'admin' || userProfile?.role === 'manager') {
+        console.log('[Team Member Mapping] Admin/Manager viewing all clients:', {
+          userId: user.uid,
+          role: userProfile.role,
+          totalClients: clients.length
+        });
+        return clients;
+      }
+      
       // Find the mapping for current user
       const userMapping = task.teamMemberMappings.find(mapping => mapping.userId === user.uid);
       
@@ -402,7 +412,7 @@ export function RecurringTaskClientModal({
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Track completion for {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} • {visibleMonths[0]?.label || 'Current month'} only
               </p>
-              {task.teamMemberMappings && task.teamMemberMappings.length > 0 && filteredClients.length < clients.length && (
+              {task.teamMemberMappings && task.teamMemberMappings.length > 0 && filteredClients.length < clients.length && userProfile?.role !== 'admin' && userProfile?.role !== 'manager' && (
                 <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 flex items-center gap-1">
                   <UserGroupIcon className="w-3 h-3" />
                   Showing only your assigned clients

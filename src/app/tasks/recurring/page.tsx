@@ -547,14 +547,22 @@ export default function RecurringTasksPage() {
           isOpen={showClientListModal}
           onClose={() => { setShowClientListModal(false); setSelectedTaskForClients(null); closeModal(); }}
           taskTitle={selectedTaskForClients.title}
-          clientIds={
-            selectedTaskForClients.teamMemberMappings && user
-              ? selectedTaskForClients.teamMemberMappings.find(m => m.userId === user.uid)?.clientIds || selectedTaskForClients.contactIds || []
-              : selectedTaskForClients.contactIds || []
-          }
+          clientIds={(() => {
+            const mappings = selectedTaskForClients.teamMemberMappings;
+            if (mappings && mappings.length > 0) {
+              // Admin/manager sees all clients from all mappings
+              if (isAdmin || isManager) {
+                const allMappedIds = [...new Set(mappings.flatMap(m => m.clientIds))];
+                return allMappedIds.length > 0 ? allMappedIds : (selectedTaskForClients.contactIds || []);
+              }
+              // Regular user sees only their assigned clients
+              return mappings.find(m => m.userId === user?.uid)?.clientIds || selectedTaskForClients.contactIds || [];
+            }
+            return selectedTaskForClients.contactIds || [];
+          })()}
           isTeamMemberMapping={!!selectedTaskForClients.teamMemberMappings && selectedTaskForClients.teamMemberMappings.length > 0}
           teamMemberName={
-            selectedTaskForClients.teamMemberMappings && user
+            !isAdmin && !isManager && selectedTaskForClients.teamMemberMappings && user
               ? selectedTaskForClients.teamMemberMappings.find(m => m.userId === user.uid)?.userName
               : undefined
           }
