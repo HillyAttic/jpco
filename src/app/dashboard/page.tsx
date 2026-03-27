@@ -544,23 +544,9 @@ export default function DashboardPage() {
     }
   );
 
-  // Fetch all hierarchies for admin to filter team performance
-  const { data: allHierarchiesForPerf } = useOptimizedFetch(
-    'manager-hierarchy-all',
-    async () => {
-      if (!isAdmin) return null;
-      const { managerHierarchyService } = await import('@/services/manager-hierarchy.service');
-      return managerHierarchyService.getAll();
-    },
-    {
-      cacheTime: 5 * 60 * 1000,
-      dedupe: true
-    }
-  );
-
   // Calculate team performance data (memoized)
+  // For admins: show all employees
   // For managers: show only assigned team members
-  // For admins: show only employees assigned in any hierarchy
   const teamPerformanceData = useMemo(() => {
     if (!employees || employees.length === 0) return [];
 
@@ -569,12 +555,8 @@ export default function DashboardPage() {
     let assignedEmployeeIds: Set<string> | null = null;
 
     if (isAdmin) {
-      // For admins, only show employees assigned in any manager hierarchy
-      if (!allHierarchiesForPerf) return [];
-      assignedEmployeeIds = new Set<string>();
-      allHierarchiesForPerf.forEach(h => h.employeeIds.forEach(id => assignedEmployeeIds!.add(id)));
-      if (assignedEmployeeIds.size === 0) return [];
-      filteredEmployees = employees.filter(emp => assignedEmployeeIds!.has(emp.id!));
+      // For admins, show ALL employees
+      filteredEmployees = employees;
     } else if (isManager) {
       // For managers, only show assigned employees — if no hierarchy or no employees assigned, show nothing
       if (!managerHierarchy || !managerHierarchy.employeeIds?.length) return [];
@@ -637,7 +619,7 @@ export default function DashboardPage() {
         const totalB = b.tasksCompleted + b.tasksInProgress + b.tasksPending;
         return totalB - totalA;
       });
-  }, [tasks, employees, isManager, isAdmin, managerHierarchy, allHierarchiesForPerf]);
+  }, [tasks, employees, isManager, isAdmin, managerHierarchy]);
 
   // Calculate weekly progress data (memoized)
   const weeklyProgressData = useMemo(() => {
