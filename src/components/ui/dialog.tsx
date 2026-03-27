@@ -5,21 +5,27 @@ import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { useModal } from "@/contexts/modal-context"
 
 const Dialog = ({ open, onOpenChange, ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) => {
-  // Add/remove modal-open class to body when dialog opens/closes
+  const { openModal, closeModal } = useModal();
+
+  // Manage modal context state
   React.useEffect(() => {
     if (open) {
       document.body.classList.add('modal-open');
+      openModal();
     } else {
       document.body.classList.remove('modal-open');
+      closeModal();
     }
 
     // Cleanup on unmount
     return () => {
       document.body.classList.remove('modal-open');
+      closeModal();
     };
-  }, [open]);
+  }, [open, openModal, closeModal]);
 
   return <DialogPrimitive.Root open={open} onOpenChange={onOpenChange} {...props} />;
 };

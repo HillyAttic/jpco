@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { clientService, Client } from '@/services/client.service';
+import { useModal } from '@/contexts/modal-context';
 
 interface ClientListModalProps {
   isOpen: boolean;
@@ -27,6 +28,16 @@ export function ClientListModal({
 }: ClientListModalProps) {
   const [clients, setClients] = useState<Client[]>([]);
   const [loading, setLoading] = useState(false);
+  const { openModal, closeModal } = useModal();
+
+  // Manage modal context state
+  useEffect(() => {
+    if (isOpen) {
+      openModal();
+    } else {
+      closeModal();
+    }
+  }, [isOpen, openModal, closeModal]);
 
   useEffect(() => {
     const loadClients = async () => {

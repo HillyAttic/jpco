@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { teamService, Team } from '@/services/team.service';
+import { useModal } from '@/contexts/modal-context';
 
 interface TeamMember {
   userId: string;
@@ -32,6 +33,16 @@ export function TeamMembersModal({
 }: TeamMembersModalProps) {
   const [team, setTeam] = useState<Team | null>(null);
   const [loading, setLoading] = useState(false);
+  const { openModal, closeModal } = useModal();
+
+  // Manage modal context state
+  useEffect(() => {
+    if (isOpen) {
+      openModal();
+    } else {
+      closeModal();
+    }
+  }, [isOpen, openModal, closeModal]);
 
   useEffect(() => {
     const loadTeam = async () => {
