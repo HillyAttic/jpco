@@ -98,7 +98,7 @@ export function QuickActions({
       icon: <ClockIcon className="w-5 h-5" />,
       onClick: () => router.push('/admin/attendance-roster'),
       color: 'bg-pink-600 hover:bg-pink-700',
-      showForManager: false
+      showForManager: true
     },
     {
       label: 'Client Visits',
@@ -112,7 +112,7 @@ export function QuickActions({
       icon: <CheckCircleIcon className="w-5 h-5" />,
       onClick: () => router.push('/admin/leave-approvals'),
       color: 'bg-orange-600 hover:bg-orange-700',
-      showForManager: false,
+      showForManager: true,
       badge: pendingLeaveApprovalsCount > 0 ? pendingLeaveApprovalsCount : undefined
     },
     {
