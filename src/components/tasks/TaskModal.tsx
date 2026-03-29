@@ -62,6 +62,7 @@ export function TaskModal({
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
   const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank' | 'tcs' | 'tds' | 'statutoryAudit'>('all');
+  const [clientSearch, setClientSearch] = useState('');
   const [employeeSearch, setEmployeeSearch] = useState('');
   const [loadingEmployees, setLoadingEmployees] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
@@ -171,42 +172,55 @@ export function TaskModal({
     }
   }, [isOpen]);
 
-  // Get filtered clients based on selected filter
+  // Get filtered clients based on selected filter and search
   const getFilteredClients = () => {
-    if (clientFilter === 'all') {
-      return clients;
+    let filtered = clients;
+
+    if (clientFilter !== 'all') {
+      filtered = filtered.filter(client => {
+        switch (clientFilter) {
+          case 'roc':
+            return !!client.compliance?.roc;
+          case 'gstr1':
+            return !!client.compliance?.gstr1;
+          case 'gst3b':
+            return !!client.compliance?.gst3b;
+          case 'iff':
+            return !!client.compliance?.iff;
+          case 'itr':
+            return !!client.compliance?.itr;
+          case 'taxAudit':
+            return !!client.compliance?.taxAudit;
+          case 'accounting':
+            return !!client.compliance?.accounting;
+          case 'clientVisit':
+            return !!client.compliance?.clientVisit;
+          case 'bank':
+            return !!client.compliance?.bank;
+          case 'tcs':
+            return !!client.compliance?.tcs;
+          case 'tds':
+            return !!client.compliance?.tds;
+          case 'statutoryAudit':
+            return !!client.compliance?.statutoryAudit;
+          default:
+            return true;
+        }
+      });
     }
-    
-    return clients.filter(client => {
-      switch (clientFilter) {
-        case 'roc':
-          return !!client.compliance?.roc;
-        case 'gstr1':
-          return !!client.compliance?.gstr1;
-        case 'gst3b':
-          return !!client.compliance?.gst3b;
-        case 'iff':
-          return !!client.compliance?.iff;
-        case 'itr':
-          return !!client.compliance?.itr;
-        case 'taxAudit':
-          return !!client.compliance?.taxAudit;
-        case 'accounting':
-          return !!client.compliance?.accounting;
-        case 'clientVisit':
-          return !!client.compliance?.clientVisit;
-        case 'bank':
-          return !!client.compliance?.bank;
-        case 'tcs':
-          return !!client.compliance?.tcs;
-        case 'tds':
-          return !!client.compliance?.tds;
-        case 'statutoryAudit':
-          return !!client.compliance?.statutoryAudit;
-        default:
-          return true;
-      }
-    });
+
+    if (clientSearch.trim()) {
+      const q = clientSearch.toLowerCase();
+      filtered = filtered.filter(client =>
+        client.clientName?.toLowerCase().includes(q) ||
+        client.businessName?.toLowerCase().includes(q) ||
+        client.taxIdentifiers?.gstin?.toLowerCase().includes(q) ||
+        client.taxIdentifiers?.tan?.toLowerCase().includes(q) ||
+        client.taxIdentifiers?.pan?.toLowerCase().includes(q)
+      );
+    }
+
+    return filtered;
   };
 
   // Handle employee selection
@@ -677,64 +691,98 @@ export function TaskModal({
           </div>
 
           {/* Contact ID */}
-          <div>
-            <Label htmlFor="contactId">Contact ID</Label>
-            
-            {/* Client Filter */}
-            <div className="mt-2 mb-2">
-              <Label htmlFor="client-filter" className="text-xs">Filter Clients By</Label>
-              <Select
-                id="client-filter"
-                value={clientFilter}
-                onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setClientFilter(e.target.value as any)}
-                disabled={isLoading || loadingClients}
-                className="mt-1"
-              >
-                <option value="all">All Clients</option>
-                <option value="roc">Only with ROC</option>
-                <option value="gstr1">Only with GSTR1</option>
-                <option value="gst3b">Only with GST3B</option>
-                <option value="iff">Only with IFF</option>
-                <option value="itr">Only with ITR</option>
-                <option value="taxAudit">Only with Tax Audit</option>
-                <option value="accounting">Only with Accounting</option>
-                <option value="clientVisit">Only with Client Visit</option>
-                <option value="bank">Only with Bank</option>
-                <option value="tcs">Only with TCS</option>
-                <option value="tds">Only with TDS</option>
-                <option value="statutoryAudit">Only with Statutory Audit</option>
-              </Select>
-            </div>
+          <div className="mb-3 mt-2">
+            <Label className="text-xs mb-2 block">Contact ID (Click to select)</Label>
 
-            <Select
-              id="contactId"
-              {...register('contactId')}
+            {/* Compliance filter */}
+            <select
+              value={clientFilter}
+              onChange={(e) => setClientFilter(e.target.value as any)}
               disabled={isLoading || loadingClients}
-              className="mt-1"
+              className="w-full px-3 py-2 mb-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <option value="">Select a client (optional)</option>
-              {getFilteredClients().map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.clientName}
-                  {client.businessName ? ` - ${client.businessName}` : ''}
-                  {client.taxIdentifiers?.gstin ? ` • GSTIN: ${client.taxIdentifiers.gstin}` :
-                   client.taxIdentifiers?.tan ? ` • TAN: ${client.taxIdentifiers.tan}` :
-                   client.taxIdentifiers?.pan ? ` • PAN: ${client.taxIdentifiers.pan}` : ''}
-                </option>
-              ))}
-            </Select>
+              <option value="all">All Clients</option>
+              <option value="roc">Only with ROC</option>
+              <option value="gstr1">Only with GSTR1</option>
+              <option value="gst3b">Only with GST3B</option>
+              <option value="iff">Only with IFF</option>
+              <option value="itr">Only with ITR</option>
+              <option value="taxAudit">Only with Tax Audit</option>
+              <option value="accounting">Only with Accounting</option>
+              <option value="clientVisit">Only with Client Visit</option>
+              <option value="bank">Only with Bank</option>
+              <option value="tcs">Only with TCS</option>
+              <option value="tds">Only with TDS</option>
+              <option value="statutoryAudit">Only with Statutory Audit</option>
+            </select>
+
+            {/* Search input */}
+            <input
+              type="text"
+              placeholder="Search clients..."
+              value={clientSearch}
+              onChange={(e) => setClientSearch(e.target.value)}
+              disabled={isLoading || loadingClients}
+              className="w-full px-3 py-2 mb-1 text-sm border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white disabled:cursor-not-allowed disabled:opacity-50"
+            />
+
+            {/* Client list */}
+            <Controller
+              name="contactId"
+              control={control}
+              render={({ field }) => (
+                <div className="border border-gray-300 dark:border-gray-600 rounded-md max-h-48 overflow-y-auto">
+                  {loadingClients ? (
+                    <div className="p-4 text-center text-gray-500 dark:text-gray-400">Loading clients...</div>
+                  ) : (
+                    <div className="divide-y divide-gray-200">
+                      {/* Clear selection option */}
+                      <button
+                        type="button"
+                        onClick={() => field.onChange('')}
+                        className={`w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors focus:bg-blue-100 focus:outline-none ${!field.value ? 'bg-blue-50' : ''}`}
+                      >
+                        <span className="text-sm text-gray-400 dark:text-gray-500 italic">None (optional)</span>
+                      </button>
+                      {getFilteredClients().length === 0 ? (
+                        <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                          {clientSearch ? 'No clients match your search' : clientFilter !== 'all' ? `No clients with ${clientFilter.toUpperCase()}` : 'No clients available'}
+                        </div>
+                      ) : (
+                        getFilteredClients().map((client) => {
+                          const taxId = client.taxIdentifiers?.gstin
+                            ? `GSTIN: ${client.taxIdentifiers.gstin}`
+                            : client.taxIdentifiers?.tan
+                            ? `TAN: ${client.taxIdentifiers.tan}`
+                            : client.taxIdentifiers?.pan
+                            ? `PAN: ${client.taxIdentifiers.pan}`
+                            : null;
+                          return (
+                            <button
+                              key={client.id}
+                              type="button"
+                              onClick={() => field.onChange(client.id)}
+                              className={`w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors focus:bg-blue-100 focus:outline-none ${field.value === client.id ? 'bg-blue-100' : ''}`}
+                            >
+                              <div className="flex flex-col">
+                                <span className="text-sm font-medium text-gray-900 dark:text-white">
+                                  {client.clientName}{client.businessName ? ` - ${client.businessName}` : ''}
+                                </span>
+                                {taxId && (
+                                  <span className="text-xs text-gray-600 dark:text-gray-400">{taxId}</span>
+                                )}
+                              </div>
+                            </button>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            />
             {errors.contactId && (
               <p className="text-sm text-red-600 mt-1">{errors.contactId.message}</p>
-            )}
-            {loadingClients && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Loading clients...</p>
-            )}
-            {!loadingClients && getFilteredClients().length === 0 && (
-              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                {clientFilter !== 'all' 
-                  ? `No clients with ${clientFilter.toUpperCase()} available` 
-                  : 'No clients available'}
-              </p>
             )}
           </div>
 
