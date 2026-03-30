@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { useForm, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Task, TaskAttachment } from '@/types/task.types';
@@ -61,6 +61,7 @@ export function TaskModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<Employee[]>([]);
+  const [selectedClients, setSelectedClients] = useState<Client[]>([]);
   const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank' | 'tcs' | 'tds' | 'statutoryAudit'>('all');
   const [clientSearch, setClientSearch] = useState('');
   const [employeeSearch, setEmployeeSearch] = useState('');
@@ -80,7 +81,6 @@ export function TaskModal({
     handleSubmit,
     formState: { errors },
     reset,
-    control,
     setValue,
   } = useForm<TaskFormData>({
     resolver: zodResolver(taskFormSchema),
@@ -240,6 +240,23 @@ export function TaskModal({
     setValue('assignedTo', newSelectedEmployees.map(e => e.id!).join(', '));
   };
 
+  // Handle client selection
+  const handleClientSelect = (clientId: string) => {
+    const client = clients.find(c => c.id === clientId);
+    if (!client || selectedClients.some(c => c.id === clientId)) return;
+
+    const newSelectedClients = [...selectedClients, client];
+    setSelectedClients(newSelectedClients);
+    setValue('contactId', newSelectedClients.map(c => c.id!).join(', '));
+  };
+
+  // Handle client removal
+  const handleClientRemove = (clientId: string) => {
+    const newSelectedClients = selectedClients.filter(c => c.id !== clientId);
+    setSelectedClients(newSelectedClients);
+    setValue('contactId', newSelectedClients.map(c => c.id!).join(', '));
+  };
+
   // Update form when task prop changes (edit mode)
   useEffect(() => {
     if (task) {
@@ -289,6 +306,7 @@ export function TaskModal({
         contactId: '',
       });
       setSelectedEmployees([]);
+      setSelectedClients([]);
     }
   }, [task, reset, employees]);
 
@@ -314,6 +332,7 @@ export function TaskModal({
   const handleClose = () => {
     reset();
     setSelectedEmployees([]);
+    setSelectedClients([]);
     setEmployeeSearch('');
     setClientFilter('all');
     setPendingFiles([]);
@@ -727,60 +746,99 @@ export function TaskModal({
             />
 
             {/* Client list */}
-            <Controller
-              name="contactId"
-              control={control}
-              render={({ field }) => (
-                <div className="border border-gray-300 dark:border-gray-600 rounded-md max-h-48 overflow-y-auto">
-                  {loadingClients ? (
-                    <div className="p-4 text-center text-gray-500 dark:text-gray-400">Loading clients...</div>
-                  ) : (
-                    <div className="divide-y divide-gray-200">
-                      {/* Clear selection option */}
+            <div className="border border-gray-300 dark:border-gray-600 rounded-md max-h-48 overflow-y-auto">
+              {loadingClients ? (
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400">Loading clients...</div>
+              ) : getFilteredClients().filter(c => !selectedClients.some(sel => sel.id === c.id)).length === 0 ? (
+                <div className="p-4 text-center text-gray-500 dark:text-gray-400">
+                  {clientSearch ? 'No clients match your search' : clientFilter !== 'all' ? `No clients with ${clientFilter.toUpperCase()}` : selectedClients.length > 0 ? 'All clients have been selected' : 'No clients available'}
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-200">
+                  {getFilteredClients().filter(c => !selectedClients.some(sel => sel.id === c.id)).map((client) => {
+                    const taxId = client.taxIdentifiers?.gstin
+                      ? `GSTIN: ${client.taxIdentifiers.gstin}`
+                      : client.taxIdentifiers?.tan
+                      ? `TAN: ${client.taxIdentifiers.tan}`
+                      : client.taxIdentifiers?.pan
+                      ? `PAN: ${client.taxIdentifiers.pan}`
+                      : null;
+                    return (
                       <button
+                        key={client.id}
                         type="button"
-                        onClick={() => field.onChange('')}
-                        className={`w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors focus:bg-blue-100 focus:outline-none ${!field.value ? 'bg-blue-50' : ''}`}
+                        onClick={() => handleClientSelect(client.id!)}
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors focus:bg-blue-100 focus:outline-none"
+                        disabled={isLoading}
                       >
-                        <span className="text-sm text-gray-400 dark:text-gray-500 italic">None (optional)</span>
-                      </button>
-                      {getFilteredClients().length === 0 ? (
-                        <div className="p-4 text-center text-gray-500 dark:text-gray-400">
-                          {clientSearch ? 'No clients match your search' : clientFilter !== 'all' ? `No clients with ${clientFilter.toUpperCase()}` : 'No clients available'}
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {client.clientName}{client.businessName ? ` - ${client.businessName}` : ''}
+                          </span>
+                          {taxId && (
+                            <span className="text-xs text-gray-600 dark:text-gray-400">{taxId}</span>
+                          )}
                         </div>
-                      ) : (
-                        getFilteredClients().map((client) => {
-                          const taxId = client.taxIdentifiers?.gstin
-                            ? `GSTIN: ${client.taxIdentifiers.gstin}`
-                            : client.taxIdentifiers?.tan
-                            ? `TAN: ${client.taxIdentifiers.tan}`
-                            : client.taxIdentifiers?.pan
-                            ? `PAN: ${client.taxIdentifiers.pan}`
-                            : null;
-                          return (
-                            <button
-                              key={client.id}
-                              type="button"
-                              onClick={() => field.onChange(client.id)}
-                              className={`w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors focus:bg-blue-100 focus:outline-none ${field.value === client.id ? 'bg-blue-100' : ''}`}
-                            >
-                              <div className="flex flex-col">
-                                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                                  {client.clientName}{client.businessName ? ` - ${client.businessName}` : ''}
-                                </span>
-                                {taxId && (
-                                  <span className="text-xs text-gray-600 dark:text-gray-400">{taxId}</span>
-                                )}
-                              </div>
-                            </button>
-                          );
-                        })
-                      )}
-                    </div>
-                  )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
-            />
+            </div>
+
+            {/* Selected Clients Display */}
+            {selectedClients.length > 0 && (
+              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-2">
+                  <p className="text-xs font-medium text-gray-600 dark:text-gray-400">Selected Clients ({selectedClients.length})</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedClients([]);
+                      setValue('contactId', '');
+                    }}
+                    disabled={isLoading}
+                    className="text-xs text-red-600 hover:text-red-700 hover:bg-red-50"
+                  >
+                    Clear All
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {selectedClients.map((client) => {
+                    const taxId = client.taxIdentifiers?.gstin
+                      ? `GSTIN: ${client.taxIdentifiers.gstin}`
+                      : client.taxIdentifiers?.tan
+                      ? `TAN: ${client.taxIdentifiers.tan}`
+                      : client.taxIdentifiers?.pan
+                      ? `PAN: ${client.taxIdentifiers.pan}`
+                      : null;
+                    return (
+                      <div
+                        key={client.id}
+                        className="flex items-center gap-2 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md px-2.5 py-1.5 shadow-sm"
+                      >
+                        <div className="flex flex-col">
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">{client.clientName}</span>
+                          {taxId && <span className="text-xs text-gray-500 dark:text-gray-400">{taxId}</span>}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleClientRemove(client.id!)}
+                          className="text-red-500 hover:text-red-700 hover:bg-red-50 rounded p-1 ml-1 transition-colors"
+                          disabled={isLoading}
+                          aria-label={`Remove ${client.clientName}`}
+                        >
+                          <XMarkIcon className="w-4 h-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {errors.contactId && (
               <p className="text-sm text-red-600 mt-1">{errors.contactId.message}</p>
             )}
