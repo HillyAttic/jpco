@@ -77,6 +77,7 @@ export default function AttendanceRosterPage() {
       // Fetch attendance records for the month
       const startDate = new Date(year, month, 1);
       const endDate = new Date(year, month + 1, 0);
+      endDate.setHours(23, 59, 59, 999); // Set to end of day to include all records on the last day
 
       const attendanceRes = await authenticatedFetch(
         `/api/attendance/records?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
