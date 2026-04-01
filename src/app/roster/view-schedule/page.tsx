@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useRouter } from 'next/navigation';
 import { useModal } from '@/contexts/modal-context';
@@ -733,9 +734,9 @@ export default function ViewSchedulePage() {
       )}
 
       {/* Day Tasks Table Modal */}
-      {showDayTasksModal && selectedDate && selectedUser && (
+      {showDayTasksModal && selectedDate && selectedUser && createPortal(
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-[9999] p-4 pt-4 overflow-y-auto"
           onClick={handleCloseDayTasksModal}
         >
           <div
@@ -854,13 +855,14 @@ export default function ViewSchedulePage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Activity Detail Modal */}
-      {showActivityModal && selectedActivity && (
+      {showActivityModal && selectedActivity && createPortal(
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[9999] p-4"
           onClick={handleCloseActivityModal}
         >
           <div
@@ -989,17 +991,18 @@ export default function ViewSchedulePage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* User Calendar Modal */}
-      {showUserCalendarModal && selectedUser && (
+      {showUserCalendarModal && selectedUser && createPortal(
         <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-[9999] p-4 pt-4 overflow-y-auto"
           onClick={handleCloseUserCalendarModal}
         >
           <div
-            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto"
+            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-4xl w-full max-h-[calc(100vh-2rem)] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="sticky top-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 p-6 z-10">
@@ -1244,7 +1247,8 @@ export default function ViewSchedulePage() {
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
