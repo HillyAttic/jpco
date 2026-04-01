@@ -47,7 +47,7 @@ export default function ViewSchedulePage() {
   const getTaskColorClass = (task: RosterEntry): string => {
     // Check if it's a leave task
     if (task.taskDetail?.startsWith('OFF:')) {
-      return 'bg-yellow-100 text-yellow-800 border-yellow-400 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-300 dark:border-yellow-600 dark:hover:bg-yellow-900/50';
+      return 'bg-purple-100 text-purple-800 border-purple-400 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-600 dark:hover:bg-purple-900/50';
     }
 
     const color = getTaskColor(task);
@@ -60,7 +60,7 @@ export default function ViewSchedulePage() {
   const getExcelCellColorClass = (task: RosterEntry): string => {
     // Check if it's a leave task
     if (task.taskDetail?.startsWith('OFF:')) {
-      return 'bg-yellow-400 hover:bg-yellow-500';
+      return 'bg-purple-500 hover:bg-purple-600';
     }
     
     const color = getTaskColor(task);
@@ -161,6 +161,11 @@ export default function ViewSchedulePage() {
             const endDate = leave.endDate instanceof Date
               ? leave.endDate
               : (leave.endDate as any).toDate ? (leave.endDate as any).toDate() : new Date((leave.endDate as any).seconds * 1000);
+
+            // Skip leaves that don't overlap with the current month at all
+            const monthStart = new Date(Date.UTC(currentYear, currentMonth - 1, 1));
+            const monthEnd = new Date(Date.UTC(currentYear, currentMonth - 1, getDaysInMonth(currentMonth, currentYear), 23, 59, 59, 999));
+            if (endDate < monthStart || startDate > monthEnd) return;
 
             // Calculate which days of the month this leave spans
             const leaveStartDay = startDate.getUTCMonth() + 1 === currentMonth && startDate.getUTCFullYear() === currentYear

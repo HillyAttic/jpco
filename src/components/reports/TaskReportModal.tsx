@@ -7,7 +7,7 @@ import { ClientTaskCompletion } from '@/services/task-completion.service';
 import { XMarkIcon, CheckIcon, XCircleIcon, UserGroupIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { isFuture, isToday, startOfMonth } from 'date-fns';
 import { exportToPDF, exportToExcel } from '@/utils/report-export.utils';
-import { generateMonths, buildCompletionData, getCompletionStatus, type MonthData } from '@/utils/report-utils';
+import { buildCompletionData, getCompletionStatus, type MonthData } from '@/utils/report-utils';
 
 export interface TaskReportModalProps {
   task: RecurringTask;
@@ -36,6 +36,24 @@ function generateFinancialYears(): string[] {
     years.push(`${startYear}-${String(startYear + 1).slice(-2)}`);
   }
   return years;
+}
+
+function getCurrentFinancialYear(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth(); // 0-indexed
+  // FY starts in April (month index 3)
+  const fyStart = month >= 3 ? year : year - 1;
+  return `${fyStart}-${String(fyStart + 1).slice(-2)}`;
+}
+
+/** Generate months for a financial year, optionally filtered to a single month */
+function generateDisplayMonths(fy: string, recurrencePattern: string, selectedMonth?: string): MonthData[] {
+  const months = generateFYMonths(fy, recurrencePattern);
+  if (selectedMonth && selectedMonth !== 'all') {
+    return months.filter(m => m.monthName === selectedMonth);
+  }
+  return months;
 }
 
 function buildMonthData(month: number, year: number): MonthData {
@@ -295,10 +313,17 @@ function LegendFooter() {
 // ---------- Team Member Report Modal ----------
 
 function TeamMemberReportModal({ task, clients, completions, onClose }: TaskReportModalProps) {
-  const months = generateMonths(task.recurrencePattern);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
+  const [selectedMonth, setSelectedMonth] = useState('all');
+  const financialYears = generateFinancialYears();
+
+  const months = useMemo(
+    () => generateDisplayMonths(selectedFY, task.recurrencePattern, selectedMonth),
+    [selectedFY, task.recurrencePattern, selectedMonth]
+  );
 
   const teamMemberReports: TeamMemberReport[] = (task.teamMemberMappings || []).map(mapping => {
     const memberClients = clients.filter(c => c.id && mapping.clientIds.includes(c.id));
@@ -330,11 +355,14 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
 
   const filteredClients = useMemo(() => {
     if (statusFilter === 'all') return baseClients;
+    const visibleMonthKeys = new Set(months.map(m => m.key));
     return baseClients.filter(client => {
-      const hasFiled = completions.some(c => c.clientId === client.id && c.isCompleted);
+      const hasFiled = completions.some(
+        c => c.clientId === client.id && c.isCompleted && visibleMonthKeys.has(c.monthKey)
+      );
       return statusFilter === 'filed' ? hasFiled : !hasFiled;
     });
-  }, [baseClients, completions, statusFilter]);
+  }, [baseClients, completions, statusFilter, months]);
 
   const exportClients = selectedMember ? selectedMember.clients : clients;
 
@@ -370,9 +398,28 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
           </div>
 
           {/* Filter row */}
-          <div className="flex items-center gap-3 mb-4">
+          <div className="flex flex-wrap items-center gap-3 mb-4">
             <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Filter:</span>
             <StatusFilterTabs value={statusFilter} onChange={setStatusFilter} />
+            <select
+              value={selectedFY}
+              onChange={e => { setSelectedFY(e.target.value); setSelectedMonth('all'); }}
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {financialYears.map(fy => (
+                <option key={fy} value={fy}>FY {fy}</option>
+              ))}
+            </select>
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Months</option>
+              {MONTH_NAMES.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
           </div>
 
           {/* Team Member Summary Cards */}
@@ -461,43 +508,49 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
 // ---------- Regular Task Report Modal ----------
 
 export function TaskReportModal({ task, clients, completions, onClose }: TaskReportModalProps) {
-  const months = generateMonths(task.recurrencePattern);
   const hasTeamMemberMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
 
   if (hasTeamMemberMapping) {
     return <TeamMemberReportModal task={task} clients={clients} completions={completions} onClose={onClose} />;
   }
 
-  const completionData = buildCompletionData(completions, clients, months);
-
   return (
     <RegularTaskReportModal
       task={task}
       clients={clients}
       completions={completions}
-      completionData={completionData}
-      months={months}
       onClose={onClose}
     />
   );
 }
 
-interface RegularModalProps extends TaskReportModalProps {
-  completionData: Map<string, Map<string, boolean>>;
-  months: MonthData[];
-}
-
-function RegularTaskReportModal({ task, clients, completions, completionData, months, onClose }: RegularModalProps) {
+function RegularTaskReportModal({ task, clients, completions, onClose }: TaskReportModalProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showExportDialog, setShowExportDialog] = useState(false);
+  const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
+  const [selectedMonth, setSelectedMonth] = useState('all');
+  const financialYears = generateFinancialYears();
+
+  const months = useMemo(
+    () => generateDisplayMonths(selectedFY, task.recurrencePattern, selectedMonth),
+    [selectedFY, task.recurrencePattern, selectedMonth]
+  );
+
+  const completionData = useMemo(
+    () => buildCompletionData(completions, clients, months),
+    [completions, clients, months]
+  );
 
   const filteredClients = useMemo(() => {
     if (statusFilter === 'all') return clients;
+    const visibleMonthKeys = new Set(months.map(m => m.key));
     return clients.filter(client => {
-      const hasFiled = completions.some(c => c.clientId === client.id && c.isCompleted);
+      const hasFiled = completions.some(
+        c => c.clientId === client.id && c.isCompleted && visibleMonthKeys.has(c.monthKey)
+      );
       return statusFilter === 'filed' ? hasFiled : !hasFiled;
     });
-  }, [clients, completions, statusFilter]);
+  }, [clients, completions, statusFilter, months]);
 
   return (
     <>
@@ -531,9 +584,28 @@ function RegularTaskReportModal({ task, clients, completions, completionData, mo
           </div>
 
           {/* Filter row */}
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
             <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Filter:</span>
             <StatusFilterTabs value={statusFilter} onChange={setStatusFilter} />
+            <select
+              value={selectedFY}
+              onChange={e => { setSelectedFY(e.target.value); setSelectedMonth('all'); }}
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {financialYears.map(fy => (
+                <option key={fy} value={fy}>FY {fy}</option>
+              ))}
+            </select>
+            <select
+              value={selectedMonth}
+              onChange={e => setSelectedMonth(e.target.value)}
+              className="border border-gray-300 dark:border-gray-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">All Months</option>
+              {MONTH_NAMES.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
+            </select>
             {statusFilter !== 'all' && (
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {filteredClients.length} of {clients.length} clients
