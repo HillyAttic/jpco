@@ -88,7 +88,7 @@ export function LeaveRequestModal({
                 {errors.leaveTypeId.message}
               </p>
             )}
-            {selectedBalance && (
+            {selectedBalance && selectedBalance.leaveTypeName !== 'Emergency Leave' && (
               <p className="text-sm text-muted-foreground mt-1">
                 Available: {selectedBalance.remainingDays} days
               </p>

@@ -21,7 +21,7 @@ interface AttendanceDay {
   date: Date;
   status: 'present' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'half-day' | 'holiday' | 'pending';
   hours?: number;
-  leaveType?: 'full' | 'half';
+  leaveType?: string; // e.g., 'sick', 'casual', 'vacation', 'emergency'
   leaveStatus?: 'approved' | 'pending' | 'rejected';
 }
 
@@ -169,7 +169,7 @@ export default function AttendanceRosterPage() {
 
           let status: 'present' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'half-day' | 'holiday' | 'pending' = 'pending';
           let hours = 0;
-          let leaveType: 'full' | 'half' = 'full';
+          let leaveType: string = 'full';
           let leaveStatus: 'approved' | 'pending' | 'rejected' = 'pending';
 
           if (isSunday || isHoliday) {
@@ -183,7 +183,7 @@ export default function AttendanceRosterPage() {
               status = 'approved-leave';
               approvedLeaveCount++;
             }
-            leaveType = approvedLeave.leaveType || 'full';
+            leaveType = approvedLeave.leaveType || 'approved-leave';
             leaveStatus = 'approved';
           } else if (pendingLeave) {
             status = 'unapproved-leave';
@@ -228,11 +228,11 @@ export default function AttendanceRosterPage() {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, leaveType?: string) => {
     switch (status) {
       case 'present': return 'bg-green-500';
       case 'absent': return 'bg-red-500';
-      case 'approved-leave': return 'bg-purple-500';
+      case 'approved-leave': return leaveType === 'emergency' ? 'bg-black' : 'bg-purple-500';
       case 'unapproved-leave': return 'bg-red-500';
       case 'half-day': return 'bg-orange-500';
       case 'holiday': return 'bg-blue-500';
@@ -331,6 +331,10 @@ export default function AttendanceRosterPage() {
           <span className="text-sm text-gray-700 dark:text-gray-300">Approved Leave</span>
         </div>
         <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-black rounded"></div>
+          <span className="text-sm text-gray-700 dark:text-gray-300">Emergency Leave</span>
+        </div>
+        <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-orange-500 rounded"></div>
           <span className="text-sm text-gray-700 dark:text-gray-300">Half Day</span>
         </div>
@@ -387,7 +391,7 @@ export default function AttendanceRosterPage() {
                     {employee.days.map((day, idx) => (
                       <td key={idx} className="px-2 py-3">
                         <div
-                          className={`w-6 h-6 rounded ${getStatusColor(day.status)} mx-auto cursor-pointer`}
+                          className={`w-6 h-6 rounded ${getStatusColor(day.status, day.leaveType)} mx-auto cursor-pointer`}
                           title={`${day.date.toLocaleDateString()}: ${day.status}${day.hours ? ` (${day.hours.toFixed(1)}h)` : ''}`}
                         ></div>
                       </td>

@@ -259,9 +259,23 @@ export const leaveService = {
             isActive: true,
             createdAt: new Date(),
             updatedAt: new Date()
+          },
+          {
+            id: 'emergency',
+            name: 'Emergency Leave',
+            code: 'EMERGENCY',
+            isPaid: false,
+            requiresApproval: true,
+            maxDaysPerYear: 999,
+            accrualRate: 1,
+            carryOverAllowed: false,
+            color: '#000000',
+            isActive: true,
+            createdAt: new Date(),
+            updatedAt: new Date()
           }
         ];
-        
+
         return defaultTypes;
       }
       
@@ -308,6 +322,20 @@ export const leaveService = {
           accrualRate: 1,
           carryOverAllowed: false,
           color: '#10b981',
+          isActive: true,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          id: 'emergency',
+          name: 'Emergency Leave',
+          code: 'EMERGENCY',
+          isPaid: false,
+          requiresApproval: true,
+          maxDaysPerYear: 999,
+          accrualRate: 1,
+          carryOverAllowed: false,
+          color: '#000000',
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date()
