@@ -194,9 +194,9 @@ export function AttendanceCalendarModal({
     checkDate.setHours(0, 0, 0, 0);
 
     if (checkDate > today) return { date, status: 'upcoming' };
+    if (attendanceData.has(dateKey)) return attendanceData.get(dateKey)!;
     if (holidays.has(dateKey)) return { date, status: 'holiday' };
     if (date.getDay() === 0) return { date, status: 'holiday' };
-    if (attendanceData.has(dateKey)) return attendanceData.get(dateKey)!;
     return { date, status: 'absent' };
   };
 

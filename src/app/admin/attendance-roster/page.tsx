@@ -172,10 +172,7 @@ export default function AttendanceRosterPage() {
           let leaveType: string = 'full';
           let leaveStatus: 'approved' | 'pending' | 'rejected' = 'pending';
 
-          if (isSunday || isHoliday) {
-            status = 'holiday';
-            holidayCount++;
-          } else if (approvedLeave) {
+          if (approvedLeave) {
             if (approvedLeave.leaveType === 'half-day') {
               status = 'half-day';
               halfDayCount++;
@@ -194,6 +191,9 @@ export default function AttendanceRosterPage() {
             hours = attendance.totalHours || 0;
             presentCount++;
             totalHours += hours;
+          } else if (isSunday || isHoliday) {
+            status = 'holiday';
+            holidayCount++;
           } else if (date < new Date()) {
             status = 'absent';
             absentCount++;
