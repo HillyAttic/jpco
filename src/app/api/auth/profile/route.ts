@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { withAuth, AuthenticatedRequest } from '@/lib/server-auth';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminStorage } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 /**
@@ -76,5 +76,86 @@ export const PUT = withAuth(async (request: AuthenticatedRequest) => {
   } catch (error) {
     console.error('Error updating user profile:', error);
     return NextResponse.json({ error: 'Failed to update user profile' }, { status: 500 });
+  }
+});
+
+/**
+ * POST /api/auth/profile - Upload profile photo
+ * Uses Firebase Admin Storage to upload image and updates user's photoURL in Firestore.
+ */
+export const POST = withAuth(async (request: AuthenticatedRequest) => {
+  try {
+    const userId = request.user?.uid;
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID not found' }, { status: 400 });
+    }
+
+    const formData = await request.formData();
+    const file = formData.get('photo') as File;
+
+    if (!file) {
+      return NextResponse.json({ error: 'No photo file provided' }, { status: 400 });
+    }
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      return NextResponse.json({ error: 'File must be an image' }, { status: 400 });
+    }
+
+    // Validate file size (max 5MB)
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    if (file.size > maxSize) {
+      return NextResponse.json({ error: 'Image size must be less than 5MB' }, { status: 400 });
+    }
+
+    // Convert File to Buffer for upload
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Generate unique filename
+    const fileExtension = file.name.split('.').pop();
+    const uniqueName = `profile-${userId}-${Date.now()}.${fileExtension}`;
+
+    // Get bucket - explicitly specify bucket name
+    const bucket = adminStorage.bucket('jpcopanel.firebasestorage.app');
+
+    // Create file reference
+    const fileRef = bucket.file(`profile-photos/${uniqueName}`);
+
+    // Upload to Firebase Storage
+    await fileRef.save(buffer, {
+      metadata: {
+        contentType: file.type,
+        metadata: {
+          userId,
+          uploadedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    // Get signed URL for public access
+    const [signedUrl] = await fileRef.getSignedUrl({
+      action: 'read',
+      expires: '03-09-2491', // Far future date
+    });
+
+    // Update user's photoURL in Firestore
+    await adminDb.collection('users').doc(userId).update({
+      photoURL: signedUrl,
+      updatedAt: Timestamp.now(),
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: { photoURL: signedUrl },
+    });
+  } catch (error) {
+    console.error('Error uploading profile photo:', error);
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ error: `Failed to upload profile photo: ${errorMessage}` }, { status: 500 });
   }
 });

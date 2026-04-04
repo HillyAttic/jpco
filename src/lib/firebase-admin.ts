@@ -23,6 +23,7 @@ function initAdmin() {
             return admin.initializeApp({
                 credential: admin.credential.cert(serviceAccount),
                 projectId: 'jpcopanel',
+                storageBucket: 'jpcopanel.firebasestorage.app',
             });
         } catch (error) {
             console.error('Error parsing FIREBASE_SERVICE_ACCOUNT_KEY:', error);
@@ -42,6 +43,7 @@ function initAdmin() {
                 privateKey,
             }),
             projectId,
+            storageBucket: 'jpcopanel.firebasestorage.app',
         });
     }
 
@@ -49,6 +51,7 @@ function initAdmin() {
     console.warn('No Firebase Admin credentials found. Using default credentials.');
     return admin.initializeApp({
         projectId,
+        storageBucket: 'jpcopanel.firebasestorage.app',
     });
 }
 
@@ -56,5 +59,6 @@ export const adminApp = initAdmin();
 export const adminDb = admin.firestore(adminApp);
 export const adminAuth = admin.auth(adminApp);
 export const adminMessaging = admin.messaging(adminApp);
+export const adminStorage = admin.storage(adminApp);
 
 export default admin;

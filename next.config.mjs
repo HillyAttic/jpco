@@ -144,6 +144,11 @@ const nextConfig = {
         protocol: "https",
         hostname: "encrypted-tbn0.gstatic.com",
         port: ""
+      },
+      {
+        protocol: "https",
+        hostname: "storage.googleapis.com",
+        port: ""
       }
     ]
   },

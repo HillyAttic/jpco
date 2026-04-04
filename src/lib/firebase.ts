@@ -3,8 +3,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 import { setLogLevel } from 'firebase/app';
-// Note: Only importing storage if you plan to use it
-// import { getStorage } from 'firebase/storage'; 
+// Import storage for profile photos
+import { getStorage } from 'firebase/storage';
 
 // Suppress non-critical Firestore warnings in production
 // The "Failed to obtain primary lease" warning is expected with multi-tab support
@@ -54,7 +54,7 @@ export const db = initializeFirestore(app, {
     tabManager: persistentMultipleTabManager(),
   }),
 });
-// export const storage = getStorage(app); // Uncomment if you plan to use Firebase Storage
+export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
 export default app;
