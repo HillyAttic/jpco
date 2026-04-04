@@ -109,11 +109,20 @@ export function calculateCompletionRate(
 ): number {
   if (clientCount === 0) return 0;
 
-  const months = generateMonths(task.recurrencePattern);
-  const totalExpected = clientCount * months.filter(m => !isFuture(m.fullDate) || isToday(startOfMonth(m.fullDate))).length;
+  // Get current month key (YYYY-MM format)
+  const currentDate = new Date();
+  const currentMonthKey = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
+
+  // Filter completions for current month only
+  const currentMonthCompletions = taskCompletions.filter(
+    c => c.isCompleted && c.monthKey === currentMonthKey
+  );
+
+  // Total expected is the number of clients (each client should complete once per month)
+  const totalExpected = clientCount;
 
   if (totalExpected === 0) return 0;
 
-  const completed = taskCompletions.filter(c => c.isCompleted).length;
+  const completed = currentMonthCompletions.length;
   return Math.round((completed / totalExpected) * 100);
 }
