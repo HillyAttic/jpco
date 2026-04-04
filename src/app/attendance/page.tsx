@@ -239,8 +239,7 @@ export default function AttendancePage() {
                           <p className="font-medium text-base">{isEmergencyLeave ? 'Emergency Leave' : balance.leaveTypeName}</p>
                           {monthlyLimitText && (
                             <span className="px-2 py-0.5 text-[10px] font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full whitespace-nowrap">
-                              <span className="hidden sm:inline">{monthlyLimitText}</span>
-                              <span className="sm:hidden">1/month</span>
+                              {monthlyLimitText}
                             </span>
                           )}
                         </div>
