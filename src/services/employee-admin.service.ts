@@ -13,6 +13,8 @@ export interface Employee {
   name: string;
   email: string;
   phone: string;
+  department?: string;
+  photoURL?: string;
   role: 'Manager' | 'Admin' | 'Employee';
   status: 'active' | 'on-leave';
   createdAt?: Date;
@@ -55,6 +57,8 @@ export const employeeAdminService = {
           name: data.displayName || data.name || '',
           email: data.email || '',
           phone: data.phoneNumber || data.phone || '',
+          department: data.department || '',
+          photoURL: data.photoURL || '',
           role: this.mapUserRoleToEmployeeRole(data.role),
           status: data.isActive === false ? 'on-leave' : 'active',
           createdAt: data.createdAt?.toDate?.() || new Date(),
@@ -122,6 +126,8 @@ export const employeeAdminService = {
         name: data.displayName || data.name || '',
         email: data.email || '',
         phone: data.phoneNumber || data.phone || '',
+        department: data.department || '',
+        photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
         status: data.isActive === false ? 'on-leave' : 'active',
         createdAt: data.createdAt?.toDate?.() || new Date(),
@@ -156,6 +162,8 @@ export const employeeAdminService = {
         name: data.displayName || data.name || '',
         email: data.email || '',
         phone: data.phoneNumber || data.phone || '',
+        department: data.department || '',
+        photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
         status: data.isActive === false ? 'on-leave' : 'active',
         createdAt: data.createdAt?.toDate?.() || new Date(),
@@ -197,6 +205,9 @@ export const employeeAdminService = {
       }
       if (data.phone) {
         updatePayload.phoneNumber = data.phone;
+      }
+      if (data.department !== undefined) {
+        updatePayload.department = data.department || '';
       }
       if (data.role) {
         updatePayload.role = this.mapEmployeeRoleToUserRole(data.role);
@@ -261,6 +272,7 @@ export const employeeAdminService = {
       email: data.email,
       displayName: data.name,
       phoneNumber: data.phone || '',
+      department: data.department || '',
       role: userRole,
       employeeId: data.employeeId,
       status: data.status,
@@ -278,6 +290,8 @@ export const employeeAdminService = {
       name: data.name,
       email: data.email,
       phone: data.phone,
+      department: data.department,
+      photoURL: '',
       role: data.role,
       status: data.status,
       createdAt: now.toDate(),

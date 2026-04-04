@@ -25,6 +25,7 @@ const employeeFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100),
   email: z.string().email('Invalid email format'),
   phone: z.string().regex(/^\+?[\d\s\-()]+$/, 'Invalid phone format'),
+  department: z.string().optional(),
   role: z.enum(['Manager', 'Admin', 'Employee']),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
@@ -167,6 +168,7 @@ export default function EmployeesPage() {
           name: data.name,
           email: data.email,
           phone: data.phone,
+          department: data.department,
           role: data.role,
           status: data.status,
         };
@@ -179,6 +181,7 @@ export default function EmployeesPage() {
           name: data.name,
           email: data.email,
           phone: data.phone,
+          department: data.department,
           role: data.role,
           status: data.status,
         };

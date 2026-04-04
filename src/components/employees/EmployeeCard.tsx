@@ -76,11 +76,19 @@ export function EmployeeCard({ employee, onEdit, onDelete, onDeactivate, selecte
         <div className={`flex items-start justify-between mb-4 ${onSelect ? 'ml-8' : ''}`}>
           {/* Name and Role */}
           <div className="flex items-start gap-4 flex-1">
-            {/* Avatar with initials */}
-            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
-              <span className="text-blue-600 font-semibold text-lg">
-                {getInitials(employee.name)}
-              </span>
+            {/* Avatar with photo or initials */}
+            <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {employee.photoURL ? (
+                <img
+                  src={employee.photoURL}
+                  alt={employee.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-blue-600 font-semibold text-lg">
+                  {getInitials(employee.name)}
+                </span>
+              )}
             </div>
             
             <div className="flex-1 min-w-0">

@@ -15,6 +15,8 @@ export interface Employee {
   name: string; // Maps to displayName in users collection
   email: string;
   phone: string;
+  department?: string;
+  photoURL?: string;
   role: 'Manager' | 'Admin' | 'Employee';
   passwordHash?: string; // Hashed password, not plain text
   status: 'active' | 'on-leave';
@@ -54,6 +56,8 @@ export const employeeService = {
           name: data.displayName || data.name || '',
           email: data.email || '',
           phone: data.phoneNumber || data.phone || '',
+          department: data.department || '',
+          photoURL: data.photoURL || '',
           role: this.mapUserRoleToEmployeeRole(data.role),
           status: data.isActive === false ? 'on-leave' : 'active',
           createdAt: data.createdAt?.toDate?.() || new Date(),
@@ -121,6 +125,8 @@ export const employeeService = {
         name: data.displayName || data.name || '',
         email: data.email || '',
         phone: data.phoneNumber || data.phone || '',
+        department: data.department || '',
+        photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
         status: data.isActive === false ? 'on-leave' : 'active',
         createdAt: data.createdAt?.toDate?.() || new Date(),
@@ -154,6 +160,8 @@ export const employeeService = {
         name: data.displayName || data.name || '',
         email: data.email || '',
         phone: data.phoneNumber || data.phone || '',
+        department: data.department || '',
+        photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
         status: data.isActive === false ? 'on-leave' : 'active',
         createdAt: data.createdAt?.toDate?.() || new Date(),
@@ -217,6 +225,8 @@ export const employeeService = {
           name: data.name,
           email: data.email,
           phone: data.phone,
+          department: data.department,
+          photoURL: '',
           role: data.role,
           status: data.status,
           createdAt: new Date(),
@@ -264,6 +274,9 @@ export const employeeService = {
       }
       if (data.phone) {
         updatePayload.phoneNumber = data.phone;
+      }
+      if (data.department !== undefined) {
+        updatePayload.department = data.department || '';
       }
       if (data.role) {
         updatePayload.role = this.mapEmployeeRoleToUserRole(data.role);

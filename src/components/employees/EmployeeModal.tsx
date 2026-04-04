@@ -21,6 +21,7 @@ const employeeFormSchema = z.object({
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   email: z.string().email({ message: 'Invalid email format' }),
   phone: z.string().regex(/^\+?[\d\s\-()]+$/, { message: 'Invalid phone format' }),
+  department: z.string().optional(),
   role: z.enum(['Manager', 'Admin', 'Employee'], { message: 'Please select a role' }),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
@@ -64,6 +65,7 @@ export function EmployeeModal({
       name: '',
       email: '',
       phone: '',
+      department: '',
       role: 'Employee',
       password: '',
       confirmPassword: '',
@@ -92,6 +94,7 @@ export function EmployeeModal({
         name: employee.name,
         email: employee.email,
         phone: employee.phone,
+        department: employee.department || '',
         role: employee.role || 'Employee',
         status: employee.status,
         password: '',
@@ -103,6 +106,7 @@ export function EmployeeModal({
         name: '',
         email: '',
         phone: '',
+        department: '',
         role: 'Employee',
         status: 'active',
         password: '',
@@ -160,10 +164,24 @@ export function EmployeeModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-          {/* Avatar Display with Initials */}
+          {/* Avatar Display with Photo or Initials */}
           <div className="flex flex-col items-center gap-4">
-            <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 text-2xl font-semibold">
-              {getInitials(currentName) || <PhotoIcon className="w-12 h-12" />}
+            <div className="w-24 h-24 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
+              {employee?.photoURL ? (
+                <img
+                  src={employee.photoURL}
+                  alt={employee.name || 'Employee'}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                getInitials(currentName) ? (
+                  <span className="text-blue-600 text-2xl font-semibold">
+                    {getInitials(currentName)}
+                  </span>
+                ) : (
+                  <PhotoIcon className="w-12 h-12 text-blue-600" />
+                )
+              )}
             </div>
           </div>
 
@@ -218,6 +236,18 @@ export function EmployeeModal({
                 placeholder="+1 (555) 123-4567"
                 error={errors.phone?.message}
                 required
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* Department */}
+            <div>
+              <Input
+                id="department"
+                label="Department"
+                {...register('department')}
+                placeholder="e.g., Engineering, Sales"
+                error={errors.department?.message}
                 disabled={isLoading}
               />
             </div>
