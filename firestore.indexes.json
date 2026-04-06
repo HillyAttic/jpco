@@ -7,6 +7,22 @@
         { "fieldPath": "category", "order": "ASCENDING" },
         { "fieldPath": "clientName", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "attendance-records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employeeId", "order": "ASCENDING" },
+        { "fieldPath": "clockIn", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "attendance-records",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employeeId", "order": "ASCENDING" },
+        { "fieldPath": "clockIn", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

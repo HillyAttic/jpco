@@ -122,6 +122,8 @@ export function RosterExportModal({
     return `${last.getFullYear()}-${String(last.getMonth() + 1).padStart(2, '0')}-${String(last.getDate()).padStart(2, '0')}`;
   })();
 
+  const [selectedMonth, setSelectedMonth] = useState(month);
+  const [selectedYear, setSelectedYear] = useState(year);
   const [startDate, setStartDate] = useState(defaultStart);
   const [endDate, setEndDate] = useState(defaultEnd);
   const [exporting, setExporting] = useState(false);
@@ -132,12 +134,26 @@ export function RosterExportModal({
 
   React.useEffect(() => {
     if (isOpen) {
+      setSelectedMonth(month);
+      setSelectedYear(year);
       setStartDate(defaultStart);
       setEndDate(defaultEnd);
       setProgressMsg('');
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, month, year]);
+
+  // Update date range when month/year selectors change
+  React.useEffect(() => {
+    const firstDay = new Date(selectedYear, selectedMonth, 1);
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0);
+    
+    const newStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+    const newEnd = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+    
+    setStartDate(newStart);
+    setEndDate(newEnd);
+  }, [selectedMonth, selectedYear]);
 
   // ═══════════════════════════════════════════════════════════════════════
   // Shared data builder — used by both Excel and PDF exports
@@ -553,7 +569,7 @@ export function RosterExportModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="w-5 h-5" />
@@ -561,108 +577,156 @@ export function RosterExportModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5 py-2">
-          {/* Date Range */}
-          <div className="space-y-3">
+        <div className="space-y-4 py-2">
+          {/* Month and Year Selection */}
+          <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Calendar className="w-4 h-4" />
-              <span>Date Range</span>
+              <span>Select Period</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="export-start">Start Date</Label>
+                <Label htmlFor="export-month" className="text-xs">Month</Label>
+                <select
+                  id="export-month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="0">January</option>
+                  <option value="1">February</option>
+                  <option value="2">March</option>
+                  <option value="3">April</option>
+                  <option value="4">May</option>
+                  <option value="5">June</option>
+                  <option value="6">July</option>
+                  <option value="7">August</option>
+                  <option value="8">September</option>
+                  <option value="9">October</option>
+                  <option value="10">November</option>
+                  <option value="11">December</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="export-year" className="text-xs">Year</Label>
+                <select
+                  id="export-year"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Date Range */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Calendar className="w-4 h-4" />
+              <span>Custom Date Range (Optional)</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="export-start" className="text-xs">Start Date</Label>
                 <input
                   id="export-start"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div>
-                <Label htmlFor="export-end">End Date</Label>
+                <Label htmlFor="export-end" className="text-xs">End Date</Label>
                 <input
                   id="export-end"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 />
               </div>
             </div>
           </div>
 
           {/* Format Selection */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Export Format</p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <button
                 onClick={() => setExportFormat('excel')}
-                className={`flex items-center gap-3 p-3 border-2 rounded-lg transition-all ${
+                className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 border-2 rounded-lg transition-all ${
                   exportFormat === 'excel'
                     ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                     : 'border-gray-200 dark:border-gray-600 hover:border-green-300'
                 }`}
               >
-                <FileSpreadsheet className={`w-5 h-5 ${exportFormat === 'excel' ? 'text-green-600' : 'text-gray-400'}`} />
+                <FileSpreadsheet className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${exportFormat === 'excel' ? 'text-green-600' : 'text-gray-400'}`} />
                 <div className="text-left">
-                  <div className="font-medium text-sm text-gray-900 dark:text-white">Excel</div>
-                  <div className="text-xs text-gray-500">.xlsx</div>
+                  <div className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white">Excel</div>
+                  <div className="text-[10px] sm:text-xs text-gray-500">.xlsx</div>
                 </div>
               </button>
               <button
                 onClick={() => setExportFormat('pdf')}
-                className={`flex items-center gap-3 p-3 border-2 rounded-lg transition-all ${
+                className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 border-2 rounded-lg transition-all ${
                   exportFormat === 'pdf'
                     ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
                     : 'border-gray-200 dark:border-gray-600 hover:border-red-300'
                 }`}
               >
-                <FileText className={`w-5 h-5 ${exportFormat === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
+                <FileText className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${exportFormat === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
                 <div className="text-left">
-                  <div className="font-medium text-sm text-gray-900 dark:text-white">PDF</div>
-                  <div className="text-xs text-gray-500">.pdf</div>
+                  <div className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white">PDF</div>
+                  <div className="text-[10px] sm:text-xs text-gray-500">.pdf</div>
                 </div>
               </button>
             </div>
           </div>
 
           {/* Options */}
-          <div className="space-y-3">
+          <div className="space-y-2">
             <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Options</p>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeLocation}
-                onChange={(e) => setIncludeLocation(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">Include clock-in / clock-out location (full address)</span>
-            </label>
-            <label className="flex items-center gap-3 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={includeStats}
-                onChange={(e) => setIncludeStats(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded"
-              />
-              <span className="text-sm text-gray-700 dark:text-gray-300">
-                Include summary {exportFormat === 'excel' ? 'sheet' : 'page'} (per-employee totals)
-              </span>
-            </label>
+            <div className="space-y-2">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeLocation}
+                  onChange={(e) => setIncludeLocation(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
+                />
+                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Include clock-in / clock-out location (full address)</span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeStats}
+                  onChange={(e) => setIncludeStats(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
+                />
+                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                  Include summary {exportFormat === 'excel' ? 'sheet' : 'page'} (per-employee totals)
+                </span>
+              </label>
+            </div>
           </div>
 
           {/* Info */}
-          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 text-sm text-blue-700 dark:text-blue-300 space-y-1">
-            <p className="font-medium">Export includes:</p>
-            <ul className="list-disc list-inside space-y-0.5 text-xs">
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-blue-700 dark:text-blue-300 space-y-1">
+            <p className="font-medium text-xs sm:text-sm">Export includes:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-[11px] sm:text-xs pl-1">
               <li>Daily status, clock-in/out times (IST), hours worked</li>
               {includeLocation && <li>Full address for clock-in/out locations</li>}
               <li>Leave type, status, and reason</li>
               {includeStats && <li>Summary {exportFormat === 'excel' ? 'sheet' : 'page'} with per-employee totals</li>}
             </ul>
             {includeLocation && (
-              <p className="text-xs mt-2 text-orange-600 dark:text-orange-400">
+              <p className="text-[11px] sm:text-xs mt-2 text-orange-600 dark:text-orange-400">
                 Address lookup uses OpenStreetMap (~1 sec per unique location). Previously resolved locations are cached.
               </p>
             )}
@@ -670,21 +734,26 @@ export function RosterExportModal({
 
           {/* Progress */}
           {exporting && progressMsg && (
-            <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg px-4 py-3">
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3">
               <Loader2 className="w-4 h-4 animate-spin flex-shrink-0 text-blue-600" />
-              <span>{progressMsg}</span>
+              <span className="break-words">{progressMsg}</span>
             </div>
           )}
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={exporting}>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
+          <Button 
+            variant="outline" 
+            onClick={onClose} 
+            disabled={exporting}
+            className="w-full sm:w-auto order-2 sm:order-1"
+          >
             Cancel
           </Button>
           <Button
             onClick={handleExport}
             disabled={exporting || employees.length === 0}
-            className={`text-white ${
+            className={`w-full sm:w-auto order-1 sm:order-2 text-white ${
               exportFormat === 'excel'
                 ? 'bg-green-600 hover:bg-green-700'
                 : 'bg-red-600 hover:bg-red-700'
@@ -693,12 +762,12 @@ export function RosterExportModal({
             {exporting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Exporting...
+                <span className="text-sm">Exporting...</span>
               </>
             ) : (
               <>
                 <Download className="w-4 h-4 mr-2" />
-                Export {exportFormat === 'excel' ? 'Excel' : 'PDF'}
+                <span className="text-sm">Export {exportFormat === 'excel' ? 'Excel' : 'PDF'}</span>
               </>
             )}
           </Button>

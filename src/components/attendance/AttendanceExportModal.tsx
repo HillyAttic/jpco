@@ -59,6 +59,8 @@ export function AttendanceExportModal({
 }: AttendanceExportModalProps) {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [selectedEmployees, setSelectedEmployees] = useState<string[]>([]);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [exportFormat, setExportFormat] = useState<'excel' | 'pdf'>('excel');
@@ -66,6 +68,18 @@ export function AttendanceExportModal({
   const [exporting, setExporting] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Update date range when month/year selectors change
+  React.useEffect(() => {
+    const firstDay = new Date(selectedYear, selectedMonth, 1);
+    const lastDay = new Date(selectedYear, selectedMonth + 1, 0);
+    
+    const newStart = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-01`;
+    const newEnd = `${lastDay.getFullYear()}-${String(lastDay.getMonth() + 1).padStart(2, '0')}-${String(lastDay.getDate()).padStart(2, '0')}`;
+    
+    setStartDate(newStart);
+    setEndDate(newEnd);
+  }, [selectedMonth, selectedYear]);
 
   // Load employees
   useEffect(() => {
@@ -105,11 +119,17 @@ export function AttendanceExportModal({
       
       // Set default dates based on pre-selected or current month
       if (preSelectedStartDate && preSelectedEndDate) {
+        const preStartMonth = preSelectedStartDate.getMonth();
+        const preStartYear = preSelectedStartDate.getFullYear();
+        setSelectedMonth(preStartMonth);
+        setSelectedYear(preStartYear);
         setStartDate(preSelectedStartDate.toISOString().split('T')[0]);
         setEndDate(preSelectedEndDate.toISOString().split('T')[0]);
       } else {
-        // Default to first and last day of current month
+        // Default to current month
         const now = new Date();
+        setSelectedMonth(now.getMonth());
+        setSelectedYear(now.getFullYear());
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
         const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         setStartDate(firstDay.toISOString().split('T')[0]);
@@ -128,7 +148,7 @@ export function AttendanceExportModal({
       // Reset search query
       setSearchQuery('');
     }
-  }, [isOpen, preSelectedEmployeeId, preSelectedStartDate, preSelectedEndDate]);
+  }, [isOpen, preSelectedEmployeeId, preSelectedStartDate, preSelectedEndDate, isManager, isAdmin, assignedEmployeeIds]);
 
   // Handle select all
   const handleSelectAll = () => {
@@ -196,7 +216,7 @@ export function AttendanceExportModal({
         where('employeeId', '==', employeeId),
         where('clockIn', '>=', Timestamp.fromDate(start)),
         where('clockIn', '<=', Timestamp.fromDate(end)),
-        orderBy('clockIn', 'desc')
+        orderBy('clockIn', 'asc')
       );
 
       const snapshot = await getDocs(q);
@@ -215,7 +235,7 @@ export function AttendanceExportModal({
       });
     }
 
-    return records.sort((a, b) => b.clockIn.getTime() - a.clockIn.getTime());
+    return records.sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime());
   };
 
   // Calculate duration
@@ -237,9 +257,9 @@ export function AttendanceExportModal({
 
       const data = records.map(record => ({
         'Employee Name': record.employeeName,
-        'Date': record.clockIn.toLocaleDateString('en-US'),
-        'Clock In': record.clockIn.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        'Clock Out': record.clockOut ? record.clockOut.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+        'Date': record.clockIn.toLocaleDateString('en-GB'), // DD/MM/YYYY format
+        'Clock In': record.clockIn.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }),
+        'Clock Out': record.clockOut ? record.clockOut.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
         'Duration': calculateDuration(record.clockIn, record.clockOut),
         'Status': record.clockOut ? 'Completed' : 'Active',
         'Clock In Location': record.location?.clockIn 
@@ -293,15 +313,15 @@ export function AttendanceExportModal({
       
       // Add date range
       doc.setFontSize(11);
-      doc.text(`Period: ${new Date(startDate).toLocaleDateString()} - ${new Date(endDate).toLocaleDateString()}`, 14, 28);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 34);
+      doc.text(`Period: ${new Date(startDate).toLocaleDateString('en-GB')} - ${new Date(endDate).toLocaleDateString('en-GB')}`, 14, 28);
+      doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`, 14, 34);
 
       // Prepare table data
       const tableData = records.map(record => [
         record.employeeName,
-        record.clockIn.toLocaleDateString('en-US'),
-        record.clockIn.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-        record.clockOut ? record.clockOut.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : 'N/A',
+        record.clockIn.toLocaleDateString('en-GB'), // DD/MM/YYYY format
+        record.clockIn.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }),
+        record.clockOut ? record.clockOut.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
         calculateDuration(record.clockIn, record.clockOut),
         record.clockOut ? 'Completed' : 'Active',
       ]);
@@ -362,7 +382,7 @@ export function AttendanceExportModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Download className="w-5 h-5" />
@@ -370,32 +390,78 @@ export function AttendanceExportModal({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6 py-4">
-          {/* Date Range Selection */}
-          <div className="space-y-4">
+        <div className="space-y-4 py-2">
+          {/* Month and Year Selection */}
+          <div className="space-y-2">
             <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
               <Calendar className="w-4 h-4" />
-              <span>Select Date Range</span>
+              <span>Select Period</span>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <Label htmlFor="startDate">Start Date</Label>
+                <Label htmlFor="export-month" className="text-xs">Month</Label>
+                <select
+                  id="export-month"
+                  value={selectedMonth}
+                  onChange={(e) => setSelectedMonth(Number(e.target.value))}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="0">January</option>
+                  <option value="1">February</option>
+                  <option value="2">March</option>
+                  <option value="3">April</option>
+                  <option value="4">May</option>
+                  <option value="5">June</option>
+                  <option value="6">July</option>
+                  <option value="7">August</option>
+                  <option value="8">September</option>
+                  <option value="9">October</option>
+                  <option value="10">November</option>
+                  <option value="11">December</option>
+                </select>
+              </div>
+              <div>
+                <Label htmlFor="export-year" className="text-xs">Year</Label>
+                <select
+                  id="export-year"
+                  value={selectedYear}
+                  onChange={(e) => setSelectedYear(Number(e.target.value))}
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                >
+                  <option value="2024">2024</option>
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                  <option value="2027">2027</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Date Range Selection */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium text-gray-700 dark:text-gray-300">
+              <Calendar className="w-4 h-4" />
+              <span>Custom Date Range (Optional)</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <Label htmlFor="startDate" className="text-xs">Start Date</Label>
                 <input
                   id="startDate"
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 />
               </div>
               <div>
-                <Label htmlFor="endDate">End Date</Label>
+                <Label htmlFor="endDate" className="text-xs">End Date</Label>
                 <input
                   id="endDate"
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full mt-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full mt-1 px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                 />
               </div>
             </div>
