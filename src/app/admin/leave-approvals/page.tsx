@@ -109,30 +109,32 @@ export default function LeaveApprovalsPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Leave Approvals</h1>
-        <p className="text-gray-600 dark:text-gray-400">Review and manage employee leave requests</p>
+    <div className="p-4 sm:p-6">
+      <div className="mb-4 sm:mb-6">
+        <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">Leave Approvals</h1>
+        <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">Review and manage employee leave requests</p>
       </div>
 
       {/* Filter Tabs */}
-      <div className="mb-6 flex gap-2">
-        {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilter(status)}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              filter === status
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
-            }`}
-          >
-            {status.charAt(0).toUpperCase() + status.slice(1)}
-          </button>
-        ))}
+      <div className="mb-4 sm:mb-6 overflow-x-auto">
+        <div className="flex gap-2 min-w-max">
+          {(['all', 'pending', 'approved', 'rejected'] as const).map((status) => (
+            <button
+              key={status}
+              onClick={() => setFilter(status)}
+              className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-medium transition-colors text-xs sm:text-base whitespace-nowrap ${
+                filter === status
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
+              }`}
+            >
+              {status.charAt(0).toUpperCase() + status.slice(1)}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Leave Requests Table */}
+      {/* Leave Requests */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
@@ -143,74 +145,147 @@ export default function LeaveApprovalsPage() {
             No leave requests found
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Employee</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Leave Type</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Duration</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Dates</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Reason</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                {requests.map((request) => (
-                  <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4">
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-white">{request.employeeName}</div>
-                        <div className="text-sm text-gray-500">{request.employeeEmail}</div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                      {getLeaveTypeLabel(request.leaveType)}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                      {request.totalDays} {request.totalDays === 1 ? 'day' : 'days'}
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                      <div>{new Date(request.startDate).toLocaleDateString()}</div>
-                      <div className="text-gray-500">to {new Date(request.endDate).toLocaleDateString()}</div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs whitespace-normal break-words">
-                      {request.reason}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(request.status)}`}>
-                        {request.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4">
-                      {request.status === 'pending' && (
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleApprove(request.id!)}
-                            className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                          >
-                            Approve
-                          </button>
-                          <button
-                            onClick={() => openRejectModal(request)}
-                            className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                          >
-                            Reject
-                          </button>
-                        </div>
-                      )}
-                      {request.status !== 'pending' && (
-                        <div className="text-sm text-gray-500">
-                          By {request.approverName || 'Manager'}
-                        </div>
-                      )}
-                    </td>
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Employee</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Leave Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Duration</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Dates</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Reason</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {requests.map((request) => (
+                    <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">{request.employeeName}</div>
+                          <div className="text-sm text-gray-500">{request.employeeEmail}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                        {getLeaveTypeLabel(request.leaveType)}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                        {request.totalDays} {request.totalDays === 1 ? 'day' : 'days'}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                        <div>{new Date(request.startDate).toLocaleDateString()}</div>
+                        <div className="text-gray-500">to {new Date(request.endDate).toLocaleDateString()}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs">
+                        <div className="line-clamp-3">{request.reason}</div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(request.status)}`}>
+                          {request.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {request.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleApprove(request.id!)}
+                              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => openRejectModal(request)}
+                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        {request.status !== 'pending' && (
+                          <div className="text-sm text-gray-500">
+                            By {request.approverName || 'Manager'}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="lg:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {requests.map((request) => (
+                <div key={request.id} className="p-4 space-y-3">
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900 dark:text-white">{request.employeeName}</div>
+                      <div className="text-sm text-gray-500 break-all">{request.employeeEmail}</div>
+                    </div>
+                    <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${getStatusColor(request.status)}`}>
+                      {request.status}
+                    </span>
+                  </div>
+
+                  {/* Leave Details */}
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-gray-500 dark:text-gray-400 text-xs">Leave Type</div>
+                      <div className="text-gray-900 dark:text-white font-medium">{getLeaveTypeLabel(request.leaveType)}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 dark:text-gray-400 text-xs">Duration</div>
+                      <div className="text-gray-900 dark:text-white font-medium">
+                        {request.totalDays} {request.totalDays === 1 ? 'day' : 'days'}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dates */}
+                  <div className="text-sm">
+                    <div className="text-gray-500 dark:text-gray-400 text-xs mb-1">Dates</div>
+                    <div className="text-gray-900 dark:text-white">
+                      {new Date(request.startDate).toLocaleDateString()} - {new Date(request.endDate).toLocaleDateString()}
+                    </div>
+                  </div>
+
+                  {/* Reason */}
+                  <div className="text-sm">
+                    <div className="text-gray-500 dark:text-gray-400 text-xs mb-1">Reason</div>
+                    <div className="text-gray-900 dark:text-white break-words whitespace-pre-wrap">
+                      {request.reason}
+                    </div>
+                  </div>
+
+                  {/* Actions or Approver */}
+                  {request.status === 'pending' ? (
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        onClick={() => handleApprove(request.id!)}
+                        className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => openRejectModal(request)}
+                        className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 pt-2">
+                      Processed by {request.approverName || 'Manager'}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
 
