@@ -128,8 +128,8 @@ export function RosterExportModal({
   const [endDate, setEndDate] = useState(defaultEnd);
   const [exporting, setExporting] = useState(false);
   const [exportFormat, setExportFormat] = useState<'excel' | 'pdf'>('excel');
-  const [includeLocation, setIncludeLocation] = useState(true);
-  const [includeStats, setIncludeStats] = useState(true);
+  const [includeLocation, setIncludeLocation] = useState(false);
+  const [includeStats, setIncludeStats] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
 
   React.useEffect(() => {

@@ -26,6 +26,7 @@ interface AttendanceRecord {
   id: string;
   employeeId: string;
   employeeName: string;
+  employeeEmail?: string;
   clockIn: Date;
   clockOut?: Date;
   location?: {
@@ -34,6 +35,22 @@ interface AttendanceRecord {
   };
   totalHours: number;
   status: 'active' | 'completed' | 'incomplete';
+}
+
+interface DetailRow {
+  employeeName: string;
+  employeeEmail: string;
+  date: string;
+  day: string;
+  status: string;
+  clockIn: string;
+  clockOut: string;
+  hoursWorked: number | string;
+  clockInLocation: string;
+  clockOutLocation: string;
+  leaveType: string;
+  leaveStatus: string;
+  leaveReason: string;
 }
 
 interface AttendanceExportModalProps {
@@ -68,6 +85,9 @@ export function AttendanceExportModal({
   const [exporting, setExporting] = useState(false);
   const [selectAll, setSelectAll] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [includeLocation, setIncludeLocation] = useState(false);
+  const [includeStats, setIncludeStats] = useState(false);
+  const [progressMsg, setProgressMsg] = useState('');
 
   // Update date range when month/year selectors change
   React.useEffect(() => {
@@ -80,6 +100,47 @@ export function AttendanceExportModal({
     setStartDate(newStart);
     setEndDate(newEnd);
   }, [selectedMonth, selectedYear]);
+
+  // Day names and status labels
+  const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+  const statusLabel = (status: string): string => {
+    if (status === 'completed') return 'Completed';
+    if (status === 'active') return 'Active';
+    if (status === 'incomplete') return 'Incomplete';
+    return status;
+  };
+
+  // Geocoding cache and functions
+  const geocodeCache = new Map<string, string>();
+
+  const reverseGeocodeOne = async (lat: number, lon: number): Promise<string> => {
+    const cacheKey = `${lat},${lon}`;
+    if (geocodeCache.has(cacheKey)) {
+      return geocodeCache.get(cacheKey)!;
+    }
+
+    const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1&accept-language=en`;
+    
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Nominatim returned HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      const address = data.display_name || `${lat}, ${lon}`;
+      geocodeCache.set(cacheKey, address);
+      return address;
+    } catch (error) {
+      console.error(`[Geocode] Error for ${lat},${lon}:`, error);
+      const fallback = `${lat}, ${lon}`;
+      geocodeCache.set(cacheKey, fallback);
+      return fallback;
+    }
+  };
+
+  const delayMs = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
   // Load employees
   useEffect(() => {
@@ -201,15 +262,22 @@ export function AttendanceExportModal({
     }
   };
 
-  // Fetch attendance records
-  const fetchAttendanceRecords = async (): Promise<AttendanceRecord[]> => {
+  // Fetch attendance records and build detail rows
+  const buildExportData = async (): Promise<{ detailRows: DetailRow[]; geocodeErrors: number }> => {
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
     const end = new Date(endDate);
     end.setHours(23, 59, 59, 999);
 
     const records: AttendanceRecord[] = [];
+    const employeeMap = new Map<string, Employee>();
 
+    // Build employee map
+    employees.forEach(emp => {
+      if (emp.id) employeeMap.set(emp.id, emp);
+    });
+
+    // Fetch attendance records for selected employees
     for (const employeeId of selectedEmployees) {
       const q = query(
         collection(db, 'attendance-records'),
@@ -222,10 +290,12 @@ export function AttendanceExportModal({
       const snapshot = await getDocs(q);
       snapshot.docs.forEach(doc => {
         const data = doc.data();
+        const emp = employeeMap.get(employeeId);
         records.push({
           id: doc.id,
           employeeId: data.employeeId,
           employeeName: data.employeeName,
+          employeeEmail: emp?.email || '',
           clockIn: convertTimestamp(data.clockIn)!,
           clockOut: convertTimestamp(data.clockOut),
           location: data.location,
@@ -235,12 +305,123 @@ export function AttendanceExportModal({
       });
     }
 
-    return records.sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime());
+    // Sort by date ascending
+    records.sort((a, b) => a.clockIn.getTime() - b.clockIn.getTime());
+
+    // Fetch leave requests
+    const leaveRecords: any[] = [];
+    for (const employeeId of selectedEmployees) {
+      const leaveQuery = query(
+        collection(db, 'leave-requests'),
+        where('employeeId', '==', employeeId)
+      );
+      const leaveSnapshot = await getDocs(leaveQuery);
+      leaveSnapshot.docs.forEach(doc => {
+        leaveRecords.push({ id: doc.id, ...doc.data() });
+      });
+    }
+
+    // Build leave map
+    const leaveMap = new Map<string, any[]>();
+    leaveRecords.forEach((lr) => {
+      if (!leaveMap.has(lr.employeeId)) leaveMap.set(lr.employeeId, []);
+      leaveMap.get(lr.employeeId)!.push(lr);
+    });
+
+    // Geocoding
+    const uniqueCoords = new Map<string, { lat: number; lon: number }>();
+    if (includeLocation) {
+      records.forEach((rec) => {
+        const ciLat = rec?.location?.clockIn?.latitude;
+        const ciLon = rec?.location?.clockIn?.longitude;
+        if (ciLat != null && ciLon != null) {
+          uniqueCoords.set(`${Number(ciLat)},${Number(ciLon)}`, { lat: Number(ciLat), lon: Number(ciLon) });
+        }
+        const coLat = rec?.location?.clockOut?.latitude;
+        const coLon = rec?.location?.clockOut?.longitude;
+        if (coLat != null && coLon != null) {
+          uniqueCoords.set(`${Number(coLat)},${Number(coLon)}`, { lat: Number(coLat), lon: Number(coLon) });
+        }
+      });
+    }
+
+    let geocodeErrors = 0;
+    if (uniqueCoords.size > 0) {
+      const coordList = [...uniqueCoords.entries()];
+      for (let i = 0; i < coordList.length; i++) {
+        const [key, { lat, lon }] = coordList[i];
+        setProgressMsg(`Resolving address ${i + 1} of ${coordList.length}...`);
+
+        if (geocodeCache.has(key)) {
+          continue;
+        }
+
+        try {
+          await reverseGeocodeOne(lat, lon);
+        } catch (err: any) {
+          console.error(`[Geocode] FAILED for ${key}:`, err.message);
+          geocodeErrors++;
+          geocodeCache.set(key, `${lat}, ${lon}`);
+        }
+
+        if (i < coordList.length - 1) {
+          await delayMs(1100);
+        }
+      }
+    }
+
+    const getAddress = (rec: AttendanceRecord, field: 'clockIn' | 'clockOut'): string => {
+      const loc = rec?.location?.[field];
+      if (!loc || loc.latitude == null || loc.longitude == null) return '';
+      const key = `${Number(loc.latitude)},${Number(loc.longitude)}`;
+      return geocodeCache.get(key) || `${loc.latitude}, ${loc.longitude}`;
+    };
+
+    // Build detail rows
+    const detailRows: DetailRow[] = records.map(rec => {
+      const d = rec.clockIn;
+      const dateYear = d.getFullYear();
+      const dateMon = String(d.getMonth() + 1).padStart(2, '0');
+      const dateDay = String(d.getDate()).padStart(2, '0');
+      const dateStr = `${dateYear}-${dateMon}-${dateDay}`;
+
+      const leaves = leaveMap.get(rec.employeeId) ?? [];
+      const matchedLeave = leaves.find((l) => {
+        const ls = l.startDate.split('T')[0];
+        const le = l.endDate.split('T')[0];
+        return ls <= dateStr && le >= dateStr;
+      });
+
+      const clockInTime = d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' });
+      const clockOutTime = rec.clockOut
+        ? rec.clockOut.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' })
+        : '';
+
+      const hoursWorked = rec.clockOut ? calculateDuration(rec.clockIn, rec.clockOut) : '';
+
+      return {
+        employeeName: rec.employeeName,
+        employeeEmail: rec.employeeEmail,
+        date: `${dateDay}/${dateMon}/${dateYear}`,
+        day: DAY_NAMES[d.getDay()],
+        status: statusLabel(rec.status),
+        clockIn: clockInTime,
+        clockOut: clockOutTime || (rec.status === 'active' ? 'Not clocked out' : ''),
+        hoursWorked: hoursWorked,
+        clockInLocation: includeLocation ? getAddress(rec, 'clockIn') : '',
+        clockOutLocation: includeLocation ? getAddress(rec, 'clockOut') : '',
+        leaveType: matchedLeave?.leaveType ?? '',
+        leaveStatus: matchedLeave?.status ?? '',
+        leaveReason: matchedLeave?.reason ?? '',
+      };
+    });
+
+    return { detailRows, geocodeErrors };
   };
 
   // Calculate duration
   const calculateDuration = (clockIn: Date, clockOut?: Date): string => {
-    if (!clockOut) return 'In Progress';
+    if (!clockOut) return '';
     
     const diffMs = clockOut.getTime() - clockIn.getTime();
     const hours = Math.floor(diffMs / 3600000);
@@ -252,43 +433,93 @@ export function AttendanceExportModal({
   // Export to Excel
   const exportToExcel = async () => {
     setExporting(true);
+    setProgressMsg('Fetching attendance records...');
+    
     try {
-      const records = await fetchAttendanceRecords();
+      const { detailRows, geocodeErrors } = await buildExportData();
 
-      const data = records.map(record => ({
-        'Employee Name': record.employeeName,
-        'Date': record.clockIn.toLocaleDateString('en-GB'), // DD/MM/YYYY format
-        'Clock In': record.clockIn.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }),
-        'Clock Out': record.clockOut ? record.clockOut.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
-        'Duration': calculateDuration(record.clockIn, record.clockOut),
-        'Status': record.clockOut ? 'Completed' : 'Active',
-        'Clock In Location': record.location?.clockIn 
-          ? `${record.location.clockIn.latitude.toFixed(4)}, ${record.location.clockIn.longitude.toFixed(4)}`
-          : 'N/A',
-        'Clock Out Location': record.location?.clockOut 
-          ? `${record.location.clockOut.latitude.toFixed(4)}, ${record.location.clockOut.longitude.toFixed(4)}`
-          : 'N/A',
-      }));
+      setProgressMsg('Building Excel file...');
 
-      const ws = XLSX.utils.json_to_sheet(data);
+      const sheetRows = detailRows.map((r) => {
+        const row: any = {
+          'Employee Name': r.employeeName,
+          'Employee Email': r.employeeEmail,
+          'Date': r.date,
+          'Day': r.day,
+          'Status': r.status,
+          'Clock In': r.clockIn,
+          'Clock Out': r.clockOut,
+          'Hours Worked': r.hoursWorked,
+        };
+        if (includeLocation) {
+          row['Clock In Location'] = r.clockInLocation;
+          row['Clock Out Location'] = r.clockOutLocation;
+        }
+        row['Leave Type'] = r.leaveType;
+        row['Leave Status'] = r.leaveStatus;
+        row['Leave Reason'] = r.leaveReason;
+        return row;
+      });
+
       const wb = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(wb, ws, 'Attendance');
 
-      // Auto-size columns
-      const maxWidth = data.reduce((w, r) => Math.max(w, r['Employee Name'].length), 10);
-      ws['!cols'] = [
-        { wch: maxWidth },
-        { wch: 12 },
-        { wch: 10 },
-        { wch: 10 },
-        { wch: 12 },
-        { wch: 12 },
-        { wch: 20 },
-        { wch: 20 },
+      const wsDetail = XLSX.utils.json_to_sheet(sheetRows);
+      const detailCols: XLSX.ColInfo[] = [
+        { wch: 22 }, { wch: 26 }, { wch: 12 }, { wch: 5 },
+        { wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 13 },
       ];
+      if (includeLocation) {
+        detailCols.push({ wch: 55 }, { wch: 55 });
+      }
+      detailCols.push({ wch: 14 }, { wch: 14 }, { wch: 30 });
+      wsDetail['!cols'] = detailCols;
+      XLSX.utils.book_append_sheet(wb, wsDetail, 'Daily Attendance');
 
-      const fileName = `Attendance_${startDate}_to_${endDate}.xlsx`;
-      XLSX.writeFile(wb, fileName);
+      if (includeStats) {
+        // Build summary by employee
+        const employeeSummary = new Map<string, any>();
+        
+        detailRows.forEach(row => {
+          if (!employeeSummary.has(row.employeeName)) {
+            employeeSummary.set(row.employeeName, {
+              name: row.employeeName,
+              email: row.employeeEmail,
+              present: 0,
+              absent: 0,
+              active: 0,
+              completed: 0,
+              totalRecords: 0,
+            });
+          }
+          
+          const summary = employeeSummary.get(row.employeeName);
+          summary.totalRecords++;
+          
+          if (row.status === 'Completed') summary.completed++;
+          else if (row.status === 'Active') summary.active++;
+        });
+
+        const summaryRows = Array.from(employeeSummary.values()).map(s => ({
+          'Employee Name': s.name,
+          'Employee Email': s.email,
+          'Total Records': s.totalRecords,
+          'Completed': s.completed,
+          'Active': s.active,
+        }));
+
+        const wsSummary = XLSX.utils.json_to_sheet(summaryRows);
+        wsSummary['!cols'] = [
+          { wch: 22 }, { wch: 26 }, { wch: 15 }, { wch: 12 }, { wch: 10 },
+        ];
+        XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary');
+      }
+
+      const period = startDate === endDate ? startDate : `${startDate}_to_${endDate}`;
+      XLSX.writeFile(wb, `Attendance_Records_${period}.xlsx`);
+
+      if (geocodeErrors > 0) {
+        alert(`Export done! Note: ${geocodeErrors} location(s) could not be resolved to addresses.`);
+      }
 
       onClose();
     } catch (error) {
@@ -296,56 +527,151 @@ export function AttendanceExportModal({
       alert('Failed to export to Excel. Please try again.');
     } finally {
       setExporting(false);
+      setProgressMsg('');
     }
   };
 
   // Export to PDF
   const exportToPDF = async () => {
     setExporting(true);
+    setProgressMsg('Fetching attendance records...');
+    
     try {
-      const records = await fetchAttendanceRecords();
+      const { detailRows, geocodeErrors } = await buildExportData();
 
-      const doc = new jsPDF('landscape');
-      
-      // Add title
-      doc.setFontSize(18);
-      doc.text('Attendance Report', 14, 20);
-      
-      // Add date range
-      doc.setFontSize(11);
-      doc.text(`Period: ${new Date(startDate).toLocaleDateString('en-GB')} - ${new Date(endDate).toLocaleDateString('en-GB')}`, 14, 28);
-      doc.text(`Generated: ${new Date().toLocaleString('en-GB')}`, 14, 34);
+      setProgressMsg('Building PDF file...');
 
-      // Prepare table data
-      const tableData = records.map(record => [
-        record.employeeName,
-        record.clockIn.toLocaleDateString('en-GB'), // DD/MM/YYYY format
-        record.clockIn.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }),
-        record.clockOut ? record.clockOut.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: true }) : 'N/A',
-        calculateDuration(record.clockIn, record.clockOut),
-        record.clockOut ? 'Completed' : 'Active',
-      ]);
+      const jsPDF = (await import('jspdf')).default;
+      const autoTable = (await import('jspdf-autotable')).default;
 
-      // Add table
+      const doc = new jsPDF('landscape', 'mm', 'a4');
+
+      // Title
+      doc.setFontSize(16);
+      doc.text('Attendance Records Report', 14, 15);
+
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      const formattedStart = new Date(startDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      const formattedEnd = new Date(endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+      doc.text(`Period: ${formattedStart} — ${formattedEnd}`, 14, 22);
+      doc.text(`Generated: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 14, 27);
+      doc.text(`Employees: ${selectedEmployees.length}`, 14, 32);
+      doc.setTextColor(0);
+
+      // Detail table
+      const headers = ['Employee', 'Date', 'Day', 'Status', 'Clock In', 'Clock Out', 'Hours'];
+      if (includeLocation) {
+        headers.push('Clock In Location', 'Clock Out Location');
+      }
+      headers.push('Leave Type', 'Leave Status');
+
+      const body = detailRows.map((r) => {
+        const row = [r.employeeName, r.date, r.day, r.status, r.clockIn, r.clockOut, String(r.hoursWorked)];
+        if (includeLocation) {
+          row.push(r.clockInLocation, r.clockOutLocation);
+        }
+        row.push(r.leaveType, r.leaveStatus);
+        return row;
+      });
+
+      const colStyles: Record<number, any> = {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 12 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 18 },
+        5: { cellWidth: 22 },
+        6: { cellWidth: 14 },
+      };
+
+      if (includeLocation) {
+        colStyles[7] = { cellWidth: 50 };
+        colStyles[8] = { cellWidth: 50 };
+        colStyles[9] = { cellWidth: 18 };
+        colStyles[10] = { cellWidth: 18 };
+      } else {
+        colStyles[7] = { cellWidth: 18 };
+        colStyles[8] = { cellWidth: 18 };
+      }
+
       autoTable(doc, {
-        startY: 40,
-        head: [['Employee', 'Date', 'Clock In', 'Clock Out', 'Duration', 'Status']],
-        body: tableData,
+        startY: 37,
+        head: [headers],
+        body,
         theme: 'grid',
-        headStyles: { fillColor: [59, 130, 246] },
-        styles: { fontSize: 9 },
-        columnStyles: {
-          0: { cellWidth: 50 },
-          1: { cellWidth: 30 },
-          2: { cellWidth: 25 },
-          3: { cellWidth: 25 },
-          4: { cellWidth: 25 },
-          5: { cellWidth: 25 },
+        headStyles: { fillColor: [59, 130, 246], fontSize: 7, cellPadding: 2 },
+        bodyStyles: { fontSize: 6.5, cellPadding: 1.5 },
+        columnStyles: colStyles,
+        didParseCell: (data: any) => {
+          // Color-code status column
+          if (data.section === 'body' && data.column.index === 3) {
+            const val = data.cell.raw;
+            if (val === 'Completed') data.cell.styles.textColor = [22, 163, 74];
+            else if (val === 'Active') data.cell.styles.textColor = [37, 99, 235];
+            else if (val === 'Incomplete') data.cell.styles.textColor = [220, 38, 38];
+          }
         },
       });
 
-      const fileName = `Attendance_${startDate}_to_${endDate}.pdf`;
-      doc.save(fileName);
+      if (includeStats) {
+        doc.addPage('landscape');
+        doc.setFontSize(14);
+        doc.text('Attendance Summary', 14, 15);
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`${formattedStart} — ${formattedEnd}`, 14, 22);
+        doc.setTextColor(0);
+
+        // Build summary
+        const employeeSummary = new Map<string, any>();
+        
+        detailRows.forEach(row => {
+          if (!employeeSummary.has(row.employeeName)) {
+            employeeSummary.set(row.employeeName, {
+              name: row.employeeName,
+              email: row.employeeEmail,
+              totalRecords: 0,
+              completed: 0,
+              active: 0,
+            });
+          }
+          
+          const summary = employeeSummary.get(row.employeeName);
+          summary.totalRecords++;
+          
+          if (row.status === 'Completed') summary.completed++;
+          else if (row.status === 'Active') summary.active++;
+        });
+
+        const summaryHeaders = ['Employee', 'Email', 'Total Records', 'Completed', 'Active'];
+        const summaryBody = Array.from(employeeSummary.values()).map(s => [
+          s.name, s.email, String(s.totalRecords), String(s.completed), String(s.active)
+        ]);
+
+        autoTable(doc, {
+          startY: 27,
+          head: [summaryHeaders],
+          body: summaryBody,
+          theme: 'grid',
+          headStyles: { fillColor: [59, 130, 246], fontSize: 8 },
+          bodyStyles: { fontSize: 7.5 },
+          columnStyles: {
+            0: { cellWidth: 50 },
+            1: { cellWidth: 60 },
+            2: { cellWidth: 30 },
+            3: { cellWidth: 25 },
+            4: { cellWidth: 20 },
+          },
+        });
+      }
+
+      const period = startDate === endDate ? startDate : `${startDate}_to_${endDate}`;
+      doc.save(`Attendance_Records_${period}.pdf`);
+
+      if (geocodeErrors > 0) {
+        alert(`Export done! Note: ${geocodeErrors} location(s) could not be resolved to addresses.`);
+      }
 
       onClose();
     } catch (error) {
@@ -353,6 +679,7 @@ export function AttendanceExportModal({
       alert('Failed to export to PDF. Please try again.');
     } finally {
       setExporting(false);
+      setProgressMsg('');
     }
   };
 
@@ -560,64 +887,120 @@ export function AttendanceExportModal({
           </div>
 
           {/* Export Format Selection */}
-          <div className="space-y-4">
-            <Label>Export Format</Label>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Export Format</p>
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
               <button
                 onClick={() => setExportFormat('excel')}
-                className={`flex items-center gap-3 p-4 border-2 rounded-lg transition-all ${
+                className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 border-2 rounded-lg transition-all ${
                   exportFormat === 'excel'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300'
+                    ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                    : 'border-gray-200 dark:border-gray-600 hover:border-green-300'
                 }`}
               >
-                <FileSpreadsheet className={`w-6 h-6 ${exportFormat === 'excel' ? 'text-blue-600' : 'text-gray-400'}`} />
+                <FileSpreadsheet className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${exportFormat === 'excel' ? 'text-green-600' : 'text-gray-400'}`} />
                 <div className="text-left">
-                  <div className="font-medium text-gray-900 dark:text-white">Excel</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">.xlsx format</div>
+                  <div className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white">Excel</div>
+                  <div className="text-[10px] sm:text-xs text-gray-500">.xlsx</div>
                 </div>
               </button>
 
               <button
                 onClick={() => setExportFormat('pdf')}
-                className={`flex items-center gap-3 p-4 border-2 rounded-lg transition-all ${
+                className={`flex items-center gap-2 sm:gap-3 p-2 sm:p-3 border-2 rounded-lg transition-all ${
                   exportFormat === 'pdf'
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300'
+                    ? 'border-red-500 bg-red-50 dark:bg-red-900/20'
+                    : 'border-gray-200 dark:border-gray-600 hover:border-red-300'
                 }`}
               >
-                <FileText className={`w-6 h-6 ${exportFormat === 'pdf' ? 'text-blue-600' : 'text-gray-400'}`} />
+                <FileText className={`w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0 ${exportFormat === 'pdf' ? 'text-red-600' : 'text-gray-400'}`} />
                 <div className="text-left">
-                  <div className="font-medium text-gray-900 dark:text-white">PDF</div>
-                  <div className="text-xs text-gray-500 dark:text-gray-400">.pdf format</div>
+                  <div className="font-medium text-xs sm:text-sm text-gray-900 dark:text-white">PDF</div>
+                  <div className="text-[10px] sm:text-xs text-gray-500">.pdf</div>
                 </div>
               </button>
             </div>
           </div>
+
+          {/* Options */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Options</p>
+            <div className="space-y-2">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeLocation}
+                  onChange={(e) => setIncludeLocation(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
+                />
+                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Include clock-in / clock-out location (full address)</span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={includeStats}
+                  onChange={(e) => setIncludeStats(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
+                />
+                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
+                  Include summary {exportFormat === 'excel' ? 'sheet' : 'page'} (per-employee totals)
+                </span>
+              </label>
+            </div>
+          </div>
+
+          {/* Info */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2.5 sm:p-3 text-xs sm:text-sm text-blue-700 dark:text-blue-300 space-y-1">
+            <p className="font-medium text-xs sm:text-sm">Export includes:</p>
+            <ul className="list-disc list-inside space-y-0.5 text-[11px] sm:text-xs pl-1">
+              <li>Daily status, clock-in/out times (IST), hours worked</li>
+              {includeLocation && <li>Full address for clock-in/out locations</li>}
+              <li>Leave type, status, and reason</li>
+              {includeStats && <li>Summary {exportFormat === 'excel' ? 'sheet' : 'page'} with per-employee totals</li>}
+            </ul>
+            {includeLocation && (
+              <p className="text-[11px] sm:text-xs mt-2 text-orange-600 dark:text-orange-400">
+                Address lookup uses OpenStreetMap (~1 sec per unique location). Previously resolved locations are cached.
+              </p>
+            )}
+          </div>
+
+          {/* Progress */}
+          {exporting && progressMsg && (
+            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 bg-gray-50 dark:bg-gray-700 rounded-lg px-3 py-2.5 sm:px-4 sm:py-3">
+              <Loader2 className="w-4 h-4 animate-spin flex-shrink-0 text-blue-600" />
+              <span className="break-words">{progressMsg}</span>
+            </div>
+          )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col sm:flex-row gap-2 sm:gap-0">
           <Button
             variant="outline"
             onClick={onClose}
             disabled={exporting}
+            className="w-full sm:w-auto order-2 sm:order-1"
           >
             Cancel
           </Button>
           <Button
             onClick={handleExport}
             disabled={exporting || selectedEmployees.length === 0}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
+            className={`w-full sm:w-auto order-1 sm:order-2 text-white ${
+              exportFormat === 'excel'
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-red-600 hover:bg-red-700'
+            }`}
           >
             {exporting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Exporting...
+                <span className="text-sm">Exporting...</span>
               </>
             ) : (
               <>
                 <Download className="w-4 h-4 mr-2" />
-                Export {exportFormat.toUpperCase()}
+                <span className="text-sm">Export {exportFormat === 'excel' ? 'Excel' : 'PDF'}</span>
               </>
             )}
           </Button>
