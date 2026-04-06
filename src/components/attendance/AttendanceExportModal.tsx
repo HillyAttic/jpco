@@ -401,7 +401,7 @@ export function AttendanceExportModal({
 
       return {
         employeeName: rec.employeeName,
-        employeeEmail: rec.employeeEmail,
+        employeeEmail: rec.employeeEmail || '',
         date: `${dateDay}/${dateMon}/${dateYear}`,
         day: DAY_NAMES[d.getDay()],
         status: statusLabel(rec.status),
