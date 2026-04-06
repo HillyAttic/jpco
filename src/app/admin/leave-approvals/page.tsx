@@ -279,7 +279,7 @@ export default function LeaveApprovalsPage() {
                     </div>
                   ) : (
                     <div className="text-sm text-gray-500 pt-2">
-                      Processed by {request.approverName || 'Manager'}
+                      Approved by {request.approverName || 'Manager'}
                     </div>
                   )}
                 </div>
