@@ -5,7 +5,6 @@ import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { taskCompletionService } from '@/services/task-completion.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
-import { useModal } from '@/contexts/modal-context';
 import { auth } from '@/lib/firebase';
 
 interface Client {
@@ -50,8 +49,6 @@ export function RecurringTaskClientModal({
   const [arnName, setArnName] = useState('');
   const [arnError, setArnError] = useState('');
   const { user, userProfile } = useEnhancedAuth();
-  const { openModal, closeModal } = useModal();
-
   // Generate only the viewing month (or current month if not specified)
   const generateMonths = () => {
     const targetDate = viewingMonth || new Date();
@@ -74,15 +71,6 @@ export function RecurringTaskClientModal({
   };
 
   const visibleMonths = getVisibleMonths();
-
-  // Manage modal context state
-  useEffect(() => {
-    if (isOpen) {
-      openModal();
-    } else {
-      closeModal();
-    }
-  }, [isOpen, openModal, closeModal]);
 
   // Initialize client completions from task data
   useEffect(() => {
