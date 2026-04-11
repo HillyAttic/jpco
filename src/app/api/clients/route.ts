@@ -65,7 +65,26 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '1000');
 
-    const clients = await clientAdminService.getAll({ status, search, limit });
+    let clients = await clientAdminService.getAll({ status, search, limit });
+
+    // Non-admin filtering: only show clients the admin has assigned to this user
+    if (userRole !== 'admin') {
+      const { adminDb } = await import('@/lib/firebase-admin');
+      const accessSnapshot = await adminDb
+        .collection('client_access')
+        .where('userId', '==', authResult.user.uid)
+        .limit(1)
+        .get();
+
+      if (accessSnapshot.empty) {
+        // No access doc → user sees zero clients
+        clients = [];
+      } else {
+        const allowedIds: string[] = accessSnapshot.docs[0].data().allowedClientIds || [];
+        const allowedSet = new Set(allowedIds);
+        clients = clients.filter((c: any) => c.id && allowedSet.has(c.id));
+      }
+    }
 
     return NextResponse.json({ data: clients, page, limit, total: clients.length });
   } catch (error) {

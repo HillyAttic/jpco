@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { Task, TaskAttachment } from '@/types/task.types';
 import { Employee, employeeService } from '@/services/employee.service';
 import { Category, categoryService } from '@/services/category.service';
-import { Client, clientService } from '@/services/client.service';
+import { Client } from '@/services/client.service';
 import { authenticatedFetch } from '@/lib/api-client';
 import { validateFiles, ALLOWED_EXTENSIONS, MAX_FILES_PER_TASK } from '@/lib/task-attachment.service';
 import {
@@ -157,8 +157,10 @@ export function TaskModal({
     const loadClients = async () => {
       setLoadingClients(true);
       try {
-        const activeClients = await clientService.getAll({ status: 'active', limit: 1000 });
-        setClients(activeClients);
+        const response = await authenticatedFetch('/api/clients?status=active&limit=1000');
+        if (!response.ok) throw new Error('Failed to fetch clients');
+        const result = await response.json();
+        setClients(result.data || []);
       } catch (error) {
         console.error('Error loading clients:', error);
         setClients([]);

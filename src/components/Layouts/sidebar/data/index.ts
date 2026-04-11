@@ -170,6 +170,13 @@ export const NAV_DATA = [
         requiresRole: ['admin'], // Only admins can manage credentials
       },
       {
+        title: "Client Access",
+        url: "/admin/client-access",
+        icon: Icons.ClientsIcon,
+        items: [],
+        requiresRole: ['admin'], // Only admins can manage client access
+      },
+      {
         title: "Pending Invoices",
         url: "/admin/pending-invoices",
         icon: Icons.InvoiceIcon,
