@@ -510,8 +510,12 @@ export default function UpdateSchedulePage() {
       const tasks = await rosterService.getTasksForDate(user.uid, date);
       setSelectedDate(date);
       setSelectedDateTasks(tasks);
-      setShowTaskTable(true);
-      openModal();
+      // Only show the task table modal in desktop view
+      // Mobile view has its own built-in bottom sheet for task details
+      if (viewMode === 'desktop') {
+        setShowTaskTable(true);
+        openModal();
+      }
     } catch (error) {
       console.error('Error loading tasks for date:', error);
     }

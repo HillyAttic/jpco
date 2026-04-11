@@ -32,7 +32,7 @@ interface MobileCalendarViewProps {
 export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [showTaskModal, setShowTaskModal] = useState(false);
+  const [showBottomSheet, setShowBottomSheet] = useState(false);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [clients, setClients] = useState<any[]>([]);
@@ -76,14 +76,24 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
 
     const days = [];
 
-    // Add empty cells for days before the first day of the month
-    for (let i = 0; i < firstDayOfMonth; i++) {
-      days.push(null);
+    // Add previous month's trailing days for context
+    const prevMonth = new Date(year, month, 0);
+    const prevMonthDays = prevMonth.getDate();
+    for (let i = firstDayOfMonth - 1; i >= 0; i--) {
+      days.push({ date: new Date(year, month - 1, prevMonthDays - i), isCurrentMonth: false });
     }
 
     // Add days of the month
     for (let day = 1; day <= daysInMonth; day++) {
-      days.push(new Date(year, month, day));
+      days.push({ date: new Date(year, month, day), isCurrentMonth: true });
+    }
+
+    // Add next month's leading days to fill the last row
+    const remainingCells = 7 - (days.length % 7);
+    if (remainingCells < 7) {
+      for (let day = 1; day <= remainingCells; day++) {
+        days.push({ date: new Date(year, month + 1, day), isCurrentMonth: false });
+      }
     }
 
     return days;
@@ -115,6 +125,15 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
       year: 'numeric',
       month: 'long',
       day: 'numeric'
+    });
+  };
+
+  const formatShortDate = (date: Date) => {
+    return date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric'
     });
   };
 
@@ -179,8 +198,14 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
     closeModal();
   };
 
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date);
+    setShowBottomSheet(true);
+    openModal();
+  };
+
   const days = React.useMemo(() => getDaysInMonth(currentDate), [currentDate, getDaysInMonth]);
-  const weekdays = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   const isToday = (date: Date | null) => {
     if (!date) return false;
@@ -192,202 +217,293 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
     );
   };
 
-  const getTaskColor = (task: CalendarTask) => {
-    if (task.priority === 'urgent') return 'bg-red-500';
-    if (task.priority === 'high') return 'bg-orange-500';
-    if (task.priority === 'medium') return 'bg-yellow-500';
-    return 'bg-green-500';
+  const isTodayWeekday = (dayIndex: number) => {
+    const today = new Date();
+    return today.getDay() === dayIndex &&
+      currentDate.getMonth() === today.getMonth() &&
+      currentDate.getFullYear() === today.getFullYear();
   };
 
-  return (
-    <div className="bg-white dark:bg-gray-dark rounded-lg shadow max-w-md mx-auto">
-      {/* Mobile Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
-        <Bars3Icon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-          {currentDate.toLocaleDateString('en-US', { month: 'long' })}
-        </h1>
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => setCurrentDate(new Date())}
-            className="px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-          >
-            Today
-          </button>
-          <CalendarIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-          <EllipsisVerticalIcon className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-        </div>
-      </div>
+  const getTaskLabelColor = (task: CalendarTask) => {
+    if (task.status === 'completed') return 'bg-emerald-600/80 text-emerald-100';
+    if (task.priority === 'urgent') return 'bg-red-500/80 text-red-100';
+    if (task.priority === 'high') return 'bg-orange-500/80 text-orange-100';
+    if (task.priority === 'medium') return 'bg-amber-500/80 text-amber-100';
+    return 'bg-teal-600/80 text-teal-100';
+  };
 
-      {/* Month Navigation */}
-      <div className="flex items-center justify-between p-4">
-        <button
-          onClick={() => navigateMonth('prev')}
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-        >
-          <ChevronLeftIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-        </button>
-        <div className="text-center">
-          <div className="text-lg font-medium text-gray-900 dark:text-white">
-            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+  const getTaskLabelColorLight = (task: CalendarTask) => {
+    if (task.status === 'completed') return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-600/80 dark:text-emerald-100';
+    if (task.priority === 'urgent') return 'bg-red-100 text-red-800 dark:bg-red-500/80 dark:text-red-100';
+    if (task.priority === 'high') return 'bg-orange-100 text-orange-800 dark:bg-orange-500/80 dark:text-orange-100';
+    if (task.priority === 'medium') return 'bg-amber-100 text-amber-800 dark:bg-amber-500/80 dark:text-amber-100';
+    return 'bg-teal-100 text-teal-800 dark:bg-teal-600/80 dark:text-teal-100';
+  };
+
+  // Get rows for the calendar
+  const calendarRows = React.useMemo(() => {
+    const rows = [];
+    for (let i = 0; i < days.length; i += 7) {
+      rows.push(days.slice(i, i + 7));
+    }
+    return rows;
+  }, [days]);
+
+  return (
+    <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-lg max-w-md mx-auto overflow-hidden border border-gray-200 dark:border-gray-800">
+      {/* Mobile Header - Google Calendar Style */}
+      <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-[#1a1a2e]">
+        <div className="flex items-center gap-3">
+          <Bars3Icon className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+          <div className="flex items-center gap-1">
+            <h1 className="text-lg font-medium text-gray-900 dark:text-white">
+              {currentDate.toLocaleDateString('en-US', { month: 'long' })}
+            </h1>
+            <ChevronRightIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 rotate-90" />
           </div>
         </div>
-        <button
-          onClick={() => navigateMonth('next')}
-          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-        >
-          <ChevronRightIcon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setCurrentDate(new Date())}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold border-2 border-blue-500 text-blue-600 dark:text-blue-400 dark:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
+          >
+            {new Date().getDate()}
+          </button>
+          <CalendarIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+          <EllipsisVerticalIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
+        </div>
       </div>
 
-      {/* Weekday Headers */}
-      <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
+      {/* Weekday Headers - Google Calendar Style with colored underline for today */}
+      <div className="grid grid-cols-7 px-1">
         {weekdays.map((day, index) => (
-          <div key={index} className="p-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400">
+          <div
+            key={index}
+            className={`py-2 text-center text-xs font-semibold tracking-wide ${
+              isTodayWeekday(index)
+                ? 'text-blue-600 dark:text-blue-400'
+                : 'text-gray-500 dark:text-gray-500'
+            }`}
+          >
             {day}
+            {isTodayWeekday(index) && (
+              <div className="mt-1 mx-auto w-6 h-0.5 rounded-full bg-blue-600 dark:bg-blue-400" />
+            )}
           </div>
         ))}
       </div>
 
-      {/* Calendar Grid */}
-      <div ref={calendarGridRef} className="grid grid-cols-7">
-        {days.map((day, index) => {
-          const dayTasks = day ? getTasksForDate(day) : [];
-          const todayClass = day && isToday(day);
-
-          return (
-            <div
-              key={index}
-              className={`min-h-16 p-2 border-r border-b border-gray-100 dark:border-gray-700 relative ${
-                !day ? 'bg-gray-50 dark:bg-gray-800' : 'hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer'
-              } ${todayClass ? 'bg-blue-50 dark:bg-blue-900/20' : ''}`}
-              onClick={() => {
-                if (day) {
-                  setSelectedDate(day);
-                  setShowTaskModal(true);
-                }
-              }}
-              data-today={todayClass ? 'true' : 'false'}
-            >
-              {day && (
-                <>
-                  {/* Day Number */}
-                  <div className={`text-sm font-medium mb-1 ${
-                    todayClass 
-                      ? 'w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs' 
-                      : 'text-gray-900 dark:text-white'
-                  }`}>
-                    {day.getDate()}
-                  </div>
-
-                  {/* Task Indicators */}
-                  <div className="space-y-1">
-                    {dayTasks.slice(0, 3).map((task, taskIndex) => (
-                      <div
-                        key={task.id}
-                        onClick={(e) => handleTaskClick(task, e)}
-                        className={`text-xs px-2 py-1 rounded text-white cursor-pointer hover:opacity-80 transition-opacity truncate ${getTaskColor(task)}`}
-                        title={task.title}
-                      >
-                        {task.title}
-                      </div>
-                    ))}
-                    {dayTasks.length > 3 && (
-                      <div className="text-xs text-gray-500 dark:text-gray-400 px-1">
-                        +{dayTasks.length - 3}
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-          );
-        })}
+      {/* Month Navigation - Compact */}
+      <div className="flex items-center justify-between px-4 py-2 bg-gray-50 dark:bg-[#16162a]">
+        <button
+          onClick={() => navigateMonth('prev')}
+          className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+        >
+          <ChevronLeftIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+        </button>
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+          {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+        </span>
+        <button
+          onClick={() => navigateMonth('next')}
+          className="p-1.5 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+        >
+          <ChevronRightIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+        </button>
       </div>
 
-      {/* Task Modal */}
-      {showTaskModal && selectedDate && (
-        <div
-          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
-          onClick={() => setShowTaskModal(false)}
-        >
+      {/* Calendar Grid - Google Calendar Monthly View Style */}
+      <div ref={calendarGridRef}>
+        {calendarRows.map((row, rowIndex) => (
+          <div key={rowIndex} className="grid grid-cols-7 border-t border-gray-100 dark:border-gray-800/60">
+            {row.map((dayObj, colIndex) => {
+              const { date: day, isCurrentMonth } = dayObj;
+              const dayTasks = getTasksForDate(day);
+              const todayHighlight = isToday(day);
+              const isSelected = selectedDate &&
+                day.getDate() === selectedDate.getDate() &&
+                day.getMonth() === selectedDate.getMonth() &&
+                day.getFullYear() === selectedDate.getFullYear();
+
+              return (
+                <div
+                  key={colIndex}
+                  className={`min-h-[80px] py-1.5 px-0.5 relative cursor-pointer transition-colors
+                    ${!isCurrentMonth ? 'opacity-40' : ''}
+                    ${isSelected ? 'bg-blue-50 dark:bg-blue-900/15' : 'hover:bg-gray-50 dark:hover:bg-white/5'}
+                  `}
+                  onClick={() => handleDateClick(day)}
+                  data-today={todayHighlight ? 'true' : 'false'}
+                >
+                  {/* Day Number */}
+                  <div className="flex justify-center mb-1">
+                    <div className={`w-7 h-7 flex items-center justify-center text-sm font-medium rounded-full transition-colors ${
+                      todayHighlight
+                        ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
+                        : isCurrentMonth
+                          ? 'text-gray-800 dark:text-gray-200'
+                          : 'text-gray-400 dark:text-gray-600'
+                    }`}>
+                      {day.getDate()}
+                    </div>
+                  </div>
+
+                  {/* Task Labels - Google Calendar Style */}
+                  <div className="space-y-0.5 overflow-hidden">
+                    {dayTasks.length === 1 && (
+                      <div
+                        onClick={(e) => handleTaskClick(dayTasks[0], e)}
+                        className={`text-[10px] leading-tight px-1 py-0.5 rounded-sm cursor-pointer hover:opacity-90 transition-opacity truncate ${getTaskLabelColorLight(dayTasks[0])}`}
+                        title={dayTasks[0].title}
+                      >
+                        {dayTasks[0].title}
+                      </div>
+                    )}
+                    {dayTasks.length === 2 && (
+                      <>
+                        <div
+                          onClick={(e) => handleTaskClick(dayTasks[0], e)}
+                          className={`text-[10px] leading-tight px-1 py-0.5 rounded-sm cursor-pointer hover:opacity-90 transition-opacity truncate ${getTaskLabelColorLight(dayTasks[0])}`}
+                          title={dayTasks[0].title}
+                        >
+                          {dayTasks[0].title}
+                        </div>
+                        <div
+                          onClick={(e) => handleTaskClick(dayTasks[1], e)}
+                          className={`text-[10px] leading-tight px-1 py-0.5 rounded-sm cursor-pointer hover:opacity-90 transition-opacity truncate ${getTaskLabelColorLight(dayTasks[1])}`}
+                          title={dayTasks[1].title}
+                        >
+                          {dayTasks[1].title}
+                        </div>
+                      </>
+                    )}
+                    {dayTasks.length >= 3 && (
+                      <>
+                        <div
+                          onClick={(e) => handleTaskClick(dayTasks[0], e)}
+                          className={`text-[10px] leading-tight px-1 py-0.5 rounded-sm cursor-pointer hover:opacity-90 transition-opacity truncate ${getTaskLabelColorLight(dayTasks[0])}`}
+                          title={dayTasks[0].title}
+                        >
+                          {dayTasks[0].title}
+                        </div>
+                        <div className="text-[10px] leading-tight px-1 text-blue-600 dark:text-blue-400 font-medium">
+                          ● {dayTasks.length} pending
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+
+      {/* Bottom Sheet for Selected Date Tasks */}
+      {showBottomSheet && selectedDate && (
+        <>
+          {/* Backdrop */}
           <div
-            className="bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-2xl w-full p-6 max-h-[90vh] overflow-y-auto"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-bold text-gray-900 dark:text-white">
-                Tasks for {formatDate(selectedDate)}
-              </h3>
+            className="fixed inset-0 bg-black/40 z-40 transition-opacity"
+            onClick={() => { setShowBottomSheet(false); closeModal(); }}
+          />
+          {/* Sheet */}
+          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1e36] rounded-t-2xl shadow-2xl max-h-[60vh] animate-slide-up">
+            {/* Handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
+            </div>
+
+            {/* Header */}
+            <div className="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-gray-800">
+              <div>
+                <h3 className="text-base font-semibold text-gray-900 dark:text-white">
+                  Tasks for {formatShortDate(selectedDate)}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                  {getTasksForDate(selectedDate).length} task{getTasksForDate(selectedDate).length !== 1 ? 's' : ''} scheduled
+                </p>
+              </div>
               <button
-                onClick={() => setShowTaskModal(false)}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                onClick={() => { setShowBottomSheet(false); closeModal(); }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
               >
-                <XMarkIcon className="w-5 h-5" />
+                <XMarkIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
               </button>
             </div>
 
-            {getTasksForDate(selectedDate).length > 0 ? (
-              <div className="space-y-2">
-                {getTasksForDate(selectedDate).map(task => (
-                  <div
-                    key={task.id}
-                    className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    onClick={(e) => {
-                      setShowTaskModal(false);
-                      handleTaskClick(task, e);
-                    }}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h4 className="font-medium text-gray-900 dark:text-white">{task.title}</h4>
+            {/* Tasks List */}
+            <div className="overflow-y-auto max-h-[45vh] px-4 py-3">
+              {getTasksForDate(selectedDate).length > 0 ? (
+                <div className="space-y-2">
+                  {getTasksForDate(selectedDate).map(task => (
+                    <div
+                      key={task.id}
+                      className="flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-700/50 cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10 transition-all active:scale-[0.98]"
+                      onClick={(e) => {
+                        setShowBottomSheet(false);
+                        closeModal();
+                        handleTaskClick(task, e);
+                      }}
+                    >
+                      {/* Color indicator */}
+                      <div className={`w-1 self-stretch rounded-full flex-shrink-0 ${
+                        task.status === 'completed' ? 'bg-emerald-500' :
+                        task.priority === 'urgent' ? 'bg-red-500' :
+                        task.priority === 'high' ? 'bg-orange-500' :
+                        task.priority === 'medium' ? 'bg-amber-500' :
+                        'bg-teal-500'
+                      }`} />
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h4 className="font-medium text-sm text-gray-900 dark:text-white truncate">{task.title}</h4>
                           {task.isRecurring && (
-                            <span className="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
-                              <ArrowPathIcon className="w-3 h-3" />
-                              {task.recurrencePattern?.replace('-', ' ')}
-                            </span>
+                            <ArrowPathIcon className="w-3.5 h-3.5 text-purple-500 dark:text-purple-400 flex-shrink-0" />
                           )}
                         </div>
                         {task.description && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">{task.description}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">{task.description}</p>
                         )}
-                        {task.category && (
-                          <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                            Category: {task.category}
-                          </p>
-                        )}
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                            task.status === 'completed' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300' :
+                            task.status === 'in-progress' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
+                            'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-300'
+                          }`}>
+                            {task.status.replace('-', ' ')}
+                          </span>
+                          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
+                            task.priority === 'urgent' ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300' :
+                            task.priority === 'high' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300' :
+                            task.priority === 'medium' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' :
+                            'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-300'
+                          }`}>
+                            {task.priority}
+                          </span>
+                          {task.isRecurring && task.recurrencePattern && (
+                            <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 font-medium">
+                              {task.recurrencePattern.replace('-', ' ')}
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <span className={`text-xs px-2 py-1 rounded-full whitespace-nowrap ml-2 ${
-                        task.status === 'completed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
-                        task.status === 'in-progress' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
-                        'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300'
-                      }`}>
-                        {task.status.replace('-', ' ')}
-                      </span>
+
+                      <ChevronRightIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 flex-shrink-0 mt-1" />
                     </div>
-                    <div className="mt-3 flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                      <span className={`px-2 py-1 rounded ${
-                        task.priority === 'urgent' ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300' :
-                        task.priority === 'high' ? 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' :
-                        task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300' :
-                        'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                      }`}>
-                        {task.priority}
-                      </span>
-                      {task.assignedTo && task.assignedTo.length > 0 && (
-                        <span>Assigned to: {task.assignedTo.length} user(s)</span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-gray-500 dark:text-gray-400 text-center py-8">No tasks scheduled for this day.</p>
-            )}
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-10">
+                  <CalendarIcon className="w-10 h-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No tasks scheduled for this day</p>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
+
 
       {/* Client Tracking Modal */}
       {selectedTask && fullRecurringTask && (

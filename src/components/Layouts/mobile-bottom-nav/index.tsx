@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from "react";
 import { LayoutDashboard, Bell, ClipboardCheck, CalendarRange, CalendarDays } from "lucide-react";
 import { useNotifications } from "@/hooks/use-notifications";
 import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
+import { useModal } from "@/contexts/modal-context";
 
 interface NavItem {
   href: string;
@@ -48,6 +49,7 @@ export function MobileBottomNav() {
   const pathname = usePathname();
   const { unreadCount } = useNotifications();
   const { isAdmin } = useEnhancedAuth();
+  const { isModalOpen } = useModal();
 
   const [visible, setVisible] = useState(true);
   const lastScrollY = useRef(0);
@@ -84,7 +86,7 @@ export function MobileBottomNav() {
         "shadow-[0_-0.5px_0_0_rgba(0,0,0,0.12)] dark:shadow-[0_-0.5px_0_0_rgba(255,255,255,0.08)]",
         "pb-[env(safe-area-inset-bottom,0px)]",
         "transition-transform duration-300 ease-in-out",
-        visible ? "translate-y-0" : "translate-y-full"
+        visible && !isModalOpen ? "translate-y-0" : "translate-y-full"
       )}
       role="navigation"
       aria-label="Mobile bottom navigation"

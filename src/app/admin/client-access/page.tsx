@@ -348,66 +348,92 @@ export default function ClientAccessPage() {
         <>
           {/* User Search and Selection */}
           <div className="mb-6">
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Search users by name, email, or role..."
-                value={userSearchQuery}
-                onChange={(e) => setUserSearchQuery(e.target.value)}
+            {/* Mobile Dropdown - visible only on small screens */}
+            <div className="block md:hidden mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Select User
+              </label>
+              <select
+                value={activeUserId || ''}
+                onChange={(e) => {
+                  setActiveUserId(e.target.value);
+                  setSearchQuery('');
+                  setComplianceFilter('all');
+                }}
                 className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-800 dark:text-white"
-              />
+              >
+                <option value="">Choose a user...</option>
+                {users.map((user) => (
+                  <option key={user.uid} value={user.uid}>
+                    {user.displayName} ({user.role}) - {user.email}
+                  </option>
+                ))}
+              </select>
             </div>
 
-            {/* User Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filteredUsers.map((user) => (
-                <button
-                  key={user.uid}
-                  onClick={() => {
-                    setActiveUserId(user.uid);
-                    setSearchQuery('');
-                    setComplianceFilter('all');
-                  }}
-                  className={`p-4 rounded-lg border-2 transition-all text-left ${
-                    activeUserId === user.uid
-                      ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20 shadow-md'
-                      : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-sm font-medium truncate ${
-                          activeUserId === user.uid
-                            ? 'text-purple-700 dark:text-purple-300'
-                            : 'text-gray-900 dark:text-white'
+            {/* Desktop View - hidden on mobile */}
+            <div className="hidden md:block">
+              <div className="mb-4">
+                <input
+                  type="text"
+                  placeholder="Search users by name, email, or role..."
+                  value={userSearchQuery}
+                  onChange={(e) => setUserSearchQuery(e.target.value)}
+                  className="w-full px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 dark:bg-gray-800 dark:text-white"
+                />
+              </div>
+
+              {/* User Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {filteredUsers.map((user) => (
+                  <button
+                    key={user.uid}
+                    onClick={() => {
+                      setActiveUserId(user.uid);
+                      setSearchQuery('');
+                      setComplianceFilter('all');
+                    }}
+                    className={`p-4 rounded-lg border-2 transition-all text-left ${
+                      activeUserId === user.uid
+                        ? 'border-purple-600 bg-purple-50 dark:bg-purple-900/20 shadow-md'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-purple-300 dark:hover:border-purple-700 hover:shadow'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-sm font-medium truncate ${
+                            activeUserId === user.uid
+                              ? 'text-purple-700 dark:text-purple-300'
+                              : 'text-gray-900 dark:text-white'
+                          }`}
+                        >
+                          {user.displayName}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                          {user.email}
+                        </p>
+                      </div>
+                      <span
+                        className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
+                          user.role === 'manager'
+                            ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                            : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
                         }`}
                       >
-                        {user.displayName}
-                      </p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
-                        {user.email}
-                      </p>
+                        {user.role}
+                      </span>
                     </div>
-                    <span
-                      className={`ml-2 px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
-                        user.role === 'manager'
-                          ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                          : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                      }`}
-                    >
-                      {user.role}
-                    </span>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {filteredUsers.length === 0 && (
-              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
-                No users found matching "{userSearchQuery}"
+                  </button>
+                ))}
               </div>
-            )}
+
+              {filteredUsers.length === 0 && (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  No users found matching "{userSearchQuery}"
+                </div>
+              )}
+            </div>
           </div>
 
           {/* User Panel */}
@@ -424,7 +450,7 @@ export default function ClientAccessPage() {
               </div>
 
               {/* Filters Row */}
-              <div className="flex flex-col sm:flex-row gap-3 mb-4">
+              <div className="flex flex-col gap-3 mb-4 sm:flex-row">
                 <input
                   type="text"
                   placeholder="Search clients..."
@@ -451,18 +477,18 @@ export default function ClientAccessPage() {
                   <option value="tds">TDS</option>
                   <option value="statutoryAudit">Statutory Audit</option>
                 </select>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap sm:flex-nowrap">
                   <button
                     onClick={handleSelectAll}
                     disabled={savingUser === activeUserId}
-                    className="px-3 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60"
+                    className="flex-1 sm:flex-none px-3 py-2 text-sm rounded-md bg-green-600 text-white hover:bg-green-700 disabled:opacity-60 whitespace-nowrap"
                   >
                     Select All
                   </button>
                   <button
                     onClick={handleDeselectAll}
                     disabled={savingUser === activeUserId}
-                    className="px-3 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-60"
+                    className="flex-1 sm:flex-none px-3 py-2 text-sm rounded-md bg-red-600 text-white hover:bg-red-700 disabled:opacity-60 whitespace-nowrap"
                   >
                     Deselect All
                   </button>
