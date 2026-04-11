@@ -33,6 +33,7 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status') || undefined;
     const employeeId = searchParams.get('employeeId') || undefined;
     const leaveType = searchParams.get('leaveType') || undefined;
+    const includeAll = searchParams.get('includeAll') === 'true'; // For roster views that need all employees
 
     // Use Admin SDK to bypass Firestore security rules on the server
     const { adminDb } = await import('@/lib/firebase-admin');
@@ -148,22 +149,27 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(requests, { status: 200 });
       }
     } else {
-      // Admin: only show requests from employees NOT assigned to any manager
-      // Collect all employeeIds that are under any manager
-      const allHierarchiesSnapshot = await adminDb.collection('manager-hierarchies').get();
-      const assignedEmployeeIds = new Set<string>();
-      allHierarchiesSnapshot.docs.forEach((doc) => {
-        const ids: string[] = doc.data().employeeIds || [];
-        ids.forEach((id) => assignedEmployeeIds.add(id));
-      });
-
+      // Admin: see all leave requests OR specific employee if employeeId is provided
+      // When employeeId is explicitly requested (e.g., viewing calendar), show that employee's data
+      // regardless of manager assignment
+      // When includeAll=true (e.g., roster view), show all employees' leave requests
+      
       if (employeeId) {
-        // Admin is filtering by a specific employee — respect it but still scope
-        if (assignedEmployeeIds.has(employeeId)) {
-          // This employee belongs to a manager, admin shouldn't see them
-          return NextResponse.json([], { status: 200 });
-        }
+        // Admin is viewing a specific employee's calendar - show their leave requests
         query = query.where('employeeId', '==', employeeId);
+      } else if (!includeAll) {
+        // Admin is viewing the general list - only show requests from employees NOT assigned to any manager
+        // (This is skipped when includeAll=true for roster views)
+        // Collect all employeeIds that are under any manager
+        const allHierarchiesSnapshot = await adminDb.collection('manager-hierarchies').get();
+        const assignedEmployeeIds = new Set<string>();
+        allHierarchiesSnapshot.docs.forEach((doc) => {
+          const ids: string[] = doc.data().employeeIds || [];
+          ids.forEach((id) => assignedEmployeeIds.add(id));
+        });
+
+        // We'll filter after fetching since we can't do a "not in" query in Firestore
+        // This is only for the general list view, not for specific employee calendars or roster views
       }
 
       if (status) query = query.where('status', '==', status);
@@ -172,10 +178,23 @@ export async function GET(request: NextRequest) {
 
       const snapshot = await query.get();
 
-      // Filter out requests from employees assigned to any manager
-      const filteredDocs = assignedEmployeeIds.size > 0
-        ? snapshot.docs.filter((doc) => !assignedEmployeeIds.has(doc.data().employeeId))
-        : snapshot.docs;
+      // Filter out requests from employees assigned to any manager ONLY if not viewing specific employee
+      // and not using includeAll flag
+      let filteredDocs = snapshot.docs;
+      
+      if (!employeeId && !includeAll) {
+        // For general list, collect assigned employees and filter them out
+        const allHierarchiesSnapshot = await adminDb.collection('manager-hierarchies').get();
+        const assignedEmployeeIds = new Set<string>();
+        allHierarchiesSnapshot.docs.forEach((doc) => {
+          const ids: string[] = doc.data().employeeIds || [];
+          ids.forEach((id) => assignedEmployeeIds.add(id));
+        });
+        
+        if (assignedEmployeeIds.size > 0) {
+          filteredDocs = snapshot.docs.filter((doc) => !assignedEmployeeIds.has(doc.data().employeeId));
+        }
+      }
 
       // Backfill approverName for old records
       const missingApproverIds = new Set<string>();

@@ -117,7 +117,7 @@ export function AttendanceCalendarModal({
       try {
         const { authenticatedFetch } = await import('@/lib/api-client');
         const leaveRes = await authenticatedFetch(
-          `/api/leave-requests?startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}`
+          `/api/leave-requests?employeeId=${employeeId}&startDate=${startOfMonth.toISOString()}&endDate=${endOfMonth.toISOString()}`
         );
         if (leaveRes.ok) {
           const leaveRaw = await leaveRes.json();

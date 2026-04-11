@@ -90,8 +90,9 @@ export default function AttendanceRosterPage() {
           : [];
 
       // Fetch leave requests for the month
+      // Use includeAll=true to get leave requests for all employees (roster needs complete data)
       const leaveRes = await authenticatedFetch(
-        `/api/leave-requests?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`
+        `/api/leave-requests?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}&includeAll=true`
       );
       const leaveRaw = leaveRes.ok ? await leaveRes.json() : [];
       const leaveData: any[] = Array.isArray(leaveRaw)
