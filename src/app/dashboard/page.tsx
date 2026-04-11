@@ -550,8 +550,13 @@ export default function DashboardPage() {
   const teamPerformanceData = useMemo(() => {
     if (!employees || employees.length === 0) return [];
 
+    // Deduplicate employees by ID to prevent React key errors
+    const uniqueEmployees = Array.from(
+      new Map(employees.map(emp => [emp.id, emp])).values()
+    );
+
     // Filter employees based on role
-    let filteredEmployees = employees;
+    let filteredEmployees = uniqueEmployees;
     let assignedEmployeeIds: Set<string> | null = null;
 
     if (isAdmin) {

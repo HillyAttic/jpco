@@ -257,9 +257,15 @@ export default function AttendanceTrayPage() {
           })
         );
 
-        // Merge, deduplicate, and sort all batch results
-        allRecords = batchResults
-          .flat()
+        // Merge, deduplicate by ID, and sort all batch results
+        const recordsMap = new Map<string, AttendanceRecord>();
+        batchResults.flat().forEach(record => {
+          if (record.id && !recordsMap.has(record.id)) {
+            recordsMap.set(record.id, record);
+          }
+        });
+        
+        allRecords = Array.from(recordsMap.values())
           .sort((a, b) => (b.clockIn?.getTime() || 0) - (a.clockIn?.getTime() || 0));
       } else {
         // Single query: admin sees all, manager sees assigned employees (≤30)
