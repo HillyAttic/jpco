@@ -247,20 +247,6 @@ export const leaveService = {
             updatedAt: new Date()
           },
           {
-            id: 'vacation',
-            name: 'Vacation Leave',
-            code: 'VACATION',
-            isPaid: true,
-            requiresApproval: true,
-            maxDaysPerYear: 7,
-            accrualRate: 1,
-            carryOverAllowed: false,
-            color: '#10b981',
-            isActive: true,
-            createdAt: new Date(),
-            updatedAt: new Date()
-          },
-          {
             id: 'emergency',
             name: 'Emergency Leave',
             code: 'EMERGENCY',
@@ -308,20 +294,6 @@ export const leaveService = {
           accrualRate: 1,
           carryOverAllowed: false,
           color: '#f59e0b',
-          isActive: true,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        },
-        {
-          id: 'vacation-leave',
-          name: 'Vacation Leave',
-          code: 'VACATION',
-          isPaid: true,
-          requiresApproval: true,
-          maxDaysPerYear: 7,
-          accrualRate: 1,
-          carryOverAllowed: false,
-          color: '#10b981',
           isActive: true,
           createdAt: new Date(),
           updatedAt: new Date()

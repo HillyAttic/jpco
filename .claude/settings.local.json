@@ -15,7 +15,8 @@
       "Bash(xargs ls:*)",
       "Bash(npx tsc:*)",
       "Bash(wc -l /d/jpcopanel/src/components/tasks/*.tsx)",
-      "Bash(find /d/jpcopanel -type f -name *my-tasks*)"
+      "Bash(find /d/jpcopanel -type f -name *my-tasks*)",
+      "Bash(find \"d:\\\\jpcopanel\\\\src\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec grep -l \"leave-types\\\\|leave-balances\" {} \\\\;)"
     ]
   }
 }
