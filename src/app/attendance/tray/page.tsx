@@ -24,30 +24,19 @@ const LocationMapModal = dynamic(() => import('@/components/attendance/LocationM
   ssr: false
 });
 
-const AttendanceExportModal = dynamic(() => import('@/components/attendance/AttendanceExportModal').then(mod => ({ default: mod.AttendanceExportModal })), {
-  loading: () => <div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>,
-  ssr: false
-});
-
 const AttendanceCalendarModal = dynamic(() => import('@/components/attendance/AttendanceCalendarModal').then(mod => ({ default: mod.AttendanceCalendarModal })), {
   loading: () => <div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>,
   ssr: false
 });
-
-const HolidayManagementModal = dynamic(() => import('@/components/attendance/HolidayManagementModal').then(mod => ({ default: mod.HolidayManagementModal })), {
-  loading: () => <div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>,
-  ssr: false
-});
-import { 
-  Clock, 
-  MapPin, 
-  Calendar, 
+import {
+  Clock,
+  MapPin,
+  Calendar,
   Loader2,
   ChevronLeft,
   ChevronRight,
   Users,
   Filter,
-  Download,
   ShieldAlert,
   FullscreenIcon
 } from 'lucide-react';
@@ -99,16 +88,10 @@ export default function AttendanceTrayPage() {
   // State for location map modal
   const [showMapModal, setShowMapModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number; title: string } | null>(null);
-  
-  // State for export modal
-  const [showExportModal, setShowExportModal] = useState(false);
-  
+
   // State for calendar modal
   const [showCalendarModal, setShowCalendarModal] = useState(false);
   const [selectedEmployeeForCalendar, setSelectedEmployeeForCalendar] = useState<{ id: string; name: string } | null>(null);
-  
-  // State for holiday management modal
-  const [showHolidayModal, setShowHolidayModal] = useState(false);
 
   // Convert Firestore timestamp to Date
   const convertTimestamps = (record: any): AttendanceRecord => {
@@ -461,28 +444,6 @@ export default function AttendanceTrayPage() {
           <p className="text-gray-600 dark:text-gray-400 mt-2 sm:mt-0">View attendance history for all employees</p>
         </div>
         <div className="flex items-center gap-3 flex-wrap justify-center sm:justify-end">
-          {(isAdmin || isManager) && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowHolidayModal(true)}
-              className="flex items-center gap-2 text-blue-600 border-blue-600 hover:bg-blue-50"
-            >
-              <Calendar className="h-4 w-4" />
-              Manage Holidays
-            </Button>
-          )}
-          {(isAdmin || isManager) && (
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-          )}
           <Button
             variant="outline"
             size="sm"
@@ -738,15 +699,6 @@ export default function AttendanceTrayPage() {
         />
       )}
 
-      {/* Export Modal */}
-      <AttendanceExportModal
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        assignedEmployeeIds={assignedEmployeeIds}
-        isManager={isManager}
-        isAdmin={isAdmin}
-      />
-
       {/* Calendar Overview Modal */}
       {selectedEmployeeForCalendar && (
         <AttendanceCalendarModal
@@ -759,16 +711,6 @@ export default function AttendanceTrayPage() {
           employeeName={selectedEmployeeForCalendar.name}
         />
       )}
-
-      {/* Holiday Management Modal */}
-      <HolidayManagementModal
-        isOpen={showHolidayModal}
-        onClose={() => setShowHolidayModal(false)}
-        managerId={user?.uid}
-        isManager={isManager}
-        isAdmin={isAdmin}
-        assignedEmployeeIds={assignedEmployeeIds}
-      />
     </div>
   </ManagerGuard>
   );

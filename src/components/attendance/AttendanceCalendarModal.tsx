@@ -3,10 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { AttendanceExportModal } from './AttendanceExportModal';
 
 interface AttendanceCalendarModalProps {
   isOpen: boolean;
@@ -36,7 +35,6 @@ export function AttendanceCalendarModal({
   const [attendanceData, setAttendanceData] = useState<Map<string, DayStatus>>(new Map());
   const [holidays, setHolidays] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
 
   useEffect(() => {
     if (isOpen && employeeId) {
@@ -296,14 +294,6 @@ export function AttendanceCalendarModal({
               <span className="hidden sm:inline">Next</span>
               <ChevronRight className="w-3 h-3 sm:w-4 sm:h-4" />
             </Button>
-            <Button
-              size="sm"
-              onClick={() => setShowExportModal(true)}
-              className="flex items-center gap-1 bg-green-600 hover:bg-green-700 text-white text-xs sm:text-sm"
-            >
-              <Download className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Export</span>
-            </Button>
           </div>
         </div>
 
@@ -403,14 +393,6 @@ export function AttendanceCalendarModal({
           </>
         )}
       </DialogContent>
-
-      <AttendanceExportModal
-        isOpen={showExportModal}
-        onClose={() => setShowExportModal(false)}
-        preSelectedEmployeeId={employeeId}
-        preSelectedStartDate={new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1)}
-        preSelectedEndDate={new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0)}
-      />
     </Dialog>
   );
 }
