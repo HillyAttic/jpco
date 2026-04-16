@@ -19,6 +19,7 @@ export interface MonthlyLeaveUsage {
   year: number;
   sickLeave: number;
   casualLeave: number;
+  vacationLeave: number;
   emergencyLeave: number;
 }
 
@@ -43,6 +44,12 @@ const LEAVE_ALLOCATIONS: LeaveAllocation[] = [
     leaveTypeName: 'Casual Leave',
     annualAllocation: 12,
     monthlyLimit: 1
+  },
+  {
+    leaveTypeId: 'vacation',
+    leaveTypeName: 'Vacation Leave',
+    annualAllocation: 7,
+    monthlyLimit: undefined // No monthly limit
   },
   {
     leaveTypeId: 'emergency',
@@ -162,6 +169,7 @@ export class LeaveBalanceCalculator {
         year: current.getFullYear(),
         sickLeave: 0,
         casualLeave: 0,
+        vacationLeave: 0,
         emergencyLeave: 0
       });
       current.setMonth(current.getMonth() + 1);
@@ -180,6 +188,8 @@ export class LeaveBalanceCalculator {
             monthData.sickLeave += req.totalDays;
           } else if (req.leaveType === 'casual') {
             monthData.casualLeave += req.totalDays;
+          } else if (req.leaveType === 'vacation') {
+            monthData.vacationLeave += req.totalDays;
           } else if (req.leaveType === 'emergency') {
             monthData.emergencyLeave += req.totalDays;
           }

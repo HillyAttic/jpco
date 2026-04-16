@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
 const createLeaveSchema = z.object({
-  leaveType: z.enum(['sick', 'casual', 'emergency', 'personal', 'other']),
+  leaveType: z.enum(['sick', 'casual', 'vacation', 'emergency', 'personal', 'other']),
   startDate: z.string().refine((date) => !isNaN(Date.parse(date))),
   endDate: z.string().refine((date) => !isNaN(Date.parse(date))),
   reason: z.string().min(1).max(500),

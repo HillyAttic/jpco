@@ -21,7 +21,7 @@ interface AttendanceDay {
   date: Date;
   status: 'present' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'half-day' | 'holiday' | 'pending';
   hours?: number;
-  leaveType?: string; // e.g., 'sick', 'casual', 'emergency'
+  leaveType?: string; // e.g., 'sick', 'casual', 'vacation', 'emergency'
   leaveStatus?: 'approved' | 'pending' | 'rejected';
 }
 
