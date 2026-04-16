@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { useTasks } from '@/hooks/use-tasks';
 import { useBulkSelection } from '@/hooks/use-bulk-selection';
+import { useEmployees } from '@/hooks/use-employees';
+import { useClients } from '@/hooks/use-clients';
 import { NonRecurringTask } from '@/services/nonrecurring-task.service';
 import { TaskAttachment, Task } from '@/types/task.types';
 import { uploadTaskAttachments, deleteTaskAttachment } from '@/lib/task-attachment.service';
@@ -32,7 +34,7 @@ import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 export default function NonRecurringTasksPage() {
   const { isAdmin, isManager } = useEnhancedAuth();
   const isAdminOrManager = isAdmin || isManager;
-  
+
   const {
     tasks,
     loading,
@@ -45,6 +47,10 @@ export default function NonRecurringTasksPage() {
     searchTasks,
     filterTasks,
   } = useTasks();
+
+  // Fetch employees and clients for filters
+  const { employees } = useEmployees();
+  const { clients } = useClients();
 
   // Bulk selection state - Requirement 10.1
   const {
@@ -65,6 +71,8 @@ export default function NonRecurringTasksPage() {
   const [filters, setFilters] = useState<TaskFilterState>({
     status: 'all',
     priority: 'all',
+    assignedTo: undefined,
+    clientId: undefined,
   });
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [selectedDetailTask, setSelectedDetailTask] = useState<Task | null>(null);
@@ -85,19 +93,21 @@ export default function NonRecurringTasksPage() {
   // Handle filter changes
   const handleFilterChange = (newFilters: TaskFilterState) => {
     setFilters(newFilters);
-    
+
     // Convert 'all' to undefined for API
     const apiFilters = {
       status: newFilters.status !== 'all' ? newFilters.status : undefined,
       priority: newFilters.priority !== 'all' ? newFilters.priority : undefined,
+      assignedTo: newFilters.assignedTo,
+      clientId: newFilters.clientId,
     };
-    
+
     filterTasks(apiFilters);
   };
 
   // Clear all filters
   const handleClearFilters = () => {
-    setFilters({ status: 'all', priority: 'all' });
+    setFilters({ status: 'all', priority: 'all', assignedTo: undefined, clientId: undefined });
     filterTasks({});
   };
 
@@ -361,6 +371,8 @@ export default function NonRecurringTasksPage() {
             filters={filters}
             onFilterChange={handleFilterChange}
             onClearFilters={handleClearFilters}
+            employees={employees}
+            clients={clients}
           />
         </div>
 
@@ -436,16 +448,16 @@ export default function NonRecurringTasksPage() {
 
         {/* Empty State */}
         {!loading && tasks.length === 0 && (
-          searchQuery || filters.status !== 'all' || filters.priority !== 'all' ? (
-            <NoResultsEmptyState 
+          searchQuery || filters.status !== 'all' || filters.priority !== 'all' || filters.assignedTo || filters.clientId ? (
+            <NoResultsEmptyState
               onClearFilters={() => {
                 setSearchQuery('');
-                setFilters({ status: 'all', priority: 'all' });
+                setFilters({ status: 'all', priority: 'all', assignedTo: undefined, clientId: undefined });
               }}
             />
           ) : (
-            <NoDataEmptyState 
-              entityName="Tasks" 
+            <NoDataEmptyState
+              entityName="Tasks"
               onAdd={handleCreateNew}
             />
           )

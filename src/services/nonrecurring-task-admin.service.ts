@@ -21,23 +21,35 @@ export const nonRecurringTaskAdminService = {
     priority?: string;
     category?: string;
     search?: string;
+    assignedTo?: string;
+    clientId?: string;
     limit?: number;
   }): Promise<NonRecurringTask[]> {
     let query = adminDb.collection('tasks');
+    let hasWhereClause = false;
 
     // Add status filter
     if (filters?.status) {
       query = query.where('status', '==', filters.status) as any;
+      hasWhereClause = true;
     }
 
     // Add priority filter
     if (filters?.priority) {
       query = query.where('priority', '==', filters.priority) as any;
+      hasWhereClause = true;
     }
 
     // Add category filter
     if (filters?.category) {
       query = query.where('category', '==', filters.category) as any;
+      hasWhereClause = true;
+    }
+
+    // Add clientId filter
+    if (filters?.clientId) {
+      query = query.where('contactId', '==', filters.clientId) as any;
+      hasWhereClause = true;
     }
 
     // Add ordering
@@ -63,6 +75,13 @@ export const nonRecurringTaskAdminService = {
       tasks = tasks.filter(task =>
         task.title?.toLowerCase().includes(searchLower) ||
         task.description?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    // Apply assignedTo filter (client-side, since Firestore array-contains requires exact match)
+    if (filters?.assignedTo) {
+      tasks = tasks.filter(task =>
+        task.assignedTo && Array.isArray(task.assignedTo) && task.assignedTo.includes(filters.assignedTo!)
       );
     }
 

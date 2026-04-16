@@ -57,18 +57,17 @@ export async function GET(request: NextRequest) {
       priority: searchParams.get('priority') || undefined,
       search: searchParams.get('search') || undefined,
       category: searchParams.get('category') || undefined,
+      assignedTo: searchParams.get('assignedTo') || undefined,
+      clientId: searchParams.get('clientId') || undefined,
       limit: searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined,
     };
 
     // Fetch all tasks
     let tasks = await nonRecurringTaskAdminService.getAll(filters);
 
-    console.log(`[GET /api/tasks] Total tasks from Firestore: ${tasks.length}, user: uid=${userId}, role=${userRole}`);
-
     // Filter tasks based on user role
     if (userRole === 'admin') {
       // Admins see all tasks (they created OR assigned to anyone)
-      console.log(`[GET /api/tasks] Admin ${userId} - returning all ${tasks.length} tasks`);
     } else if (userRole === 'manager') {
       // Managers see tasks they created OR tasks assigned to them or their managed employees
       const { adminDb } = await import('@/lib/firebase-admin');
@@ -96,22 +95,13 @@ export async function GET(request: NextRequest) {
 
         return isCreatedByManager || isAssignedToManagedEmployee;
       });
-
-      console.log(`[GET /api/tasks] Manager ${userId} filtered tasks: ${tasks.length}`);
     } else {
       // Employees see tasks assigned to them OR created by them
-      console.log(`[GET /api/tasks] Employee ${userId} checking ${tasks.length} tasks for assignment match...`);
-      tasks.forEach((t, i) => {
-        console.log(`[GET /api/tasks]   Task[${i}]: id=${t.id}, title="${t.title}", assignedTo=${JSON.stringify(t.assignedTo)}, createdBy=${t.createdBy}`);
-      });
-
       tasks = tasks.filter(task => {
         const isAssignedToUser = task.assignedTo && Array.isArray(task.assignedTo) && task.assignedTo.includes(userId);
         const isCreatedByUser = task.createdBy === userId;
         return isAssignedToUser || isCreatedByUser;
       });
-
-      console.log(`[GET /api/tasks] Employee ${userId} filtered tasks: ${tasks.length}`);
     }
 
     return NextResponse.json(tasks, { status: 200 });

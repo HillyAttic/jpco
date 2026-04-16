@@ -13,6 +13,8 @@ interface TaskFilters {
   status?: string;
   priority?: string;
   category?: string;
+  assignedTo?: string;
+  clientId?: string;
 }
 
 interface UseTasksReturn {
@@ -70,6 +72,8 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
       if (filters.status) params.append('status', filters.status);
       if (filters.priority) params.append('priority', filters.priority);
       if (filters.category) params.append('category', filters.category);
+      if (filters.assignedTo) params.append('assignedTo', filters.assignedTo);
+      if (filters.clientId) params.append('clientId', filters.clientId);
 
       const response = await authenticatedFetch(`/api/tasks?${params.toString()}`);
 
@@ -95,7 +99,7 @@ export function useTasks(options: UseTasksOptions = {}): UseTasksReturn {
     if (initialFetch) {
       fetchTasks();
     }
-  }, [initialFetch, searchQuery, filters.status, filters.priority, filters.category]);
+  }, [initialFetch, searchQuery, filters.status, filters.priority, filters.category, filters.assignedTo, filters.clientId]);
 
   /**
    * Create a new task with optimistic update and authentication
