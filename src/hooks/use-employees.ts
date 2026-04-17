@@ -11,7 +11,7 @@ interface UseEmployeesReturn {
   loading: boolean;
   error: Error | null;
   createEmployee: (data: Omit<Employee, 'id' | 'createdAt' | 'updatedAt'>, password?: string) => Promise<void>;
-  updateEmployee: (id: string, data: Partial<Omit<Employee, 'id'>>, password?: string) => Promise<void>;
+  updateEmployee: (id: string, data: Partial<Omit<Employee, 'id'>>, password?: string, currentPassword?: string) => Promise<void>;
   deleteEmployee: (id: string) => Promise<void>;
   deactivateEmployee: (id: string) => Promise<void>;
   refreshEmployees: () => Promise<void>;
@@ -160,7 +160,7 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
    * Update an existing employee with optimistic update
    */
   const updateEmployee = useCallback(
-    async (id: string, data: Partial<Omit<Employee, 'id'>>, password?: string) => {
+    async (id: string, data: Partial<Omit<Employee, 'id'>>, password?: string, currentPassword?: string) => {
       // Store original employee for rollback
       const originalEmployee = employees.find((e) => e.id === id);
       if (!originalEmployee) {
@@ -193,12 +193,13 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
           body: JSON.stringify({
             ...data,
             password, // Include password if provided
+            currentPassword, // Include current password if provided
           }),
         });
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to update employee');
+          throw new Error(errorData.message || errorData.error || 'Failed to update employee');
         }
 
         const updatedEmployee = await response.json();
@@ -212,7 +213,7 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
         setEmployees((prev) =>
           prev.map((employee) => (employee.id === id ? originalEmployee : employee))
         );
-        
+
         const error = err instanceof Error ? err : new Error('Unknown error');
         setError(error);
         throw error;
@@ -253,7 +254,7 @@ export function useEmployees(options: UseEmployeesOptions = {}): UseEmployeesRet
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to delete employee');
+          throw new Error(errorData.message || errorData.error || 'Failed to delete employee');
         }
       } catch (err) {
         // Rollback optimistic update on error (Validates Requirements: 9.5)

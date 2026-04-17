@@ -20,9 +20,10 @@ const employeeFormSchema = z.object({
   employeeId: z.string().min(1, 'Employee ID is required').max(20, 'Employee ID must be less than 20 characters'),
   name: z.string().min(1, 'Name is required').max(100, 'Name must be less than 100 characters'),
   email: z.string().email({ message: 'Invalid email format' }),
-  phone: z.string().regex(/^\+?[\d\s\-()]+$/, { message: 'Invalid phone format' }),
+  phone: z.string().regex(/^\d{10}$/, { message: 'Phone must be exactly 10 digits' }),
   department: z.string().optional(),
   role: z.enum(['Manager', 'Admin', 'Employee'], { message: 'Please select a role' }),
+  currentPassword: z.string().optional(),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
   status: z.enum(['active', 'on-leave', 'resigned']),
@@ -130,6 +131,10 @@ export function EmployeeModal({
       } else {
         // For existing employees, validate password only if provided
         if (data.password) {
+          if (!data.currentPassword) {
+            alert('Current password is required to change password');
+            return;
+          }
           if (data.password.length < 6) {
             alert('Password must be at least 6 characters');
             return;
@@ -140,7 +145,7 @@ export function EmployeeModal({
           }
         }
       }
-      
+
       await onSubmit(data);
       reset();
       onClose();
@@ -233,7 +238,7 @@ export function EmployeeModal({
                 type="tel"
                 label="Phone"
                 {...register('phone')}
-                placeholder="+1 (555) 123-4567"
+                placeholder="9876543210"
                 error={errors.phone?.message}
                 required
                 disabled={isLoading}
@@ -273,6 +278,22 @@ export function EmployeeModal({
 
           {/* Password fields */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+            {employee && (
+              <div className="md:col-span-2">
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  label="Current Password"
+                  {...register('currentPassword')}
+                  placeholder="Enter current password to change"
+                  error={errors.currentPassword?.message}
+                  disabled={isLoading}
+                />
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Required only if you want to change the password
+                </p>
+              </div>
+            )}
             <div>
               <Input
                 id="password"

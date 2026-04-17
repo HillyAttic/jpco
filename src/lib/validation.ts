@@ -43,15 +43,7 @@ const emailPattern = z.string().email({ message: 'Invalid email format' }).refin
   { message: 'Invalid email format' }
 );
 const phonePattern = z.string()
-  .regex(/^\+?[\d\s\-()]+$/, { message: 'Invalid phone format' })
-  .refine(
-    (phone) => {
-      // Remove all non-digit characters and check length
-      const digitsOnly = phone.replace(/\D/g, '');
-      return digitsOnly.length >= 10 && digitsOnly.length <= 15;
-    },
-    { message: 'Invalid phone format' }
-  );
+  .regex(/^\d{10}$/, { message: 'Phone must be exactly 10 digits' });
 
 // Client validation schema
 export const clientSchema = z.object({

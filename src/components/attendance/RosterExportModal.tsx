@@ -118,7 +118,7 @@ export function RosterExportModal({
   month,
   year,
 }: RosterExportModalProps) {
-  const { isAdmin } = useEnhancedAuth();
+  const { isAdmin, claims } = useEnhancedAuth();
 
   const defaultStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const defaultEnd = (() => {
@@ -765,7 +765,7 @@ export function RosterExportModal({
                   Include summary {exportFormat === 'excel' ? 'sheet' : 'page'} (per-employee totals)
                 </span>
               </label>
-              {isAdmin && (
+              {claims?.role === 'admin' && (
                 <>
                   <label className="flex items-start gap-2 cursor-pointer">
                     <input

@@ -180,7 +180,8 @@ export const employeeAdminService = {
    */
   async update(
     id: string,
-    data: Partial<Omit<Employee, 'id'>>
+    data: Partial<Omit<Employee, 'id'>>,
+    password?: string
   ): Promise<Employee> {
     console.log('[EmployeeAdminService] Updating employee:', id);
 
@@ -190,6 +191,13 @@ export const employeeAdminService = {
 
       if (!userDoc.exists) {
         throw new Error('Employee not found');
+      }
+
+      // Update Firebase Auth password if provided
+      if (password) {
+        const { adminAuth } = await import('@/lib/firebase-admin');
+        await adminAuth.updateUser(id, { password });
+        console.log('[EmployeeAdminService] Firebase Auth password updated');
       }
 
       // Prepare update payload

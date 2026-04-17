@@ -8,7 +8,7 @@ const updateEmployeeSchema = z.object({
   employeeId: z.string().min(1).max(50).optional(),
   name: z.string().min(1).max(100).optional(),
   email: z.string().email().optional(),
-  phone: z.string().regex(/^\+?[\d\s\-()]+$/).optional(),
+  phone: z.string().regex(/^\d{10}$/).optional(),
   department: z.string().optional(),
   role: z.enum(['Manager', 'Admin', 'Employee']).optional(),
   status: z.enum(['active', 'on-leave', 'resigned']).optional(),
@@ -83,8 +83,8 @@ export async function PUT(
     const { id } = await params;
     const body = await request.json();
 
-    // Extract password from body before validation
-    const { password, ...dataToValidate } = body;
+    // Extract password and currentPassword from body before validation
+    const { password, currentPassword, ...dataToValidate } = body;
 
     // Validate request body
     const validationResult = updateEmployeeSchema.safeParse(dataToValidate);
@@ -103,6 +103,23 @@ export async function PUT(
       return ErrorResponses.notFound('Employee');
     }
 
+    // If password update requested, verify current password first
+    if (password) {
+      if (!currentPassword) {
+        return ErrorResponses.badRequest('Current password is required to change password');
+      }
+
+      // Verify current password by attempting sign-in with Firebase Auth
+      try {
+        const { auth } = await import('@/lib/firebase');
+        const { signInWithEmailAndPassword } = await import('firebase/auth');
+        await signInWithEmailAndPassword(auth, existingEmployee.email, currentPassword);
+      } catch (error: any) {
+        console.error('[API] Current password verification failed:', error);
+        return ErrorResponses.unauthorized('Current password is incorrect');
+      }
+    }
+
     // If updating employee ID, check for duplicates
     if (updateData.employeeId && updateData.employeeId !== existingEmployee.employeeId) {
       const existingByEmployeeId = await employeeAdminService.getByEmployeeId(updateData.employeeId);
@@ -112,7 +129,7 @@ export async function PUT(
     }
 
     // Update employee using Admin SDK (password update requires separate handling)
-    const updatedEmployee = await employeeAdminService.update(id, updateData);
+    const updatedEmployee = await employeeAdminService.update(id, updateData, password);
 
     return NextResponse.json(updatedEmployee);
   } catch (error) {

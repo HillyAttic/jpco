@@ -24,9 +24,10 @@ const employeeFormSchema = z.object({
   employeeId: z.string().min(1, 'Employee ID is required').max(20),
   name: z.string().min(1, 'Name is required').max(100),
   email: z.string().email('Invalid email format'),
-  phone: z.string().regex(/^\+?[\d\s\-()]+$/, 'Invalid phone format'),
+  phone: z.string().regex(/^\d{10}$/, 'Phone must be exactly 10 digits'),
   department: z.string().optional(),
   role: z.enum(['Manager', 'Admin', 'Employee']),
+  currentPassword: z.string().optional(),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
   avatar: z.instanceof(File).optional(),
@@ -172,8 +173,14 @@ export default function EmployeesPage() {
           role: data.role,
           status: data.status,
         };
-        // Pass password if provided (optional for updates)
-        await updateEmployee(editingEmployee.id!, employeeData, data.password || undefined);
+        // Pass password and currentPassword if provided (optional for updates)
+        await updateEmployee(
+          editingEmployee.id!,
+          employeeData,
+          data.password || undefined,
+          data.currentPassword || undefined
+        );
+        alert('Employee updated successfully!');
       } else {
         // Create new employee - minimal fields
         const employeeData = {
@@ -187,12 +194,15 @@ export default function EmployeesPage() {
         };
         // Pass password separately for hashing
         await createEmployee(employeeData, data.password || '');
+        alert('Employee created successfully!');
       }
 
       setIsModalOpen(false);
       setEditingEmployee(null);
     } catch (error) {
       console.error('Error submitting employee:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to save employee';
+      alert(errorMessage);
       throw error; // Re-throw to let modal handle the error
     } finally {
       setIsSubmitting(false);

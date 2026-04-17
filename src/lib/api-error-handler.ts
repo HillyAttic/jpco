@@ -144,11 +144,11 @@ export function withErrorHandler<T extends any[], R>(
  * Common error responses
  */
 export const ErrorResponses = {
-  unauthorized: () =>
+  unauthorized: (message = 'Authentication required') =>
     NextResponse.json(
       {
         error: 'Unauthorized',
-        message: 'Authentication required',
+        message,
         statusCode: 401,
       },
       { status: 401 }
