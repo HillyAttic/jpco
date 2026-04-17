@@ -11,7 +11,7 @@ const updateEmployeeSchema = z.object({
   phone: z.string().regex(/^\+?[\d\s\-()]+$/).optional(),
   department: z.string().optional(),
   role: z.enum(['Manager', 'Admin', 'Employee']).optional(),
-  status: z.enum(['active', 'on-leave']).optional(),
+  status: z.enum(['active', 'on-leave', 'resigned']).optional(),
 });
 
 /**

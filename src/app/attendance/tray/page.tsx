@@ -66,7 +66,7 @@ interface Employee {
   email: string;
   phone: string;
   role: 'Manager' | 'Admin' | 'Employee';
-  status: 'active' | 'on-leave' | 'terminated';
+  status: 'active' | 'on-leave' | 'resigned';
 }
 
 export default function AttendanceTrayPage() {

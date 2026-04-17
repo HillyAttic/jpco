@@ -25,7 +25,7 @@ const employeeFormSchema = z.object({
   role: z.enum(['Manager', 'Admin', 'Employee'], { message: 'Please select a role' }),
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
-  status: z.enum(['active', 'on-leave']),
+  status: z.enum(['active', 'on-leave', 'resigned']),
 });
 
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;
@@ -315,6 +315,7 @@ export function EmployeeModal({
             >
               <option value="active">Active</option>
               <option value="on-leave">On Leave</option>
+              <option value="resigned">Resigned</option>
             </select>
             {errors.status && (
               <p className="text-sm text-red-600 mt-1">{errors.status.message}</p>

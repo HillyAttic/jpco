@@ -16,7 +16,7 @@ export interface Employee {
   department?: string;
   photoURL?: string;
   role: 'Manager' | 'Admin' | 'Employee';
-  status: 'active' | 'on-leave';
+  status: 'active' | 'on-leave' | 'resigned';
   createdAt?: Date;
   updatedAt?: Date;
 }

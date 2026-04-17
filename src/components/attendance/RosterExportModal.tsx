@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Download, FileSpreadsheet, FileText, Loader2, Calendar } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 interface AttendanceDay {
   date: Date;
@@ -117,6 +118,8 @@ export function RosterExportModal({
   month,
   year,
 }: RosterExportModalProps) {
+  const { isAdmin } = useEnhancedAuth();
+
   const defaultStart = `${year}-${String(month + 1).padStart(2, '0')}-01`;
   const defaultEnd = (() => {
     const last = new Date(year, month + 1, 0);
@@ -762,24 +765,28 @@ export function RosterExportModal({
                   Include summary {exportFormat === 'excel' ? 'sheet' : 'page'} (per-employee totals)
                 </span>
               </label>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={excludeAdmins}
-                  onChange={(e) => setExcludeAdmins(e.target.checked)}
-                  className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
-                />
-                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Exclude Admins from export</span>
-              </label>
-              <label className="flex items-start gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={excludeManagers}
-                  onChange={(e) => setExcludeManagers(e.target.checked)}
-                  className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
-                />
-                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Exclude Managers from export</span>
-              </label>
+              {isAdmin && (
+                <>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={excludeAdmins}
+                      onChange={(e) => setExcludeAdmins(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
+                    />
+                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Exclude Admins from export</span>
+                  </label>
+                  <label className="flex items-start gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={excludeManagers}
+                      onChange={(e) => setExcludeManagers(e.target.checked)}
+                      className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
+                    />
+                    <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Exclude Managers from export</span>
+                  </label>
+                </>
+              )}
             </div>
           </div>
 

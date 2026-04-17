@@ -30,7 +30,7 @@ const employeeFormSchema = z.object({
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
   avatar: z.instanceof(File).optional(),
-  status: z.enum(['active', 'on-leave']),
+  status: z.enum(['active', 'on-leave', 'resigned']),
 });
 
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;

@@ -10,7 +10,7 @@ const createEmployeeSchema = z.object({
   email: z.string().email('Invalid email format'),
   phone: z.string().regex(/^\+?[\d\s\-()]+$/, 'Invalid phone format'),
   role: z.enum(['Manager', 'Admin', 'Employee']),
-  status: z.enum(['active', 'on-leave']).default('active'),
+  status: z.enum(['active', 'on-leave', 'resigned']).default('active'),
   password: z.string().optional(),
 });
 

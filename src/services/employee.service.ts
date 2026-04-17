@@ -19,7 +19,7 @@ export interface Employee {
   photoURL?: string;
   role: 'Manager' | 'Admin' | 'Employee';
   passwordHash?: string; // Hashed password, not plain text
-  status: 'active' | 'on-leave';
+  status: 'active' | 'on-leave' | 'resigned';
   createdAt?: Date;
   updatedAt?: Date;
 }

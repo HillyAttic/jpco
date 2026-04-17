@@ -122,7 +122,9 @@ export default function AttendanceRosterPage() {
 
       // Build attendance roster
       const daysInMonth = new Date(year, month + 1, 0).getDate();
-      const roster: EmployeeAttendance[] = employeesData.map((emp: any) => {
+      const roster: EmployeeAttendance[] = employeesData
+        .filter((emp: any) => emp.status !== 'resigned') // Exclude resigned employees
+        .map((emp: any) => {
         const days: AttendanceDay[] = [];
         let presentCount = 0;
         let absentCount = 0;

@@ -124,7 +124,7 @@ export const employeeSchema = z.object({
   }),
   avatar: z.instanceof(File).optional(),
   managerId: z.string().optional(),
-  status: z.enum(['active', 'on-leave', 'terminated']).optional().default('active')
+  status: z.enum(['active', 'on-leave', 'resigned']).optional().default('active')
 });
 
 // Export types

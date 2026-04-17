@@ -100,7 +100,7 @@ export function EmployeeFilter({
               <option value="all">All Statuses</option>
               <option value="active">Active</option>
               <option value="on-leave">On Leave</option>
-              <option value="terminated">Terminated</option>
+              <option value="resigned">Resigned</option>
             </select>
           </div>
         </div>
