@@ -29,6 +29,7 @@ interface EmployeeAttendance {
   employeeId: string;
   employeeName: string;
   employeeEmail: string;
+  role?: string;
   days: AttendanceDay[];
   stats: {
     present: number;
@@ -207,6 +208,7 @@ export default function AttendanceRosterPage() {
           employeeId: emp.id,
           employeeName: emp.name,
           employeeEmail: emp.email,
+          role: emp.role,
           days,
           stats: {
             present: presentCount,

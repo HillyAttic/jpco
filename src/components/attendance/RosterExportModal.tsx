@@ -19,6 +19,7 @@ interface EmployeeAttendance {
   employeeId: string;
   employeeName: string;
   employeeEmail: string;
+  role?: string;
   days: AttendanceDay[];
   stats: {
     present: number;
@@ -130,6 +131,8 @@ export function RosterExportModal({
   const [exportFormat, setExportFormat] = useState<'excel' | 'pdf'>('excel');
   const [includeLocation, setIncludeLocation] = useState(false);
   const [includeStats, setIncludeStats] = useState(false);
+  const [excludeAdmins, setExcludeAdmins] = useState(true);
+  const [excludeManagers, setExcludeManagers] = useState(false);
   const [progressMsg, setProgressMsg] = useState('');
 
   React.useEffect(() => {
@@ -160,6 +163,26 @@ export function RosterExportModal({
   // ═══════════════════════════════════════════════════════════════════════
   const buildExportData = async (): Promise<{ detailRows: DetailRow[]; geocodeErrors: number }> => {
     const { authenticatedFetch } = await import('@/lib/api-client');
+
+    console.log('[Export Debug] Starting buildExportData');
+    console.log('[Export Debug] Total employees before filter:', employees.length);
+    console.log('[Export Debug] excludeAdmins:', excludeAdmins, 'excludeManagers:', excludeManagers);
+
+    // Filter employees based on exclusion settings
+    const filteredEmployees = employees.filter(emp => {
+      console.log(`[Export Debug] Employee: ${emp.employeeName}, role: ${emp.role}`);
+      if (excludeAdmins && emp.role?.toLowerCase() === 'admin') {
+        console.log(`[Export Debug] Excluding admin: ${emp.employeeName}`);
+        return false;
+      }
+      if (excludeManagers && emp.role?.toLowerCase() === 'manager') {
+        console.log(`[Export Debug] Excluding manager: ${emp.employeeName}`);
+        return false;
+      }
+      return true;
+    });
+
+    console.log('[Export Debug] Filtered employees count:', filteredEmployees.length);
 
     const start = new Date(startDate);
     start.setHours(0, 0, 0, 0);
@@ -246,14 +269,26 @@ export function RosterExportModal({
       return geocodeCache.get(key) || `${loc.latitude}, ${loc.longitude}`;
     };
 
-    const startD = new Date(startDate);
-    const endD = new Date(endDate);
+    // Parse dates in local timezone to match how day.date is created in page.tsx
+    const [startYear, startMonth, startDay] = startDate.split('-').map(Number);
+    const startD = new Date(startYear, startMonth - 1, startDay);
+    startD.setHours(0, 0, 0, 0);
+
+    const [endYear, endMonth, endDay] = endDate.split('-').map(Number);
+    const endD = new Date(endYear, endMonth - 1, endDay);
+    endD.setHours(23, 59, 59, 999);
+
+    console.log('[Export Debug] Date range:', { startDate, endDate });
+    console.log('[Export Debug] Parsed dates:', { startD, endD });
+    console.log('[Export Debug] Filtered employees count:', filteredEmployees.length);
 
     // Build rows
     const detailRows: DetailRow[] = [];
-    for (const emp of employees) {
+    for (const emp of filteredEmployees) {
+      console.log(`[Export Debug] Employee: ${emp.employeeName}, days count: ${emp.days.length}`);
       for (const day of emp.days) {
         const d = day.date;
+        console.log(`[Export Debug] Checking day: ${d}, status: ${day.status}, compare: d < startD = ${d < startD}, d > endD = ${d > endD}`);
         if (d < startD || d > endD) continue;
 
         const dateYear = d.getFullYear();
@@ -301,6 +336,13 @@ export function RosterExportModal({
   // Excel export
   // ═══════════════════════════════════════════════════════════════════════
   const exportExcel = (detailRows: DetailRow[]) => {
+    // Filter employees based on exclusion settings
+    const filteredEmployees = employees.filter(emp => {
+      if (excludeAdmins && emp.role?.toLowerCase() === 'admin') return false;
+      if (excludeManagers && emp.role?.toLowerCase() === 'manager') return false;
+      return true;
+    });
+
     const sheetRows = detailRows.map((r) => {
       const row: any = {
         'Employee Name': r.employeeName,
@@ -339,7 +381,7 @@ export function RosterExportModal({
     if (includeStats) {
       const startD = new Date(startDate);
       const endD = new Date(endDate);
-      const summaryRows = employees
+      const summaryRows = filteredEmployees
         .filter((emp) => emp.days.some((d) => d.date >= startD && d.date <= endD))
         .map((emp) => {
           const rangeDays = emp.days.filter((d) => d.date >= startD && d.date <= endD);
@@ -387,6 +429,13 @@ export function RosterExportModal({
     const jsPDF = (await import('jspdf')).default;
     const autoTable = (await import('jspdf-autotable')).default;
 
+    // Filter employees based on exclusion settings
+    const filteredEmployees = employees.filter(emp => {
+      if (excludeAdmins && emp.role?.toLowerCase() === 'admin') return false;
+      if (excludeManagers && emp.role?.toLowerCase() === 'manager') return false;
+      return true;
+    });
+
     const doc = new jsPDF('landscape', 'mm', 'a4');
 
     // Title
@@ -399,7 +448,7 @@ export function RosterExportModal({
     const formattedEnd = new Date(endDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
     doc.text(`Period: ${formattedStart} — ${formattedEnd}`, 14, 22);
     doc.text(`Generated: ${new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })}`, 14, 27);
-    doc.text(`Employees: ${employees.length}`, 14, 32);
+    doc.text(`Employees: ${filteredEmployees.length}`, 14, 32);
     doc.setTextColor(0);
 
     // Detail table
@@ -473,7 +522,7 @@ export function RosterExportModal({
       const endD = new Date(endDate);
 
       const summaryHeaders = ['Employee', 'Email', 'Present', 'Absent', 'Approved Leave', 'Unapproved Leave', 'Half Day', 'Holiday', 'Total Hours'];
-      const summaryBody = employees
+      const summaryBody = filteredEmployees
         .filter((emp) => emp.days.some((d) => d.date >= startD && d.date <= endD))
         .map((emp) => {
           const rangeDays = emp.days.filter((d) => d.date >= startD && d.date <= endD);
@@ -712,6 +761,24 @@ export function RosterExportModal({
                 <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                   Include summary {exportFormat === 'excel' ? 'sheet' : 'page'} (per-employee totals)
                 </span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={excludeAdmins}
+                  onChange={(e) => setExcludeAdmins(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
+                />
+                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Exclude Admins from export</span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={excludeManagers}
+                  onChange={(e) => setExcludeManagers(e.target.checked)}
+                  className="w-4 h-4 mt-0.5 text-blue-600 rounded flex-shrink-0"
+                />
+                <span className="text-xs sm:text-sm text-gray-700 dark:text-gray-300">Exclude Managers from export</span>
               </label>
             </div>
           </div>
