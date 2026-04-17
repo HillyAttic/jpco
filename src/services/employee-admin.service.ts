@@ -60,7 +60,7 @@ export const employeeAdminService = {
           department: data.department || '',
           photoURL: data.photoURL || '',
           role: this.mapUserRoleToEmployeeRole(data.role),
-          status: data.isActive === false ? 'on-leave' : 'active',
+          status: (data.status as 'active' | 'on-leave' | 'resigned') || 'active',
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
         });
@@ -129,7 +129,7 @@ export const employeeAdminService = {
         department: data.department || '',
         photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
-        status: data.isActive === false ? 'on-leave' : 'active',
+        status: (data.status as 'active' | 'on-leave' | 'resigned') || 'active',
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
       };
@@ -165,7 +165,7 @@ export const employeeAdminService = {
         department: data.department || '',
         photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
-        status: data.isActive === false ? 'on-leave' : 'active',
+        status: (data.status as 'active' | 'on-leave' | 'resigned') || 'active',
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
       };
