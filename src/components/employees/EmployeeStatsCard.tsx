@@ -1,10 +1,11 @@
 import React from 'react';
 import { Employee } from '@/services/employee.service';
 import { Card, CardContent } from '@/components/ui/card';
-import { 
+import {
   UsersIcon,
   UserIcon,
-  ClockIcon
+  ClockIcon,
+  UserMinusIcon
 } from '@heroicons/react/24/outline';
 
 interface EmployeeStatsCardProps {
@@ -37,19 +38,23 @@ function StatItem({ icon, label, value, color, bgColor }: StatItemProps) {
 
 /**
  * EmployeeStatsCard Component
- * Displays summary statistics for employees including total, active, and on-leave counts
+ * Displays summary statistics for employees including total, active, on-leave, and resigned counts
  * Validates Requirements: 5.9
  */
 export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
   // Calculate statistics - Requirement 5.9
   const totalEmployees = employees.length;
-  
+
   const activeEmployees = employees.filter(
     employee => employee.status === 'active'
   ).length;
-  
+
   const onLeaveEmployees = employees.filter(
     employee => employee.status === 'on-leave'
+  ).length;
+
+  const resignedEmployees = employees.filter(
+    employee => employee.status === 'resigned'
   ).length;
 
   return (
@@ -60,7 +65,7 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
           <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">Summary of all employee statuses</p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {/* Total Employees */}
           <StatItem
             icon={<UsersIcon className="w-5 h-5" />}
@@ -86,6 +91,15 @@ export function EmployeeStatsCard({ employees }: EmployeeStatsCardProps) {
             value={onLeaveEmployees}
             color="text-yellow-600"
             bgColor="bg-yellow-100"
+          />
+
+          {/* Resigned Employees */}
+          <StatItem
+            icon={<UserMinusIcon className="w-5 h-5" />}
+            label="Resigned"
+            value={resignedEmployees}
+            color="text-gray-600"
+            bgColor="bg-gray-100"
           />
         </div>
       </CardContent>
