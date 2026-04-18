@@ -150,7 +150,7 @@ export default function MyTasksPage() {
     if (!user) return null;
 
     return (
-        <div className="max-w-2xl mx-auto px-4 pb-28 md:pb-10 pt-2">
+        <div className="max-w-2xl mx-auto px-4 pb-32 md:pb-10 pt-2">
             {/* Page header */}
             <div className="flex items-center justify-between mb-6">
                 <h1 className="text-[28px] font-bold tracking-tight text-gray-900 dark:text-white">My Tasks</h1>
@@ -392,7 +392,7 @@ function CreateListModal({ onClose, onCreate }: CreateListModalProps) {
 
     return (
         <div
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4"
             onClick={onClose}
         >
             {/* Backdrop */}

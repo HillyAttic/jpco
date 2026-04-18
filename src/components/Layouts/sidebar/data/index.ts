@@ -43,7 +43,7 @@ export const NAV_DATA = [
         url: "/my-tasks",
         icon: Icons.MyTasksIcon,
         items: [],
-        requiresRole: ['admin', 'manager'], // Managers and admins can see this
+        // Available to all authenticated users
       },
 
     ],
