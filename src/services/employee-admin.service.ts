@@ -200,6 +200,13 @@ export const employeeAdminService = {
         console.log('[EmployeeAdminService] Firebase Auth password updated');
       }
 
+      // Update Firebase Auth email if provided
+      if (data.email) {
+        const { adminAuth } = await import('@/lib/firebase-admin');
+        await adminAuth.updateUser(id, { email: data.email });
+        console.log('[EmployeeAdminService] Firebase Auth email updated');
+      }
+
       // Prepare update payload
       const updatePayload: any = {
         updatedAt: new Date(),

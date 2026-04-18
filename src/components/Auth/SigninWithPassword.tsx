@@ -2,7 +2,7 @@
 import { EmailIcon, PasswordIcon } from "@/assets/icons";
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import InputGroup from "../FormElements/InputGroup";
 import { Checkbox } from "../FormElements/checkbox";
 import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
@@ -12,8 +12,9 @@ import { roleManagementService } from "@/services/role-management.service";
 
 export default function SigninWithPassword() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { signIn, user } = useEnhancedAuth();
-  
+
   const [data, setData] = useState({
     email: "",
     password: "",
@@ -23,6 +24,15 @@ export default function SigninWithPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>("");
   const [showPassword, setShowPassword] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string>("");
+
+  // Check for password reset success message
+  useEffect(() => {
+    const resetSuccess = searchParams.get('reset');
+    if (resetSuccess === 'success') {
+      setSuccessMessage('Password reset successful! You can now sign in with your new password.');
+    }
+  }, [searchParams]);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -111,6 +121,16 @@ export default function SigninWithPassword() {
 
   return (
     <form onSubmit={handleSubmit}>
+      {successMessage && (
+        <div className="mb-4 rounded-lg bg-green-50 border border-green-200 p-4">
+          <div className="flex">
+            <div className="text-green-800 text-sm">
+              {successMessage}
+            </div>
+          </div>
+        </div>
+      )}
+
       {error && (
         <div className="mb-4 rounded-lg bg-red-50 border border-red-200 p-4">
           <div className="flex">

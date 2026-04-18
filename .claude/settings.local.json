@@ -18,7 +18,8 @@
       "Bash(find /d/jpcopanel -type f -name *my-tasks*)",
       "Bash(find \"d:\\\\jpcopanel\\\\src\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec grep -l \"leave-types\\\\|leave-balances\" {} \\\\;)",
       "Bash(firebase deploy *)",
-      "Bash(find src *)"
+      "Bash(find src *)",
+      "mcp__plugin_claude-mem_mcp-search__search"
     ]
   }
 }

@@ -115,15 +115,20 @@ export const signIn = async (email: string, password: string): Promise<{ success
  */
 export const requestPasswordReset = async (email: string): Promise<{ success: boolean; message?: string }> => {
   try {
-    await sendPasswordResetEmail(auth, email);
-    
-    return { 
-      success: true, 
-      message: 'Password reset link sent to your email!' 
+    const actionCodeSettings = {
+      url: `${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/auth/action`,
+      handleCodeInApp: true,
+    };
+
+    await sendPasswordResetEmail(auth, email, actionCodeSettings);
+
+    return {
+      success: true,
+      message: 'Password reset link sent to your email!'
     };
   } catch (error: any) {
     let errorMessage = 'An error occurred during password reset request';
-    
+
     // Handle specific Firebase errors
     switch (error.code) {
       case 'auth/user-not-found':
@@ -135,10 +140,10 @@ export const requestPasswordReset = async (email: string): Promise<{ success: bo
       default:
         errorMessage = error.message || errorMessage;
     }
-    
-    return { 
-      success: false, 
-      message: errorMessage 
+
+    return {
+      success: false,
+      message: errorMessage
     };
   }
 };
