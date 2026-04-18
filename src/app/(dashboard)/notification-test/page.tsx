@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/auth.context';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 export default function NotificationTestPage() {
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useEnhancedAuth();
   const [status, setStatus] = useState<string>('');
   const [loading, setLoading] = useState(false);
 

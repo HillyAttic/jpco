@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { getFCMToken, onForegroundMessage, saveFCMToken, deleteFCMToken } from '@/lib/firebase-messaging';
-import { useAuth } from '@/contexts/auth.context';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 export function usePushNotifications() {
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useEnhancedAuth();
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const [token, setToken] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(false);

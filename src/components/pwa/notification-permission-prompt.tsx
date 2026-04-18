@@ -4,11 +4,11 @@ import { useState, useEffect } from 'react';
 import { usePushNotifications } from '@/hooks/use-push-notifications';
 import { TouchOptimizedButton } from '@/components/ui/touch-optimized-input';
 import { useResponsive } from '@/hooks/use-responsive';
-import { useAuth } from '@/contexts/auth.context';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { checkNotificationSupport } from '@/lib/firebase-messaging';
 
 export function NotificationPermissionPrompt() {
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useEnhancedAuth();
   const { isSupported, permission, isLoading, requestPermission, isEnabled } = usePushNotifications();
   const { isTouchDevice } = useResponsive();
   const [isVisible, setIsVisible] = useState(true);

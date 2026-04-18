@@ -1,13 +1,8 @@
+'use client';
+
 import Signin from "@/components/Auth/Signin";
-import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-// Import test admin utility for development
-import "@/utils/create-test-admin";
-
-export const metadata: Metadata = {
-  title: "Sign in",
-};
 
 export default function SignIn() {
   return (

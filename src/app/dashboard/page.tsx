@@ -367,9 +367,9 @@ export default function DashboardPage() {
     }
   }, [user, authLoading, router]);
 
-  // Load kanban data for admin users
+  // Load kanban data for admin and manager users
   useEffect(() => {
-    if (!user || !isAdmin) return;
+    if (!user || !canViewAllTasks) return;
 
     const loadKanban = async () => {
       setKanbanLoading(true);
@@ -389,7 +389,7 @@ export default function DashboardPage() {
     };
 
     loadKanban();
-  }, [user, isAdmin]);
+  }, [user, canViewAllTasks]);
 
   // Fetch pending invoices count
   useEffect(() => {
@@ -1003,8 +1003,8 @@ export default function DashboardPage() {
         />
       </div>
 
-      {/* Kanban Board Section - Admin Only */}
-      {isAdmin && (
+      {/* Kanban Board Section - Admin and Manager */}
+      {canViewAllTasks && (
         <div className="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-dark p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Kanban Board</h2>
@@ -1133,8 +1133,8 @@ export default function DashboardPage() {
             </ProgressiveHydration>
           )}
 
-          {/* Weekly Progress Chart - Show only for admin, hide for manager */}
-          {isAdmin && (
+          {/* Weekly Progress Chart - Show for admin and manager */}
+          {canViewAllTasks && (
             <ProgressiveHydration
               delay={350}
               priority="low"

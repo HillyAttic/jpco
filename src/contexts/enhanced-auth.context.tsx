@@ -1,10 +1,12 @@
-import React, { 
-  createContext, 
-  useContext, 
-  useEffect, 
-  useState, 
+'use client';
+
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
   ReactNode,
-  useCallback 
+  useCallback
 } from 'react';
 import { 
   User, 
@@ -98,48 +100,50 @@ export const EnhancedAuthProvider: React.FC<EnhancedAuthProviderProps> = ({ chil
     if (user) {
       await loadUserData(user);
     }
-  }, [user, loadUserData]);
+  }, [user]);
 
   /**
    * Refresh user claims
    */
   const refreshClaims = useCallback(async () => {
-    if (user) {
-      try {
-        // Force token refresh
-        await user.getIdToken(true);
-        await loadUserData(user);
-      } catch (error) {
-        console.error('Error refreshing claims:', error);
-      }
+    if (!user) return;
+
+    try {
+      // Force token refresh
+      await user.getIdToken(true);
+
+      // Inline the profile loading to avoid dependency issues
+      const profile = await roleManagementService.getUserProfile(user.uid);
+      setUserProfile(profile);
+
+      const idTokenResult = await user.getIdTokenResult();
+      const customClaims: CustomClaims = {
+        role: (idTokenResult.claims.role as UserRole) || profile?.role || 'employee',
+        permissions: (idTokenResult.claims.permissions as string[]) || profile?.permissions || [],
+        isAdmin: (idTokenResult.claims.isAdmin as boolean) || profile?.role === 'admin' || false,
+        createdAt: idTokenResult.claims.createdAt as string || new Date().toISOString(),
+        lastRoleUpdate: idTokenResult.claims.lastRoleUpdate as string || new Date().toISOString(),
+      };
+
+      setClaims(customClaims);
+    } catch (error) {
+      console.error('Error refreshing claims:', error);
     }
-  }, [user, loadUserData]);
+  }, [user]);
 
   /**
    * Set up authentication state listener
    */
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      setLoading(true);
       setUser(currentUser);
       await loadUserData(currentUser);
       setLoading(false);
     });
 
     return unsubscribe;
-  }, [loadUserData]);
-
-  /**
-   * Set up token refresh listener
-   */
-  useEffect(() => {
-    const unsubscribe = onIdTokenChanged(auth, async (currentUser) => {
-      if (currentUser && user) {
-        await loadUserData(currentUser);
-      }
-    });
-
-    return unsubscribe;
-  }, [user, loadUserData]);
+  }, []);
 
   /**
    * Sign in with email and password
@@ -249,9 +253,13 @@ export const EnhancedAuthProvider: React.FC<EnhancedAuthProviderProps> = ({ chil
   const signOut = async (): Promise<void> => {
     try {
       await firebaseSignOut(auth);
+      // Immediately clear state
       setUser(null);
       setUserProfile(null);
       setClaims(null);
+      setLoading(false);
+      // Force a hard reload to clear all cached state
+      window.location.href = '/auth/sign-in';
     } catch (error) {
       console.error('Error signing out:', error);
       throw error;

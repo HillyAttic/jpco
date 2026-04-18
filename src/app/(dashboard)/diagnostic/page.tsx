@@ -1,10 +1,10 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/auth.context';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 export default function DiagnosticPage() {
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useEnhancedAuth();
   const [results, setResults] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 

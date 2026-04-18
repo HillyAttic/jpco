@@ -34,13 +34,6 @@ export default function SigninWithPassword() {
     }
   }, [searchParams]);
 
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (user) {
-      router.push('/dashboard');
-    }
-  }, [user, router]);
-
   // Create test admin user if it doesn't exist
   const createTestAdminUser = async () => {
     try {

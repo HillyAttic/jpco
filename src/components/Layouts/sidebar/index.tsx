@@ -19,7 +19,7 @@ export function Sidebar() {
   const { hasRole } = useAuthEnhanced();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [collapsedSections, setCollapsedSections] = useState<string[]>(
-    NAV_DATA.map((s) => s.label)
+    NAV_DATA.filter((s) => s.label !== 'MAIN MENU').map((s) => s.label)
   );
 
   const toggleSection = (label: string) => {

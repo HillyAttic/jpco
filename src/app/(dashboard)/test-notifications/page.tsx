@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from 'react';
-import { useAuth } from '@/contexts/auth.context';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { sendTestNotification, checkNotificationSetup } from '@/lib/notifications/test-notification';
 import { diagnoseNotifications } from '@/lib/notifications/notification-diagnostics';
 
 export default function TestNotificationsPage() {
-  const { currentUser } = useAuth();
+  const { user: currentUser } = useEnhancedAuth();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [diagnostics, setDiagnostics] = useState<any>(null);

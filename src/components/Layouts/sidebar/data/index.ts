@@ -39,11 +39,11 @@ export const NAV_DATA = [
         hideOnMobile: true, // Hide on mobile view
       },
       {
-        title: "My Tasks",
+        title: "Personal Tasks",
         url: "/my-tasks",
         icon: Icons.MyTasksIcon,
         items: [],
-        requiresRole: ['admin'], // Only admins can see this
+        requiresRole: ['admin', 'manager'], // Managers and admins can see this
       },
 
     ],

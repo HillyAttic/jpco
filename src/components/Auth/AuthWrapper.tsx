@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { Sidebar } from '@/components/Layouts/sidebar';
@@ -26,30 +26,45 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const { user, loading } = useEnhancedAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const lastNavigationRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (loading) return; // Wait for auth state to load
+    let isMounted = true;
+
+    if (loading) return;
 
     const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
     const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
 
+    // Helper to navigate only if different from last navigation
+    const navigateTo = (path: string) => {
+      if (isMounted && lastNavigationRef.current !== path) {
+        lastNavigationRef.current = path;
+        router.push(path);
+      }
+    };
+
     if (!user && !isPublicRoute) {
       // User is not authenticated and trying to access protected route
-      router.push('/auth/sign-in');
+      navigateTo('/auth/sign-in');
       return;
     }
 
     if (user && isAuthRoute) {
       // User is authenticated and trying to access auth routes
-      router.push('/dashboard');
+      navigateTo('/dashboard');
       return;
     }
 
     if (user && pathname === '/') {
       // Authenticated user on root path
-      router.push('/dashboard');
+      navigateTo('/dashboard');
       return;
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [user, loading, pathname, router]);
 
   // Show loading spinner while checking authentication
@@ -74,17 +89,6 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <p className="mt-4 text-gray-600 dark:text-gray-400">Redirecting to sign in...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (user && (isAuthRoute || pathname === '/')) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-800">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600 dark:text-gray-400">Redirecting to dashboard...</p>
         </div>
       </div>
     );
