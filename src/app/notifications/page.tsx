@@ -34,7 +34,7 @@ interface Notification {
 
 export default function NotificationsPage() {
   const router = useRouter();
-  const { user, isAdmin } = useEnhancedAuth();
+  const { user, isAdmin, isManager } = useEnhancedAuth();
   const { notifications, loading, markAsRead: markNotificationRead, refetch } = useNotifications();
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | null>(null);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
@@ -314,8 +314,8 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {/* Clear Cache Button - Admin only */}
-      {isAdmin && (
+      {/* Clear Cache Button - Admin and Manager */}
+      {(isAdmin || isManager) && (
         <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-4 sm:mb-6">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0 mt-0.5">
