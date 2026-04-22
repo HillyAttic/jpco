@@ -286,7 +286,7 @@ export default function AttendancePage() {
                         {request.startDate instanceof Date ? request.startDate.toLocaleDateString() : new Date(request.startDate).toLocaleDateString()} - {request.endDate instanceof Date ? request.endDate.toLocaleDateString() : new Date(request.endDate).toLocaleDateString()}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">Duration: {request.duration} days</p>
-                      
+
                       {/* Show rejection reason if rejected */}
                       {request.status === 'rejected' && request.rejectionReason && (
                         <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
@@ -295,6 +295,19 @@ export default function AttendancePage() {
                             <div>
                               <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">Admin Remarks:</p>
                               <p className="text-sm text-red-700 dark:text-red-400">{request.rejectionReason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Show approval reason if approved */}
+                      {request.status === 'approved' && request.approvalReason && (
+                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                          <div className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-green-800 dark:text-green-300 mb-1">Admin Note:</p>
+                              <p className="text-sm text-green-700 dark:text-green-400">{request.approvalReason}</p>
                             </div>
                           </div>
                         </div>

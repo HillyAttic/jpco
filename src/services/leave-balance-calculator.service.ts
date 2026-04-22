@@ -36,26 +36,14 @@ const LEAVE_ALLOCATIONS: LeaveAllocation[] = [
   {
     leaveTypeId: 'sick',
     leaveTypeName: 'Sick Leave',
-    annualAllocation: 12,
-     monthlyLimit: 1
+    annualAllocation: 999,
+    monthlyLimit: undefined
   },
   {
     leaveTypeId: 'casual',
     leaveTypeName: 'Casual Leave',
-    annualAllocation: 12,
-    monthlyLimit: 1
-  },
-  {
-    leaveTypeId: 'vacation',
-    leaveTypeName: 'Vacation Leave',
-    annualAllocation: 7,
-    monthlyLimit: undefined // No monthly limit
-  },
-  {
-    leaveTypeId: 'emergency',
-    leaveTypeName: 'Emergency Leave',
-    annualAllocation: 999, // Represents unlimited
-    monthlyLimit: undefined // No monthly limit
+    annualAllocation: 999,
+    monthlyLimit: undefined
   }
 ];
 
@@ -229,7 +217,7 @@ export class LeaveBalanceCalculator {
     employeeRequests: LeaveRequest[]
   ): { valid: boolean; message?: string } {
     const allocation = LEAVE_ALLOCATIONS.find(a => a.leaveTypeId === leaveTypeId);
-    
+
     if (!allocation) {
       return { valid: false, message: 'Invalid leave type' };
     }
@@ -241,53 +229,13 @@ export class LeaveBalanceCalculator {
     // Check if within financial year
     const { startDate: fyStart, endDate: fyEnd } = this.getCurrentFinancialYear();
     if (startDate < fyStart || startDate > fyEnd) {
-      return { 
-        valid: false, 
-        message: `Leave must be within current financial year (${fyStart.toLocaleDateString()} - ${fyEnd.toLocaleDateString()})` 
+      return {
+        valid: false,
+        message: `Leave must be within current financial year (${fyStart.toLocaleDateString()} - ${fyEnd.toLocaleDateString()})`
       };
     }
 
-    // Calculate current balance
-    const balances = this.calculateBalances('temp', employeeRequests);
-    const balance = balances.find(b => b.leaveTypeId === leaveTypeId);
-
-    if (!balance) {
-      return { valid: false, message: 'Could not calculate balance' };
-    }
-
-    // Check annual limit
-    if (duration > balance.remainingDays) {
-      return { 
-        valid: false, 
-        message: `Insufficient balance. You have ${balance.remainingDays} days remaining` 
-      };
-    }
-
-    // Check monthly limit
-    if (allocation.monthlyLimit !== undefined) {
-      const requestMonth = startDate.getMonth();
-      const requestYear = startDate.getFullYear();
-      
-      const monthUsage = employeeRequests
-        .filter(req => {
-          const reqDate = new Date(req.startDate);
-          return (
-            reqDate.getMonth() === requestMonth &&
-            reqDate.getFullYear() === requestYear &&
-            (req.status === 'approved' || req.status === 'pending') &&
-            (req.leaveType === leaveTypeId || req.leaveType === allocation.leaveTypeName)
-          );
-        })
-        .reduce((sum, req) => sum + req.totalDays, 0);
-
-      if (monthUsage + duration > allocation.monthlyLimit) {
-        return { 
-          valid: false, 
-          message: `Monthly limit exceeded. You can only apply ${allocation.monthlyLimit} days per month for ${allocation.leaveTypeName}. Current month usage: ${monthUsage} days` 
-        };
-      }
-    }
-
+    // No limit checks - all leave requests are valid as long as they're within FY
     return { valid: true };
   }
 

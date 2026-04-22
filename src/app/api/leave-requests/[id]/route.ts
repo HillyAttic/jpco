@@ -5,6 +5,7 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 const approveRejectSchema = z.object({
   action: z.enum(['approve', 'reject']),
   reason: z.string().optional(),
+  approvalReason: z.string().optional(),
 });
 
 /**
@@ -83,7 +84,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    const { action, reason } = validation.data;
+    const { action, reason, approvalReason } = validation.data;
 
     if (action === 'reject' && !reason) {
       return ErrorResponses.badRequest('Rejection reason is required');
@@ -108,6 +109,10 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       updates.rejectionReason = reason;
     }
 
+    if (action === 'approve' && approvalReason) {
+      updates.approvalReason = approvalReason;
+    }
+
     await adminDb.collection('leave-requests').doc(id).update(updates);
 
     // Return the updated document
@@ -127,7 +132,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         const isApproved = action === 'approve';
         const notifTitle = isApproved ? 'Leave Request Approved' : 'Leave Request Rejected';
         const notifBody = isApproved
-          ? `Your ${leaveType} leave from ${startStr} to ${endStr} has been approved.`
+          ? `Your ${leaveType} leave from ${startStr} to ${endStr} has been approved.${approvalReason ? ` Note: ${approvalReason}` : ''}`
           : `Your ${leaveType} leave from ${startStr} to ${endStr} has been rejected.${reason ? ` Reason: ${reason}` : ''}`;
         await sendNotification({
           userIds: [employeeId],

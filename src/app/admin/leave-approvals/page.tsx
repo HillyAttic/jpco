@@ -11,6 +11,8 @@ export default function LeaveApprovalsPage() {
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [approvalReason, setApprovalReason] = useState('');
+  const [showApproveModal, setShowApproveModal] = useState(false);
 
   useEffect(() => {
     fetchRequests();
@@ -58,6 +60,41 @@ export default function LeaveApprovalsPage() {
       console.error('Error approving leave:', error);
       toast.error('Failed to approve leave request');
     }
+  };
+
+  const handleApproveWithReason = async () => {
+    if (!selectedRequest || !approvalReason.trim()) {
+      toast.error('Please provide an approval reason');
+      return;
+    }
+
+    try {
+      // Import authenticated fetch helper
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch(`/api/leave-requests/${selectedRequest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve', approvalReason }),
+      });
+
+      if (response.ok) {
+        toast.success('Leave request approved with reason');
+        setShowApproveModal(false);
+        setApprovalReason('');
+        setSelectedRequest(null);
+        fetchRequests();
+      } else {
+        toast.error('Failed to approve leave request');
+      }
+    } catch (error) {
+      console.error('Error approving leave:', error);
+      toast.error('Failed to approve leave request');
+    }
+  };
+
+  const openApproveModal = (request: LeaveRequest) => {
+    setSelectedRequest(request);
+    setShowApproveModal(true);
   };
 
   const handleReject = async () => {
@@ -197,6 +234,12 @@ export default function LeaveApprovalsPage() {
                               Approve
                             </button>
                             <button
+                              onClick={() => openApproveModal(request)}
+                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            >
+                              Approve with Reason
+                            </button>
+                            <button
                               onClick={() => openRejectModal(request)}
                               className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
                             >
@@ -263,16 +306,22 @@ export default function LeaveApprovalsPage() {
 
                   {/* Actions or Approver */}
                   {request.status === 'pending' ? (
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex flex-col gap-2 pt-2">
                       <button
                         onClick={() => handleApprove(request.id!)}
-                        className="flex-1 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                        className="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
                       >
                         Approve
                       </button>
                       <button
+                        onClick={() => openApproveModal(request)}
+                        className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                      >
+                        Approve with Reason
+                      </button>
+                      <button
                         onClick={() => openRejectModal(request)}
-                        className="flex-1 px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                        className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
                       >
                         Reject
                       </button>
@@ -315,6 +364,43 @@ export default function LeaveApprovalsPage() {
                 onClick={() => {
                   setShowRejectModal(false);
                   setRejectionReason('');
+                  setSelectedRequest(null);
+                }}
+                className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Approve with Reason Modal */}
+      {showApproveModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Approve Leave Request with Reason</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+              Please provide a reason or note for approving this leave request:
+            </p>
+            <textarea
+              value={approvalReason}
+              onChange={(e) => setApprovalReason(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
+              rows={4}
+              placeholder="Enter approval reason or note..."
+            />
+            <div className="flex gap-2 mt-4">
+              <button
+                onClick={handleApproveWithReason}
+                className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                Approve
+              </button>
+              <button
+                onClick={() => {
+                  setShowApproveModal(false);
+                  setApprovalReason('');
                   setSelectedRequest(null);
                 }}
                 className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"

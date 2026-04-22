@@ -21,7 +21,7 @@ interface AttendanceDay {
   date: Date;
   status: 'present' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'half-day' | 'holiday' | 'pending';
   hours?: number;
-  leaveType?: string; // e.g., 'sick', 'casual', 'vacation', 'emergency'
+  leaveType?: string; // e.g., 'sick', 'casual'
   leaveStatus?: 'approved' | 'pending' | 'rejected';
 }
 
@@ -237,7 +237,7 @@ export default function AttendanceRosterPage() {
     switch (status) {
       case 'present': return 'bg-green-500';
       case 'absent': return 'bg-red-500';
-      case 'approved-leave': return leaveType === 'emergency' ? 'bg-black' : 'bg-purple-500';
+      case 'approved-leave': return 'bg-purple-500';
       case 'unapproved-leave': return 'bg-red-500';
       case 'half-day': return 'bg-orange-500';
       case 'holiday': return 'bg-blue-500';
@@ -334,10 +334,6 @@ export default function AttendanceRosterPage() {
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-purple-500 rounded"></div>
           <span className="text-sm text-gray-700 dark:text-gray-300">Approved Leave</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-black rounded"></div>
-          <span className="text-sm text-gray-700 dark:text-gray-300">Emergency Leave</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-orange-500 rounded"></div>

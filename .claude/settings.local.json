@@ -8,7 +8,9 @@
       "Bash(npm run *)",
       "Bash(node -p \"require\\('sharp'\\)\")",
       "Bash(node *)",
-      "Bash(npm install *)"
+      "Bash(npm install *)",
+      "Bash(git log *)",
+      "Bash(xargs grep *)"
     ]
   },
   "disabledMcpjsonServers": [

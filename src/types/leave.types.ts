@@ -3,7 +3,7 @@
  */
 
 export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
-export type LeaveType = 'sick' | 'casual' | 'vacation' | 'emergency' | 'personal' | 'other';
+export type LeaveType = 'sick' | 'casual';
 
 export interface LeaveRequest {
   id?: string;
@@ -20,6 +20,7 @@ export interface LeaveRequest {
   approverName?: string;
   approvedAt?: Date;
   rejectionReason?: string;
+  approvalReason?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
