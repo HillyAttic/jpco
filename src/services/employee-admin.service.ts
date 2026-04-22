@@ -258,60 +258,123 @@ export const employeeAdminService = {
     const { adminAuth } = await import('@/lib/firebase-admin');
     const { Timestamp } = await import('firebase-admin/firestore');
 
+    console.log('[EmployeeAdminService] Creating employee:', {
+      employeeId: data.employeeId,
+      email: data.email,
+      phone: data.phone,
+      phoneFormat: data.phone ? (data.phone.startsWith('+') ? 'E.164' : '10-digit') : 'none'
+    });
+
     // Check if employee ID already exists
     const existing = await this.getByEmployeeId(data.employeeId);
     if (existing) {
+      console.log('[EmployeeAdminService] Employee ID already exists:', data.employeeId);
       throw new Error('Employee ID already exists');
     }
 
     // Check if email already exists in Firestore
     const emailSnapshot = await adminDb.collection('users').where('email', '==', data.email).limit(1).get();
     if (!emailSnapshot.empty) {
+      console.log('[EmployeeAdminService] Email already exists:', data.email);
       throw new Error('Email already exists');
     }
 
-    // Create user in Firebase Auth
-    const userRole = this.mapEmployeeRoleToUserRole(data.role);
-    const userRecord = await adminAuth.createUser({
-      email: data.email,
-      password,
-      displayName: data.name,
-      phoneNumber: data.phone || undefined,
+    // Format phone to E.164
+    const formattedPhone = this.formatPhoneToE164(data.phone);
+    console.log('[EmployeeAdminService] Phone formatting:', {
+      original: data.phone,
+      formatted: formattedPhone
     });
 
-    const now = Timestamp.now();
+    let createdAuthUid: string | null = null;
 
-    // Create user document in Firestore
-    await adminDb.collection('users').doc(userRecord.uid).set({
-      uid: userRecord.uid,
-      email: data.email,
-      displayName: data.name,
-      phoneNumber: data.phone || '',
-      department: data.department || '',
-      role: userRole,
-      employeeId: data.employeeId,
-      status: data.status,
-      isActive: data.status === 'active',
-      createdAt: now,
-      updatedAt: now,
-    });
+    try {
+      // Create user in Firebase Auth
+      const userRole = this.mapEmployeeRoleToUserRole(data.role);
+      console.log('[EmployeeAdminService] Creating Auth user with role:', userRole);
 
-    // Set custom claims
-    await adminAuth.setCustomUserClaims(userRecord.uid, { role: userRole });
+      const userRecord = await adminAuth.createUser({
+        email: data.email,
+        password,
+        displayName: data.name,
+        phoneNumber: formattedPhone,
+      });
 
-    return {
-      id: userRecord.uid,
-      employeeId: data.employeeId,
-      name: data.name,
-      email: data.email,
-      phone: data.phone,
-      department: data.department,
-      photoURL: '',
-      role: data.role,
-      status: data.status,
-      createdAt: now.toDate(),
-      updatedAt: now.toDate(),
-    };
+      createdAuthUid = userRecord.uid;
+      console.log('[EmployeeAdminService] Auth user created:', userRecord.uid);
+
+      const now = Timestamp.now();
+
+      // Create user document in Firestore
+      console.log('[EmployeeAdminService] Writing to Firestore...');
+      await adminDb.collection('users').doc(userRecord.uid).set({
+        uid: userRecord.uid,
+        email: data.email,
+        displayName: data.name,
+        phoneNumber: data.phone || '',
+        department: data.department || '',
+        role: userRole,
+        employeeId: data.employeeId,
+        status: data.status,
+        isActive: data.status === 'active',
+        createdAt: now,
+        updatedAt: now,
+      });
+      console.log('[EmployeeAdminService] Firestore write successful');
+
+      // Set custom claims
+      console.log('[EmployeeAdminService] Setting custom claims...');
+      await adminAuth.setCustomUserClaims(userRecord.uid, { role: userRole });
+      console.log('[EmployeeAdminService] Employee created successfully:', userRecord.uid);
+
+      return {
+        id: userRecord.uid,
+        employeeId: data.employeeId,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        department: data.department,
+        photoURL: '',
+        role: data.role,
+        status: data.status,
+        createdAt: now.toDate(),
+        updatedAt: now.toDate(),
+      };
+    } catch (error: any) {
+      console.error('[EmployeeAdminService] Error creating employee:', {
+        code: error.code,
+        message: error.message,
+        createdAuthUid
+      });
+
+      // Rollback: Delete Auth user if created
+      if (createdAuthUid) {
+        try {
+          await adminAuth.deleteUser(createdAuthUid);
+          console.log('[EmployeeAdminService] Rolled back Auth user:', createdAuthUid);
+        } catch (rollbackError: any) {
+          console.error('[EmployeeAdminService] Failed to rollback Auth user:', {
+            uid: createdAuthUid,
+            error: rollbackError.message
+          });
+        }
+      }
+
+      throw error;
+    }
+  },
+
+  formatPhoneToE164(phone: string | undefined, defaultCountryCode: string = '+91'): string | undefined {
+    if (!phone) return undefined;
+
+    // Already in E.164 format
+    if (/^\+\d{10,15}$/.test(phone)) return phone;
+
+    // Convert 10-digit Indian number
+    if (/^\d{10}$/.test(phone)) return `${defaultCountryCode}${phone}`;
+
+    // Invalid format
+    return undefined;
   },
 
 

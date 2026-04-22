@@ -42,7 +42,13 @@ function handleZodError(error: ZodError): ErrorResponse {
  */
 function handleFirebaseError(error: any): ErrorResponse {
   const code = error.code || '';
-  
+
+  console.error('[API Error Handler] Firebase error:', {
+    code,
+    message: error.message,
+    details: error.details
+  });
+
   // Map Firebase error codes to user-friendly messages
   const errorMessages: Record<string, string> = {
     'permission-denied': 'You do not have permission to perform this action',
@@ -52,13 +58,27 @@ function handleFirebaseError(error: any): ErrorResponse {
     'unauthenticated': 'Authentication required',
     'unavailable': 'Service temporarily unavailable. Please try again',
     'deadline-exceeded': 'Request timeout. Please try again',
+    'auth/invalid-phone-number': 'Invalid phone number format. Use 10 digits or E.164 format (+919876543210)',
+    'auth/phone-number-already-exists': 'Phone number already registered',
+    'auth/email-already-exists': 'Email address already registered',
+    'auth/weak-password': 'Password must be at least 6 characters',
+    'auth/invalid-email': 'Invalid email address format',
   };
 
   const message = errorMessages[code] || 'Database operation failed';
-  const statusCode = code === 'permission-denied' || code === 'unauthenticated' ? 403 : 500;
+
+  // Determine status code based on error type
+  let statusCode = 500;
+  if (code === 'permission-denied' || code === 'unauthenticated') {
+    statusCode = 403;
+  } else if (code === 'auth/email-already-exists' || code === 'auth/phone-number-already-exists') {
+    statusCode = 409;
+  } else if (code.startsWith('auth/invalid-') || code === 'auth/weak-password') {
+    statusCode = 400;
+  }
 
   return {
-    error: 'Database Error',
+    error: code.startsWith('auth/') ? 'Authentication Error' : 'Database Error',
     message,
     statusCode,
   };

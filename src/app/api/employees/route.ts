@@ -176,9 +176,35 @@ export async function POST(request: NextRequest) {
     console.log('Employee created successfully:', newEmployee.id);
 
     return NextResponse.json(newEmployee, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('=== EMPLOYEE CREATE ERROR ===');
-    console.error('Error message:', error instanceof Error ? error.message : String(error));
+    console.error('Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      code: error.code,
+      stack: error.stack
+    });
+
+    // Handle specific Firebase Auth errors
+    if (error.code === 'auth/invalid-phone-number') {
+      return NextResponse.json(
+        { error: 'Invalid phone number format. Use 10 digits or E.164 format (+919876543210)' },
+        { status: 400 }
+      );
+    }
+
+    if (error.code === 'auth/phone-number-already-exists') {
+      return NextResponse.json(
+        { error: 'Phone number already registered' },
+        { status: 409 }
+      );
+    }
+
+    if (error.code === 'auth/weak-password') {
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters' },
+        { status: 400 }
+      );
+    }
 
     // Handle Firebase auth errors
     if (error instanceof Error) {

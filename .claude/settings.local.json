@@ -1,27 +1,14 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run:*)",
-      "Bash(curl:*)",
-      "Bash(npx skills:*)",
-      "Bash(gh auth:*)",
-      "Bash(ssh-add:*)",
-      "Bash(npm test:*)",
-      "Bash(npm install:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Bash(grep:*)",
-      "Bash(xargs ls:*)",
-      "Bash(npx tsc:*)",
-      "Bash(wc -l /d/jpcopanel/src/components/tasks/*.tsx)",
-      "Bash(find /d/jpcopanel -type f -name *my-tasks*)",
-      "Bash(find \"d:\\\\jpcopanel\\\\src\" -type f \\\\\\( -name \"*.ts\" -o -name \"*.tsx\" \\\\\\) -exec grep -l \"leave-types\\\\|leave-balances\" {} \\\\;)",
-      "Bash(firebase deploy *)",
-      "Bash(find src *)",
-      "mcp__plugin_claude-mem_mcp-search__search",
-      "Bash(pkill -f \"next dev\")",
-      "Bash(code-review-graph status *)"
+      "Bash(rm -rf ~/.claude/backups)",
+      "Bash(rm -rf ~/.claude/file-history)",
+      "Bash(grep -v \"claude-mem\" ~/.claude/history.jsonl)",
+      "Bash(mv ~/.claude/history_clean.jsonl ~/.claude/history.jsonl)",
+      "Bash(npm run *)"
     ]
-  }
+  },
+  "disabledMcpjsonServers": [
+    "code-review-graph"
+  ]
 }

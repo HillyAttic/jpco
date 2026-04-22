@@ -1,7 +1,0 @@
-{
-    "typescript.autoClosingTags": false,
-    "kiroAgent.agentAutonomy": "Autopilot",
-    "css.lint.unknownAtRules": "ignore",
-    "git.autofetch": "all",
-    "git.allowForcePush": false
-}
