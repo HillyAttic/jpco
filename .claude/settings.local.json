@@ -5,7 +5,9 @@
       "Bash(rm -rf ~/.claude/file-history)",
       "Bash(grep -v \"claude-mem\" ~/.claude/history.jsonl)",
       "Bash(mv ~/.claude/history_clean.jsonl ~/.claude/history.jsonl)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(node -p \"require\\('sharp'\\)\")",
+      "Bash(node *)"
     ]
   },
   "disabledMcpjsonServers": [

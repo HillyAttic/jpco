@@ -2,7 +2,7 @@
 // This service worker handles offline functionality and PWA installation
 // VERSION: 2.0 - Fixed aggressive caching that caused stale JS bundles in production
 
-const CACHE_NAME = 'jpco-dashboard-v2';
+const CACHE_NAME = 'jpco-dashboard-v3';
 
 // Only cache truly static assets that won't change between deployments
 const STATIC_ASSETS = [
@@ -11,6 +11,7 @@ const STATIC_ASSETS = [
   '/images/logo/logo-512.png',
   '/images/logo/logo-maskable-192.png',
   '/images/logo/logo-maskable-512.png',
+  '/images/logo/apple-touch-icon.png',
   '/images/logo/logo-icon.svg',
   '/offline.html'
 ];

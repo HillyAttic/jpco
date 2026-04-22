@@ -21,7 +21,7 @@ try {
   process.exit(1);
 }
 
-const sourceIcon = path.join(__dirname, '../public/images/logo/logo-icon.svg');
+const sourceIcon = path.join(__dirname, '../public/images/logo/720250.svg');
 const outputDir = path.join(__dirname, '../public/images/logo');
 const iconsDir = path.join(__dirname, '../public/images/icons');
 
@@ -30,7 +30,8 @@ const iconSizes = [
   { size: 192, name: 'logo-192.png', purpose: 'any' },
   { size: 512, name: 'logo-512.png', purpose: 'any' },
   { size: 192, name: 'logo-maskable-192.png', purpose: 'maskable' },
-  { size: 512, name: 'logo-maskable-512.png', purpose: 'maskable' }
+  { size: 512, name: 'logo-maskable-512.png', purpose: 'maskable' },
+  { size: 180, name: 'apple-touch-icon.png', purpose: 'any' }
 ];
 
 // Shortcut icon sizes

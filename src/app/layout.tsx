@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   description:
     "JPCO admin dashboard toolkit with 200+ templates, UI components, and integrations for fast dashboard development.",
   manifest: "/manifest.json",
+  icons: {
+    apple: '/images/logo/apple-touch-icon.png',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
