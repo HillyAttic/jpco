@@ -123,7 +123,7 @@ export function RecurringTaskListView({
     }
 
     return (
-      <div className={containerClassName ?? "px-6 pb-3 pt-2 flex flex-wrap gap-2 border-t border-gray-100 dark:border-gray-700/50"}>
+      <div className={containerClassName ?? "px-6 pb-3 pt-2 flex flex-wrap gap-2 border-t border-gray-100 dark:border-gray-700/50 justify-end"}>
         {hasClientsButton && onClientsClick && (
           <button
             onClick={() => onClientsClick(task)}
@@ -415,54 +415,54 @@ export function RecurringTaskListView({
 
             {/* Action Buttons */}
             {(canManageTasks || onViewReport) && (
-              <div className="grid grid-cols-2 gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+              <div className="col-span-2 flex items-center justify-end gap-3 pt-2 border-t border-gray-200 dark:border-gray-700">
                 {onViewReport && (
                   <button
                     onClick={() => onViewReport(task)}
-                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium bg-purple-100 text-purple-700 hover:bg-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:hover:bg-purple-900/50 transition-colors min-h-[44px]"
+                    className="text-purple-600 hover:text-purple-900 dark:text-purple-400 dark:hover:text-purple-300 p-2"
                     aria-label="View report"
+                    title="View Report"
                   >
-                    <EyeIcon className="w-5 h-5 shrink-0" />
-                    <span className="text-sm">Report</span>
+                    <EyeIcon className="w-5 h-5" />
                   </button>
                 )}
                 {canManageTasks && (task.isPaused ? (
                   <button
                     onClick={() => onResume(task.id!)}
-                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400 dark:hover:bg-green-900/50 transition-colors min-h-[44px]"
+                    className="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 p-2"
                     aria-label="Resume task"
+                    title="Resume"
                   >
-                    <PlayIcon className="w-5 h-5 shrink-0" />
-                    <span className="text-sm">Resume</span>
+                    <PlayIcon className="w-5 h-5" />
                   </button>
                 ) : (
                   <button
                     onClick={() => onPause(task.id!)}
-                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium bg-yellow-100 text-yellow-700 hover:bg-yellow-200 dark:bg-yellow-900/30 dark:text-yellow-400 dark:hover:bg-yellow-900/50 transition-colors min-h-[44px]"
+                    className="text-yellow-600 hover:text-yellow-900 dark:text-yellow-400 dark:hover:text-yellow-300 p-2"
                     aria-label="Pause task"
+                    title="Pause"
                   >
-                    <PauseIcon className="w-5 h-5 shrink-0" />
-                    <span className="text-sm">Pause</span>
+                    <PauseIcon className="w-5 h-5" />
                   </button>
                 ))}
                 {canManageTasks && (
                   <button
                     onClick={() => onEdit(task)}
-                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium bg-blue-600 text-white hover:bg-blue-700 dark:bg-blue-600 dark:text-white dark:hover:bg-blue-700 transition-colors min-h-[44px]"
+                    className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 p-2"
                     aria-label="Edit task"
+                    title="Edit"
                   >
-                    <PencilIcon className="w-5 h-5 shrink-0" />
-                    <span className="text-sm">Edit</span>
+                    <PencilIcon className="w-5 h-5" />
                   </button>
                 )}
                 {canManageTasks && (
                   <button
                     onClick={() => onDelete(task.id!)}
-                    className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors min-h-[44px]"
+                    className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300 p-2"
                     aria-label="Delete task"
+                    title="Delete"
                   >
-                    <TrashIcon className="w-5 h-5 shrink-0" />
-                    <span className="text-sm">Delete</span>
+                    <TrashIcon className="w-5 h-5" />
                   </button>
                 )}
               </div>

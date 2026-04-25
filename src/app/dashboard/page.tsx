@@ -136,6 +136,7 @@ export default function DashboardPage() {
   const [selectedTaskForDelegate, setSelectedTaskForDelegate] = useState<DashboardTask | null>(null);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedTaskForSchedule, setSelectedTaskForSchedule] = useState<DashboardTask | null>(null);
+  const [showAllRecurringTasks, setShowAllRecurringTasks] = useState(false);
 
   // Completion stats and inline report modal
   const [taskCompletionStats, setTaskCompletionStats] = useState<Map<string, { completed: number; total: number }>>(new Map());
