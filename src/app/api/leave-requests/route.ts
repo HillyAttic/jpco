@@ -320,6 +320,36 @@ export async function POST(request: NextRequest) {
     const start = new Date(startDate);
     const end = new Date(endDate);
 
+    // Check for duplicate submissions within the last 5 minutes
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+    const duplicateCheck = await adminDb
+      .collection('leave-requests')
+      .where('employeeId', '==', authResult.user.uid)
+      .where('leaveType', '==', leaveType)
+      .where('createdAt', '>', fiveMinutesAgo)
+      .get();
+
+    // Check if any match exact dates and halfDay flag
+    const exactDuplicate = duplicateCheck.docs.find(doc => {
+      const data = doc.data();
+      const docStart = data.startDate?.toDate ? data.startDate.toDate() : new Date(data.startDate);
+      const docEnd = data.endDate?.toDate ? data.endDate.toDate() : new Date(data.endDate);
+
+      return docStart.toISOString() === start.toISOString() &&
+             docEnd.toISOString() === end.toISOString() &&
+             data.halfDay === (halfDay || false);
+    });
+
+    if (exactDuplicate) {
+      return NextResponse.json(
+        {
+          error: 'Duplicate request detected. A similar leave request was just submitted.',
+          existingRequestId: exactDuplicate.id
+        },
+        { status: 409 }
+      );
+    }
+
     // Calculate total days - if halfDay is true, set to 0.5, otherwise calculate normally
     let totalDays: number;
     if (halfDay) {

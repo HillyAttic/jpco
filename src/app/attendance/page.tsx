@@ -79,17 +79,21 @@ export default function AttendancePage() {
     if (!user || !userProfile) return;
 
     try {
+      setLoadingLeaves(true);
       await leaveService.createLeaveRequest({
         ...data,
         employeeId: user.uid,
         employeeName: userProfile.displayName || user.email || 'Unknown',
       });
       toast.success('Leave request submitted successfully');
-      fetchData(); // Refresh data
       setShowLeaveModal(false);
+      fetchData(); // Refresh data
     } catch (error) {
       console.error('Error submitting leave:', error);
       toast.error('Failed to submit leave request');
+      // Keep modal open on error so user can retry
+    } finally {
+      setLoadingLeaves(false);
     }
   };
 

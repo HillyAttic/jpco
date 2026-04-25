@@ -41,7 +41,7 @@ export function LeaveRequestModal({
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
     reset,
     watch,
   } = useForm<LeaveRequestFormData>({
@@ -54,9 +54,15 @@ export function LeaveRequestModal({
   );
 
   const onSubmitForm = async (data: LeaveRequestFormData) => {
-    await onSubmit(data);
-    reset();
-    onOpenChange(false);
+    try {
+      await onSubmit(data);
+      reset();
+      onOpenChange(false);
+    } catch (error) {
+      // Error handling is done in parent component
+      // Keep modal open so user can retry
+      console.error('Form submission error:', error);
+    }
   };
 
   return (
@@ -152,11 +158,12 @@ export function LeaveRequestModal({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              disabled={isSubmitting || loading}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="text-white">
-              {loading ? 'Submitting...' : 'Submit Request'}
+            <Button type="submit" disabled={isSubmitting || loading} className="text-white">
+              {isSubmitting || loading ? 'Submitting...' : 'Submit Request'}
             </Button>
           </div>
         </form>
