@@ -33,19 +33,19 @@ export function useNotifications() {
   const retryCount = useRef(0);
 
   // Convert Notification to AppNotification format
-  const convertNotification = (n: Notification): AppNotification => ({
+  const convertNotification = (n: any): AppNotification => ({
     id: n.id || '',
     title: n.title,
-    body: n.message,
-    message: n.message,
+    body: n.message || n.body || '',
+    message: n.message || n.body || '',
     read: n.read,
     createdAt: n.createdAt.toISOString(),
     type: n.type,
-    actionUrl: n.actionUrl,
+    actionUrl: n.actionUrl || n.data?.url,
     data: {
-      taskId: n.metadata?.taskId,
-      url: n.actionUrl,
-      type: n.type,
+      taskId: n.metadata?.taskId || n.data?.taskId,
+      url: n.actionUrl || n.data?.url,
+      type: n.type || n.data?.type,
     },
   });
 

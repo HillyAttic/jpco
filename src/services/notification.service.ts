@@ -21,9 +21,15 @@ export interface Notification {
   userId: string;
   title: string;
   message: string;
+  body?: string;
   type: 'task' | 'attendance' | 'team' | 'employee' | 'system';
   read: boolean;
   actionUrl?: string;
+  data?: {
+    url?: string;
+    type?: string;
+    taskId?: string;
+  };
   metadata?: {
     taskId?: string;
     employeeId?: string;

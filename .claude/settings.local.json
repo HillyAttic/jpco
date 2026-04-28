@@ -19,7 +19,8 @@
       "Bash(curl -s http://localhost:3000/dashboard)",
       "Bash(npx tsc *)",
       "Bash(touch *)",
-      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")"
+      "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
+      "Bash(git show *)"
     ]
   },
   "disabledMcpjsonServers": [
