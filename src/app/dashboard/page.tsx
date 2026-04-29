@@ -28,6 +28,7 @@ import {
 import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
 import { RecurringTask } from '@/services/recurring-task.service';
+import DashboardFormEmbed from '@/components/dashboard/DashboardFormEmbed';
 import { activityService } from '@/services/activity.service';
 import { clientService, Client } from '@/services/client.service';
 import { employeeService } from '@/services/employee.service';
@@ -1101,6 +1102,9 @@ export default function DashboardPage() {
           )}
         </div>
       )}
+
+      {/* MIS Form Embed */}
+      <DashboardFormEmbed />
 
       {/* ✅ OPTIMIZATION: Charts load progressively */}
       {/* First Row: Task Distribution Chart and Quick Actions in 2-column grid for desktop */}

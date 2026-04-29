@@ -30,6 +30,8 @@ import {
   PieChart as LucidePieChart,
   Grid2X2,
   LogIn,
+  FileSpreadsheet,
+  Settings,
 } from "lucide-react";
 
 export type PropsType = SVGProps<SVGSVGElement>;
@@ -71,6 +73,8 @@ export const PieChart = wrap(LucidePieChart);
 export const FourCircle = wrap(Grid2X2);
 export const Authentication = wrap(LogIn);
 export const User = wrap(Users);
+export const MISTrackerIcon = wrap(FileSpreadsheet);
+export const SettingsIcon = wrap(Settings);
 
 export function ChevronUp(props: PropsType) {
   const { className } = props;

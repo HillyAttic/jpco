@@ -11,16 +11,19 @@ import { ArrowLeftIcon, ChevronUp } from "./icons";
 import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
 import { useAuthEnhanced } from "@/hooks/use-auth-enhanced";
+import { authenticatedFetch } from "@/lib/api-client";
 
 export function Sidebar() {
   const pathname = usePathname();
   const { setIsOpen, isOpen, isMobile, isTablet, isDesktop, toggleSidebar, variant } = useSidebarContext();
   const { device, isTouchDevice } = useResponsive();
-  const { hasRole } = useAuthEnhanced();
+  const { hasRole, user } = useAuthEnhanced();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [collapsedSections, setCollapsedSections] = useState<string[]>(
     NAV_DATA.filter((s) => s.label !== 'MAIN MENU').map((s) => s.label)
   );
+  const [misConfig, setMisConfig] = useState<any>(null);
+  const [misConfigLoaded, setMisConfigLoaded] = useState(false);
 
   const toggleSection = (label: string) => {
     setCollapsedSections((prev) =>
@@ -38,6 +41,24 @@ export function Sidebar() {
       setIsOpen(false);
     }
   }, [pathname, isMobile]);
+
+  // Fetch MIS config for dynamic visibility
+  useEffect(() => {
+    if (user && !misConfigLoaded) {
+      authenticatedFetch('/api/mis-config')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.success) {
+            setMisConfig(data.data);
+          }
+          setMisConfigLoaded(true);
+        })
+        .catch((err) => {
+          console.error('Error fetching MIS config:', err);
+          setMisConfigLoaded(true);
+        });
+    }
+  }, [user, misConfigLoaded]);
 
   useEffect(() => {
     // Keep collapsible open when its subpage is active
@@ -183,6 +204,11 @@ export function Sidebar() {
                 // Filter out items hidden on mobile
                 if (isMobile && item.hideOnMobile) {
                   return false;
+                }
+                // Handle dynamic visibility for MIS Tracker
+                if (item.dynamicVisibility && item.url === '/mis-tracker') {
+                  if (!misConfigLoaded) return false;
+                  return misConfig?.hasSheetAccess || false;
                 }
                 // Filter out items that require specific roles
                 if (item.requiresRole) {
