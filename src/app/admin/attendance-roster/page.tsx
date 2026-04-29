@@ -153,8 +153,20 @@ export default function AttendanceRosterPage() {
 
           // Check attendance
           const attendance = attendanceData.find(
-            (a: any) => a.employeeId === emp.id &&
-              new Date(a.clockIn).toISOString().split('T')[0] === dateStr
+            (a: any) => {
+              if (a.employeeId !== emp.id) return false;
+              const clockInDate = new Date(a.clockIn);
+              if (isNaN(clockInDate.getTime())) return false;
+              
+              // Format clockInDate to YYYY-MM-DD in IST to match dateStr
+              const formatter = new Intl.DateTimeFormat('en-CA', { 
+                  timeZone: 'Asia/Kolkata',
+                  year: 'numeric',
+                  month: '2-digit',
+                  day: '2-digit'
+              });
+              return formatter.format(clockInDate) === dateStr;
+            }
           );
 
           // Check leave requests - compare YYYY-MM-DD strings to avoid timezone mismatch
