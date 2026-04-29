@@ -105,10 +105,7 @@ export const attendanceAdminService = {
      * Check if employee has already clocked in today
      */
     async hasClockedInToday(employeeId: string): Promise<boolean> {
-        // Use a 30-hour lookback window instead of server-local midnight.
-        // The server runs in UTC, so setHours(0,0,0,0) would produce a UTC midnight
-        // boundary that misses records from users in positive-offset timezones (e.g. IST
-        // is UTC+5:30 — their morning clock-ins happen before UTC midnight the next day).
+        // Use a 30-hour lookback window to safely catch clock-ins across timezones
         const cutoff = new Date(Date.now() - 30 * 60 * 60 * 1000);
 
         const snapshot = await adminDb
@@ -117,17 +114,30 @@ export const attendanceAdminService = {
             .where('clockIn', '>=', Timestamp.fromDate(cutoff))
             .get();
 
-        return !snapshot.empty;
+        if (snapshot.empty) return false;
+
+        // Filter to ensure the record actually belongs to TODAY in the user's timezone (IST)
+        const formatter = new Intl.DateTimeFormat('en-CA', { 
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        const todayStr = formatter.format(new Date());
+
+        return snapshot.docs.some((doc) => {
+            const data = doc.data();
+            const clockIn = data.clockIn?.toDate ? data.clockIn.toDate() : new Date(data.clockIn);
+            if (!clockIn || isNaN(clockIn.getTime())) return false;
+            return formatter.format(clockIn) === todayStr;
+        });
     },
 
     /**
      * Get current attendance status for an employee
      */
     async getCurrentStatus(employeeId: string) {
-        // Use a 30-hour lookback window instead of server-local midnight.
-        // The server runs in UTC, so setHours(0,0,0,0) would produce a UTC midnight
-        // boundary that misses records from users in positive-offset timezones (e.g. IST
-        // is UTC+5:30 — their morning clock-ins happen before UTC midnight the next day).
+        // Use a 30-hour lookback window to safely catch clock-ins across timezones
         const cutoff = new Date(Date.now() - 30 * 60 * 60 * 1000);
 
         const snapshot = await adminDb
@@ -136,8 +146,22 @@ export const attendanceAdminService = {
             .where('clockIn', '>=', Timestamp.fromDate(cutoff))
             .get();
 
+        // Filter to ensure the record actually belongs to TODAY in the user's timezone (IST)
+        const formatter = new Intl.DateTimeFormat('en-CA', { 
+            timeZone: 'Asia/Kolkata',
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit'
+        });
+        const todayStr = formatter.format(new Date());
+
         const todayRecords = snapshot.docs
-            .map((doc) => convertTimestamps(doc.data(), doc.id));
+            .map((doc) => convertTimestamps(doc.data(), doc.id))
+            .filter((record) => {
+                const clockIn = record.clockIn instanceof Date ? record.clockIn : new Date(record.clockIn);
+                if (isNaN(clockIn.getTime())) return false;
+                return formatter.format(clockIn) === todayStr;
+            });
 
         const activeRecord = todayRecords.find((r) => !r.clockOut);
 
