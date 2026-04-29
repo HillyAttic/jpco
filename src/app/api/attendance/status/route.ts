@@ -16,23 +16,22 @@ export async function GET(request: NextRequest) {
       return ErrorResponses.forbidden('Insufficient permissions');
     }
 
-    const searchParams = request.nextUrl.searchParams;
-    const employeeId = searchParams.get('employeeId');
+    // Use authenticated user's ID (employees can only check their own status)
+    const employeeId = authResult.user.uid;
 
-    if (!employeeId) {
-      return NextResponse.json(
-        { error: 'Bad Request', message: 'Employee ID is required' },
-        { status: 400 }
-      );
-    }
-
+    // Use Admin SDK to get status (bypasses security rules)
     const status = await attendanceAdminService.getCurrentStatus(employeeId);
+    const hasClockedIn = await attendanceAdminService.hasClockedInToday(employeeId);
 
-    return NextResponse.json(status, { status: 200 });
+    return NextResponse.json({
+      success: true,
+      status,
+      hasClockedInToday: hasClockedIn,
+    });
   } catch (error: any) {
-    console.error('Get status error:', error);
+    console.error('Get attendance status error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error', message: error.message || 'Failed to get attendance status' },
+      { error: 'Internal Server Error', message: error.message || 'Failed to get status' },
       { status: 500 }
     );
   }

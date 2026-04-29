@@ -105,51 +105,39 @@ export const attendanceAdminService = {
      * Check if employee has already clocked in today
      */
     async hasClockedInToday(employeeId: string): Promise<boolean> {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+        // Use a 30-hour lookback window instead of server-local midnight.
+        // The server runs in UTC, so setHours(0,0,0,0) would produce a UTC midnight
+        // boundary that misses records from users in positive-offset timezones (e.g. IST
+        // is UTC+5:30 — their morning clock-ins happen before UTC midnight the next day).
+        const cutoff = new Date(Date.now() - 30 * 60 * 60 * 1000);
 
         const snapshot = await adminDb
             .collection(COLLECTION)
             .where('employeeId', '==', employeeId)
-            .where('clockIn', '>=', Timestamp.fromDate(startOfDay))
+            .where('clockIn', '>=', Timestamp.fromDate(cutoff))
             .get();
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        return snapshot.docs.some((doc) => {
-            const data = doc.data();
-            const clockIn = safeToDate(data.clockIn);
-            if (!clockIn) return false;
-            const recordDay = new Date(clockIn);
-            recordDay.setHours(0, 0, 0, 0);
-            return recordDay.getTime() === today.getTime();
-        });
+        return !snapshot.empty;
     },
 
     /**
      * Get current attendance status for an employee
      */
     async getCurrentStatus(employeeId: string) {
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
+        // Use a 30-hour lookback window instead of server-local midnight.
+        // The server runs in UTC, so setHours(0,0,0,0) would produce a UTC midnight
+        // boundary that misses records from users in positive-offset timezones (e.g. IST
+        // is UTC+5:30 — their morning clock-ins happen before UTC midnight the next day).
+        const cutoff = new Date(Date.now() - 30 * 60 * 60 * 1000);
 
         const snapshot = await adminDb
             .collection(COLLECTION)
             .where('employeeId', '==', employeeId)
-            .where('clockIn', '>=', Timestamp.fromDate(startOfDay))
+            .where('clockIn', '>=', Timestamp.fromDate(cutoff))
             .get();
 
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
         const todayRecords = snapshot.docs
-            .map((doc) => convertTimestamps(doc.data(), doc.id))
-            .filter((r) => {
-                const d = new Date(r.clockIn);
-                d.setHours(0, 0, 0, 0);
-                return d.getTime() === today.getTime();
-            });
+            .map((doc) => convertTimestamps(doc.data(), doc.id));
 
         const activeRecord = todayRecords.find((r) => !r.clockOut);
 
@@ -347,24 +335,36 @@ export const attendanceAdminService = {
 
         const records = snapshot.docs.map((doc) => convertTimestamps(doc.data(), doc.id));
 
-        // Group by date
+        // Group by local date (Asia/Kolkata) to avoid deleting valid late-night/early-morning shifts
         const byDate = new Map<string, typeof records>();
         for (const record of records) {
             const d = record.clockIn instanceof Date ? record.clockIn : new Date(record.clockIn);
             if (isNaN(d.getTime())) continue;
-            const key = d.toISOString().split('T')[0];
+            
+            // Format to YYYY-MM-DD using IST timezone
+            const formatter = new Intl.DateTimeFormat('en-CA', { 
+                timeZone: 'Asia/Kolkata',
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit'
+            });
+            const key = formatter.format(d);
+            
             if (!byDate.has(key)) byDate.set(key, []);
             byDate.get(key)!.push(record);
         }
 
-        for (const [, dayRecords] of byDate.entries()) {
+        for (const [dateKey, dayRecords] of byDate.entries()) {
             if (dayRecords.length > 1) {
                 const sorted = dayRecords.sort((a, b) => {
                     const at = (a.clockIn instanceof Date ? a.clockIn : new Date(a.clockIn)).getTime();
                     const bt = (b.clockIn instanceof Date ? b.clockIn : new Date(b.clockIn)).getTime();
                     return at - bt;
                 });
+                
+                // Keep the FIRST record, delete subsequent ones
                 for (let i = 1; i < sorted.length; i++) {
+                    console.warn(`Deleting duplicate attendance record: ${sorted[i].id} for date ${dateKey}`);
                     await adminDb.collection(COLLECTION).doc(sorted[i].id).delete();
                 }
             }

@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { attendanceService } from '@/services/attendance.service';
-import { apiPost } from '@/lib/api-client';
+import { apiPost, authenticatedFetch } from '@/lib/api-client';
 import { 
   Clock, 
   MapPin, 
@@ -119,41 +119,49 @@ export function GeolocationAttendanceTracker() {
 
   const loadStatus = async () => {
     if (!auth.user) return;
-    
+
     try {
       console.log('Loading status for user:', auth.user.uid);
       setStatus({ status: 'loading', data: null });
-      const result = await attendanceService.getCurrentStatus(auth.user.uid);
-      console.log('getCurrentStatus result:', result);
-      
-      // Check if user has already clocked in today (even if they've clocked out)
-      const hasClockedInToday = await attendanceService.hasClockedInToday(auth.user.uid);
-      console.log('hasClockedInToday:', hasClockedInToday);
-      
+
+      // Use API route (Admin SDK) instead of client SDK — avoids Firestore security rule blocks
+      const response = await authenticatedFetch('/api/attendance/status');
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Status API error (${response.status}): ${errText}`);
+      }
+
+      const data = await response.json();
+      console.log('API status result:', data.status);
+      console.log('hasClockedInToday:', data.hasClockedInToday);
+
+      const currentStatus = data.status;
+
       // Map the service response to our status format
       let mappedStatus: AttendanceStatus['status'] = 'NOT_CLOCKED_IN';
-      if (result.isClockedIn) {
-        mappedStatus = result.isOnBreak ? 'ON_BREAK' : 'CLOCKED_IN';
+      if (currentStatus.isClockedIn) {
+        mappedStatus = currentStatus.isOnBreak ? 'ON_BREAK' : 'CLOCKED_IN';
         console.log('User is clocked in, status:', mappedStatus);
-      } else if (!result.isClockedIn && hasClockedInToday) {
+      } else if (!currentStatus.isClockedIn && data.hasClockedInToday) {
         // User has already clocked in today but is not currently clocked in
         mappedStatus = 'CLOCKED_OUT';
         console.log('User has clocked out for today');
       } else {
         console.log('User is not clocked in');
       }
-      
+
       console.log('Final mapped status:', mappedStatus);
       setStatus({
         status: mappedStatus,
-        data: result
+        data: currentStatus
       });
     } catch (err: any) {
       console.error('Error loading status:', err);
-      setStatus({ 
-        status: 'error', 
-        data: null, 
-        error: err.message || 'Failed to load attendance status' 
+      setStatus({
+        status: 'error',
+        data: null,
+        error: err.message || 'Failed to load attendance status'
       });
     }
   };
@@ -367,12 +375,15 @@ export function GeolocationAttendanceTracker() {
   const handleClockOut = async () => {
     if (!auth.user) return;
 
-    // Get current record ID from status or fetch it
+    // Get current record ID from status or fetch it via API (never use client SDK)
     let recordId = status.data?.currentRecordId;
     if (!recordId) {
       try {
-        const currentStatus = await attendanceService.getCurrentStatus(auth.user.uid);
-        recordId = currentStatus.currentRecordId;
+        const resp = await authenticatedFetch('/api/attendance/status');
+        if (resp.ok) {
+          const d = await resp.json();
+          recordId = d.status?.currentRecordId;
+        }
       } catch (err) {
         setError('Could not find current attendance record');
         return;
