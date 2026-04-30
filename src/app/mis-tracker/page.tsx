@@ -5,39 +5,92 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { useAuthEnhanced } from '@/hooks/use-auth-enhanced';
 import { authenticatedFetch } from '@/lib/api-client';
+import { SubmissionsTable } from '@/components/forms/submissions/SubmissionsTable';
+import type { FormSubmission, FormTemplate } from '@/types/form.types';
 
 export default function MISTrackerPage() {
   const router = useRouter();
   const { user, loading: authLoading } = useAuthEnhanced();
 
   const [loading, setLoading] = useState(true);
-  const [sheetUrl, setSheetUrl] = useState('');
   const [hasAccess, setHasAccess] = useState(false);
+  const [template, setTemplate] = useState<FormTemplate | null>(null);
+  const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
 
   useEffect(() => {
     if (!authLoading && user) {
-      fetchConfig();
+      fetchData();
     }
   }, [authLoading, user]);
 
-  const fetchConfig = async () => {
+  const fetchData = async () => {
     try {
       setLoading(true);
 
-      const response = await authenticatedFetch('/api/mis-config');
-      const data = await response.json();
+      // Get MIS config
+      const configResponse = await authenticatedFetch('/api/mis-config');
+      const configData = await configResponse.json();
 
-      if (response.ok && data.success) {
-        setSheetUrl(data.data.sheetUrl || '');
-        setHasAccess(data.data.hasSheetAccess || false);
-      } else {
+      if (!configResponse.ok || !configData.success) {
         toast.error('Failed to load MIS configuration');
+        return;
+      }
+
+      setHasAccess(configData.data.hasSheetAccess || false);
+
+      if (!configData.data.hasSheetAccess) {
+        return;
+      }
+
+      const dailyFormTemplateId = configData.data.dailyFormTemplateId;
+
+      if (!dailyFormTemplateId) {
+        // No form configured yet
+        return;
+      }
+
+      // Fetch form template
+      const templateResponse = await authenticatedFetch(
+        `/api/forms/templates/${dailyFormTemplateId}`
+      );
+      const templateResult = await templateResponse.json();
+
+      if (templateResponse.ok && templateResult.success) {
+        setTemplate(templateResult.template);
+
+        // Fetch submissions
+        const submissionsResponse = await authenticatedFetch(
+          `/api/forms/submissions?formId=${dailyFormTemplateId}`
+        );
+        const submissionsResult = await submissionsResponse.json();
+
+        if (submissionsResponse.ok && submissionsResult.success) {
+          setSubmissions(submissionsResult.submissions);
+        }
       }
     } catch (error) {
-      console.error('Error fetching MIS config:', error);
-      toast.error('Failed to load MIS configuration');
+      console.error('Error fetching MIS data:', error);
+      toast.error('Failed to load MIS data');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    try {
+      const response = await authenticatedFetch(`/api/forms/submissions/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        toast.success('Submission deleted successfully');
+        fetchData();
+      } else {
+        const result = await response.json();
+        toast.error(result.error || 'Failed to delete submission');
+      }
+    } catch (error) {
+      toast.error('Failed to delete submission');
     }
   };
 
@@ -52,7 +105,7 @@ export default function MISTrackerPage() {
     );
   }
 
-  if (!hasAccess || !sheetUrl) {
+  if (!hasAccess) {
     return (
       <div className="flex items-center justify-center min-h-screen px-4">
         <div className="text-center max-w-md">
@@ -89,27 +142,44 @@ export default function MISTrackerPage() {
     );
   }
 
+  if (!template) {
+    return (
+      <div className="flex items-center justify-center min-h-screen px-4">
+        <div className="text-center max-w-md">
+          <div className="mb-4 text-6xl">📋</div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+            No Form Configured
+          </h1>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            The daily MIS form has not been configured yet. Please contact your administrator.
+          </p>
+          <button
+            onClick={() => router.push('/dashboard')}
+            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors duration-200"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="h-screen flex flex-col">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 py-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">MIS Tracker</h1>
         <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-          Management Information System Report
+          View and manage daily form submissions
         </p>
       </div>
 
-      <div className="flex-1 bg-gray-50 dark:bg-gray-900 p-4">
-        <div className="h-full bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <iframe
-            src={sheetUrl}
-            className="w-full h-full"
-            style={{ border: 0 }}
-            referrerPolicy="no-referrer-when-downgrade"
-            sandbox="allow-scripts allow-same-origin allow-popups"
-            title="MIS Tracker Report"
-            loading="lazy"
-          />
-        </div>
+      <div className="container mx-auto px-6 py-6">
+        <SubmissionsTable
+          submissions={submissions}
+          template={template}
+          onRefresh={fetchData}
+          onDelete={handleDelete}
+        />
       </div>
     </div>
   );

@@ -152,10 +152,10 @@ export async function verifyAuthToken(request: NextRequest): Promise<{
 /**
  * Middleware to protect API routes with authentication
  */
-export function withAuth(
-  handler: (request: AuthenticatedRequest) => Promise<NextResponse>
+export function withAuth<T = any>(
+  handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>
 ) {
-  return async (request: NextRequest): Promise<NextResponse> => {
+  return async (request: NextRequest, context?: T): Promise<NextResponse> => {
     const authResult = await verifyAuthToken(request);
 
     if (!authResult.success) {
@@ -169,18 +169,18 @@ export function withAuth(
     const authenticatedRequest = request as AuthenticatedRequest;
     authenticatedRequest.user = authResult.user;
 
-    return handler(authenticatedRequest);
+    return handler(authenticatedRequest, context);
   };
 }
 
 /**
  * Middleware to protect API routes with role-based access control
  */
-export function withRoleAuth(
+export function withRoleAuth<T = any>(
   allowedRoles: UserRole[],
-  handler: (request: AuthenticatedRequest) => Promise<NextResponse>
+  handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>
 ) {
-  return withAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
+  return withAuth(async (request: AuthenticatedRequest, context?: T): Promise<NextResponse> => {
     const userRole = request.user?.claims.role;
 
     if (!userRole || !allowedRoles.includes(userRole)) {
@@ -190,18 +190,18 @@ export function withRoleAuth(
       );
     }
 
-    return handler(request);
+    return handler(request, context);
   });
 }
 
 /**
  * Middleware to protect API routes with permission-based access control
  */
-export function withPermissionAuth(
+export function withPermissionAuth<T = any>(
   requiredPermissions: string[],
-  handler: (request: AuthenticatedRequest) => Promise<NextResponse>
+  handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>
 ) {
-  return withAuth(async (request: AuthenticatedRequest): Promise<NextResponse> => {
+  return withAuth(async (request: AuthenticatedRequest, context?: T): Promise<NextResponse> => {
     const userPermissions = request.user?.claims.permissions || [];
 
     const hasAllPermissions = requiredPermissions.every(permission =>
@@ -215,15 +215,15 @@ export function withPermissionAuth(
       );
     }
 
-    return handler(request);
+    return handler(request, context);
   });
 }
 
 /**
  * Admin-only API route protection
  */
-export function withAdminAuth(
-  handler: (request: AuthenticatedRequest) => Promise<NextResponse>
+export function withAdminAuth<T = any>(
+  handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>
 ) {
   return withRoleAuth(['admin'], handler);
 }
@@ -231,8 +231,8 @@ export function withAdminAuth(
 /**
  * Manager+ API route protection (admin and manager roles)
  */
-export function withManagerAuth(
-  handler: (request: AuthenticatedRequest) => Promise<NextResponse>
+export function withManagerAuth<T = any>(
+  handler: (request: AuthenticatedRequest, context?: T) => Promise<NextResponse>
 ) {
   return withRoleAuth(['admin', 'manager'], handler);
 }

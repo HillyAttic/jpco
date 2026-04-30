@@ -191,6 +191,13 @@ export const NAV_DATA = [
         requiresRole: ['admin'],
       },
       {
+        title: "Form Builder",
+        url: "/forms/builder",
+        icon: Icons.TaskTrayIcon,
+        items: [],
+        requiresRole: ['admin', 'manager'], // Admins and managers can create forms
+      },
+      {
         title: "MIS Accessibility",
         url: "/admin/mis-accessibility",
         icon: Icons.SettingsIcon,

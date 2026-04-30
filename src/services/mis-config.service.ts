@@ -2,36 +2,24 @@ import { adminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 
 export interface MISConfiguration {
-  formUrl: string;
+  // Native form fields (replaces Google Forms/Sheets)
+  dailyFormTemplateId?: string; // ID of the form template to use for daily MIS
   formAssignedUsers: string[];
   formUpdatedAt: Timestamp;
   formUpdatedBy: string;
-  sheetUrl: string;
-  sheetAssignedUsers: string[];
+  sheetAssignedUsers: string[]; // Users who can view submissions
   sheetUpdatedAt: Timestamp;
   sheetUpdatedBy: string;
   createdAt: Timestamp;
   createdBy: string;
-  // New fields for daily form validation
-  formResponseSheetId?: string;
-  formResponseSheetGid?: string;
-  formEmailColumnIndex?: number;
-  formTimestampColumnIndex?: number;
   formRequiredForClockout?: boolean;
-  googleSheetsApiKey?: string;
 }
 
 export interface MISConfigUpdate {
-  formUrl?: string;
+  dailyFormTemplateId?: string;
   formAssignedUsers?: string[];
-  sheetUrl?: string;
   sheetAssignedUsers?: string[];
-  formResponseSheetId?: string;
-  formResponseSheetGid?: string;
-  formEmailColumnIndex?: number;
-  formTimestampColumnIndex?: number;
   formRequiredForClockout?: boolean;
-  googleSheetsApiKey?: string;
   updatedBy: string;
 }
 
@@ -57,8 +45,8 @@ export class MISConfigService {
     const now = Timestamp.now();
     const updateData: any = {};
 
-    if (updates.formUrl !== undefined) {
-      updateData.formUrl = updates.formUrl;
+    if (updates.dailyFormTemplateId !== undefined) {
+      updateData.dailyFormTemplateId = updates.dailyFormTemplateId;
       updateData.formUpdatedAt = now;
       updateData.formUpdatedBy = updates.updatedBy;
     }
@@ -69,61 +57,28 @@ export class MISConfigService {
       updateData.formUpdatedBy = updates.updatedBy;
     }
 
-    if (updates.sheetUrl !== undefined) {
-      updateData.sheetUrl = updates.sheetUrl;
-      updateData.sheetUpdatedAt = now;
-      updateData.sheetUpdatedBy = updates.updatedBy;
-    }
-
     if (updates.sheetAssignedUsers !== undefined) {
       updateData.sheetAssignedUsers = updates.sheetAssignedUsers;
       updateData.sheetUpdatedAt = now;
       updateData.sheetUpdatedBy = updates.updatedBy;
     }
 
-    // New fields for daily form validation
-    if (updates.formResponseSheetId !== undefined) {
-      updateData.formResponseSheetId = updates.formResponseSheetId;
-    }
-
-    if (updates.formResponseSheetGid !== undefined) {
-      updateData.formResponseSheetGid = updates.formResponseSheetGid;
-    }
-
-    if (updates.formEmailColumnIndex !== undefined) {
-      updateData.formEmailColumnIndex = updates.formEmailColumnIndex;
-    }
-
-    if (updates.formTimestampColumnIndex !== undefined) {
-      updateData.formTimestampColumnIndex = updates.formTimestampColumnIndex;
-    }
-
     if (updates.formRequiredForClockout !== undefined) {
       updateData.formRequiredForClockout = updates.formRequiredForClockout;
     }
 
-    if (updates.googleSheetsApiKey !== undefined) {
-      updateData.googleSheetsApiKey = updates.googleSheetsApiKey;
-    }
-
     if (!doc.exists) {
       const newConfig: MISConfiguration = {
-        formUrl: updates.formUrl || '',
+        dailyFormTemplateId: updates.dailyFormTemplateId || '',
         formAssignedUsers: updates.formAssignedUsers || [],
         formUpdatedAt: now,
         formUpdatedBy: updates.updatedBy,
-        sheetUrl: updates.sheetUrl || '',
         sheetAssignedUsers: updates.sheetAssignedUsers || [],
         sheetUpdatedAt: now,
         sheetUpdatedBy: updates.updatedBy,
         createdAt: now,
         createdBy: updates.updatedBy,
-        formResponseSheetId: updates.formResponseSheetId || '',
-        formResponseSheetGid: updates.formResponseSheetGid || '',
-        formEmailColumnIndex: updates.formEmailColumnIndex ?? 1,
-        formTimestampColumnIndex: updates.formTimestampColumnIndex ?? 0,
         formRequiredForClockout: updates.formRequiredForClockout ?? false,
-        googleSheetsApiKey: updates.googleSheetsApiKey || '',
       };
       await docRef.set(newConfig);
       return newConfig;

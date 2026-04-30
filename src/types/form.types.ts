@@ -1,0 +1,210 @@
+import { Timestamp } from 'firebase/firestore';
+
+/**
+ * Form field types supported by the form builder
+ */
+export type FormFieldType =
+  | 'text'
+  | 'textarea'
+  | 'number'
+  | 'email'
+  | 'phone'
+  | 'date'
+  | 'time'
+  | 'select'
+  | 'multiselect'
+  | 'radio'
+  | 'checkbox'
+  | 'file';
+
+/**
+ * Form template status
+ */
+export type FormStatus = 'draft' | 'published' | 'archived';
+
+/**
+ * Access control type for forms
+ */
+export type AccessControlType = 'public' | 'authenticated' | 'restricted';
+
+/**
+ * User roles in the system
+ */
+export type UserRole = 'admin' | 'manager' | 'employee';
+
+/**
+ * Validation rules for form fields
+ */
+export interface FieldValidation {
+  min?: number;
+  max?: number;
+  pattern?: string;
+  customMessage?: string;
+}
+
+/**
+ * Option for select, radio, and checkbox fields
+ */
+export interface FieldOption {
+  id?: string; // Unique identifier for React keys
+  label: string;
+  value: string;
+}
+
+/**
+ * Individual form field definition
+ */
+export interface FormField {
+  id: string; // UUID
+  type: FormFieldType;
+  label: string;
+  placeholder?: string;
+  helpText?: string;
+  required: boolean;
+  order: number;
+
+  // Validation rules
+  validation?: FieldValidation;
+
+  // Field-specific options
+  options?: FieldOption[]; // for select, radio, checkbox, multiselect
+  accept?: string; // for file uploads (e.g., '.pdf,.doc,.docx')
+  maxFileSize?: number; // in bytes
+  multiple?: boolean; // for file uploads
+}
+
+/**
+ * Form settings
+ */
+export interface FormSettings {
+  submitButtonText: string;
+  successMessage: string;
+  allowMultipleSubmissions: boolean;
+}
+
+/**
+ * Access control configuration for forms
+ */
+export interface AccessControl {
+  type: AccessControlType;
+  allowedRoles?: UserRole[];
+  allowedUserIds?: string[];
+}
+
+/**
+ * Form template (stored in Firestore collection: form_templates)
+ */
+export interface FormTemplate {
+  id: string;
+  title: string;
+  description?: string;
+  createdBy: string; // uid
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  status: FormStatus;
+
+  // Form structure
+  fields: FormField[];
+  settings: FormSettings;
+
+  // Access control
+  accessControl: AccessControl;
+
+  // Metadata
+  submissionCount: number;
+  lastSubmissionAt?: Timestamp;
+  category?: string; // e.g., 'mis', 'hr', 'compliance'
+}
+
+/**
+ * File attachment metadata
+ */
+export interface FileAttachment {
+  fieldId: string;
+  fileName: string;
+  fileUrl: string;
+  storagePath: string;
+  fileSize: number;
+  mimeType: string;
+}
+
+/**
+ * Form submission (stored in Firestore collection: form_submissions)
+ */
+export interface FormSubmission {
+  id: string;
+  formId: string;
+  formTitle: string; // denormalized for queries
+
+  // Submitter info
+  submittedBy?: string; // uid (if authenticated)
+  submitterEmail?: string;
+  submitterName?: string;
+
+  // Submission data
+  data: Record<string, any>; // fieldId -> value mapping
+  files?: FileAttachment[];
+
+  // Metadata
+  submittedAt: Timestamp;
+  ipAddress?: string;
+  userAgent?: string;
+
+  // Flags
+  isRead: boolean;
+  isFlagged: boolean;
+}
+
+/**
+ * Form template creation input (without auto-generated fields)
+ */
+export type FormTemplateInput = Omit<
+  FormTemplate,
+  'id' | 'createdAt' | 'updatedAt' | 'submissionCount' | 'lastSubmissionAt'
+>;
+
+/**
+ * Form submission creation input (without auto-generated fields)
+ */
+export type FormSubmissionInput = Omit<
+  FormSubmission,
+  'id' | 'submittedAt' | 'isRead' | 'isFlagged'
+>;
+
+/**
+ * Form template filters for queries
+ */
+export interface FormTemplateFilters {
+  status?: FormStatus;
+  createdBy?: string;
+  category?: string;
+  search?: string;
+}
+
+/**
+ * Form submission filters for queries
+ */
+export interface FormSubmissionFilters {
+  formId?: string;
+  submittedBy?: string;
+  startDate?: Date;
+  endDate?: Date;
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * Export format options
+ */
+export type ExportFormat = 'csv' | 'excel';
+
+/**
+ * File upload result
+ */
+export interface FileUploadResult {
+  url: string;
+  path: string;
+  fileName: string;
+  size: number;
+  mimeType: string;
+}

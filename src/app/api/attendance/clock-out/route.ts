@@ -3,7 +3,7 @@ import { attendanceAdminService } from '@/services/attendance-admin.service';
 import { clockOutDataSchema } from '@/lib/attendance-validation';
 import { ErrorResponses } from '@/lib/api-error-handler';
 import { misConfigService } from '@/services/mis-config.service';
-import { createGoogleSheetsService } from '@/services/google-sheets.service';
+import { formSubmissionService } from '@/services/form-submission.service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,27 +35,24 @@ export async function POST(request: NextRequest) {
 
       if (isAssigned) {
         // Validate that user has submitted the form today
-        if (!misConfig.formResponseSheetId || !misConfig.googleSheetsApiKey) {
+        if (!misConfig.dailyFormTemplateId) {
           return NextResponse.json(
             {
               error: 'Configuration Error',
-              message: 'Form validation is enabled but not properly configured. Please contact admin.'
+              message: 'Form validation is enabled but no form is configured. Please contact admin.'
             },
             { status: 500 }
           );
         }
 
         try {
-          const sheetsService = createGoogleSheetsService(misConfig.googleSheetsApiKey);
-          const submissionCheck = await sheetsService.checkUserSubmissionToday(
-            misConfig.formResponseSheetId,
-            misConfig.formResponseSheetGid || '0',
-            authResult.user.email || '',
-            misConfig.formEmailColumnIndex ?? 1,
-            misConfig.formTimestampColumnIndex ?? 0
+          // Check if user submitted the daily form today (replaces Google Sheets check)
+          const submissionCheck = await formSubmissionService.checkUserSubmissionToday(
+            misConfig.dailyFormTemplateId,
+            authResult.user.uid
           );
 
-          if (!submissionCheck.submitted || !submissionCheck.isToday) {
+          if (!submissionCheck.submitted) {
             return NextResponse.json(
               {
                 error: 'Form Submission Required',

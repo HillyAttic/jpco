@@ -22,7 +22,12 @@
       "Bash(grep -E \"\\\\.\\(tsx|ts\\)$\")",
       "Bash(git show *)",
       "Bash(curl -s http://localhost:3000)",
-      "Bash(curl -s http://localhost:3001/api/employees?status=active)"
+      "Bash(curl -s http://localhost:3001/api/employees?status=active)",
+      "Bash(curl -s http://localhost:3000/api/forms/templates)",
+      "Bash(npx tsx *)",
+      "Bash(netstat -ano)",
+      "Bash(curl *)",
+      "Bash(firebase --version)"
     ]
   },
   "disabledMcpjsonServers": [
