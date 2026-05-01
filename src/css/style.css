@@ -95,6 +95,58 @@
   .inbox-height {
     @apply h-[calc(100vh_-_8.125rem)] lg:h-[calc(100vh_-_5.625rem)];
   }
+
+  /* Form Builder Custom Styles */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 4px;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 4px;
+    transition: background 0.2s;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+
+  /* Drag and drop visual feedback */
+  .dragging {
+    opacity: 0.5;
+    cursor: grabbing !important;
+  }
+
+  .drag-over {
+    background: linear-gradient(135deg, #e0e7ff 0%, #ddd6fe 100%);
+    border: 2px dashed #6366f1;
+  }
+
+  /* Modal backdrop - covers everything including header */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    z-index: 9998;
+  }
+
+  .modal-content {
+    position: fixed;
+    z-index: 9999;
+  }
+
+  /* Ensure modals always appear above everything */
+  [data-portal] {
+    position: relative;
+    z-index: 10000;
+  }
 }
 
 /* third-party libraries CSS */
