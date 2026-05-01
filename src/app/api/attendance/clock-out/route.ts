@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { attendanceAdminService } from '@/services/attendance-admin.service';
 import { clockOutDataSchema } from '@/lib/attendance-validation';
 import { ErrorResponses } from '@/lib/api-error-handler';
+import { misConfigService } from '@/services/mis-config.service';
+import { formSubmissionService } from '@/services/form-submission.service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,6 +25,56 @@ export async function POST(request: NextRequest) {
       ...body,
       timestamp: new Date(body.timestamp || Date.now()),
     });
+
+    // Check if daily form submission is required
+    const misConfig = await misConfigService.getMISConfig();
+
+    if (misConfig && misConfig.formRequiredForClockout) {
+      // Check if user is assigned to the form
+      const isAssigned = misConfig.formAssignedUsers.includes(authResult.user.uid);
+
+      if (isAssigned) {
+        // Validate that user has submitted the form today
+        if (!misConfig.dailyFormTemplateId) {
+          return NextResponse.json(
+            {
+              error: 'Configuration Error',
+              message: 'Form validation is enabled but no form is configured. Please contact admin.'
+            },
+            { status: 500 }
+          );
+        }
+
+        try {
+          // Check if user submitted the daily form today (replaces Google Sheets check)
+          const submissionCheck = await formSubmissionService.checkUserSubmissionToday(
+            misConfig.dailyFormTemplateId,
+            authResult.user.uid
+          );
+
+          if (!submissionCheck.submitted) {
+            return NextResponse.json(
+              {
+                error: 'Form Submission Required',
+                message: 'Please submit today\'s MIS form before clocking out. You can find the form on your dashboard.',
+                requiresFormSubmission: true
+              },
+              { status: 400 }
+            );
+          }
+        } catch (error: any) {
+          console.error('Error checking form submission:', error);
+          return NextResponse.json(
+            {
+              error: 'Validation Error',
+              message: 'Failed to verify form submission. Please try again or contact admin.',
+              details: error.message
+            },
+            { status: 500 }
+          );
+        }
+      }
+    }
 
     const record = await attendanceAdminService.clockOut(validatedData.recordId, {
       timestamp: validatedData.timestamp,

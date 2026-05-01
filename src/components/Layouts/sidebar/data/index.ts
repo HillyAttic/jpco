@@ -129,6 +129,13 @@ export const NAV_DATA = [
         items: [],
         requiresRole: ['admin', 'manager'], // Only managers and admins can see this
       },
+      {
+        title: "MIS Tracker",
+        url: "/mis-tracker",
+        icon: Icons.MISTrackerIcon,
+        items: [],
+        dynamicVisibility: true, // Visibility controlled by MIS config
+      },
     ],
   },
   {
@@ -182,6 +189,20 @@ export const NAV_DATA = [
         icon: Icons.InvoiceIcon,
         items: [],
         requiresRole: ['admin'],
+      },
+      {
+        title: "Form Builder",
+        url: "/forms/builder",
+        icon: Icons.TaskTrayIcon,
+        items: [],
+        requiresRole: ['admin', 'manager'], // Admins and managers can create forms
+      },
+      {
+        title: "MIS Accessibility",
+        url: "/admin/mis-accessibility",
+        icon: Icons.SettingsIcon,
+        items: [],
+        requiresRole: ['admin'], // Only admins can configure MIS
       },
 
       // Authentication menu item hidden - users can access auth pages directly via URL if needed
