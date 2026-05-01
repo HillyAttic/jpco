@@ -7,6 +7,8 @@ import type { FormFieldType } from '@/types/form.types';
 
 interface FieldPaletteProps {
   onAddField: (type: FormFieldType) => void;
+  selectedSectionId?: string | null;
+  onAddFieldToSection?: (sectionId: string, fieldType: FormFieldType) => void;
 }
 
 const fieldTypes: Array<{
@@ -162,31 +164,52 @@ const fieldTypes: Array<{
   },
 ];
 
-function DraggableFieldItem({ field, index }: { field: typeof fieldTypes[0]; index: number }) {
+function DraggableFieldItem({
+  field,
+  index,
+  onAddField,
+  selectedSectionId,
+  onAddFieldToSection
+}: {
+  field: typeof fieldTypes[0];
+  index: number;
+  onAddField: (type: FormFieldType) => void;
+  selectedSectionId?: string | null;
+  onAddFieldToSection?: (sectionId: string, fieldType: FormFieldType) => void;
+}) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `palette-${field.type}`,
     data: { type: field.type, source: 'palette' },
   });
 
-  const colors = ['#FFE500', '#FF6B00', '#FF006B', '#00FFE5', '#00FF85'];
+  const colors = ['#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F59E0B'];
   const bgColor = colors[index % colors.length];
+
+  const handlePlusClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selectedSectionId && onAddFieldToSection) {
+      onAddFieldToSection(selectedSectionId, field.type);
+    } else {
+      onAddField(field.type);
+    }
+  };
 
   return (
     <motion.div
       ref={setNodeRef}
-      {...listeners}
-      {...attributes}
       initial={{ opacity: 0, x: -20 }}
       animate={{ opacity: 1, x: 0 }}
       whileHover={{ y: -2, scale: 1.01 }}
       whileTap={{ scale: 0.98 }}
-      className={`group relative overflow-hidden border border-gray-200 rounded-lg bg-white cursor-grab active:cursor-grabbing transition-all hover:border-gray-300 hover:shadow-md ${
+      className={`group relative overflow-hidden border border-gray-200 rounded-lg bg-white transition-all hover:border-gray-300 hover:shadow-md ${
         isDragging ? 'opacity-50 shadow-lg' : ''
       }`}
     >
       <div className="relative p-3 flex items-center space-x-3">
         <div
-          className="flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center text-white shadow-sm"
+          {...attributes}
+          {...listeners}
+          className="flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center text-white shadow-sm cursor-grab active:cursor-grabbing"
           style={{ backgroundColor: bgColor }}
         >
           {field.icon}
@@ -197,34 +220,39 @@ function DraggableFieldItem({ field, index }: { field: typeof fieldTypes[0]; ind
           <div className="text-xs text-gray-500 mt-0.5">{field.description}</div>
         </div>
 
-        <div className="flex-shrink-0 text-gray-400 group-hover:text-gray-600 transition-colors">
+        <button
+          onClick={handlePlusClick}
+          className="flex-shrink-0 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded p-1 transition-colors"
+          title={selectedSectionId ? "Add to selected section" : "Add to form"}
+        >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
-        </div>
+        </button>
       </div>
     </motion.div>
   );
 }
 
-export function FieldPalette({ onAddField }: FieldPaletteProps) {
+export function FieldPalette({ onAddField, selectedSectionId, onAddFieldToSection }: FieldPaletteProps) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm"
+      className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm lg:sticky lg:top-4"
     >
-      <div className="bg-orange-500 px-6 py-4 border-b border-orange-600">
-        <h3 className="text-xl font-semibold text-white flex items-center">
-          <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <div className="bg-orange-500 px-4 sm:px-6 py-3 sm:py-4 border-b border-orange-600">
+        <h3 className="text-lg sm:text-xl font-semibold text-white flex items-center">
+          <svg className="w-4 h-4 sm:w-5 sm:h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
           </svg>
-          Palette
+          Add Fields
         </h3>
-        <p className="text-orange-100 text-sm mt-1">Drag to canvas</p>
+        <p className="text-orange-100 text-xs sm:text-sm mt-1 hidden sm:block">Drag to canvas or tap to add</p>
+        <p className="text-orange-100 text-xs mt-1 sm:hidden">Tap to add field</p>
       </div>
 
-      <div className="p-4 space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
+      <div className="p-3 sm:p-4 grid grid-cols-2 sm:grid-cols-1 gap-2 max-h-[300px] lg:max-h-[calc(100vh-200px)] overflow-y-auto custom-scrollbar">
         {fieldTypes.map((field, index) => (
           <motion.div
             key={field.type}
@@ -232,12 +260,35 @@ export function FieldPalette({ onAddField }: FieldPaletteProps) {
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: index * 0.03 }}
           >
-            <DraggableFieldItem field={field} index={index} />
+            {/* Desktop: Draggable with click */}
+            <div className="hidden sm:block">
+              <DraggableFieldItem
+                field={field}
+                index={index}
+                onAddField={onAddField}
+                selectedSectionId={selectedSectionId}
+                onAddFieldToSection={onAddFieldToSection}
+              />
+            </div>
+            <button
+              onClick={() => onAddField(field.type)}
+              className="sm:hidden w-full group relative overflow-hidden border border-gray-200 rounded-lg bg-white active:bg-gray-50 transition-all hover:border-gray-300 hover:shadow-md p-2"
+            >
+              <div className="flex flex-col items-center space-y-1">
+                <div
+                  className="flex-shrink-0 w-8 h-8 rounded-md flex items-center justify-center text-white shadow-sm"
+                  style={{ backgroundColor: ['#3B82F6', '#6366F1', '#8B5CF6', '#EC4899', '#F59E0B'][index % 5] }}
+                >
+                  {field.icon}
+                </div>
+                <div className="text-xs font-medium text-gray-900 text-center">{field.label}</div>
+              </div>
+            </button>
           </motion.div>
         ))}
       </div>
 
-      <div className="px-6 py-3 bg-blue-50 border-t border-gray-200">
+      <div className="px-4 sm:px-6 py-2 sm:py-3 bg-blue-50 border-t border-gray-200 hidden sm:block">
         <div className="flex items-center space-x-2 text-xs text-gray-600">
           <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

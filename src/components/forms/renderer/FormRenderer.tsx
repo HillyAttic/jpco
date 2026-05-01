@@ -115,6 +115,7 @@ export function FormRenderer({
         throw new Error(result.error || 'Failed to submit form');
       }
 
+      // Show success toast with the custom message from form settings
       toast.success(result.message || 'Form submitted successfully!');
 
       if (onSuccess) {
@@ -164,7 +165,7 @@ export function FormRenderer({
                   />
                   {/* Render nested fields within section */}
                   {field.fields && field.fields.length > 0 && (
-                    <div className="ml-4 space-y-6 mt-6">
+                    <div className="space-y-4 mt-4">
                       {field.fields
                         .sort((a, b) => a.order - b.order)
                         .map((nestedField) => (

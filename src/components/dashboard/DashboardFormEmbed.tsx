@@ -13,6 +13,7 @@ export default function DashboardFormEmbed() {
   const [template, setTemplate] = useState<FormTemplate | null>(null);
   const [hasAccess, setHasAccess] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const fieldIdCounter = React.useRef(0);
 
   useEffect(() => {
@@ -59,7 +60,23 @@ export default function DashboardFormEmbed() {
               return field;
             });
 
-            setTemplate({ ...fetchedTemplate, fields: fixedFields });
+            const finalTemplate = { ...fetchedTemplate, fields: fixedFields };
+            setTemplate(finalTemplate);
+
+            // Check if user has already submitted this form (if multiple submissions not allowed)
+            if (!finalTemplate.settings.allowMultipleSubmissions) {
+              const submissionsResponse = await authenticatedFetch(
+                `/api/forms/submissions?formId=${dailyFormTemplateId}&submittedBy=${user?.uid}&limit=1`
+              );
+
+              if (submissionsResponse.ok) {
+                const submissionsData = await submissionsResponse.json();
+                if (submissionsData.success && submissionsData.submissions.length > 0) {
+                  // User has already submitted this form
+                  setIsSubmitted(true);
+                }
+              }
+            }
           }
         }
       }
@@ -71,9 +88,13 @@ export default function DashboardFormEmbed() {
   };
 
   const handleSuccess = (submissionId: string) => {
-    toast.success('Form submitted successfully!');
-    // Optionally refresh the form or hide it after submission
-    // For now, just keep it visible so user can submit again if needed
+    // If multiple submissions are NOT allowed, hide the form and show success message
+    if (template && !template.settings.allowMultipleSubmissions) {
+      setIsSubmitted(true);
+    } else {
+      // If multiple submissions are allowed, just show toast
+      toast.success('Form submitted successfully!');
+    }
   };
 
   const handleError = (error: string) => {
@@ -90,12 +111,46 @@ export default function DashboardFormEmbed() {
     return null;
   }
 
+  // If form has been submitted and multiple submissions are not allowed, show success message
+  if (isSubmitted && !template.settings.allowMultipleSubmissions) {
+    return (
+      <Card className="col-span-full">
+        <CardContent className="pt-6">
+          <div className="p-6 space-y-6">
+            <div className="space-y-3">
+              <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="h-8 w-8 text-green-600 dark:text-green-400 mx-auto mb-2"
+                >
+                  <path d="M21.801 10A10 10 0 1 1 17 3.335"></path>
+                  <path d="m9 11 3 3L22 4"></path>
+                </svg>
+                <p className="font-medium text-green-800 dark:text-green-200">
+                  Form Submitted Successfully
+                </p>
+                <p className="text-sm text-green-700 dark:text-green-300">
+                  {template.settings.successMessage}
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="col-span-full">
-      <CardHeader>
-        <CardTitle>Daily MIS Form</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <div className="w-full">
           <FormRenderer
             template={template}
