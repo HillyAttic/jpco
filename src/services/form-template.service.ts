@@ -105,8 +105,8 @@ export const formTemplateService = {
     const template: Omit<FormTemplate, 'id'> = {
       ...data,
       createdBy: creatorUid,
-      createdAt: now,
-      updatedAt: now,
+      createdAt: now as any,
+      updatedAt: now as any,
       submissionCount: 0,
     };
 

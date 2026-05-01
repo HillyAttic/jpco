@@ -165,29 +165,29 @@ function DraggableFieldItem({ field, index }: { field: typeof fieldTypes[0]; ind
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      initial={{ opacity: 0, x: -20, rotate: -2 }}
-      animate={{ opacity: 1, x: 0, rotate: 0 }}
-      whileHover={{ y: -4, rotate: 1 }}
-      whileTap={{ scale: 0.95 }}
-      className={`group relative overflow-hidden border-4 border-black bg-white cursor-grab active:cursor-grabbing transition-all ${
-        isDragging ? 'opacity-50 shadow-2xl' : 'brutal-hover'
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      whileHover={{ y: -2, scale: 1.01 }}
+      whileTap={{ scale: 0.98 }}
+      className={`group relative overflow-hidden border border-gray-200 rounded-lg bg-white cursor-grab active:cursor-grabbing transition-all hover:border-gray-300 hover:shadow-md ${
+        isDragging ? 'opacity-50 shadow-lg' : ''
       }`}
-      style={{ boxShadow: '4px 4px 0 #000' }}
     >
-      <div className="absolute inset-0 noise-texture opacity-10 pointer-events-none" />
-
-      <div className="relative p-4 flex items-center space-x-3">
-        <div className="flex-shrink-0 w-12 h-12 border-3 border-black flex items-center justify-center text-black font-black" style={{ backgroundColor: bgColor }}>
+      <div className="relative p-3 flex items-center space-x-3">
+        <div
+          className="flex-shrink-0 w-10 h-10 rounded-md flex items-center justify-center text-white shadow-sm"
+          style={{ backgroundColor: bgColor }}
+        >
           {field.icon}
         </div>
 
         <div className="flex-1 min-w-0">
-          <div className="font-black text-black text-sm uppercase form-builder-neo">{field.label}</div>
-          <div className="text-xs text-black/60 mt-0.5 font-bold form-builder-mono">// {field.description}</div>
+          <div className="font-medium text-gray-900 text-sm">{field.label}</div>
+          <div className="text-xs text-gray-500 mt-0.5">{field.description}</div>
         </div>
 
-        <div className="flex-shrink-0 text-black group-hover:text-[#FF6B00] transition-colors">
-          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+        <div className="flex-shrink-0 text-gray-400 group-hover:text-gray-600 transition-colors">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
           </svg>
         </div>
@@ -199,34 +199,39 @@ function DraggableFieldItem({ field, index }: { field: typeof fieldTypes[0]; ind
 export function FieldPalette({ onAddField }: FieldPaletteProps) {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20, rotate: 1 }}
-      animate={{ opacity: 1, y: 0, rotate: 0 }}
-      className="bg-white border-4 border-black overflow-hidden brutal-border-orange"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm"
     >
-      <div className="bg-[#FF6B00] px-6 py-5 border-b-4 border-black noise-texture">
-        <h3 className="text-2xl font-black text-black flex items-center uppercase form-builder-neo">
-          🎨 PALETTE
+      <div className="bg-orange-500 px-6 py-4 border-b border-orange-600">
+        <h3 className="text-xl font-semibold text-white flex items-center">
+          <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+          </svg>
+          Palette
         </h3>
-        <p className="text-black/70 text-sm mt-1 font-bold form-builder-mono">// Drag to canvas</p>
+        <p className="text-orange-100 text-sm mt-1">Drag to canvas</p>
       </div>
 
-      <div className="p-4 space-y-3 max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
+      <div className="p-4 space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto custom-scrollbar">
         {fieldTypes.map((field, index) => (
           <motion.div
             key={field.type}
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: index * 0.05 }}
+            transition={{ delay: index * 0.03 }}
           >
             <DraggableFieldItem field={field} index={index} />
           </motion.div>
         ))}
       </div>
 
-      <div className="px-6 py-4 bg-[#FFE500] border-t-4 border-black">
-        <div className="flex items-start space-x-2 text-xs text-black font-bold form-builder-mono">
-          <span className="text-2xl">💡</span>
-          <span>DRAG FIELDS TO BUILD YOUR FORM</span>
+      <div className="px-6 py-3 bg-blue-50 border-t border-gray-200">
+        <div className="flex items-center space-x-2 text-xs text-gray-600">
+          <svg className="w-4 h-4 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <span>Drag fields to build your form</span>
         </div>
       </div>
     </motion.div>

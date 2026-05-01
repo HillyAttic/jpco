@@ -109,43 +109,41 @@ export default function FormBuilderListPage() {
 
   const getStatusBadge = (status: string) => {
     const styles = {
-      draft: { bg: '#FFE500', text: '#000', emoji: '✏️' },
-      published: { bg: '#00FF85', text: '#000', emoji: '✓' },
-      archived: { bg: '#FF6B00', text: '#FFF', emoji: '📦' },
+      draft: { bg: 'bg-yellow-100', text: 'text-yellow-800', border: 'border-yellow-300', label: 'Draft' },
+      published: { bg: 'bg-green-100', text: 'text-green-800', border: 'border-green-300', label: 'Published' },
+      archived: { bg: 'bg-gray-100', text: 'text-gray-800', border: 'border-gray-300', label: 'Archived' },
     };
 
     const style = styles[status as keyof typeof styles] || styles.draft;
 
     return (
       <div
-        className="px-3 py-1.5 text-xs font-black uppercase border-4 border-black form-builder-neo inline-flex items-center space-x-1"
-        style={{ backgroundColor: style.bg, color: style.text }}
+        className={`px-2.5 py-1 text-xs font-medium rounded border ${style.bg} ${style.text} ${style.border}`}
       >
-        <span>{style.emoji}</span>
-        <span>{status}</span>
+        {style.label}
       </div>
     );
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FFFEF5] grid-pattern">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
           <motion.div
-            className="w-32 h-32 mx-auto mb-6 bg-[#FFE500] border-4 border-black brutal-border-yellow"
-            animate={{ rotate: [0, 5, -5, 0] }}
-            transition={{ duration: 0.5, repeat: Infinity }}
+            className="w-20 h-20 mx-auto mb-4 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           >
-            <div className="w-full h-full flex items-center justify-center text-6xl">
-              📋
-            </div>
+            <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
           </motion.div>
-          <p className="text-2xl font-black text-black uppercase form-builder-neo">
-            LOADING FORMS...
+          <p className="text-lg font-medium text-gray-700">
+            Loading forms...
           </p>
         </motion.div>
       </div>
@@ -153,210 +151,208 @@ export default function FormBuilderListPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FFFEF5] grid-pattern p-6 form-builder-neo">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
       {/* Header */}
-      <motion.div
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="mb-8"
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-5xl font-black text-black uppercase mb-2" style={{ fontFamily: 'Syne, sans-serif' }}>
-              FORM BUILDER
-            </h1>
-            <p className="text-black/60 font-bold form-builder-mono">// Create and manage your forms</p>
-          </div>
-          <motion.button
-            whileHover={{ y: -4 }}
-            whileTap={{ y: 0 }}
-            onClick={handleCreateNew}
-            className="px-6 py-4 bg-[#FF6B00] text-white border-4 border-black font-black uppercase text-lg brutal-hover transition-all"
-            style={{ fontFamily: 'Syne, sans-serif', boxShadow: '8px 8px 0 #000' }}
-          >
-            ➕ CREATE NEW
-          </motion.button>
-        </div>
-
-        {/* Filters */}
-        <div className="flex space-x-3">
-          {(['all', 'draft', 'published', 'archived'] as const).map((status, index) => (
+      <div className="bg-white border-b border-gray-200 shadow-sm">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900">Form Builder</h1>
+              <p className="text-gray-600 mt-1">Create and manage custom forms</p>
+            </div>
             <motion.button
-              key={status}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.05 }}
-              whileHover={{ y: -2 }}
-              whileTap={{ y: 0 }}
-              onClick={() => setFilter(status)}
-              className={`px-6 py-3 text-sm font-black uppercase border-4 border-black transition-all ${
-                filter === status
-                  ? 'bg-black text-[#FFE500]'
-                  : 'bg-white text-black brutal-hover'
-              }`}
-              style={{
-                fontFamily: 'Syne, sans-serif',
-                boxShadow: filter === status ? '4px 4px 0 #FFE500' : '4px 4px 0 #000'
-              }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={handleCreateNew}
+              className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-md transition-all flex items-center space-x-2"
             >
-              {status === 'all' ? '📋 ' : status === 'draft' ? '✏️ ' : status === 'published' ? '✓ ' : '📦 '}
-              {status.toUpperCase()}
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              <span>Create New Form</span>
             </motion.button>
-          ))}
+          </div>
+
+          {/* Filters */}
+          <div className="flex space-x-2 mt-6">
+            {(['all', 'draft', 'published', 'archived'] as const).map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilter(status)}
+                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                  filter === status
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Templates List */}
-      <AnimatePresence mode="wait">
-        {templates.length === 0 ? (
-          <motion.div
-            key="empty"
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            className="text-center py-20 bg-white border-4 border-black brutal-border-cyan"
-          >
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        <AnimatePresence mode="wait">
+          {templates.length === 0 ? (
             <motion.div
-              className="w-32 h-32 bg-[#00FFE5] border-4 border-black mx-auto mb-6"
-              animate={{ rotate: [0, -5, 5, 0] }}
-              transition={{ duration: 2, repeat: Infinity }}
+              key="empty"
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm"
             >
-              <div className="w-full h-full flex items-center justify-center text-6xl">
-                📝
-              </div>
+              <motion.div
+                className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl mx-auto mb-6 flex items-center justify-center border border-gray-300"
+                animate={{ y: [0, -8, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+              </motion.div>
+              <p className="text-2xl font-semibold text-gray-900 mb-2">
+                No forms found
+              </p>
+              <p className="text-gray-500 mb-8">
+                Start building your first form
+              </p>
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={handleCreateNew}
+                className="px-6 py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-md transition-all inline-flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <span>Create First Form</span>
+              </motion.button>
             </motion.div>
-            <p className="text-3xl font-black text-black mb-6 uppercase" style={{ fontFamily: 'Syne, sans-serif' }}>
-              NO FORMS FOUND
-            </p>
-            <p className="text-black/60 font-bold form-builder-mono mb-8">
-              // Start building your first form
-            </p>
-            <motion.button
-              whileHover={{ y: -4 }}
-              whileTap={{ y: 0 }}
-              onClick={handleCreateNew}
-              className="px-8 py-4 bg-[#FF6B00] text-white border-4 border-black font-black uppercase text-lg brutal-hover transition-all"
-              style={{ fontFamily: 'Syne, sans-serif', boxShadow: '8px 8px 0 #000' }}
-            >
-              ➕ CREATE FIRST FORM
-            </motion.button>
-          </motion.div>
-        ) : (
-          <motion.div
+          ) : (
+            <motion.div
             key="list"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
           >
-            {templates.map((template, index) => {
-              const colors = ['#FFE500', '#FF6B00', '#FF006B', '#00FFE5', '#00FF85'];
-              const accentColor = colors[index % colors.length];
-
-              return (
-                <motion.div
-                  key={template.id}
-                  initial={{ opacity: 0, y: 20, rotate: -2 }}
-                  animate={{ opacity: 1, y: 0, rotate: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  whileHover={{ y: -8, rotate: 1 }}
-                  className="bg-white border-4 border-black p-6 transition-all cursor-pointer"
-                  style={{ boxShadow: `8px 8px 0 ${accentColor}` }}
-                  onClick={() => handleEdit(template.id)}
-                >
-                  {/* Header */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="flex-1 pr-4">
-                      <h3 className="text-xl font-black text-black mb-2 uppercase line-clamp-2" style={{ fontFamily: 'Syne, sans-serif' }}>
-                        {template.title}
-                      </h3>
-                      {template.description && (
-                        <p className="text-sm text-black/70 line-clamp-2 font-bold form-builder-mono">
-                          // {template.description}
-                        </p>
-                      )}
-                    </div>
+            {templates.map((template, index) => (
+              <motion.div
+                key={template.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+                whileHover={{ y: -4 }}
+                className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all cursor-pointer overflow-hidden"
+                onClick={() => handleEdit(template.id)}
+              >
+                {/* Header */}
+                <div className="p-6 border-b border-gray-100">
+                  <div className="flex items-start justify-between mb-3">
+                    <h3 className="text-lg font-semibold text-gray-900 line-clamp-2 flex-1 pr-3">
+                      {template.title}
+                    </h3>
                     {getStatusBadge(template.status)}
                   </div>
+                  {template.description && (
+                    <p className="text-sm text-gray-500 line-clamp-2">
+                      {template.description}
+                    </p>
+                  )}
+                </div>
 
-                  {/* Stats */}
-                  <div className="mb-6 p-4 border-4 border-black diagonal-stripes">
-                    <div className="flex items-center justify-between">
-                      <div className="text-center">
-                        <div className="text-3xl font-black text-black" style={{ fontFamily: 'Syne, sans-serif' }}>
-                          {template.fields.length}
-                        </div>
-                        <div className="text-xs font-bold text-black/60 uppercase form-builder-mono">
-                          FIELDS
-                        </div>
+                {/* Stats */}
+                <div className="px-6 py-4 bg-gradient-to-r from-gray-50 to-slate-50">
+                  <div className="flex items-center justify-around">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {template.fields.length}
                       </div>
-                      <div className="w-px h-12 bg-black"></div>
-                      <div className="text-center">
-                        <div className="text-3xl font-black text-black" style={{ fontFamily: 'Syne, sans-serif' }}>
-                          {template.submissionCount}
-                        </div>
-                        <div className="text-xs font-bold text-black/60 uppercase form-builder-mono">
-                          SUBMISSIONS
-                        </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Fields
+                      </div>
+                    </div>
+                    <div className="w-px h-10 bg-gray-200"></div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-gray-900">
+                        {template.submissionCount}
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        Submissions
                       </div>
                     </div>
                   </div>
+                </div>
 
-                  {/* Actions */}
-                  <div className="grid grid-cols-2 gap-2">
+                {/* Actions */}
+                <div className="p-4 bg-white border-t border-gray-100 grid grid-cols-2 gap-2">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleEdit(template.id);
+                    }}
+                    className="px-3 py-2 text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                    <span>Edit</span>
+                  </motion.button>
+                  {template.status === 'draft' && (
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleEdit(template.id);
+                        handlePublish(template.id);
                       }}
-                      className="px-3 py-2 text-sm bg-black text-white border-4 border-black font-black uppercase transition-all form-builder-neo"
+                      className="px-3 py-2 text-sm bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors flex items-center justify-center space-x-1"
                     >
-                      ✏️ EDIT
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span>Publish</span>
                     </motion.button>
-                    {template.status === 'draft' && (
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handlePublish(template.id);
-                        }}
-                        className="px-3 py-2 text-sm bg-[#00FF85] text-black border-4 border-black font-black uppercase transition-all form-builder-neo"
-                      >
-                        ✓ PUBLISH
-                      </motion.button>
-                    )}
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDuplicate(template.id);
-                      }}
-                      className="px-3 py-2 text-sm bg-[#00FFE5] text-black border-4 border-black font-black uppercase transition-all form-builder-neo"
-                    >
-                      📋 COPY
-                    </motion.button>
-                    <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDelete(template.id, template.title);
-                      }}
-                      className="px-3 py-2 text-sm bg-[#FF006B] text-white border-4 border-black font-black uppercase transition-all form-builder-neo"
-                    >
-                      🗑️ DELETE
-                    </motion.button>
-                  </div>
-                </motion.div>
-              );
-            })}
+                  )}
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDuplicate(template.id);
+                    }}
+                    className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium rounded-lg transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                    </svg>
+                    <span>Copy</span>
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDelete(template.id, template.title);
+                    }}
+                    className="px-3 py-2 text-sm bg-red-50 hover:bg-red-100 text-red-600 font-medium rounded-lg transition-colors flex items-center justify-center space-x-1"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span>Delete</span>
+                  </motion.button>
+                </div>
+              </motion.div>
+            ))}
           </motion.div>
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

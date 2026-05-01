@@ -271,23 +271,23 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#FFFEF5] grid-pattern">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
         >
           <motion.div
-            className="w-32 h-32 mx-auto mb-6 bg-[#FFE500] border-4 border-black brutal-border-yellow"
-            animate={{ rotate: [0, 5, -5, 0] }}
-            transition={{ duration: 0.5, repeat: Infinity }}
+            className="w-20 h-20 mx-auto mb-4 bg-indigo-500 rounded-xl flex items-center justify-center"
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
           >
-            <div className="w-full h-full flex items-center justify-center text-6xl">
-              ⚡
-            </div>
+            <svg className="w-10 h-10 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
           </motion.div>
-          <p className="text-2xl font-black text-black uppercase" style={{ fontFamily: 'Syne, sans-serif' }}>
-            LOADING...
+          <p className="text-lg font-medium text-gray-700">
+            Loading form...
           </p>
         </motion.div>
       </div>
@@ -304,12 +304,12 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
     >
-      <div className="min-h-screen bg-[#FFFEF5] grid-pattern form-builder-neo">
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
         {/* Header */}
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-[#FFE500] border-b-4 border-black sticky top-0 z-20 noise-texture"
+          className="bg-white border-b border-gray-200 shadow-sm sticky top-0 z-20"
         >
           <div className="max-w-7xl mx-auto px-6 py-6">
             <div className="flex items-center justify-between">
@@ -318,72 +318,84 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
                   type="text"
                   value={template.title}
                   onChange={(e) => setTemplate({ ...template, title: e.target.value })}
-                  className="text-4xl font-black text-black border-none focus:outline-none focus:ring-0 w-full bg-transparent placeholder-black/40 uppercase tracking-tight"
-                  placeholder="FORM TITLE"
-                  style={{ fontFamily: 'Syne, sans-serif' }}
+                  className="text-3xl font-bold text-gray-900 border-none focus:outline-none focus:ring-0 w-full bg-transparent placeholder-gray-400"
+                  placeholder="Form Title"
                 />
                 <input
                   type="text"
                   value={template.description || ''}
                   onChange={(e) => setTemplate({ ...template, description: e.target.value })}
-                  className="text-sm text-black/70 border-none focus:outline-none focus:ring-0 w-full mt-2 bg-transparent placeholder-black/30 form-builder-mono"
-                  placeholder="// Add description here..."
+                  className="text-sm text-gray-600 border-none focus:outline-none focus:ring-0 w-full mt-2 bg-transparent placeholder-gray-400"
+                  placeholder="Add description here..."
                 />
               </div>
 
               <div className="flex items-center space-x-3">
                 <motion.button
-                  whileHover={{ y: -2 }}
-                  whileTap={{ y: 0 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => setShowPreview(true)}
-                  className="px-5 py-3 text-black bg-white border-4 border-black font-bold uppercase text-sm brutal-hover transition-all form-builder-mono"
+                  className="px-5 py-2.5 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium text-sm rounded-lg transition-all flex items-center space-x-2"
                 >
-                  👁 PREVIEW
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                  <span>Preview</span>
                 </motion.button>
                 <motion.button
-                  whileHover={{ y: -2 }}
-                  whileTap={{ y: 0 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={handleSave}
                   disabled={saving}
-                  className="px-6 py-3 bg-[#FF6B00] text-white border-4 border-black font-black uppercase text-sm brutal-hover disabled:opacity-50 transition-all"
-                  style={{ fontFamily: 'Syne, sans-serif' }}
+                  className="px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white font-medium text-sm rounded-lg disabled:opacity-50 transition-all flex items-center space-x-2"
                 >
-                  {saving ? '⏳ SAVING...' : '💾 SAVE'}
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+                  </svg>
+                  <span>{saving ? 'Saving...' : 'Save'}</span>
                 </motion.button>
                 <motion.button
-                  whileHover={{ y: -2 }}
-                  whileTap={{ y: 0 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                   onClick={() => router.push('/forms/builder')}
-                  className="px-5 py-3 text-black bg-white border-4 border-black font-bold uppercase text-sm brutal-hover transition-all form-builder-mono"
+                  className="px-4 py-2.5 text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 font-medium text-sm rounded-lg transition-all"
                 >
-                  ✕
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
                 </motion.button>
               </div>
             </div>
 
             {/* Tabs */}
-            <div className="flex space-x-3 mt-6">
+            <div className="flex space-x-2 mt-6">
               <button
                 onClick={() => setActiveTab('fields')}
-                className={`px-6 py-3 text-sm font-black uppercase border-4 border-black transition-all brutal-hover ${
+                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all flex items-center space-x-2 ${
                   activeTab === 'fields'
-                    ? 'bg-black text-[#FFE500]'
-                    : 'bg-white text-black'
+                    ? 'bg-indigo-500 text-white shadow-md'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
                 }`}
-                style={{ fontFamily: 'Syne, sans-serif' }}
               >
-                📝 FIELDS
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>Fields</span>
               </button>
               <button
                 onClick={() => setActiveTab('settings')}
-                className={`px-6 py-3 text-sm font-black uppercase border-4 border-black transition-all brutal-hover ${
+                className={`px-5 py-2.5 text-sm font-medium rounded-lg transition-all flex items-center space-x-2 ${
                   activeTab === 'settings'
-                    ? 'bg-black text-[#FFE500]'
-                    : 'bg-white text-black'
+                    ? 'bg-indigo-500 text-white shadow-md'
+                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
                 }`}
-                style={{ fontFamily: 'Syne, sans-serif' }}
               >
-                ⚙️ SETTINGS
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                <span>Settings</span>
               </button>
             </div>
           </div>
@@ -445,8 +457,8 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
       {/* Drag Overlay */}
       <DragOverlay>
         {activeId ? (
-          <div className="bg-[#FFE500] border-4 border-black shadow-2xl p-4 opacity-90 brutal-border">
-            <div className="font-black text-black uppercase form-builder-neo">DRAGGING...</div>
+          <div className="bg-white border border-gray-300 shadow-lg rounded-lg p-4 opacity-90">
+            <div className="font-medium text-gray-900">Dragging...</div>
           </div>
         ) : null}
       </DragOverlay>

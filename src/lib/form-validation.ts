@@ -63,9 +63,7 @@ export function generateFormSchema(fields: FormField[]): z.ZodObject<any> {
         break;
 
       case 'number':
-        fieldSchema = z.coerce.number({
-          errorMap: () => ({ message: 'Must be a valid number' }),
-        });
+        fieldSchema = z.coerce.number();
         if (field.validation?.min !== undefined) {
           fieldSchema = (fieldSchema as z.ZodNumber).min(
             field.validation.min,
@@ -83,9 +81,7 @@ export function generateFormSchema(fields: FormField[]): z.ZodObject<any> {
         break;
 
       case 'date':
-        fieldSchema = z.coerce.date({
-          errorMap: () => ({ message: 'Invalid date' }),
-        });
+        fieldSchema = z.coerce.date();
         break;
 
       case 'time':
@@ -100,9 +96,10 @@ export function generateFormSchema(fields: FormField[]): z.ZodObject<any> {
       case 'select':
       case 'radio':
         if (field.options && field.options.length > 0) {
-          fieldSchema = z.enum(field.options as [string, ...string[]], {
-            errorMap: () => ({ message: 'Please select a valid option' }),
-          });
+          const stringOptions = field.options.map(opt =>
+            typeof opt === 'string' ? opt : opt.value
+          );
+          fieldSchema = z.enum(stringOptions as [string, ...string[]]);
         } else {
           fieldSchema = z.string();
         }
@@ -110,9 +107,7 @@ export function generateFormSchema(fields: FormField[]): z.ZodObject<any> {
 
       case 'multiselect':
       case 'checkbox':
-        fieldSchema = z.array(z.string(), {
-          errorMap: () => ({ message: 'Must be an array of values' }),
-        });
+        fieldSchema = z.array(z.string());
         if (field.validation?.min) {
           fieldSchema = (fieldSchema as z.ZodArray<any>).min(
             field.validation.min,
@@ -172,7 +167,7 @@ export function validateFieldValue(
     if (error instanceof z.ZodError) {
       return {
         valid: false,
-        error: error.errors[0]?.message || 'Validation failed',
+        error: error.issues[0]?.message || 'Validation failed',
       };
     }
     return { valid: false, error: 'Validation failed' };

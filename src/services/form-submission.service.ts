@@ -93,7 +93,7 @@ export const formSubmissionService = {
     const docRef = adminDb.collection(COLLECTION).doc();
     const submission: Omit<FormSubmission, 'id'> = {
       ...data,
-      submittedAt: now,
+      submittedAt: now as any,
       isRead: false,
       isFlagged: false,
     };

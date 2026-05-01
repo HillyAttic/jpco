@@ -47,7 +47,7 @@ export interface FieldValidation {
 /**
  * Option for select, radio, and checkbox fields
  */
-export type FieldOption = string;
+export type FieldOption = string | { value: string; label: string };
 
 /**
  * File upload configuration

@@ -76,8 +76,8 @@ export function FormField({ field, register, error, setValue, watch }: FormField
           <select {...register(field.id)} className={`${baseClasses} ${errorClasses}`}>
             <option value="">Select an option</option>
             {field.options?.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+              <option key={typeof option === 'string' ? option : option.value} value={typeof option === 'string' ? option : option.value}>
+                {typeof option === 'string' ? option : option.label}
               </option>
             ))}
           </select>
@@ -92,8 +92,8 @@ export function FormField({ field, register, error, setValue, watch }: FormField
             className={`${baseClasses} ${errorClasses}`}
           >
             {field.options?.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
+              <option key={typeof option === 'string' ? option : option.value} value={typeof option === 'string' ? option : option.value}>
+                {typeof option === 'string' ? option : option.label}
               </option>
             ))}
           </select>
@@ -103,14 +103,14 @@ export function FormField({ field, register, error, setValue, watch }: FormField
         return (
           <div className="space-y-2">
             {field.options?.map((option) => (
-              <label key={option.value} className="flex items-center space-x-2">
+              <label key={typeof option === 'string' ? option : option.value} className="flex items-center space-x-2">
                 <input
                   type="radio"
                   {...register(field.id)}
-                  value={option.value}
+                  value={typeof option === 'string' ? option : option.value}
                   className="w-4 h-4 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-gray-700">{option.label}</span>
+                <span className="text-gray-700">{typeof option === 'string' ? option : option.label}</span>
               </label>
             ))}
           </div>
@@ -120,14 +120,14 @@ export function FormField({ field, register, error, setValue, watch }: FormField
         return (
           <div className="space-y-2">
             {field.options?.map((option) => (
-              <label key={option.value} className="flex items-center space-x-2">
+              <label key={typeof option === 'string' ? option : option.value} className="flex items-center space-x-2">
                 <input
                   type="checkbox"
                   {...register(field.id)}
-                  value={option.value}
+                  value={typeof option === 'string' ? option : option.value}
                   className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                 />
-                <span className="text-gray-700">{option.label}</span>
+                <span className="text-gray-700">{typeof option === 'string' ? option : option.label}</span>
               </label>
             ))}
           </div>
