@@ -19,7 +19,23 @@ export default function MISTrackerPage() {
   const [hasAccess, setHasAccess] = useState(false);
   const [template, setTemplate] = useState<FormTemplate | null>(null);
   const [submissions, setSubmissions] = useState<FormSubmission[]>([]);
-  const [viewMode, setViewMode] = useState<'table' | 'spreadsheet'>('table');
+
+  // Default view: spreadsheet on desktop (lg+), table on mobile
+  const [viewMode, setViewMode] = useState<'table' | 'spreadsheet'>('spreadsheet');
+
+  // Set default view based on screen size on mount
+  useEffect(() => {
+    const handleResize = () => {
+      // Only set default on initial load, not on every resize
+      if (typeof window !== 'undefined') {
+        const isDesktop = window.innerWidth >= 1024; // lg breakpoint
+        setViewMode(isDesktop ? 'spreadsheet' : 'table');
+      }
+    };
+
+    // Set initial view
+    handleResize();
+  }, []); // Empty dependency array - only run once on mount
 
   useEffect(() => {
     if (!authLoading && user) {
