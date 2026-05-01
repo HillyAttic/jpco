@@ -13,6 +13,22 @@ interface FormFieldProps {
 }
 
 export function FormField({ field, register, error, setValue, watch }: FormFieldProps) {
+  // Special rendering for section type
+  if (field.type === 'section') {
+    return (
+      <div className="py-6 border-t-2 border-gray-300 mt-8 first:mt-0 first:pt-0 first:border-t-0">
+        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+          {field.label}
+        </h2>
+        {field.description && (
+          <p className="text-gray-600 text-base">
+            {field.description}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   const renderField = () => {
     const baseClasses =
       'w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent';

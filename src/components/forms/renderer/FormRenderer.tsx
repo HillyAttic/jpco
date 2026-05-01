@@ -47,7 +47,17 @@ export function FormRenderer({
       const filesData: any[] = [];
       const formData = { ...data };
 
-      for (const field of template.fields) {
+      // Flatten all fields including nested ones
+      const allFields: FormField[] = [];
+      template.fields.forEach((field) => {
+        if (field.type === 'section' && field.fields) {
+          allFields.push(...field.fields);
+        } else if (field.type !== 'section') {
+          allFields.push(field);
+        }
+      });
+
+      for (const field of allFields) {
         if (field.type === 'file' && data[field.id]) {
           const files = Array.isArray(data[field.id])
             ? data[field.id]
@@ -140,16 +150,51 @@ export function FormRenderer({
         {/* Render fields in order */}
         {template.fields
           .sort((a, b) => a.order - b.order)
-          .map((field) => (
-            <FormField
-              key={field.id}
-              field={field}
-              register={register}
-              error={errors[field.id] as any}
-              setValue={setValue}
-              watch={watch}
-            />
-          ))}
+          .map((field) => {
+            // Render section with nested fields
+            if (field.type === 'section') {
+              return (
+                <div key={field.id}>
+                  <FormField
+                    field={field}
+                    register={register}
+                    error={errors[field.id] as any}
+                    setValue={setValue}
+                    watch={watch}
+                  />
+                  {/* Render nested fields within section */}
+                  {field.fields && field.fields.length > 0 && (
+                    <div className="ml-4 space-y-6 mt-6">
+                      {field.fields
+                        .sort((a, b) => a.order - b.order)
+                        .map((nestedField) => (
+                          <FormField
+                            key={nestedField.id}
+                            field={nestedField}
+                            register={register}
+                            error={errors[nestedField.id] as any}
+                            setValue={setValue}
+                            watch={watch}
+                          />
+                        ))}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
+            // Render regular field
+            return (
+              <FormField
+                key={field.id}
+                field={field}
+                register={register}
+                error={errors[field.id] as any}
+                setValue={setValue}
+                watch={watch}
+              />
+            );
+          })}
 
         {/* Submit Button */}
         <FormSubmitButton

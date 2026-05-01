@@ -170,9 +170,10 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
     const newField: FormField = {
       id: `field_${Date.now()}_${fieldIdCounter.current++}`,
       type,
-      label: `New ${type} field`,
-      required: false,
+      label: type === 'section' ? 'New Section' : `New ${type} field`,
+      required: type === 'section' ? false : false,
       order: template.fields.length,
+      fields: type === 'section' ? [] : undefined,
     };
 
     setTemplate({
@@ -180,7 +181,39 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
       fields: [...template.fields, newField],
     });
 
-    toast.success(`${type} field added`);
+    toast.success(type === 'section' ? 'Section added' : `${type} field added`);
+  };
+
+  const handleAddFieldToSection = (sectionId: string, fieldType: FormFieldType) => {
+    if (!template) return;
+
+    const newField: FormField = {
+      id: `field_${Date.now()}_${fieldIdCounter.current++}`,
+      type: fieldType,
+      label: `New ${fieldType} field`,
+      required: false,
+      order: 0,
+      sectionId,
+    };
+
+    const updatedFields = template.fields.map((field) => {
+      if (field.id === sectionId && field.type === 'section') {
+        const sectionFields = field.fields || [];
+        newField.order = sectionFields.length;
+        return {
+          ...field,
+          fields: [...sectionFields, newField],
+        };
+      }
+      return field;
+    });
+
+    setTemplate({
+      ...template,
+      fields: updatedFields,
+    });
+
+    toast.success(`${fieldType} field added to section`);
   };
 
   const handleUpdateField = (index: number, updatedField: FormField) => {
@@ -232,10 +265,19 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
 
     if (!over || !template) return;
 
-    // Check if dragging from palette to canvas
+    // Check if dragging from palette to section
     if (active.data.current?.source === 'palette') {
+      const fieldType = active.data.current.type as FormFieldType;
+
+      // Dropping into a section
+      if (over.data.current?.type === 'section') {
+        const sectionId = over.data.current.sectionId;
+        handleAddFieldToSection(sectionId, fieldType);
+        return;
+      }
+
+      // Dropping into canvas
       if (over.id === 'canvas-drop-zone' || over.data.current?.type === 'field') {
-        const fieldType = active.data.current.type as FormFieldType;
         handleAddField(fieldType);
       }
       return;
@@ -419,6 +461,7 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
                     onDeleteField={handleDeleteField}
                     onReorderFields={handleReorderFields}
                     onAddField={handleAddField}
+                    onAddFieldToSection={handleAddFieldToSection}
                   />
                 </div>
                 <div className="lg:col-span-1">

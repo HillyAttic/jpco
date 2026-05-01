@@ -41,6 +41,7 @@ export function FieldEditor({ field, onUpdate, onDelete, onClose }: FieldEditorP
   };
 
   const needsOptions = ['select', 'multiselect', 'radio', 'checkbox'].includes(field.type);
+  const isSection = field.type === 'section';
 
   return (
     <motion.div
@@ -73,64 +74,86 @@ export function FieldEditor({ field, onUpdate, onDelete, onClose }: FieldEditorP
         {/* Label */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Label <span className="text-red-500">*</span>
+            {isSection ? 'Section Title' : 'Label'} <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
             value={localField.label}
             onChange={(e) => handleUpdate({ label: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            placeholder="Enter field label"
+            placeholder={isSection ? "Enter section title" : "Enter field label"}
           />
         </div>
 
-        {/* Placeholder */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Placeholder
-          </label>
-          <input
-            type="text"
-            value={localField.placeholder || ''}
-            onChange={(e) => handleUpdate({ placeholder: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            placeholder="Enter placeholder"
-          />
-        </div>
-
-        {/* Help Text */}
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Help Text
-          </label>
-          <textarea
-            value={localField.helpText || ''}
-            onChange={(e) => handleUpdate({ helpText: e.target.value })}
-            rows={2}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
-            placeholder="Additional instructions"
-          />
-        </div>
-
-        {/* Required Toggle */}
-        <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+        {/* Description for Section */}
+        {isSection && (
           <div>
-            <div className="font-medium text-gray-900">Required</div>
-            <div className="text-sm text-gray-500">Field must be filled</div>
-          </div>
-          <button
-            onClick={() => handleUpdate({ required: !localField.required })}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              localField.required ? 'bg-indigo-600' : 'bg-gray-300'
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                localField.required ? 'translate-x-6' : 'translate-x-1'
-              }`}
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Description
+            </label>
+            <textarea
+              value={localField.description || ''}
+              onChange={(e) => handleUpdate({ description: e.target.value })}
+              rows={3}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+              placeholder="Add a description for this section"
             />
-          </button>
-        </div>
+          </div>
+        )}
+
+        {/* Placeholder - hide for section */}
+        {!isSection && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Placeholder
+            </label>
+            <input
+              type="text"
+              value={localField.placeholder || ''}
+              onChange={(e) => handleUpdate({ placeholder: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+              placeholder="Enter placeholder"
+            />
+          </div>
+        )}
+
+        {/* Help Text - hide for section */}
+        {!isSection && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Help Text
+            </label>
+            <textarea
+              value={localField.helpText || ''}
+              onChange={(e) => handleUpdate({ helpText: e.target.value })}
+              rows={2}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all resize-none"
+              placeholder="Additional instructions"
+            />
+          </div>
+        )}
+
+        {/* Required Toggle - hide for section */}
+        {!isSection && (
+          <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <div>
+              <div className="font-medium text-gray-900">Required</div>
+              <div className="text-sm text-gray-500">Field must be filled</div>
+            </div>
+            <button
+              onClick={() => handleUpdate({ required: !localField.required })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                localField.required ? 'bg-indigo-600' : 'bg-gray-300'
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  localField.required ? 'translate-x-6' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        )}
 
         {/* Validation Rules */}
         {(field.type === 'text' || field.type === 'textarea' || field.type === 'number') && (

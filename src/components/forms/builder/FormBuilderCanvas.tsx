@@ -18,6 +18,12 @@ interface FormBuilderCanvasProps {
   onDeleteField: (index: number) => void;
   onReorderFields: (fields: FormField[]) => void;
   onAddField: (type: FormFieldType) => void;
+  onAddFieldToSection?: (sectionId: string, fieldType: FormFieldType) => void;
+}
+
+interface FieldPath {
+  sectionIndex: number;
+  fieldIndex: number;
 }
 
 function SortableFieldItem({
@@ -25,11 +31,19 @@ function SortableFieldItem({
   index,
   isSelected,
   onClick,
+  onAddFieldToSection,
+  onNestedFieldClick,
+  parentSectionIndex,
+  selectedNestedPath,
 }: {
   field: FormField;
   index: number;
   isSelected: boolean;
-  onClick: () => void;
+  onClick: (e?: React.MouseEvent) => void;
+  onAddFieldToSection?: (sectionId: string, fieldType: FormFieldType) => void;
+  onNestedFieldClick?: (sectionIndex: number, fieldIndex: number) => void;
+  parentSectionIndex?: number;
+  selectedNestedPath?: FieldPath | null;
 }) {
   const {
     attributes,
@@ -41,6 +55,11 @@ function SortableFieldItem({
   } = useSortable({
     id: field.id,
     data: { type: 'field', field },
+  });
+
+  const { setNodeRef: setSectionDropRef, isOver: isSectionOver } = useDroppable({
+    id: `section-${field.id}`,
+    data: { type: 'section', sectionId: field.id },
   });
 
   const style = {
@@ -111,12 +130,144 @@ function SortableFieldItem({
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
         </svg>
       ),
+      section: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z" />
+        </svg>
+      ),
     };
     return icons[type] || icons.text;
   };
 
   const colors = ['#FFE500', '#FF6B00', '#FF006B', '#00FFE5', '#00FF85'];
   const bgColor = colors[index % colors.length];
+
+  // Special rendering for section type
+  if (field.type === 'section') {
+    return (
+      <motion.div
+        ref={setNodeRef}
+        style={style}
+        layout
+        initial={{ opacity: 0, x: -50 }}
+        animate={{ opacity: 1, x: 0 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        whileHover={{ y: isDragging ? 0 : -2 }}
+        className={`group relative ${isDragging ? 'z-50 opacity-50' : ''}`}
+      >
+        <div
+          onClick={onClick}
+          className={`relative overflow-hidden border-2 border-dashed rounded-lg transition-all cursor-pointer ${
+            isSelected
+              ? 'bg-slate-50 border-slate-400 shadow-lg'
+              : 'bg-slate-50/50 border-slate-300 hover:border-slate-400 hover:shadow-md'
+          }`}
+        >
+          {/* Drag Handle */}
+          <div
+            {...attributes}
+            {...listeners}
+            className="absolute left-0 top-0 bottom-0 w-10 flex items-center justify-center cursor-grab active:cursor-grabbing border-r border-slate-300 transition-colors hover:bg-slate-100"
+          >
+            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
+            </svg>
+          </div>
+
+          <div className="pl-14 pr-5 py-4">
+            <div className="flex items-start justify-between">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="flex-shrink-0 w-8 h-8 rounded-md bg-slate-500 flex items-center justify-center text-white shadow-sm">
+                    {getFieldIcon(field.type)}
+                  </div>
+                  <span className={`font-bold text-lg ${isSelected ? 'text-slate-700' : 'text-slate-900'}`}>
+                    {field.label}
+                  </span>
+                </div>
+
+                {field.description && (
+                  <p className={`text-sm mt-2 ${isSelected ? 'text-slate-600' : 'text-slate-500'}`}>
+                    {field.description}
+                  </p>
+                )}
+
+                <div className="flex items-center space-x-2 mt-2">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                    Section Header
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-shrink-0 ml-4">
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  className={`transition-colors ${isSelected ? 'text-slate-500' : 'text-slate-400 group-hover:text-slate-600'}`}
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  </svg>
+                </motion.div>
+              </div>
+            </div>
+          </div>
+
+          {/* Drop Zone for Fields within Section */}
+          <div
+            ref={setSectionDropRef}
+            className={`px-4 pb-4 min-h-[100px] transition-all ${
+              isSectionOver ? 'bg-indigo-100/50 border-t-2 border-indigo-400' : 'border-t border-slate-200'
+            }`}
+          >
+            {field.fields && field.fields.length > 0 ? (
+              <SortableContext
+                items={field.fields.map((f) => f.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-3 mt-3">
+                  <AnimatePresence>
+                    {field.fields.map((nestedField, nestedIndex) => {
+                      const isNestedSelected =
+                        selectedNestedPath !== null &&
+                        selectedNestedPath.sectionIndex === parentSectionIndex &&
+                        selectedNestedPath.fieldIndex === nestedIndex;
+
+                      return (
+                        <SortableFieldItem
+                          key={nestedField.id}
+                          field={nestedField}
+                          index={nestedIndex}
+                          isSelected={isNestedSelected}
+                          onClick={(e) => {
+                            e?.stopPropagation();
+                            if (onNestedFieldClick && parentSectionIndex !== undefined) {
+                              onNestedFieldClick(parentSectionIndex, nestedIndex);
+                            }
+                          }}
+                          onNestedFieldClick={onNestedFieldClick}
+                          parentSectionIndex={parentSectionIndex}
+                          selectedNestedPath={selectedNestedPath}
+                        />
+                      );
+                    })}
+                  </AnimatePresence>
+                </div>
+              </SortableContext>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <svg className="w-12 h-12 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                <p className="text-sm text-slate-500 font-medium">Drop fields here</p>
+                <p className="text-xs text-slate-400 mt-1">Drag fields from the palette into this section</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
 
   return (
     <motion.div
@@ -130,7 +281,12 @@ function SortableFieldItem({
       className={`group relative ${isDragging ? 'z-50 opacity-50' : ''}`}
     >
       <div
-        onClick={onClick}
+        onClick={(e) => {
+          if (parentSectionIndex !== undefined) {
+            e.stopPropagation();
+          }
+          onClick(e);
+        }}
         className={`relative overflow-hidden border border-gray-200 rounded-lg transition-all cursor-pointer ${
           isSelected
             ? 'bg-indigo-50 border-indigo-300 shadow-lg'
@@ -209,14 +365,77 @@ export function FormBuilderCanvas({
   onDeleteField,
   onReorderFields,
   onAddField,
+  onAddFieldToSection,
 }: FormBuilderCanvasProps) {
   const [selectedFieldIndex, setSelectedFieldIndex] = useState<number | null>(null);
+  const [selectedNestedPath, setSelectedNestedPath] = useState<FieldPath | null>(null);
 
   const { setNodeRef: setCanvasRef, isOver } = useDroppable({
     id: 'canvas-drop-zone',
   });
 
   const sortedFields = [...fields].sort((a, b) => a.order - b.order);
+
+  const handleNestedFieldClick = (sectionIndex: number, fieldIndex: number) => {
+    setSelectedFieldIndex(null);
+    setSelectedNestedPath({ sectionIndex, fieldIndex });
+  };
+
+  const handleTopLevelFieldClick = (index: number) => {
+    setSelectedNestedPath(null);
+    setSelectedFieldIndex(index);
+  };
+
+  const getSelectedField = (): FormField | null => {
+    if (selectedNestedPath !== null) {
+      const section = fields[selectedNestedPath.sectionIndex];
+      if (section?.fields && section.fields[selectedNestedPath.fieldIndex]) {
+        return section.fields[selectedNestedPath.fieldIndex];
+      }
+    } else if (selectedFieldIndex !== null) {
+      return fields[selectedFieldIndex];
+    }
+    return null;
+  };
+
+  const handleUpdateSelectedField = (updatedField: FormField) => {
+    if (selectedNestedPath !== null) {
+      // Update nested field
+      const section = { ...fields[selectedNestedPath.sectionIndex] };
+      if (section.fields) {
+        const updatedFields = [...section.fields];
+        updatedFields[selectedNestedPath.fieldIndex] = updatedField;
+        section.fields = updatedFields;
+        onUpdateField(selectedNestedPath.sectionIndex, section);
+      }
+    } else if (selectedFieldIndex !== null) {
+      // Update top-level field
+      onUpdateField(selectedFieldIndex, updatedField);
+    }
+  };
+
+  const handleDeleteSelectedField = () => {
+    if (selectedNestedPath !== null) {
+      // Delete nested field
+      const section = { ...fields[selectedNestedPath.sectionIndex] };
+      if (section.fields) {
+        const updatedFields = [...section.fields];
+        updatedFields.splice(selectedNestedPath.fieldIndex, 1);
+        section.fields = updatedFields;
+        onUpdateField(selectedNestedPath.sectionIndex, section);
+      }
+      setSelectedNestedPath(null);
+    } else if (selectedFieldIndex !== null) {
+      // Delete top-level field
+      onDeleteField(selectedFieldIndex);
+      setSelectedFieldIndex(null);
+    }
+  };
+
+  const handleCloseEditor = () => {
+    setSelectedFieldIndex(null);
+    setSelectedNestedPath(null);
+  };
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -280,9 +499,13 @@ export function FormBuilderCanvas({
                         <SortableFieldItem
                           key={field.id}
                           field={field}
-                          index={index}
-                          isSelected={selectedFieldIndex === actualIndex}
-                          onClick={() => setSelectedFieldIndex(actualIndex)}
+                          index={actualIndex}
+                          isSelected={selectedFieldIndex === actualIndex && selectedNestedPath === null}
+                          onClick={() => handleTopLevelFieldClick(actualIndex)}
+                          onAddFieldToSection={onAddFieldToSection}
+                          onNestedFieldClick={handleNestedFieldClick}
+                          parentSectionIndex={field.type === 'section' ? actualIndex : undefined}
+                          selectedNestedPath={selectedNestedPath}
                         />
                       );
                     })}
@@ -297,7 +520,7 @@ export function FormBuilderCanvas({
       {/* Field Editor */}
       <div className="lg:col-span-1">
         <AnimatePresence mode="wait">
-          {selectedFieldIndex !== null && fields[selectedFieldIndex] ? (
+          {getSelectedField() ? (
             <motion.div
               key="editor"
               initial={{ opacity: 0, x: 20, rotate: 2 }}
@@ -305,13 +528,10 @@ export function FormBuilderCanvas({
               exit={{ opacity: 0, x: 20, rotate: -2 }}
             >
               <FieldEditor
-                field={fields[selectedFieldIndex]}
-                onUpdate={(updatedField) => onUpdateField(selectedFieldIndex, updatedField)}
-                onDelete={() => {
-                  onDeleteField(selectedFieldIndex);
-                  setSelectedFieldIndex(null);
-                }}
-                onClose={() => setSelectedFieldIndex(null)}
+                field={getSelectedField()!}
+                onUpdate={handleUpdateSelectedField}
+                onDelete={handleDeleteSelectedField}
+                onClose={handleCloseEditor}
               />
             </motion.div>
           ) : (

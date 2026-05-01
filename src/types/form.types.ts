@@ -15,7 +15,8 @@ export type FormFieldType =
   | 'multiselect'
   | 'radio'
   | 'checkbox'
-  | 'file';
+  | 'file'
+  | 'section';
 
 /**
  * Form template status
@@ -76,6 +77,11 @@ export interface FormField {
   // Field-specific options
   options?: FieldOption[]; // for select, radio, checkbox, multiselect
   fileConfig?: FileConfig; // for file uploads
+
+  // Section-specific fields
+  description?: string; // for section type - longer description text
+  fields?: FormField[]; // nested fields within a section
+  sectionId?: string; // parent section ID for nested fields
 
   // Legacy fields (deprecated, use fileConfig instead)
   accept?: string;

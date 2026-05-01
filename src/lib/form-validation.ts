@@ -8,7 +8,25 @@ import type { FormField } from '@/types/form.types';
 export function generateFormSchema(fields: FormField[]): z.ZodObject<any> {
   const shape: Record<string, z.ZodTypeAny> = {};
 
+  // Flatten all fields including nested ones in sections
+  const allFields: FormField[] = [];
   fields.forEach((field) => {
+    if (field.type === 'section') {
+      // Skip section itself, but add its nested fields
+      if (field.fields) {
+        allFields.push(...field.fields);
+      }
+    } else {
+      allFields.push(field);
+    }
+  });
+
+  allFields.forEach((field) => {
+    // Skip section fields - they don't need validation
+    if (field.type === 'section') {
+      return;
+    }
+
     let fieldSchema: z.ZodTypeAny;
 
     switch (field.type) {
