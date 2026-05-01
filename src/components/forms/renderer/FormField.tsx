@@ -16,12 +16,12 @@ export function FormField({ field, register, error, setValue, watch }: FormField
   // Special rendering for section type
   if (field.type === 'section') {
     return (
-      <div className="py-6 border-t-2 border-gray-300 mt-8 first:mt-0 first:pt-0 first:border-t-0">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">
+      <div className="pt-4 border-t-2 border-gray-300 mt-6 first:mt-0 first:pt-0 first:border-t-0">
+        <h2 className="text-2xl font-bold text-gray-900 mb-1">
           {field.label}
         </h2>
         {field.description && (
-          <p className="text-gray-600 text-base">
+          <p className="text-gray-600 text-base mb-2">
             {field.description}
           </p>
         )}

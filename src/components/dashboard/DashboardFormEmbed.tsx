@@ -115,10 +115,7 @@ export default function DashboardFormEmbed() {
   if (isSubmitted && !template.settings.allowMultipleSubmissions) {
     return (
       <Card className="col-span-full">
-        <CardHeader>
-          <CardTitle>Daily MIS Form</CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="p-6 space-y-6">
             <div className="space-y-3">
               <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
@@ -153,10 +150,7 @@ export default function DashboardFormEmbed() {
 
   return (
     <Card className="col-span-full">
-      <CardHeader>
-        <CardTitle>Daily MIS Form</CardTitle>
-      </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <div className="w-full">
           <FormRenderer
             template={template}
