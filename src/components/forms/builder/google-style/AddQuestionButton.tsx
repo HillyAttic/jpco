@@ -47,16 +47,16 @@ export function AddQuestionButton({
 
           {/* Dropdown Menu */}
           {showAddMenu && (
-            <div className="absolute top-12 left-0 bg-white rounded-xl shadow-2xl border border-gray-200 p-3 z-[9999] w-72">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2 px-1">Question Type</p>
-              <div className="grid grid-cols-2 gap-1">
+            <div className="absolute bottom-14 left-0 bg-white rounded-xl shadow-2xl border border-gray-200 p-2 z-[9999] w-80">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5 px-1">Question Type</p>
+              <div className="grid grid-cols-3 gap-0.5">
                 {QUESTION_TYPES.map(({ type, label }) => (
                   <button
                     key={type}
                     onClick={() => {
                       onAddField(type);
                     }}
-                    className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 hover:bg-purple-50 hover:text-[#673ab7] transition-colors text-left"
+                    className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg text-xs text-gray-700 hover:bg-purple-50 hover:text-[#673ab7] transition-colors text-left"
                   >
                     {label}
                   </button>
