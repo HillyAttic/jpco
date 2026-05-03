@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Eye, Settings, Share2 } from 'lucide-react';
+import { Eye, Settings, Share2, ArrowLeft } from 'lucide-react';
 
 interface FormTopBarProps {
   title: string;
@@ -38,6 +38,15 @@ export function FormTopBar({
   return (
     <div className="bg-white shadow-sm sticky top-0 z-40">
       <div className="flex items-center gap-3 px-4 py-2">
+        {/* Back Button */}
+        <button
+          onClick={onClose}
+          className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+          title="Back to forms"
+        >
+          <ArrowLeft size={20} />
+        </button>
+
         {/* Logo and Title */}
         <div className="flex items-center gap-2 mr-2">
           <svg viewBox="0 0 48 48" className="w-10 h-10">

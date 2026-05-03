@@ -37,7 +37,7 @@ export function SettingsModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-[100] overflow-hidden">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/50 transition-opacity"
@@ -45,9 +45,9 @@ export function SettingsModal({
       />
 
       {/* Drawer */}
-      <div className="absolute inset-y-0 right-0 w-full max-w-md bg-white shadow-xl overflow-y-auto">
+      <div className="absolute inset-y-0 right-0 w-full max-w-md bg-white shadow-xl overflow-y-auto z-[101]">
         {/* Header */}
-        <div className="sticky top-0 px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between">
+        <div className="sticky top-0 px-6 py-4 border-b border-gray-200 bg-white flex items-center justify-between z-[102]">
           <h2 className="text-lg font-semibold text-gray-900">Form settings</h2>
           <button
             onClick={onClose}
