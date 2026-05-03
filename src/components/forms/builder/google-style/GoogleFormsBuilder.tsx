@@ -1,0 +1,395 @@
+'use client';
+
+import React, { useState, useCallback, useMemo } from 'react';
+import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { toast } from 'react-toastify';
+import type { FormField, FormFieldType, FormTemplate } from '@/types/form.types';
+import { useAutoSave } from '@/hooks/useAutoSave';
+import { FormTopBar } from './FormTopBar';
+import { FormHeaderCard } from './FormHeaderCard';
+import { QuestionCard } from './QuestionCard';
+import { SectionCard } from './SectionCard';
+import { AddQuestionButton } from './AddQuestionButton';
+import { SettingsModal } from './SettingsModal';
+
+interface GoogleFormsBuilderProps {
+  form: FormTemplate;
+  onSave: (form: FormTemplate) => Promise<void>;
+  onPublish?: (form: FormTemplate) => Promise<void>;
+  onClose: () => void;
+  onPreview: () => void;
+}
+
+type Tab = 'questions' | 'responses' | 'settings';
+
+export function GoogleFormsBuilder({
+  form,
+  onSave,
+  onPublish,
+  onClose,
+  onPreview,
+}: GoogleFormsBuilderProps) {
+  const [formData, setFormData] = useState<FormTemplate>(form);
+  const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [activeTab, setActiveTab] = useState<Tab>('questions');
+  const [showAddMenu, setShowAddMenu] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+
+  // Auto-save with debouncing
+  const { isSaving, lastSaved } = useAutoSave(
+    formData,
+    onSave,
+    2000
+  );
+
+  // Handle form title change
+  const handleTitleChange = useCallback((title: string) => {
+    setFormData(prev => ({ ...prev, title }));
+  }, []);
+
+  // Handle form description change
+  const handleDescriptionChange = useCallback((description: string) => {
+    setFormData(prev => ({ ...prev, description }));
+  }, []);
+
+  // Handle field update
+  const handleUpdateField = useCallback((fieldId: string, updates: Partial<FormField>) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(f =>
+        f.id === fieldId ? { ...f, ...updates } : f
+      ),
+    }));
+  }, []);
+
+  // Handle field deletion
+  const handleDeleteField = useCallback((fieldId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.filter(f => f.id !== fieldId),
+    }));
+    setSelectedFieldId(null);
+  }, []);
+
+  // Handle field duplication
+  const handleDuplicateField = useCallback((fieldId: string) => {
+    const fieldIndex = formData.fields.findIndex(f => f.id === fieldId);
+    if (fieldIndex === -1) return;
+
+    const fieldToDuplicate = formData.fields[fieldIndex];
+    const newField: FormField = {
+      ...fieldToDuplicate,
+      id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      ...(fieldToDuplicate.type === 'section' && {
+        fields: fieldToDuplicate.fields?.map(f => ({
+          ...f,
+          id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        })) || [],
+      }),
+    };
+
+    setFormData(prev => {
+      const newFields = [...prev.fields];
+      newFields.splice(fieldIndex + 1, 0, newField);
+      return { ...prev, fields: newFields };
+    });
+  }, [formData.fields]);
+
+  // Handle nested field addition
+  const handleAddNestedField = useCallback((sectionId: string, type: FormFieldType) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(f => {
+        if (f.id === sectionId && f.type === 'section') {
+          const newNestedField: FormField = {
+            id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type,
+            label: '',
+            required: false,
+            order: (f.fields?.length || 0),
+            ...(type === 'file' && { fileConfig: { acceptedTypes: [], maxSize: 5242880, multiple: false } }),
+          };
+          return {
+            ...f,
+            fields: [...(f.fields || []), newNestedField],
+          };
+        }
+        return f;
+      }),
+    }));
+  }, []);
+
+  // Handle nested field update
+  const handleUpdateNestedField = useCallback((sectionId: string, fieldId: string, updates: Partial<FormField>) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(f => {
+        if (f.id === sectionId && f.type === 'section') {
+          return {
+            ...f,
+            fields: (f.fields || []).map(nf =>
+              nf.id === fieldId ? { ...nf, ...updates } : nf
+            ),
+          };
+        }
+        return f;
+      }),
+    }));
+  }, []);
+
+  // Handle nested field deletion
+  const handleDeleteNestedField = useCallback((sectionId: string, fieldId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(f => {
+        if (f.id === sectionId && f.type === 'section') {
+          return {
+            ...f,
+            fields: (f.fields || []).filter(nf => nf.id !== fieldId),
+          };
+        }
+        return f;
+      }),
+    }));
+    setSelectedFieldId(null);
+  }, []);
+
+  // Handle nested field duplication
+  const handleDuplicateNestedField = useCallback((sectionId: string, fieldId: string) => {
+    setFormData(prev => ({
+      ...prev,
+      fields: prev.fields.map(f => {
+        if (f.id === sectionId && f.type === 'section') {
+          const nestedFields = f.fields || [];
+          const fieldIndex = nestedFields.findIndex(nf => nf.id === fieldId);
+          if (fieldIndex === -1) return f;
+
+          const fieldToDuplicate = nestedFields[fieldIndex];
+          const newField: FormField = {
+            ...fieldToDuplicate,
+            id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          };
+
+          const newNestedFields = [...nestedFields];
+          newNestedFields.splice(fieldIndex + 1, 0, newField);
+
+          return {
+            ...f,
+            fields: newNestedFields,
+          };
+        }
+        return f;
+      }),
+    }));
+  }, []);
+
+  // Handle add field
+  const handleAddField = useCallback((type: FormFieldType) => {
+    const newField: FormField = {
+      id: `field_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      type,
+      label: '',
+      required: false,
+      order: formData.fields.length,
+      ...(type === 'section' && { fields: [], description: '' }),
+      ...(type === 'file' && { fileConfig: { acceptedTypes: [], maxSize: 5242880, multiple: false } }),
+    };
+
+    setFormData(prev => ({
+      ...prev,
+      fields: [...prev.fields, newField],
+    }));
+
+    setSelectedFieldId(newField.id);
+    setShowAddMenu(false);
+  }, [formData.fields.length]);
+
+  // Handle drag end for reordering
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (!over || active.id === over.id) return;
+
+    setFormData(prev => {
+      const oldIndex = prev.fields.findIndex(f => f.id === active.id);
+      const newIndex = prev.fields.findIndex(f => f.id === over.id);
+
+      if (oldIndex === -1 || newIndex === -1) return prev;
+
+      const newFields = [...prev.fields];
+      const [movedField] = newFields.splice(oldIndex, 1);
+      newFields.splice(newIndex, 0, movedField);
+
+      return { ...prev, fields: newFields };
+    });
+  }, []);
+
+  const fieldIds = useMemo(() => formData.fields.map(f => f.id), [formData.fields]);
+
+  const handlePublish = useCallback(async () => {
+    if (!onPublish) return;
+
+    if (!formData.title.trim()) {
+      toast.error('Please enter a form title');
+      return;
+    }
+
+    if (formData.fields.length === 0) {
+      toast.error('Please add at least one field');
+      return;
+    }
+
+    try {
+      setIsPublishing(true);
+      const newStatus = formData.status === 'published' ? 'draft' : 'published';
+      const updatedForm: FormTemplate = {
+        ...formData,
+        status: newStatus,
+      };
+      await onPublish(updatedForm);
+      setFormData(updatedForm);
+      toast.success(newStatus === 'published' ? 'Form published!' : 'Form unpublished');
+    } catch (error) {
+      toast.error('Failed to publish form');
+    } finally {
+      setIsPublishing(false);
+    }
+  }, [formData, onPublish]);
+
+  return (
+    <div className="min-h-screen bg-[#f0ebf8] flex flex-col">
+      {/* Top Navigation */}
+      <FormTopBar
+        title={formData.title}
+        isSaving={isSaving}
+        lastSaved={lastSaved}
+        isPublished={formData.status === 'published'}
+        onSettingsClick={() => setShowSettings(true)}
+        onPreviewClick={onPreview}
+        onPublishClick={onPublish ? handlePublish : undefined}
+        onClose={onClose}
+      />
+
+      {/* Tab Bar */}
+      <div className="bg-white border-b border-gray-100 sticky top-16 z-30">
+        <div className="max-w-3xl mx-auto px-4">
+          <div className="flex gap-0">
+            {(['questions', 'responses', 'settings'] as Tab[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab)}
+                className={`px-6 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
+                  activeTab === tab
+                    ? 'border-[#673ab7] text-[#673ab7]'
+                    : 'border-transparent text-gray-600 hover:text-gray-800'
+                }`}
+              >
+                {tab === 'responses' ? `Responses (0)` : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className="flex-1 max-w-3xl mx-auto w-full px-4 py-6 space-y-4">
+        {activeTab === 'questions' && (
+          <>
+            {/* Form Header Card */}
+            <FormHeaderCard
+              title={formData.title}
+              description={formData.description || ''}
+              onTitleChange={handleTitleChange}
+              onDescriptionChange={handleDescriptionChange}
+            />
+
+            {/* Questions */}
+            <DndContext
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={fieldIds}
+                strategy={verticalListSortingStrategy}
+              >
+                {formData.fields.map((field, index) => (
+                  field.type === 'section' ? (
+                    <SectionCard
+                      key={field.id}
+                      field={field}
+                      index={index}
+                      isSelected={selectedFieldId === field.id}
+                      onUpdate={(updates) => handleUpdateField(field.id, updates)}
+                      onDelete={() => handleDeleteField(field.id)}
+                      onDuplicate={() => handleDuplicateField(field.id)}
+                      onFocus={() => setSelectedFieldId(field.id)}
+                      onAddNestedField={handleAddNestedField}
+                      onUpdateNestedField={handleUpdateNestedField}
+                      onDeleteNestedField={handleDeleteNestedField}
+                      onDuplicateNestedField={handleDuplicateNestedField}
+                      selectedFieldId={selectedFieldId}
+                      onSelectField={setSelectedFieldId}
+                    />
+                  ) : (
+                    <QuestionCard
+                      key={field.id}
+                      field={field}
+                      index={index}
+                      isSelected={selectedFieldId === field.id}
+                      onUpdate={(updates) => handleUpdateField(field.id, updates)}
+                      onDelete={() => handleDeleteField(field.id)}
+                      onDuplicate={() => handleDuplicateField(field.id)}
+                      onFocus={() => setSelectedFieldId(field.id)}
+                    />
+                  )
+                ))}
+              </SortableContext>
+            </DndContext>
+
+            {/* Sticky Add Question Floating Toolbar */}
+            <div className="sticky bottom-6 flex justify-center mt-8">
+              <AddQuestionButton
+                onAddField={handleAddField}
+                onPreview={onPreview}
+                showAddMenu={showAddMenu}
+                onToggleAddMenu={() => setShowAddMenu(!showAddMenu)}
+              />
+            </div>
+          </>
+        )}
+
+        {activeTab === 'responses' && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-10 text-center">
+            <div className="text-6xl text-gray-300 mb-4">📊</div>
+            <h2 className="text-xl font-medium text-gray-600 mb-2">0 responses</h2>
+            <p className="text-sm text-gray-400">Share your form to start receiving responses</p>
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 space-y-6">
+            <h2 className="text-lg font-medium text-gray-800">Settings</h2>
+            <p className="text-sm text-gray-600">Settings panel coming soon</p>
+          </div>
+        )}
+      </div>
+
+      {/* Settings Modal */}
+      <SettingsModal
+        isOpen={showSettings}
+        onClose={() => setShowSettings(false)}
+        settings={formData.settings}
+        accessControl={formData.accessControl}
+        onUpdate={(updates) => {
+          setFormData(prev => ({
+            ...prev,
+            settings: { ...prev.settings, ...updates.settings },
+            accessControl: updates.accessControl ? { ...prev.accessControl, ...updates.accessControl } : prev.accessControl,
+          }));
+        }}
+      />
+    </div>
+  );
+}
