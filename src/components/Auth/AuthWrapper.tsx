@@ -119,19 +119,22 @@ export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
     );
   }
 
-  // Check if current route should hide header
-  const shouldHideHeader = noHeaderRoutes.some(route => pathname.startsWith(route));
+  // Check if current route should hide header on desktop only
+  const shouldHideHeaderOnDesktop = noHeaderRoutes.some(route => pathname.startsWith(route));
 
   // For protected pages, render with sidebar and conditionally with header
   return (
     <div className="flex min-h-screen bg-gray-2 dark:bg-[#020d1a]">
       <Sidebar />
       <div className="flex-1 flex flex-col min-w-0">
-        {!shouldHideHeader && <Header />}
+        {/* Show header on mobile always, hide on desktop for specific routes */}
+        <div className={shouldHideHeaderOnDesktop ? 'md:hidden' : ''}>
+          <Header />
+        </div>
         <main
           id="main-content"
           className={`flex-1 isolate mx-auto w-full max-w-screen-2xl overflow-x-hidden pb-20 md:pb-10 ${
-            shouldHideHeader ? '' : 'p-4 md:p-6 2xl:p-10'
+            shouldHideHeaderOnDesktop ? '' : 'p-4 md:p-6 2xl:p-10'
           }`}
           role="main"
           aria-label="Main content"

@@ -154,32 +154,33 @@ export default function FormBuilderListPage() {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Form Builder</h1>
-              <p className="text-gray-600 mt-1">Create and manage custom forms</p>
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-6">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl sm:text-3xl font-bold text-gray-900">Form Builder</h1>
+              <p className="text-sm sm:text-base text-gray-600 mt-1 hidden sm:block">Create and manage custom forms</p>
             </div>
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleCreateNew}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all flex items-center space-x-2"
+              className="px-3 py-2 sm:px-6 sm:py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all flex items-center space-x-1.5 sm:space-x-2 text-sm sm:text-base whitespace-nowrap"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              <span>Create New Form</span>
+              <span className="hidden xs:inline">Create New Form</span>
+              <span className="xs:hidden">Create</span>
             </motion.button>
           </div>
 
           {/* Filters */}
-          <div className="flex space-x-2 mt-6">
+          <div className="flex space-x-2 mt-4 sm:mt-6 overflow-x-auto pb-1">
             {(['all', 'draft', 'published', 'archived'] as const).map((status) => (
               <button
                 key={status}
                 onClick={() => setFilter(status)}
-                className={`px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+                className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-lg font-medium text-xs sm:text-sm transition-all whitespace-nowrap ${
                   filter === status
                     ? 'bg-indigo-600 text-white shadow-md'
                     : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
@@ -193,7 +194,7 @@ export default function FormBuilderListPage() {
       </div>
 
       {/* Templates List */}
-      <div className="max-w-7xl mx-auto px-6 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
         <AnimatePresence mode="wait">
           {templates.length === 0 ? (
             <motion.div
@@ -201,30 +202,30 @@ export default function FormBuilderListPage() {
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="text-center py-20 bg-white rounded-xl border border-gray-200 shadow-sm"
+              className="text-center py-12 sm:py-20 bg-white rounded-xl border border-gray-200 shadow-sm"
             >
               <motion.div
-                className="w-20 h-20 bg-gray-100 rounded-2xl mx-auto mb-6 flex items-center justify-center border border-gray-300"
+                className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-2xl mx-auto mb-4 sm:mb-6 flex items-center justify-center border border-gray-300"
                 animate={{ y: [0, -8, 0] }}
                 transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
               >
-                <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-8 h-8 sm:w-10 sm:h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
               </motion.div>
-              <p className="text-2xl font-semibold text-gray-900 mb-2">
+              <p className="text-xl sm:text-2xl font-semibold text-gray-900 mb-2">
                 No forms found
               </p>
-              <p className="text-gray-500 mb-8">
+              <p className="text-sm sm:text-base text-gray-500 mb-6 sm:mb-8">
                 Start building your first form
               </p>
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={handleCreateNew}
-                className="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all inline-flex items-center space-x-2"
+                className="px-4 py-2 sm:px-6 sm:py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg shadow-sm transition-all inline-flex items-center space-x-1.5 sm:space-x-2 text-sm sm:text-base"
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
                 <span>Create First Form</span>
@@ -236,7 +237,7 @@ export default function FormBuilderListPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4"
+            className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4"
           >
             {templates.map((template, index) => (
               <motion.div

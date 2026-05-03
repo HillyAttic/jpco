@@ -37,41 +37,41 @@ export function FormTopBar({
 
   return (
     <div className="bg-white shadow-sm sticky top-0 z-30">
-      <div className="flex items-center gap-3 px-4 py-2">
+      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2">
         {/* Back Button */}
         <button
           onClick={onClose}
-          className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+          className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors flex-shrink-0"
           title="Back to forms"
         >
           <ArrowLeft size={20} />
         </button>
 
         {/* Logo and Title */}
-        <div className="flex items-center gap-2 mr-2">
-          <svg viewBox="0 0 48 48" className="w-10 h-10">
+        <div className="flex items-center gap-2 min-w-0 flex-1 sm:flex-initial sm:mr-2">
+          <svg viewBox="0 0 48 48" className="w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0">
             <path fill="#673ab7" d="M29 8H11a3 3 0 00-3 3v26a3 3 0 003 3h26a3 3 0 003-3V19z"/>
             <path fill="#b39ddb" d="M29 8v8a3 3 0 003 3h8z"/>
             <rect x="15" y="22" width="18" height="2" rx="1" fill="white"/>
             <rect x="15" y="27" width="18" height="2" rx="1" fill="white"/>
             <rect x="15" y="32" width="10" height="2" rx="1" fill="white"/>
           </svg>
-          <div className="flex flex-col">
-            <div className="font-medium text-gray-800 text-base leading-tight">
+          <div className="flex flex-col min-w-0">
+            <div className="font-medium text-gray-800 text-sm sm:text-base leading-tight truncate">
               {title || 'Untitled form'}
             </div>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-xs text-gray-400">
+              <span className="text-xs text-gray-400 truncate">
                 {isSaving ? 'Saving...' : `Saved ${formatLastSaved(lastSaved)}`}
               </span>
             </div>
           </div>
         </div>
 
-        <div className="flex-1" />
+        <div className="flex-1 hidden sm:block" />
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <button
             onClick={onPreviewClick}
             className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
@@ -91,14 +91,14 @@ export function FormTopBar({
           {onPublishClick && (
             <button
               onClick={onPublishClick}
-              className={`px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center gap-2 ${
+              className={`px-2.5 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors flex items-center gap-1.5 sm:gap-2 whitespace-nowrap ${
                 isPublished
                   ? 'bg-green-100 text-green-700 hover:bg-green-200'
                   : 'bg-purple-600 text-white hover:bg-purple-700'
               }`}
               title={isPublished ? 'Form published' : 'Publish form'}
             >
-              <Share2 size={16} />
+              <Share2 size={14} className="sm:w-4 sm:h-4" />
               <span>{isPublished ? 'Published' : 'Publish'}</span>
             </button>
           )}
