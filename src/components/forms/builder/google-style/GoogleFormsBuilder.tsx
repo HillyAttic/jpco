@@ -1,17 +1,19 @@
 'use client';
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { toast } from 'react-toastify';
 import type { FormField, FormFieldType, FormTemplate } from '@/types/form.types';
 import { useAutoSave } from '@/hooks/useAutoSave';
+import { authenticatedFetch } from '@/lib/api-client';
 import { FormTopBar } from './FormTopBar';
 import { FormHeaderCard } from './FormHeaderCard';
 import { QuestionCard } from './QuestionCard';
 import { SectionCard } from './SectionCard';
 import { AddQuestionButton } from './AddQuestionButton';
 import { SettingsModal } from './SettingsModal';
+import { ResponsesView } from './ResponsesView';
 
 interface GoogleFormsBuilderProps {
   form: FormTemplate;
@@ -36,6 +38,7 @@ export function GoogleFormsBuilder({
   const [activeTab, setActiveTab] = useState<Tab>('questions');
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [responseCount, setResponseCount] = useState(0);
 
   // Auto-save with debouncing
   const { isSaving, lastSaved } = useAutoSave(
@@ -43,6 +46,28 @@ export function GoogleFormsBuilder({
     onSave,
     2000
   );
+
+  // Fetch response count
+  useEffect(() => {
+    const fetchResponseCount = async () => {
+      if (formData.id === 'new') return;
+
+      try {
+        const response = await authenticatedFetch(
+          `/api/forms/templates/${formData.id}/responses?limit=1`
+        );
+        const result = await response.json();
+
+        if (response.ok) {
+          setResponseCount(result.total || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch response count:', error);
+      }
+    };
+
+    fetchResponseCount();
+  }, [formData.id, activeTab]);
 
   // Handle form title change
   const handleTitleChange = useCallback((title: string) => {
@@ -286,7 +311,7 @@ export function GoogleFormsBuilder({
                     : 'border-transparent text-gray-600 hover:text-gray-800'
                 }`}
               >
-                {tab === 'responses' ? `Responses (0)` : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab === 'responses' ? `Responses (${responseCount})` : tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
@@ -361,11 +386,11 @@ export function GoogleFormsBuilder({
         )}
 
         {activeTab === 'responses' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-10 text-center">
-            <div className="text-6xl text-gray-300 mb-4">📊</div>
-            <h2 className="text-xl font-medium text-gray-600 mb-2">0 responses</h2>
-            <p className="text-sm text-gray-400">Share your form to start receiving responses</p>
-          </div>
+          <ResponsesView
+            formId={formData.id}
+            formTitle={formData.title}
+            fields={formData.fields}
+          />
         )}
 
         {activeTab === 'settings' && (
