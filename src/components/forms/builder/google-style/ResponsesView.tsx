@@ -152,16 +152,22 @@ export function ResponsesView({ formId, formTitle, fields }: ResponsesViewProps)
       const params = new URLSearchParams();
 
       if (filters.startDate) {
-        params.append('startDate', filters.startDate);
+        // Set to start of day (00:00:00) in local timezone
+        const startDate = new Date(filters.startDate);
+        startDate.setHours(0, 0, 0, 0);
+        params.append('startDate', startDate.toISOString());
       }
       if (filters.endDate) {
-        params.append('endDate', filters.endDate);
+        // Set to end of day (23:59:59) in local timezone
+        const endDate = new Date(filters.endDate);
+        endDate.setHours(23, 59, 59, 999);
+        params.append('endDate', endDate.toISOString());
       }
 
       // If no custom date range, use month/year
       if (!filters.startDate && !filters.endDate && filters.month && filters.year) {
-        const startDate = new Date(filters.year, filters.month - 1, 1);
-        const endDate = new Date(filters.year, filters.month, 0, 23, 59, 59);
+        const startDate = new Date(filters.year, filters.month - 1, 1, 0, 0, 0, 0);
+        const endDate = new Date(filters.year, filters.month, 0, 23, 59, 59, 999);
         params.append('startDate', startDate.toISOString());
         params.append('endDate', endDate.toISOString());
       }

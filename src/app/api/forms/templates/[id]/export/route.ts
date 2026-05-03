@@ -53,8 +53,23 @@ export async function GET(
           : undefined,
       };
 
+      console.log('[Export API] Date filters:', {
+        startDateParam: searchParams.get('startDate'),
+        endDateParam: searchParams.get('endDate'),
+        startDateParsed: filters.startDate?.toISOString(),
+        endDateParsed: filters.endDate?.toISOString(),
+      });
+
       // Get all submissions (no pagination for export)
       const { submissions } = await formSubmissionService.getAll(filters);
+
+      console.log('[Export API] Found submissions:', {
+        count: submissions.length,
+        submissionDates: submissions.map(s => ({
+          id: s.id,
+          submittedAt: s.submittedAt,
+        })),
+      });
 
       if (submissions.length === 0) {
         return NextResponse.json(
