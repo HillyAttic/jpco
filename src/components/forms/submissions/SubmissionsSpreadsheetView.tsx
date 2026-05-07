@@ -7,6 +7,15 @@ import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
 import { SpreadsheetExportModal } from './SpreadsheetExportModal';
 
+interface NumericFilter {
+  id: string;
+  fieldId: string;
+  operator: 'equals' | 'not_equals' | 'greater_than' | 'greater_than_or_equal' |
+            'less_than' | 'less_than_or_equal' | 'between';
+  value: number | null;
+  valueTo?: number | null;
+}
+
 interface SubmissionsSpreadsheetViewProps {
   submissions: FormSubmission[];
   template: FormTemplate;
@@ -24,11 +33,18 @@ export function SubmissionsSpreadsheetView({
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
+  const [numericFilters, setNumericFilters] = useState<NumericFilter[]>([]);
+  const [showNumericFilters, setShowNumericFilters] = useState(false);
 
   // Flatten form fields (extract nested fields from sections)
   const flattenedFields = useMemo(() => {
     return flattenFormFields(template.fields);
   }, [template.fields]);
+
+  // Get numeric fields from template
+  const numericFields = useMemo(() => {
+    return flattenedFields.filter(field => field.type === 'number');
+  }, [flattenedFields]);
 
   // Filter submissions
   const filteredSubmissions = useMemo(() => {
@@ -56,14 +72,133 @@ export function SubmissionsSpreadsheetView({
         if (submittedDate > endDateTime) return false;
       }
 
+      // Numeric filters
+      for (const filter of numericFilters) {
+        // Skip incomplete filters
+        if (!filter.fieldId || !filter.operator || filter.value === null) {
+          continue;
+        }
+
+        const fieldValue = submission.data[filter.fieldId];
+
+        // Handle missing/empty values - exclude submissions without the field value
+        if (fieldValue === null || fieldValue === undefined || fieldValue === '') {
+          return false;
+        }
+
+        // Convert to number (handle string numbers)
+        const numValue = typeof fieldValue === 'number'
+          ? fieldValue
+          : parseFloat(String(fieldValue));
+
+        // Skip if not a valid number
+        if (isNaN(numValue)) {
+          return false;
+        }
+
+        // Apply operator logic
+        const filterValue = filter.value!;
+        let matches = false;
+
+        switch (filter.operator) {
+          case 'equals':
+            matches = numValue === filterValue;
+            break;
+          case 'not_equals':
+            matches = numValue !== filterValue;
+            break;
+          case 'greater_than':
+            matches = numValue > filterValue;
+            break;
+          case 'greater_than_or_equal':
+            matches = numValue >= filterValue;
+            break;
+          case 'less_than':
+            matches = numValue < filterValue;
+            break;
+          case 'less_than_or_equal':
+            matches = numValue <= filterValue;
+            break;
+          case 'between':
+            if (filter.valueTo !== null && filter.valueTo !== undefined) {
+              matches = numValue >= filterValue && numValue <= filter.valueTo;
+            } else {
+              matches = false;
+            }
+            break;
+          default:
+            matches = true;
+        }
+
+        if (!matches) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [submissions, searchTerm, startDate, endDate]);
+  }, [submissions, searchTerm, startDate, endDate, numericFilters]);
 
   // Group submissions by day
   const groupedSubmissions = useMemo(() => {
     return groupSubmissionsByDay(filteredSubmissions);
   }, [filteredSubmissions]);
+
+  // Helper functions
+  const generateFilterId = () => `filter-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  const getFieldLabel = (fieldId: string): string => {
+    const field = flattenedFields.find(f => f.id === fieldId);
+    return field?.label || 'Unknown Field';
+  };
+
+  const formatOperator = (operator: string): string => {
+    const operatorLabels: Record<string, string> = {
+      equals: '=',
+      not_equals: '≠',
+      greater_than: '>',
+      greater_than_or_equal: '≥',
+      less_than: '<',
+      less_than_or_equal: '≤',
+      between: 'between'
+    };
+    return operatorLabels[operator] || operator;
+  };
+
+  // Event handlers
+  const handleAddNumericFilter = () => {
+    if (numericFields.length === 0) return;
+
+    const newFilter: NumericFilter = {
+      id: generateFilterId(),
+      fieldId: numericFields[0].id,
+      operator: 'equals',
+      value: null,
+      valueTo: null
+    };
+    setNumericFilters([...numericFilters, newFilter]);
+    setShowNumericFilters(true);
+  };
+
+  const handleRemoveNumericFilter = (filterId: string) => {
+    setNumericFilters(numericFilters.filter(f => f.id !== filterId));
+  };
+
+  const handleUpdateNumericFilter = (
+    filterId: string,
+    updates: Partial<NumericFilter>
+  ) => {
+    setNumericFilters(numericFilters.map(f =>
+      f.id === filterId ? { ...f, ...updates } : f
+    ));
+  };
+
+  const handleClearAllFilters = () => {
+    setSearchTerm('');
+    setStartDate('');
+    setEndDate('');
+    setNumericFilters([]);
+  };
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this submission?')) return;
@@ -122,6 +257,231 @@ export function SubmissionsSpreadsheetView({
             className="px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
         </div>
+
+        {/* Numeric Filters Section */}
+        {numericFields.length > 0 && (
+          <div className="col-span-full mt-4">
+            <button
+              onClick={() => setShowNumericFilters(!showNumericFilters)}
+              className="flex items-center space-x-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+            >
+              <svg
+                className={`w-4 h-4 transition-transform ${showNumericFilters ? 'rotate-90' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+              <span>
+                Numeric Filters
+                {numericFilters.length > 0 && (
+                  <span className="ml-2 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-semibold">
+                    {numericFilters.length}
+                  </span>
+                )}
+              </span>
+            </button>
+
+            {showNumericFilters && (
+              <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 space-y-3">
+                {numericFilters.map((filter) => (
+                  <div key={filter.id} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-2 items-end">
+                    {/* Field Selector */}
+                    <div className="lg:col-span-4">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Field
+                      </label>
+                      <select
+                        value={filter.fieldId}
+                        onChange={(e) => handleUpdateNumericFilter(filter.id, {
+                          fieldId: e.target.value
+                        })}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        {numericFields.map(field => (
+                          <option key={field.id} value={field.id}>
+                            {field.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Operator Selector */}
+                    <div className="lg:col-span-3">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">
+                        Operator
+                      </label>
+                      <select
+                        value={filter.operator}
+                        onChange={(e) => handleUpdateNumericFilter(filter.id, {
+                          operator: e.target.value as NumericFilter['operator'],
+                          valueTo: e.target.value === 'between' ? filter.valueTo : null
+                        })}
+                        className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      >
+                        <option value="equals">=  Equals</option>
+                        <option value="not_equals">≠  Not Equals</option>
+                        <option value="greater_than">&gt;  Greater Than</option>
+                        <option value="greater_than_or_equal">≥  Greater or Equal</option>
+                        <option value="less_than">&lt;  Less Than</option>
+                        <option value="less_than_or_equal">≤  Less or Equal</option>
+                        <option value="between">Between</option>
+                      </select>
+                    </div>
+
+                    {/* Value Input(s) */}
+                    {filter.operator === 'between' ? (
+                      <>
+                        <div className="lg:col-span-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Min
+                          </label>
+                          <input
+                            type="number"
+                            value={filter.value ?? ''}
+                            onChange={(e) => handleUpdateNumericFilter(filter.id, {
+                              value: e.target.value ? parseFloat(e.target.value) : null
+                            })}
+                            placeholder="Min"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                        <div className="lg:col-span-2">
+                          <label className="block text-xs font-medium text-gray-700 mb-1">
+                            Max
+                          </label>
+                          <input
+                            type="number"
+                            value={filter.valueTo ?? ''}
+                            onChange={(e) => handleUpdateNumericFilter(filter.id, {
+                              valueTo: e.target.value ? parseFloat(e.target.value) : null
+                            })}
+                            placeholder="Max"
+                            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          />
+                        </div>
+                      </>
+                    ) : (
+                      <div className="lg:col-span-4">
+                        <label className="block text-xs font-medium text-gray-700 mb-1">
+                          Value
+                        </label>
+                        <input
+                          type="number"
+                          value={filter.value ?? ''}
+                          onChange={(e) => handleUpdateNumericFilter(filter.id, {
+                            value: e.target.value ? parseFloat(e.target.value) : null
+                          })}
+                          placeholder="Enter value"
+                          className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                    )}
+
+                    {/* Remove Button */}
+                    <div className="lg:col-span-1">
+                      <button
+                        onClick={() => handleRemoveNumericFilter(filter.id)}
+                        className="w-full px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Remove filter"
+                        aria-label={`Remove filter for ${getFieldLabel(filter.fieldId)}`}
+                      >
+                        <svg className="w-4 h-4 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add Filter Button */}
+                <button
+                  onClick={handleAddNumericFilter}
+                  className="w-full px-4 py-2 text-sm text-blue-600 hover:text-blue-700 hover:bg-blue-50 border border-blue-300 rounded-lg flex items-center justify-center space-x-2 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                  <span>Add Numeric Filter</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Active Filter Pills */}
+        {(searchTerm || startDate || endDate || numericFilters.length > 0) && (
+          <div className="mt-3 flex flex-wrap gap-2 items-center">
+            {searchTerm && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800">
+                Search: {searchTerm}
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="ml-2 text-blue-600 hover:text-blue-900"
+                  aria-label="Clear search filter"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {startDate && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
+                From: {startDate}
+                <button
+                  onClick={() => setStartDate('')}
+                  className="ml-2 text-green-600 hover:text-green-900"
+                  aria-label="Clear start date filter"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {endDate && (
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800">
+                To: {endDate}
+                <button
+                  onClick={() => setEndDate('')}
+                  className="ml-2 text-green-600 hover:text-green-900"
+                  aria-label="Clear end date filter"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {numericFilters.map(filter => {
+              if (!filter.fieldId || filter.value === null) return null;
+
+              const fieldLabel = getFieldLabel(filter.fieldId);
+              const operatorSymbol = formatOperator(filter.operator);
+              const valueText = filter.operator === 'between' && filter.valueTo !== null
+                ? `${filter.value} - ${filter.valueTo}`
+                : filter.value;
+
+              return (
+                <span
+                  key={filter.id}
+                  className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800"
+                >
+                  {fieldLabel} {operatorSymbol} {valueText}
+                  <button
+                    onClick={() => handleRemoveNumericFilter(filter.id)}
+                    className="ml-2 text-purple-600 hover:text-purple-900"
+                    aria-label={`Remove numeric filter for ${fieldLabel}`}
+                  >
+                    ×
+                  </button>
+                </span>
+              );
+            })}
+            <button
+              onClick={handleClearAllFilters}
+              className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Spreadsheet Content */}
@@ -129,13 +489,9 @@ export function SubmissionsSpreadsheetView({
         {filteredSubmissions.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <p className="text-lg">No submissions found</p>
-            {(searchTerm || startDate || endDate) && (
+            {(searchTerm || startDate || endDate || numericFilters.length > 0) && (
               <button
-                onClick={() => {
-                  setSearchTerm('');
-                  setStartDate('');
-                  setEndDate('');
-                }}
+                onClick={handleClearAllFilters}
                 className="mt-2 text-blue-600 hover:text-blue-700"
               >
                 Clear filters

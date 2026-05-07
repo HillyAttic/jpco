@@ -7,6 +7,7 @@ import { useAuthEnhanced } from '@/hooks/use-auth-enhanced';
 import { authenticatedFetch } from '@/lib/api-client';
 import { SubmissionsTable } from '@/components/forms/submissions/SubmissionsTable';
 import { SubmissionsSpreadsheetView } from '@/components/forms/submissions/SubmissionsSpreadsheetView';
+import { SubmissionAnalyticsStats } from '@/components/forms/submissions/SubmissionAnalyticsStats';
 import type { FormSubmission, FormTemplate } from '@/types/form.types';
 import { useModal } from '@/contexts/modal-context';
 
@@ -250,22 +251,22 @@ export default function MISTrackerPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-4">
-        <div className="flex flex-col gap-3 sm:gap-4">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-3 sm:px-4 md:px-6 py-3 sm:py-4">
+        <div className="flex flex-col gap-2 sm:gap-3 md:gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">MIS Tracker</h1>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
+            <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900 dark:text-white">MIS Tracker</h1>
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-0.5 sm:mt-1">
               View and manage form submissions
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
             {/* Form Selector Dropdown */}
             {availableForms.length > 0 && (
               <select
                 value={selectedFormId || ''}
                 onChange={(e) => handleFormChange(e.target.value)}
-                className="flex-1 sm:flex-none sm:min-w-[250px] px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="flex-1 sm:flex-none sm:min-w-[250px] px-3 sm:px-4 py-2 text-xs sm:text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {availableForms.map((form) => (
                   <option key={form.id} value={form.id}>
@@ -279,14 +280,14 @@ export default function MISTrackerPage() {
             <div className="flex items-center space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1 w-full sm:w-auto">
               <button
                 onClick={() => setViewMode('table')}
-                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${
+                className={`flex-1 sm:flex-none px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${
                   viewMode === 'table'
                     ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 <div className="flex items-center justify-center space-x-1 sm:space-x-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
                   </svg>
                   <span>Table</span>
@@ -294,14 +295,14 @@ export default function MISTrackerPage() {
               </button>
               <button
                 onClick={() => setViewMode('spreadsheet')}
-                className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${
+                className={`flex-1 sm:flex-none px-2 sm:px-3 md:px-4 py-1.5 sm:py-2 text-xs sm:text-sm font-medium rounded-md transition-colors ${
                   viewMode === 'spreadsheet'
                     ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white shadow-sm'
                     : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
                 }`}
               >
                 <div className="flex items-center justify-center space-x-1 sm:space-x-2">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
                   </svg>
                   <span>Spreadsheet</span>
@@ -312,9 +313,19 @@ export default function MISTrackerPage() {
         </div>
       </div>
 
-      <div className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
+      <div className="container mx-auto px-3 sm:px-4 md:px-6 py-3 sm:py-4 md:py-6">
         {template && (
           <>
+            {/* Analytics Stats Section */}
+            <div className="mb-4 sm:mb-6">
+              <SubmissionAnalyticsStats
+                formId={selectedFormId!}
+                template={template}
+                onRefresh={fetchData}
+              />
+            </div>
+
+            {/* Existing Table/Spreadsheet Views */}
             {viewMode === 'table' ? (
               <SubmissionsTable
                 submissions={submissions}
