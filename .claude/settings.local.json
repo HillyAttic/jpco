@@ -31,7 +31,14 @@
       "Bash(grep -E \"^src/app/layout.tsx$\")",
       "Bash(Get-ChildItem -Path .next -Recurse -ErrorAction SilentlyContinue)",
       "Bash(Remove-Item -Recurse -Force -ErrorAction SilentlyContinue)",
-      "Bash(Write-Host \"Cache cleared\")"
+      "Bash(Write-Host \"Cache cleared\")",
+      "Bash(grep -E \"\\\\.\\(tsx?|jsx?\\)$\")",
+      "Bash(findstr :3000)",
+      "Bash(grep -E \"\\\\.\\(ts|tsx\\)$\")",
+      "Bash(PowerShell *)",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "Read(//c/Users/lenevo/.claude/plans/**)",
+      "Bash(cat)"
     ]
   },
   "disabledMcpjsonServers": [
