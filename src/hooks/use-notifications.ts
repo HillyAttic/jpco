@@ -1,8 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuthEnhanced } from './use-auth-enhanced';
-import { notificationService } from '@/services/notification.service';
-import type { Notification } from '@/services/notification.service';
-import { listenerManager } from '@/lib/listener-manager';
 
 export interface AppNotification {
   id: string;
@@ -20,6 +17,12 @@ export interface AppNotification {
   };
 }
 
+/**
+ * useNotifications — fetches notifications via API route (Admin SDK)
+ * instead of client-side Firestore onSnapshot (which is subject to security rules).
+ *
+ * Uses polling (every 30s) + manual refetch on FCM foreground messages.
+ */
 export function useNotifications() {
   const { user } = useAuthEnhanced();
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
@@ -27,30 +30,61 @@ export function useNotifications() {
   const [loading, setLoading] = useState(true);
   const [permissionGranted, setPermissionGranted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pollInterval = useRef<NodeJS.Timeout | null>(null);
+  const isMounted = useRef(true);
 
-  // Track pending operations for race condition handling
-  const pendingOperations = useRef<Map<string, { type: 'read' | 'delete', timestamp: number }>>(new Map());
-  const retryCount = useRef(0);
+  // Fetch notifications via API route (Admin SDK, bypasses security rules)
+  const fetchNotifications = useCallback(async (showLoading = false) => {
+    if (!user?.uid) return;
 
-  // Convert Notification to AppNotification format
-  const convertNotification = (n: any): AppNotification => ({
-    id: n.id || '',
-    title: n.title,
-    body: n.message || n.body || '',
-    message: n.message || n.body || '',
-    read: n.read,
-    createdAt: n.createdAt.toISOString(),
-    type: n.type,
-    actionUrl: n.actionUrl || n.data?.url,
-    data: {
-      taskId: n.metadata?.taskId || n.data?.taskId,
-      url: n.actionUrl || n.data?.url,
-      type: n.type || n.data?.type,
-    },
-  });
+    if (showLoading) setLoading(true);
 
-  // Setup real-time listener with throttling
+    try {
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch(
+        `/api/notifications?userId=${encodeURIComponent(user.uid)}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      const fetched: AppNotification[] = (data.notifications || []).map((n: any) => ({
+        id: n.id,
+        title: n.title,
+        body: n.body || n.message || '',
+        message: n.body || n.message || '',
+        read: n.read,
+        createdAt: n.createdAt,
+        type: n.type,
+        actionUrl: n.actionUrl || n.data?.url,
+        data: {
+          taskId: n.data?.taskId,
+          url: n.actionUrl || n.data?.url,
+          type: n.type || n.data?.type,
+        },
+      }));
+
+      if (isMounted.current) {
+        setNotifications(fetched);
+        setUnreadCount(fetched.filter(n => !n.read).length);
+        setLoading(false);
+        setError(null);
+      }
+    } catch (err: any) {
+      console.error('Error fetching notifications:', err);
+      if (isMounted.current) {
+        setError('Failed to load notifications');
+        setLoading(false);
+      }
+    }
+  }, [user?.uid]);
+
+  // Initial fetch + polling
   useEffect(() => {
+    isMounted.current = true;
+
     if (!user?.uid) {
       setNotifications([]);
       setUnreadCount(0);
@@ -58,62 +92,22 @@ export function useNotifications() {
       return;
     }
 
-    // Create throttled callback (2-second delay)
-    const throttledCallback = listenerManager.createThrottledCallback<Notification[]>(
-      `notifications-${user.uid}`,
-      (firestoreNotifications) => {
-        // Merge with pending operations (race condition handling)
-        const merged = firestoreNotifications.map(n => {
-          const pending = pendingOperations.current.get(n.id!);
-          if (pending?.type === 'read') {
-            return { ...n, read: true };
-          }
-          return n;
-        }).filter(n => {
-          const pending = pendingOperations.current.get(n.id!);
-          return !(pending?.type === 'delete');
-        });
+    // Initial fetch
+    fetchNotifications(true);
 
-        const appNotifications = merged.map(convertNotification);
-        setNotifications(appNotifications);
-        setUnreadCount(appNotifications.filter(n => !n.read).length);
-        setLoading(false);
-        setError(null);
-        retryCount.current = 0; // Reset retry count on success
-      },
-      2000 // 2-second throttle
-    );
-
-    // Subscribe to real-time updates
-    const unsubscribe = notificationService.subscribeToNotifications(
-      user.uid,
-      throttledCallback,
-      (err) => {
-        console.error('Notification listener error:', err);
-        setError('Connection lost. Retrying...');
-        setLoading(false);
-
-        // Exponential backoff retry
-        const retryDelay = Math.min(1000 * Math.pow(2, retryCount.current), 30000);
-        retryCount.current++;
-
-        if (retryCount.current < 5) {
-          setTimeout(() => {
-            console.log(`Retrying notification listener (attempt ${retryCount.current})...`);
-            // The useEffect will re-run and create a new listener
-          }, retryDelay);
-        } else {
-          setError('Unable to connect. Please refresh the page.');
-        }
-      }
-    );
-
-    listenerManager.register(`notifications-${user.uid}`, unsubscribe);
+    // Poll every 30 seconds
+    pollInterval.current = setInterval(() => {
+      fetchNotifications(false);
+    }, 30000);
 
     return () => {
-      listenerManager.unregister(`notifications-${user.uid}`);
+      isMounted.current = false;
+      if (pollInterval.current) {
+        clearInterval(pollInterval.current);
+        pollInterval.current = null;
+      }
     };
-  }, [user?.uid]);
+  }, [user?.uid, fetchNotifications]);
 
   // Check notification permission on mount
   useEffect(() => {
@@ -132,26 +126,30 @@ export function useNotifications() {
     return 'denied' as NotificationPermission;
   }, []);
 
-  // Mark notification as read with optimistic update
+  // Mark notification as read via API (Admin SDK)
   const markAsRead = useCallback(async (notificationId: string) => {
-    // Track pending operation
-    pendingOperations.current.set(notificationId, { type: 'read', timestamp: Date.now() });
-
-    // Optimistic UI update
+    // Optimistic update
     setNotifications(prev =>
       prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
     );
     setUnreadCount(prev => Math.max(0, prev - 1));
 
     try {
-      // Direct Firestore write (no API call)
-      await notificationService.markAsRead(notificationId);
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'markAsRead',
+          notificationId,
+        }),
+      });
 
-      // Clear pending after 3s (snapshot should reconcile by then)
-      setTimeout(() => pendingOperations.current.delete(notificationId), 3000);
+      if (!response.ok) {
+        throw new Error('Failed to mark as read');
+      }
     } catch (error) {
       // Revert on error
-      pendingOperations.current.delete(notificationId);
       setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, read: false } : n)
       );
@@ -160,52 +158,67 @@ export function useNotifications() {
     }
   }, []);
 
-  // Mark all as read with optimistic update
+  // Mark all as read via API (Admin SDK)
   const markAllAsRead = useCallback(async () => {
     if (!user?.uid) return;
 
-    // Optimistic UI update
+    // Optimistic update
     setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     setUnreadCount(0);
 
     try {
-      // Direct Firestore write (no API call)
-      await notificationService.markAllAsRead(user.uid);
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'markAllAsRead',
+          userId: user.uid,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to mark all as read');
+      }
     } catch (error) {
       console.error('Error marking all as read:', error);
-      // Note: We don't revert here as it's complex to track all previous states
-      // The real-time listener will reconcile the state automatically
+      // Refetch to get correct state
+      fetchNotifications(false);
     }
-  }, [user?.uid]);
+  }, [user?.uid, fetchNotifications]);
 
-  // Delete notification with optimistic update
+  // Delete notification via API (Admin SDK)
   const deleteNotification = useCallback(async (notificationId: string) => {
-    // Track pending operation
-    pendingOperations.current.set(notificationId, { type: 'delete', timestamp: Date.now() });
-
-    // Optimistic UI update
     const deletedNotification = notifications.find(n => n.id === notificationId);
-    setNotifications(prev => {
-      const updated = prev.filter(n => n.id !== notificationId);
-      return updated;
-    });
+
+    // Optimistic update
+    setNotifications(prev => prev.filter(n => n.id !== notificationId));
     if (deletedNotification && !deletedNotification.read) {
       setUnreadCount(prev => Math.max(0, prev - 1));
     }
 
     try {
-      // Direct Firestore write (no API call)
-      await notificationService.deleteNotification(notificationId);
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'delete',
+          notificationId,
+        }),
+      });
 
-      // Clear pending after 3s
-      setTimeout(() => pendingOperations.current.delete(notificationId), 3000);
+      if (!response.ok) {
+        throw new Error('Failed to delete notification');
+      }
     } catch (error) {
       // Revert on error
-      pendingOperations.current.delete(notificationId);
       if (deletedNotification) {
-        setNotifications(prev => [...prev, deletedNotification].sort((a, b) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        ));
+        setNotifications(prev =>
+          [...prev, deletedNotification].sort((a, b) =>
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          )
+        );
         if (!deletedNotification.read) {
           setUnreadCount(prev => prev + 1);
         }
@@ -214,25 +227,41 @@ export function useNotifications() {
     }
   }, [notifications]);
 
-  // Delete all notifications
+  // Delete all notifications via API
   const deleteAllNotifications = useCallback(async () => {
     if (!user?.uid) return;
 
+    setNotifications([]);
+    setUnreadCount(0);
+
     try {
-      await notificationService.deleteAllNotifications(user.uid);
-      setNotifications([]);
-      setUnreadCount(0);
+      // Fetch all notification IDs, then delete one by one
+      // (the API route doesn't have a deleteAll action, so we refetch after)
+      const { authenticatedFetch } = await import('@/lib/api-client');
+
+      // Delete each notification
+      const deletePromises = notifications.map(n =>
+        authenticatedFetch('/api/notifications', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            action: 'delete',
+            notificationId: n.id,
+          }),
+        })
+      );
+
+      await Promise.allSettled(deletePromises);
     } catch (error) {
       console.error('Error deleting all notifications:', error);
+      fetchNotifications(false);
     }
-  }, [user?.uid]);
+  }, [user?.uid, notifications, fetchNotifications]);
 
-  // Refetch function for manual refresh (kept for compatibility)
+  // Refetch — triggers immediate API call
   const refetch = useCallback(() => {
-    // With real-time listeners, this is a no-op
-    // The listener will automatically sync the latest data
-    console.log('Refetch called - real-time listener will sync automatically');
-  }, []);
+    fetchNotifications(false);
+  }, [fetchNotifications]);
 
   return {
     notifications,

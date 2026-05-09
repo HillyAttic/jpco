@@ -65,22 +65,27 @@ export async function sendNotification(
         errors.push({ userId, error: 'No FCM token' });
 
         // Still store notification in Firestore (without sending push)
-        await adminDb.collection('notifications').add({
-          userId,
-          title,
-          body,
-          message: body,
-          type: (data?.type as any) || 'system',
-          actionUrl: data?.url,
-          metadata: {
-            taskId: data?.taskId,
-          },
-          data: data || {},
-          read: false,
-          sent: false,
-          error: 'No FCM token',
-          createdAt: new Date(),
-        });
+        try {
+          const noTokenDoc = await adminDb.collection('notifications').add({
+            userId,
+            title,
+            body,
+            message: body,
+            type: (data?.type as any) || 'system',
+            actionUrl: data?.url,
+            metadata: {
+              taskId: data?.taskId,
+            },
+            data: data || {},
+            read: false,
+            sent: false,
+            error: 'No FCM token',
+            createdAt: new Date(),
+          });
+          console.log(`[sendNotification] ✅ Firestore write (no FCM token) SUCCESS for ${userId}, docId: ${noTokenDoc.id}, type: ${data?.type || 'system'}`);
+        } catch (firestoreError) {
+          console.error(`[sendNotification] ❌ Firestore write (no FCM token) FAILED for ${userId}:`, firestoreError);
+        }
         return;
       }
 
@@ -198,7 +203,12 @@ export async function sendNotification(
       }
 
       if (firestoreResult.status === 'rejected') {
-        console.error(`[sendNotification] Firestore write failed for ${userId}:`, firestoreResult.reason);
+        console.error(`[sendNotification] ❌ Firestore write FAILED for ${userId}:`, firestoreResult.reason);
+        console.error(`[sendNotification] ❌ Notification NOT stored in DB — will NOT appear on /notifications page`);
+        console.error(`[sendNotification] ❌ Notification data:`, { title, body, type: data?.type, actionUrl: data?.url });
+      } else {
+        const docRef = firestoreResult.value;
+        console.log(`[sendNotification] ✅ Firestore write SUCCESS for ${userId}, docId: ${docRef?.id || 'unknown'}, type: ${data?.type || 'system'}`);
       }
 
     } catch (error: any) {

@@ -38,21 +38,77 @@ export async function GET(request: NextRequest) {
       }));
     }
 
-    // Check recent notifications
+    // Check recent notifications (increased limit to 50)
     const notificationsSnapshot = await adminDb
       .collection('notifications')
       .where('userId', '==', userId)
       .orderBy('createdAt', 'desc')
-      .limit(5)
+      .limit(50)
       .get();
 
     const recentNotifications = notificationsSnapshot.docs.map(doc => ({
       id: doc.id,
       title: doc.data().title,
+      type: doc.data().type || 'unknown',
       sent: doc.data().sent,
+      sentDirect: doc.data().sentDirect || false,
       error: doc.data().error,
+      read: doc.data().read,
+      actionUrl: doc.data().actionUrl,
       createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || 'unknown',
     }));
+
+    // Count notifications by type
+    const typeCounts: Record<string, number> = {};
+    recentNotifications.forEach(n => {
+      typeCounts[n.type] = (typeCounts[n.type] || 0) + 1;
+    });
+
+    // Check for leave-specific notifications across ALL users (admin only)
+    let leaveNotificationsGlobal: any = null;
+    if (userRole === 'admin') {
+      try {
+        const leaveNotifSnapshot = await adminDb
+          .collection('notifications')
+          .where('type', 'in', ['leave_request', 'leave_approved', 'leave_rejected'])
+          .orderBy('createdAt', 'desc')
+          .limit(10)
+          .get();
+
+        leaveNotificationsGlobal = leaveNotifSnapshot.docs.map(doc => ({
+          id: doc.id,
+          userId: doc.data().userId,
+          title: doc.data().title,
+          type: doc.data().type,
+          sent: doc.data().sent,
+          sentDirect: doc.data().sentDirect || false,
+          read: doc.data().read,
+          createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || 'unknown',
+        }));
+      } catch (indexError: any) {
+        // Fallback: query without orderBy (no index required)
+        try {
+          const leaveNotifSnapshot = await adminDb
+            .collection('notifications')
+            .where('type', 'in', ['leave_request', 'leave_approved', 'leave_rejected'])
+            .limit(10)
+            .get();
+
+          leaveNotificationsGlobal = leaveNotifSnapshot.docs.map(doc => ({
+            id: doc.id,
+            userId: doc.data().userId,
+            title: doc.data().title,
+            type: doc.data().type,
+            sent: doc.data().sent,
+            sentDirect: doc.data().sentDirect || false,
+            read: doc.data().read,
+            createdAt: doc.data().createdAt?.toDate?.()?.toISOString() || 'unknown',
+          }));
+        } catch {
+          leaveNotificationsGlobal = { error: indexError.message };
+        }
+      }
+    }
 
     const debugInfo = {
       user: {
@@ -64,7 +120,12 @@ export async function GET(request: NextRequest) {
         platform: tokenData?.platform || 'none',
         lastUpdated: tokenData?.updatedAt?.toDate?.()?.toISOString() || 'never',
       },
+      notificationStats: {
+        total: recentNotifications.length,
+        typeCounts,
+      },
       recentNotifications,
+      leaveNotificationsGlobal: userRole === 'admin' ? leaveNotificationsGlobal : 'Admin only',
       allTokens: userRole === 'admin' ? allTokens : 'Admin only',
       vapidKeyConfigured: !!process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY,
       serviceWorkerPath: '/firebase-messaging-sw.js',
