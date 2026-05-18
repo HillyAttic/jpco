@@ -755,8 +755,7 @@ export function SubmissionsSpreadsheetView({
       {/* Export Modal */}
       {showExportModal && (
         <SpreadsheetExportModal
-          submissions={submissions}
-          template={template}
+          formId={template.id}
           onClose={() => setShowExportModal(false)}
         />
       )}

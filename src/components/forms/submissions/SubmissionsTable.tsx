@@ -312,8 +312,7 @@ export function SubmissionsTable({
 
       {showExportModal && (
         <SpreadsheetExportModal
-          submissions={submissions}
-          template={template}
+          formId={template.id}
           onClose={() => setShowExportModal(false)}
         />
       )}
