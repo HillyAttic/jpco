@@ -461,6 +461,7 @@ export function SubmissionAnalyticsStats({
           <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 text-sm">
             <thead className="bg-gray-50 dark:bg-gray-900">
               <tr>
+                <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">S.No</th>
                 <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Name of Business Unit Visited today.</th>
                 <th className="px-3 py-2 text-left font-medium text-gray-700 dark:text-gray-300">Name</th>
                 <th className="px-3 py-2 text-right font-medium text-gray-700 dark:text-gray-300">How many group visits were conducted today?</th>
@@ -473,11 +474,12 @@ export function SubmissionAnalyticsStats({
             <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {branchReportLoading ? (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-gray-500 dark:text-gray-400">Loading report...</td>
+                  <td colSpan={8} className="px-3 py-6 text-center text-gray-500 dark:text-gray-400">Loading report...</td>
                 </tr>
               ) : branchReportData && branchReportData.rows.length > 0 ? (
-                branchReportData.rows.map((row) => (
+                branchReportData.rows.map((row, index) => (
                   <tr key={row.businessUnit} className="hover:bg-gray-50 dark:hover:bg-gray-900/60">
+                    <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{index + 1}</td>
                     <td className="px-3 py-2 font-medium text-gray-900 dark:text-white">{row.businessUnit}</td>
                     <td className="px-3 py-2 text-gray-700 dark:text-gray-300">{row.name || '-'}</td>
                     <td className="px-3 py-2 text-right text-gray-700 dark:text-gray-300">{row.groupVisitsTotal}</td>
@@ -489,7 +491,7 @@ export function SubmissionAnalyticsStats({
                 ))
               ) : (
                 <tr>
-                  <td colSpan={7} className="px-3 py-6 text-center text-gray-500 dark:text-gray-400">No submissions for selected date range.</td>
+                  <td colSpan={8} className="px-3 py-6 text-center text-gray-500 dark:text-gray-400">No submissions for selected date range.</td>
                 </tr>
               )}
             </tbody>
