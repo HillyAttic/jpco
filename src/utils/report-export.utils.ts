@@ -20,18 +20,21 @@ interface ExportData {
   months: MonthData[];
   isTeamMemberView?: boolean;
   teamMemberName?: string;
+  isUnassignedView?: boolean;
 }
 
 /**
  * Export report to PDF format
  */
 export function exportToPDF(data: ExportData): void {
-  const { task, clients, completions, months, isTeamMemberView, teamMemberName } = data;
-  
+  const { task, clients, completions, months, isTeamMemberView, teamMemberName, isUnassignedView } = data;
+
   const doc = new jsPDF('landscape');
   
   // Add title
-  const title = isTeamMemberView 
+  const title = isUnassignedView
+    ? `${task.title} - Unassigned Clients`
+    : isTeamMemberView
     ? `${task.title} - ${teamMemberName}`
     : task.title;
   doc.setFontSize(16);
@@ -112,7 +115,9 @@ export function exportToPDF(data: ExportData): void {
   doc.text('Legend: Green (tick) = Completed  |  Red (cross) = Incomplete  |  Gray dash = Future', 14, finalY + 10);
   
   // Save the PDF
-  const fileName = isTeamMemberView
+  const fileName = isUnassignedView
+    ? `${sanitizeFileName(task.title)}_Unassigned_${format(new Date(), 'yyyyMMdd')}.pdf`
+    : isTeamMemberView
     ? `${sanitizeFileName(task.title)}_${sanitizeFileName(teamMemberName || '')}_${format(new Date(), 'yyyyMMdd')}.pdf`
     : `${sanitizeFileName(task.title)}_${format(new Date(), 'yyyyMMdd')}.pdf`;
   doc.save(fileName);
@@ -122,7 +127,7 @@ export function exportToPDF(data: ExportData): void {
  * Export report to Excel format
  */
 export function exportToExcel(data: ExportData): void {
-  const { task, clients, completions, months, isTeamMemberView, teamMemberName } = data;
+  const { task, clients, completions, months, isTeamMemberView, teamMemberName, isUnassignedView } = data;
   
   // Create workbook
   const wb = XLSX.utils.book_new();
@@ -156,7 +161,9 @@ export function exportToExcel(data: ExportData): void {
     ['Generated Date', format(new Date(), 'MMM dd, yyyy HH:mm')],
   ];
   
-  if (isTeamMemberView && teamMemberName) {
+  if (isUnassignedView) {
+    metadata.push(['View', 'Unassigned Clients']);
+  } else if (isTeamMemberView && teamMemberName) {
     metadata.push(['Team Member', teamMemberName]);
   }
   
@@ -168,7 +175,9 @@ export function exportToExcel(data: ExportData): void {
   XLSX.utils.book_append_sheet(wb, ws, 'Report');
   
   // Save the file
-  const fileName = isTeamMemberView
+  const fileName = isUnassignedView
+    ? `${sanitizeFileName(task.title)}_Unassigned_${format(new Date(), 'yyyyMMdd')}.xlsx`
+    : isTeamMemberView
     ? `${sanitizeFileName(task.title)}_${sanitizeFileName(teamMemberName || '')}_${format(new Date(), 'yyyyMMdd')}.xlsx`
     : `${sanitizeFileName(task.title)}_${format(new Date(), 'yyyyMMdd')}.xlsx`;
   XLSX.writeFile(wb, fileName);
