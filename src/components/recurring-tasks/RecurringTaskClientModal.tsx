@@ -17,6 +17,7 @@ interface ClientCompletion {
   clientId: string;
   completedMonths: string[]; // Array of month keys like "2025-04", "2025-05"
   arnData?: Map<string, { arnNumber: string; arnName: string }>; // ARN data per month
+  remarkData?: Map<string, { remark: string; remarkBy: string }>; // Remark data per month
 }
 
 interface RecurringTaskClientModalProps {
@@ -41,6 +42,7 @@ export function RecurringTaskClientModal({
 }: RecurringTaskClientModalProps) {
   const [clientCompletions, setClientCompletions] = useState<Map<string, Set<string>>>(new Map());
   const [arnData, setArnData] = useState<Map<string, Map<string, { arnNumber: string; arnName: string }>>>(new Map());
+  const [remarkData, setRemarkData] = useState<Map<string, Map<string, { remark: string; remarkBy: string }>>>(new Map());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [showArnDialog, setShowArnDialog] = useState(false);
@@ -48,6 +50,11 @@ export function RecurringTaskClientModal({
   const [arnNumber, setArnNumber] = useState('');
   const [arnName, setArnName] = useState('');
   const [arnError, setArnError] = useState('');
+  const [showRemarkDialog, setShowRemarkDialog] = useState(false);
+  const [currentRemarkRequest, setCurrentRemarkRequest] = useState<{ clientId: string; monthKey: string } | null>(null);
+  const [remarkText, setRemarkText] = useState('');
+  const [remarkBy, setRemarkBy] = useState('');
+  const [remarkError, setRemarkError] = useState('');
   const { user, userProfile } = useEnhancedAuth();
   // Generate only the viewing month (or current month if not specified)
   const generateMonths = () => {
@@ -134,6 +141,7 @@ export function RecurringTaskClientModal({
     try {
       const completions = new Map<string, Set<string>>();
       const arnDataMap = new Map<string, Map<string, { arnNumber: string; arnName: string }>>();
+      const remarkDataMap = new Map<string, Map<string, { remark: string; remarkBy: string }>>();
       
       // Get filtered clients
       const clientsToLoad = getFilteredClients();
@@ -142,6 +150,7 @@ export function RecurringTaskClientModal({
       clientsToLoad.forEach(client => {
         completions.set(client.id, new Set());
         arnDataMap.set(client.id, new Map());
+        remarkDataMap.set(client.id, new Map());
       });
 
       // Load completion data from API instead of direct Firebase access
@@ -180,11 +189,22 @@ export function RecurringTaskClientModal({
             });
             arnDataMap.set(completion.clientId, clientArnData);
           }
+
+          // Store remark data if available
+          if (completion.remark && completion.remarkBy) {
+            const clientRemarkData = remarkDataMap.get(completion.clientId) || new Map();
+            clientRemarkData.set(completion.monthKey, {
+              remark: completion.remark,
+              remarkBy: completion.remarkBy,
+            });
+            remarkDataMap.set(completion.clientId, clientRemarkData);
+          }
         }
       });
-      
+
       setClientCompletions(completions);
       setArnData(arnDataMap);
+      setRemarkData(remarkDataMap);
     } catch (error) {
       console.error('Error loading completions:', error);
     } finally {
@@ -210,15 +230,26 @@ export function RecurringTaskClientModal({
       setArnNumber('');
       // Use displayName from userProfile, fallback to user displayName, then email
       const userName = userProfile?.displayName || user?.displayName || user?.email || '';
-      console.log('[ARN Debug] User info:', { 
-        profileDisplayName: userProfile?.displayName, 
-        userDisplayName: user?.displayName, 
-        email: user?.email, 
-        userName 
+      console.log('[ARN Debug] User info:', {
+        profileDisplayName: userProfile?.displayName,
+        userDisplayName: user?.displayName,
+        email: user?.email,
+        userName
       });
       setArnName(userName);
       setArnError('');
       setShowArnDialog(true);
+      return;
+    }
+
+    // If task requires Remark and we're checking (not unchecking), show Remark dialog
+    if (task?.requiresRemark && !isCurrentlyCompleted) {
+      setCurrentRemarkRequest({ clientId, monthKey });
+      setRemarkText('');
+      const userName = userProfile?.displayName || user?.displayName || user?.email || '';
+      setRemarkBy(userName);
+      setRemarkError('');
+      setShowRemarkDialog(true);
       return;
     }
     
@@ -298,6 +329,55 @@ export function RecurringTaskClientModal({
     setArnError('');
   };
 
+  const handleRemarkSubmit = () => {
+    if (!currentRemarkRequest) return;
+
+    if (!remarkText || remarkText.trim().length === 0) {
+      setRemarkError('Remark is required');
+      return;
+    }
+
+    if (!remarkBy || remarkBy.trim().length === 0) {
+      setRemarkError('Name is required');
+      return;
+    }
+
+    const { clientId, monthKey } = currentRemarkRequest;
+
+    // Add completion
+    setClientCompletions(prev => {
+      const newMap = new Map(prev);
+      const clientMonths = new Set<string>(newMap.get(clientId) || new Set<string>());
+      clientMonths.add(monthKey);
+      newMap.set(clientId, clientMonths);
+      return newMap;
+    });
+
+    // Store remark data
+    setRemarkData(prev => {
+      const newMap = new Map(prev);
+      const clientRemarkData = new Map(newMap.get(clientId) || new Map());
+      clientRemarkData.set(monthKey, { remark: remarkText.trim(), remarkBy: remarkBy.trim() });
+      newMap.set(clientId, clientRemarkData);
+      return newMap;
+    });
+
+    setShowRemarkDialog(false);
+    setCurrentRemarkRequest(null);
+    setRemarkText('');
+    setRemarkBy('');
+    setRemarkError('');
+  };
+
+  const handleRemarkSkip = () => {
+    // User opts out — checkbox stays unchecked, no data stored
+    setShowRemarkDialog(false);
+    setCurrentRemarkRequest(null);
+    setRemarkText('');
+    setRemarkBy('');
+    setRemarkError('');
+  };
+
   const isCompleted = (clientId: string, monthKey: string) => {
     return clientCompletions.get(clientId)?.has(monthKey) || false;
   };
@@ -311,26 +391,32 @@ export function RecurringTaskClientModal({
     setSaving(true);
     try {
       // Prepare bulk update data
-      const updates: Array<{ 
-        clientId: string; 
-        monthKey: string; 
+      const updates: Array<{
+        clientId: string;
+        monthKey: string;
         isCompleted: boolean;
         arnNumber?: string;
         arnName?: string;
+        remark?: string;
+        remarkBy?: string;
       }> = [];
-      
+
       visibleMonths.forEach(month => {
         filteredClients.forEach(client => {
           const isCompleted = clientCompletions.get(client.id)?.has(month.key) || false;
           const clientArnData = arnData.get(client.id);
           const monthArnData = clientArnData?.get(month.key);
-          
+          const clientRemarkData = remarkData.get(client.id);
+          const monthRemarkData = clientRemarkData?.get(month.key);
+
           updates.push({
             clientId: client.id,
             monthKey: month.key,
             isCompleted,
             arnNumber: monthArnData?.arnNumber,
             arnName: monthArnData?.arnName,
+            remark: monthRemarkData?.remark,
+            remarkBy: monthRemarkData?.remarkBy,
           });
         });
       });
@@ -597,6 +683,85 @@ export function RecurringTaskClientModal({
                 </button>
                 <button
                   onClick={handleArnSubmit}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Remark Dialog */}
+      {showRemarkDialog && (
+        <div className="fixed inset-0 z-[60] overflow-y-auto">
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div
+              className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+              onClick={handleRemarkSkip}
+            />
+
+            <div className="relative bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
+                Add Remark
+              </h3>
+
+              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                This task requires a remark to mark as complete. You may skip if no remark is needed.
+              </p>
+
+              <div className="space-y-4">
+                <div>
+                  <label htmlFor="remark-text" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Remark <span className="text-red-500">*</span>
+                  </label>
+                  <textarea
+                    id="remark-text"
+                    value={remarkText}
+                    onChange={(e) => {
+                      setRemarkText(e.target.value);
+                      setRemarkError('');
+                    }}
+                    placeholder="Enter your remark..."
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white resize-none"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="remark-name" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Your Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    id="remark-name"
+                    type="text"
+                    value={remarkBy}
+                    readOnly
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                    Name is automatically filled from your profile
+                  </p>
+                </div>
+
+                {remarkError && (
+                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 rounded-md p-2">
+                    {remarkError}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleRemarkSkip}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-dark border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:bg-gray-800 transition-colors"
+                >
+                  Skip
+                </button>
+                <button
+                  onClick={handleRemarkSubmit}
                   className="flex-1 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
                 >
                   Submit

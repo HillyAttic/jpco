@@ -83,6 +83,8 @@ export const taskCompletionAdminService = {
         completedBy: data.completedBy || null,
         arnNumber: data.arnNumber || null,
         arnName: data.arnName || null,
+        remark: data.remark || null,
+        remarkBy: data.remarkBy || null,
       };
 
       if (!existingSnapshot.empty) {
@@ -149,6 +151,8 @@ export const taskCompletionAdminService = {
       isCompleted: boolean;
       arnNumber?: string;
       arnName?: string;
+      remark?: string;
+      remarkBy?: string;
     }>,
     completedBy: string
   ): Promise<{ total: number; written: number; deleted: number; skipped: number }> {
@@ -200,6 +204,8 @@ export const taskCompletionAdminService = {
             completedBy,
             arnNumber: comp.arnNumber || null,
             arnName: comp.arnName || null,
+            remark: comp.remark || null,
+            remarkBy: comp.remarkBy || null,
             updatedAt: now,
           };
 

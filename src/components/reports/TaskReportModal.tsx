@@ -4,10 +4,10 @@ import { useState, useMemo } from 'react';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { Client } from '@/services/client.service';
 import { ClientTaskCompletion } from '@/services/task-completion.service';
-import { XMarkIcon, CheckIcon, XCircleIcon, UserGroupIcon, ArrowDownTrayIcon, UserMinusIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckIcon, XCircleIcon, UserGroupIcon, ArrowDownTrayIcon, UserMinusIcon, ChatBubbleLeftIcon } from '@heroicons/react/24/outline';
 import { isFuture, isToday, startOfMonth } from 'date-fns';
 import { exportToPDF, exportToExcel } from '@/utils/report-export.utils';
-import { buildCompletionData, getCompletionStatus, type MonthData } from '@/utils/report-utils';
+import { buildCompletionData, buildRemarkData, getCompletionStatus, type MonthData, type RemarkInfo } from '@/utils/report-utils';
 
 export interface TaskReportModalProps {
   task: RecurringTask;
@@ -246,12 +246,17 @@ function ReportTable({
   clients,
   months,
   completionData,
+  remarkData,
 }: {
   clients: Client[];
   months: MonthData[];
   completionData: Map<string, Map<string, boolean>>;
+  remarkData: Map<string, Map<string, RemarkInfo>>;
 }) {
+  const [viewingRemark, setViewingRemark] = useState<{ remark: string; remarkBy: string; clientName: string; monthName: string } | null>(null);
+
   return (
+    <>
     <table className="min-w-full divide-y divide-gray-200">
       <thead className="bg-gray-50 dark:bg-gray-800">
         <tr>
@@ -277,11 +282,23 @@ function ReportTable({
             </td>
             {months.map(month => {
               const status = getCompletionStatus(completionData, client.id || '', month.key, month.fullDate);
+              const remark = remarkData.get(client.id || '')?.get(month.key);
               return (
                 <td key={month.key} className="px-2 sm:px-4 py-3 sm:py-4 whitespace-nowrap text-center">
-                  {status === 'completed' && <CheckIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 mx-auto" />}
-                  {status === 'incomplete' && <XCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 mx-auto" />}
-                  {status === 'future' && <span className="text-gray-400 text-xs">-</span>}
+                  <div className="flex items-center justify-center gap-1">
+                    {status === 'completed' && <CheckIcon className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />}
+                    {status === 'incomplete' && <XCircleIcon className="w-4 h-4 sm:w-5 sm:h-5 text-red-600" />}
+                    {status === 'future' && <span className="text-gray-400 text-xs">-</span>}
+                    {status === 'completed' && remark && (
+                      <button
+                        onClick={() => setViewingRemark({ remark: remark.remark, remarkBy: remark.remarkBy, clientName: client.clientName, monthName: `${month.monthName} ${month.year}` })}
+                        className="text-amber-500 hover:text-amber-700 transition-colors"
+                        title={`View remark by ${remark.remarkBy}`}
+                      >
+                        <ChatBubbleLeftIcon className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </button>
+                    )}
+                  </div>
                 </td>
               );
             })}
@@ -289,6 +306,30 @@ function ReportTable({
         ))}
       </tbody>
     </table>
+
+    {/* Remark View Dialog */}
+    {viewingRemark && (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black bg-opacity-50" onClick={() => setViewingRemark(null)}>
+        <div className="bg-white dark:bg-gray-dark rounded-xl shadow-2xl p-6 w-full max-w-md border border-gray-200 dark:border-gray-700" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Remark</h3>
+            <button onClick={() => setViewingRemark(null)} className="text-gray-400 hover:text-gray-600 transition-colors">
+              <XMarkIcon className="w-5 h-5" />
+            </button>
+          </div>
+          <div className="mb-3">
+            <span className="text-xs text-gray-500 dark:text-gray-400">{viewingRemark.clientName} — {viewingRemark.monthName}</span>
+          </div>
+          <div className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 mb-3">
+            <p className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap">{viewingRemark.remark}</p>
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400">
+            By: {viewingRemark.remarkBy}
+          </div>
+        </div>
+      </div>
+    )}
+    </>
   );
 }
 
@@ -321,6 +362,10 @@ function LegendFooter() {
       <div className="flex items-center">
         <span className="text-gray-400 mr-2">-</span>
         <span className="text-gray-700 dark:text-gray-300">Future</span>
+      </div>
+      <div className="flex items-center">
+        <ChatBubbleLeftIcon className="w-4 h-4 text-amber-500 mr-2" />
+        <span className="text-gray-700 dark:text-gray-300">Remark</span>
       </div>
     </div>
   );
@@ -416,6 +461,7 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
     : clients;
 
   const completionData = buildCompletionData(completions, baseClients, months);
+  const remarkData = useMemo(() => buildRemarkData(completions, baseClients, months), [completions, baseClients, months]);
 
   const filteredClients = useMemo(() => {
     if (statusFilter === 'all') return baseClients;
@@ -599,7 +645,7 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
               </p>
             </div>
           ) : (
-            <ReportTable clients={filteredClients} months={months} completionData={completionData} />
+            <ReportTable clients={filteredClients} months={months} completionData={completionData} remarkData={remarkData} />
           )}
         </div>
 
@@ -658,6 +704,10 @@ function RegularTaskReportModal({ task, clients, completions, onClose }: TaskRep
 
   const completionData = useMemo(
     () => buildCompletionData(completions, clients, months),
+    [completions, clients, months]
+  );
+  const remarkData = useMemo(
+    () => buildRemarkData(completions, clients, months),
     [completions, clients, months]
   );
 
@@ -746,7 +796,7 @@ function RegularTaskReportModal({ task, clients, completions, onClose }: TaskRep
               </p>
             </div>
           ) : (
-            <ReportTable clients={filteredClients} months={months} completionData={completionData} />
+            <ReportTable clients={filteredClients} months={months} completionData={completionData} remarkData={remarkData} />
           )}
         </div>
 
