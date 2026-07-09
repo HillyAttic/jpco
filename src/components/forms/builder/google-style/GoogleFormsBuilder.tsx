@@ -243,13 +243,41 @@ export function GoogleFormsBuilder({
       const oldIndex = prev.fields.findIndex(f => f.id === active.id);
       const newIndex = prev.fields.findIndex(f => f.id === over.id);
 
-      if (oldIndex === -1 || newIndex === -1) return prev;
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newFields = [...prev.fields];
+        const [movedField] = newFields.splice(oldIndex, 1);
+        newFields.splice(newIndex, 0, movedField);
+        return { ...prev, fields: newFields };
+      }
 
-      const newFields = [...prev.fields];
-      const [movedField] = newFields.splice(oldIndex, 1);
-      newFields.splice(newIndex, 0, movedField);
+      // Check if both fields are nested inside the same section
+      let activeSectionIdx = -1;
+      let overSectionIdx = -1;
+      prev.fields.forEach((f, si) => {
+        if (f.type === 'section' && f.fields) {
+          if (f.fields.some(nf => nf.id === active.id)) activeSectionIdx = si;
+          if (f.fields.some(nf => nf.id === over.id)) overSectionIdx = si;
+        }
+      });
 
-      return { ...prev, fields: newFields };
+      if (activeSectionIdx !== -1 && activeSectionIdx === overSectionIdx) {
+        const section = prev.fields[activeSectionIdx];
+        const sectionFields = [...(section.fields || [])];
+        const sOldIndex = sectionFields.findIndex(f => f.id === active.id);
+        const sNewIndex = sectionFields.findIndex(f => f.id === over.id);
+
+        if (sOldIndex !== -1 && sNewIndex !== -1) {
+          const [moved] = sectionFields.splice(sOldIndex, 1);
+          sectionFields.splice(sNewIndex, 0, moved);
+          sectionFields.forEach((field, index) => { field.order = index; });
+
+          const newFields = [...prev.fields];
+          newFields[activeSectionIdx] = { ...section, fields: sectionFields };
+          return { ...prev, fields: newFields };
+        }
+      }
+
+      return prev;
     });
   }, []);
 
