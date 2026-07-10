@@ -71,6 +71,7 @@ export function ClientFilter({
             <option value="gst3b">GST3B</option>
             <option value="iff">IFF</option>
             <option value="itr">ITR</option>
+            <option value="itrAudit">ITR Audit</option>
             <option value="taxAudit">Tax Audit</option>
             <option value="accounting">Accounting</option>
             <option value="clientVisit">Client Visit</option>

@@ -58,6 +58,7 @@ export default function ClientsPage() {
           case 'gst3b': return !!client.compliance?.gst3b;
           case 'iff': return !!client.compliance?.iff;
           case 'itr': return !!client.compliance?.itr;
+          case 'itrAudit': return !!client.compliance?.itrAudit;
           case 'taxAudit': return !!client.compliance?.taxAudit;
           case 'accounting': return !!client.compliance?.accounting;
           case 'clientVisit': return !!client.compliance?.clientVisit;
@@ -260,6 +261,7 @@ export default function ClientsPage() {
           gst3b: data.complianceGst3b ?? false,
           iff: data.complianceIff ?? false,
           itr: data.complianceItr ?? false,
+          itrAudit: data.complianceItrAudit ?? false,
           taxAudit: data.complianceTaxAudit ?? false,
           accounting: data.complianceAccounting ?? false,
           clientVisit: data.complianceClientVisit ?? false,

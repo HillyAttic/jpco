@@ -23,6 +23,7 @@ const COMPLIANCE_FILTERS = [
   { value: 'gst3b', label: 'GST3B' },
   { value: 'iff', label: 'IFF' },
   { value: 'itr', label: 'ITR' },
+  { value: 'itrAudit', label: 'ITR Audit' },
   { value: 'taxAudit', label: 'Tax Audit' },
   { value: 'accounting', label: 'Accounting' },
   { value: 'clientVisit', label: 'Client Visit' },
@@ -32,7 +33,7 @@ const COMPLIANCE_FILTERS = [
   { value: 'statutoryAudit', label: 'Statutory Audit' },
 ] as const;
 
-type ComplianceKey = 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank' | 'tcs' | 'tds' | 'statutoryAudit';
+type ComplianceKey = 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'itrAudit' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank' | 'tcs' | 'tds' | 'statutoryAudit';
 
 export function TeamMemberMappingDialog({
   isOpen,

@@ -31,6 +31,7 @@ export function exportClientsToExcel(clients: Client[]): void {
       'GST3B': client.compliance?.gst3b ? 'Y' : 'N',
       'IFF': client.compliance?.iff ? 'Y' : 'N',
       'ITR': client.compliance?.itr ? 'Y' : 'N',
+      'ITR Audit': client.compliance?.itrAudit ? 'Y' : 'N',
       'Tax Audit': client.compliance?.taxAudit ? 'Y' : 'N',
       'Accounting': client.compliance?.accounting ? 'Y' : 'N',
       'Client Visit': client.compliance?.clientVisit ? 'Y' : 'N',
@@ -63,6 +64,7 @@ export function exportClientsToExcel(clients: Client[]): void {
       { wch: 7 },  // GST3B
       { wch: 6 },  // IFF
       { wch: 6 },  // ITR
+      { wch: 10 }, // ITR Audit
       { wch: 10 }, // Tax Audit
       { wch: 12 }, // Accounting
       { wch: 12 }, // Client Visit
@@ -81,7 +83,7 @@ export function exportClientsToExcel(clients: Client[]): void {
       ['', ''],
       ['Import Instructions', ''],
       ['Required Fields', 'Client Name'],
-      ['Compliance Fields', 'ROC, GSTR1, GST3B, IFF, ITR, Tax Audit, Accounting, Client Visit, Bank, TCS, TDS, Statutory Audit'],
+      ['Compliance Fields', 'ROC, GSTR1, GST3B, IFF, ITR, ITR Audit, Tax Audit, Accounting, Client Visit, Bank, TCS, TDS, Statutory Audit'],
       ['Compliance Values', 'Y (Yes) or N (No)'],
       ['', ''],
       ['Note', 'This file can be used as a template for bulk import. Only Client Name is required.'],
@@ -148,7 +150,7 @@ export function exportFilteredClientsToExcel(
   const colWidths = [
     { wch: 8 }, { wch: 25 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 18 },
     { wch: 25 }, { wch: 15 }, { wch: 30 }, { wch: 15 }, { wch: 15 }, { wch: 12 },
-    { wch: 10 }, { wch: 6 }, { wch: 7 }, { wch: 7 }, { wch: 6 }, { wch: 6 },
+    { wch: 10 }, { wch: 6 }, { wch: 7 }, { wch: 7 }, { wch: 6 }, { wch: 6 }, { wch: 10 },
     { wch: 10 }, { wch: 12 }, { wch: 12 }, { wch: 6 }, { wch: 6 }, { wch: 6 }, { wch: 14 },
   ];
   ws['!cols'] = colWidths;

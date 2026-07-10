@@ -103,12 +103,13 @@ export function ClientBulkImportModal({
           country: row.Country || undefined,
           zipCode: row['Zip Code'] || undefined,
         } : undefined,
-        compliance: (row.ROC !== undefined || row.GSTR1 !== undefined || row.GST3B !== undefined || row.IFF !== undefined || row.ITR !== undefined || row['Tax Audit'] !== undefined || row.Accounting !== undefined || row['Client Visit'] !== undefined || row.Bank !== undefined || row.TCS !== undefined || row.TDS !== undefined || row['Statutory Audit'] !== undefined) ? {
+        compliance: (row.ROC !== undefined || row.GSTR1 !== undefined || row.GST3B !== undefined || row.IFF !== undefined || row.ITR !== undefined || row['ITR Audit'] !== undefined || row['Tax Audit'] !== undefined || row.Accounting !== undefined || row['Client Visit'] !== undefined || row.Bank !== undefined || row.TCS !== undefined || row.TDS !== undefined || row['Statutory Audit'] !== undefined) ? {
           roc: parseYN(row.ROC ?? 'N'),
           gstr1: parseYN(row.GSTR1 ?? 'N'),
           gst3b: parseYN(row.GST3B ?? 'N'),
           iff: parseYN(row.IFF ?? 'N'),
           itr: parseYN(row.ITR ?? 'N'),
+          itrAudit: parseYN(row['ITR Audit'] ?? 'N'),
           taxAudit: parseYN(row['Tax Audit'] ?? 'N'),
           accounting: parseYN(row.Accounting ?? 'N'),
           clientVisit: parseYN(row['Client Visit'] ?? 'N'),
@@ -177,6 +178,7 @@ export function ClientBulkImportModal({
       'GST3B',
       'IFF',
       'ITR',
+      'ITR Audit',
       'Tax Audit',
       'Accounting',
       'Client Visit',
@@ -204,6 +206,7 @@ export function ClientBulkImportModal({
       'N',
       'N',
       'Y',
+      'N',
       'N',
       'Y',
       'N',
@@ -242,7 +245,7 @@ export function ClientBulkImportModal({
                   Download CSV Template
                 </h4>
                 <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
-                  Use our template to ensure your data is formatted correctly. Only Client Name is required. Compliance fields (ROC, GSTR1, GST3B, IFF, ITR, Tax Audit, Accounting, Client Visit, Bank, TCS, TDS, Statutory Audit) accept Y or N values.
+                  Use our template to ensure your data is formatted correctly. Only Client Name is required. Compliance fields (ROC, GSTR1, GST3B, IFF, ITR, ITR Audit, Tax Audit, Accounting, Client Visit, Bank, TCS, TDS, Statutory Audit) accept Y or N values.
                 </p>
                 <Button
                   variant="outline"
@@ -315,6 +318,7 @@ export function ClientBulkImportModal({
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">GST3B</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">IFF</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">ITR</th>
+                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">ITR Audit</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Tax Audit</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Accounting</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-400">Client Visit</th>
@@ -333,6 +337,7 @@ export function ClientBulkImportModal({
                         <td className="px-3 py-2 whitespace-nowrap">{row.GST3B}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{row.IFF}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{row.ITR}</td>
+                        <td className="px-3 py-2 whitespace-nowrap">{row['ITR Audit']}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{row['Tax Audit']}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{row.Accounting}</td>
                         <td className="px-3 py-2 whitespace-nowrap">{row['Client Visit']}</td>

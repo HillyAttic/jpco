@@ -30,6 +30,7 @@ const createClientSchema = z.object({
     gst3b: z.boolean(),
     iff: z.boolean(),
     itr: z.boolean(),
+    itrAudit: z.boolean(),
     taxAudit: z.boolean(),
     accounting: z.boolean(),
     clientVisit: z.boolean(),
