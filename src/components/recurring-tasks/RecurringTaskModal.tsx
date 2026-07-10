@@ -70,7 +70,7 @@ export function RecurringTaskModal({
   const [categories, setCategories] = useState<Category[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [selectedClients, setSelectedClients] = useState<Client[]>([]);
-  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank' | 'tcs' | 'tds' | 'statutoryAudit'>('all');
+  const [clientFilter, setClientFilter] = useState<'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'itrAudit' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank' | 'tcs' | 'tds' | 'statutoryAudit'>('all');
   const [clientSearchQuery, setClientSearchQuery] = useState('');
   const [loadingTeams, setLoadingTeams] = useState(false);
   const [loadingCategories, setLoadingCategories] = useState(false);
@@ -204,6 +204,8 @@ export function RecurringTaskModal({
             return !!client.compliance?.iff;
           case 'itr':
             return !!client.compliance?.itr;
+          case 'itrAudit':
+            return !!client.compliance?.itrAudit;
           case 'taxAudit':
             return !!client.compliance?.taxAudit;
           case 'accounting':
@@ -549,6 +551,7 @@ export function RecurringTaskModal({
                 <option value="gst3b">Only with GST3B</option>
                 <option value="iff">Only with IFF</option>
                 <option value="itr">Only with ITR</option>
+                <option value="itrAudit">Only with ITR Audit</option>
                 <option value="taxAudit">Only with Tax Audit</option>
                 <option value="accounting">Only with Accounting</option>
                 <option value="clientVisit">Only with Client Visit</option>

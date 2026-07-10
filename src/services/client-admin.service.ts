@@ -31,6 +31,7 @@ export interface Client {
     gst3b: boolean;
     iff: boolean;
     itr: boolean;
+    itrAudit: boolean;
     taxAudit: boolean;
     accounting: boolean;
     clientVisit: boolean;

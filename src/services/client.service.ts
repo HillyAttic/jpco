@@ -33,6 +33,7 @@ export interface Client {
     gst3b: boolean;
     iff: boolean;
     itr: boolean;
+    itrAudit: boolean;
     taxAudit: boolean;
     accounting: boolean;
     clientVisit: boolean;
@@ -65,6 +66,7 @@ export interface ClientFormData {
   complianceGst3b?: boolean;
   complianceIff?: boolean;
   complianceItr?: boolean;
+  complianceItrAudit?: boolean;
   complianceTaxAudit?: boolean;
   complianceAccounting?: boolean;
   complianceClientVisit?: boolean;
@@ -93,6 +95,7 @@ export interface ClientImportRow {
   GST3B?: string;
   IFF?: string;
   ITR?: string;
+  'ITR Audit'?: string;
   'Tax Audit'?: string;
   Accounting?: string;
   'Client Visit'?: string;

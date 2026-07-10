@@ -149,7 +149,6 @@ function SortableFieldItem({
       <motion.div
         ref={setNodeRef}
         style={style}
-        layout
         initial={{ opacity: 0, x: -50 }}
         animate={{ opacity: 1, x: 0 }}
         exit={{ opacity: 0, scale: 0.9 }}
@@ -274,7 +273,6 @@ function SortableFieldItem({
     <motion.div
       ref={setNodeRef}
       style={style}
-      layout
       initial={{ opacity: 0, x: -50, rotate: -2 }}
       animate={{ opacity: 1, x: 0, rotate: 0 }}
       exit={{ opacity: 0, scale: 0.9, rotate: 2 }}

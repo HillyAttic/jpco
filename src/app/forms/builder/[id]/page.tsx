@@ -304,22 +304,51 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
     if (active.data.current?.type === 'field' && over.data.current?.type === 'field') {
       if (active.id === over.id) return;
 
-      const oldIndex = template.fields.findIndex((f) => f.id === active.id);
-      const newIndex = template.fields.findIndex((f) => f.id === over.id);
+      // Check if both fields are nested inside the same section
+      let activeSectionIndex = -1;
+      let overSectionIndex = -1;
+      template.fields.forEach((f, si) => {
+        if (f.type === 'section' && f.fields) {
+          if (f.fields.some(nf => nf.id === active.id)) activeSectionIndex = si;
+          if (f.fields.some(nf => nf.id === over.id)) overSectionIndex = si;
+        }
+      });
 
-      if (oldIndex !== -1 && newIndex !== -1) {
-        const reorderedFields = [...template.fields];
-        const [movedField] = reorderedFields.splice(oldIndex, 1);
-        reorderedFields.splice(newIndex, 0, movedField);
+      if (activeSectionIndex !== -1 && activeSectionIndex === overSectionIndex) {
+        // Reorder within section
+        const section = template.fields[activeSectionIndex];
+        const sectionFields = [...(section.fields || [])];
+        const oldIndex = sectionFields.findIndex((f) => f.id === active.id);
+        const newIndex = sectionFields.findIndex((f) => f.id === over.id);
 
-        reorderedFields.forEach((field, index) => {
-          field.order = index;
-        });
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const [movedField] = sectionFields.splice(oldIndex, 1);
+          sectionFields.splice(newIndex, 0, movedField);
+          sectionFields.forEach((field, index) => { field.order = index; });
 
-        setTemplate({
-          ...template,
-          fields: reorderedFields,
-        });
+          const updatedFields = [...template.fields];
+          updatedFields[activeSectionIndex] = { ...section, fields: sectionFields };
+          setTemplate({ ...template, fields: updatedFields });
+        }
+      } else {
+        // Reorder top-level fields
+        const oldIndex = template.fields.findIndex((f) => f.id === active.id);
+        const newIndex = template.fields.findIndex((f) => f.id === over.id);
+
+        if (oldIndex !== -1 && newIndex !== -1) {
+          const reorderedFields = [...template.fields];
+          const [movedField] = reorderedFields.splice(oldIndex, 1);
+          reorderedFields.splice(newIndex, 0, movedField);
+
+          reorderedFields.forEach((field, index) => {
+            field.order = index;
+          });
+
+          setTemplate({
+            ...template,
+            fields: reorderedFields,
+          });
+        }
       }
     }
   };

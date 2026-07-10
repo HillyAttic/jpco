@@ -76,6 +76,7 @@ export function ClientListView({
             <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300" style={{ minWidth: '60px' }}>GST3B</th>
             <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300" style={{ minWidth: '50px' }}>IFF</th>
             <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300" style={{ minWidth: '50px' }}>ITR</th>
+            <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300" style={{ minWidth: '80px' }}>ITR Audit</th>
             <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300" style={{ minWidth: '80px' }}>Tax Audit</th>
             <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300" style={{ minWidth: '90px' }}>Accounting</th>
             <th className="px-2 py-2 text-center text-xs font-medium text-gray-700 dark:text-gray-300" style={{ minWidth: '90px' }}>Client Visit</th>
@@ -165,6 +166,9 @@ export function ClientListView({
               </td>
               <td className="px-2 py-2 text-center">
                 <ComplianceBadge value={client.compliance?.itr} />
+              </td>
+              <td className="px-2 py-2 text-center">
+                <ComplianceBadge value={client.compliance?.itrAudit} />
               </td>
               <td className="px-2 py-2 text-center">
                 <ComplianceBadge value={client.compliance?.taxAudit} />
