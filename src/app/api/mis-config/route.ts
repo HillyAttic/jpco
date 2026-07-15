@@ -32,6 +32,7 @@ export const GET = withAuth(async (request: AuthenticatedRequest) => {
         success: true,
         data: {
           formToUserMappings: config.formToUserMappings || [],
+          sheetUserFormMappings: config.sheetUserFormMappings || [],
           sheetAssignedUsers: config.sheetAssignedUsers,
           hasFormAccess: true,
           hasSheetAccess: true,
@@ -53,7 +54,21 @@ export const GET = withAuth(async (request: AuthenticatedRequest) => {
       }));
 
     const hasFormAccess = assignedForms.length > 0;
+
+    // Compute sheet access with per-user form filtering
     const hasSheetAccess = config.sheetAssignedUsers.includes(user.uid);
+    const sheetUserFormMappings = config.sheetUserFormMappings || [];
+    const userSheetMapping = sheetUserFormMappings.find(m => m.userId === user.uid);
+
+    // Determine allowed form IDs for MIS Tracker
+    let allowedFormIds: string[] | null = null;
+    if (userSheetMapping) {
+      // Per-user mapping exists — filter to their specific forms
+      allowedFormIds = userSheetMapping.formIds;
+    } else if (hasSheetAccess) {
+      // Legacy blanket access — null means all forms
+      allowedFormIds = null;
+    }
 
     // For backward compatibility, also check legacy fields
     const legacyHasFormAccess = config.formAssignedUsers?.includes(user.uid) || false;
@@ -63,7 +78,8 @@ export const GET = withAuth(async (request: AuthenticatedRequest) => {
       data: {
         assignedForms,
         hasFormAccess: hasFormAccess || legacyHasFormAccess,
-        hasSheetAccess,
+        hasSheetAccess: hasSheetAccess || !!userSheetMapping,
+        allowedFormIds,
         // Legacy fields for backward compatibility
         dailyFormTemplateId: (hasFormAccess || legacyHasFormAccess) ? config.dailyFormTemplateId || '' : '',
         formAssignedUsers: [],
@@ -83,6 +99,7 @@ export const PUT = withAdminAuth(async (request: AuthenticatedRequest) => {
 
     const {
       formToUserMappings,
+      sheetUserFormMappings,
       sheetAssignedUsers,
       // Legacy fields
       dailyFormTemplateId,
@@ -131,6 +148,44 @@ export const PUT = withAdminAuth(async (request: AuthenticatedRequest) => {
       }
     }
 
+    // Validate sheetUserFormMappings if provided
+    if (sheetUserFormMappings !== undefined) {
+      if (!Array.isArray(sheetUserFormMappings)) {
+        return NextResponse.json(
+          { success: false, error: 'sheetUserFormMappings must be an array' },
+          { status: 400 }
+        );
+      }
+
+      const { formTemplateService } = await import('@/services/form-template.service');
+
+      for (const mapping of sheetUserFormMappings) {
+        if (!mapping.userId || !mapping.formIds || !Array.isArray(mapping.formIds)) {
+          return NextResponse.json(
+            { success: false, error: 'Invalid sheetUserFormMapping structure' },
+            { status: 400 }
+          );
+        }
+
+        // Validate each formId exists and is published
+        for (const formId of mapping.formIds) {
+          const template = await formTemplateService.getById(formId);
+          if (!template) {
+            return NextResponse.json(
+              { success: false, error: `Form template not found: ${formId}` },
+              { status: 400 }
+            );
+          }
+          if (template.status !== 'published') {
+            return NextResponse.json(
+              { success: false, error: `Form must be published: ${template.title}` },
+              { status: 400 }
+            );
+          }
+        }
+      }
+    }
+
     // Validate legacy form template ID if provided
     if (dailyFormTemplateId) {
       const { formTemplateService } = await import('@/services/form-template.service');
@@ -168,6 +223,7 @@ export const PUT = withAdminAuth(async (request: AuthenticatedRequest) => {
 
     const updatedConfig = await misConfigService.updateMISConfig({
       formToUserMappings,
+      sheetUserFormMappings,
       sheetAssignedUsers,
       // Legacy fields
       dailyFormTemplateId,

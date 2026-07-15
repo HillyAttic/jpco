@@ -105,10 +105,7 @@ export default function LeaveApprovalsPage() {
   };
 
   const handleReject = async () => {
-    if (!selectedRequest || !rejectionReason.trim()) {
-      toast.error('Please provide a rejection reason');
-      return;
-    }
+    if (!selectedRequest) return;
 
     try {
       // Import authenticated fetch helper
@@ -401,7 +398,7 @@ export default function LeaveApprovalsPage() {
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
             <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Reject Leave Request</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Please provide a reason for rejecting this leave request:
+              You can provide a reason for rejecting <span className="text-blue-600 dark:text-blue-400 font-semibold">(optional)</span>:
             </p>
             <textarea
               value={rejectionReason}

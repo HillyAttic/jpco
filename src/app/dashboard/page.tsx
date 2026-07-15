@@ -153,6 +153,9 @@ export default function DashboardPage() {
   // Pending leave approvals count
   const [pendingLeaveApprovalsCount, setPendingLeaveApprovalsCount] = useState(0);
 
+  // Pending WFH approvals count
+  const [pendingWFHApprovalsCount, setPendingWFHApprovalsCount] = useState(0);
+
   // Check if user is admin or manager
   const canViewAllTasks = isAdmin || isManager;
 
@@ -504,6 +507,58 @@ export default function DashboardPage() {
     };
 
     fetchPendingLeaveApprovalsCount();
+  }, [user, isAdmin, isManager]);
+
+  // Pending WFH approvals count
+  useEffect(() => {
+    if (!user || (!isAdmin && !isManager)) return;
+
+    const fetchPendingWFHApprovalsCount = async () => {
+      try {
+        const { leaveService } = await import('@/services/leave.service');
+        const leaveRequests = await leaveService.getAll({ status: 'pending', leaveType: 'wfh' });
+
+        // If manager, filter by hierarchy
+        if (isManager && !isAdmin) {
+          const { managerHierarchyService } = await import('@/services/manager-hierarchy.service');
+          const hierarchy = await managerHierarchyService.getByManagerId(user.uid);
+
+          if (hierarchy && hierarchy.employeeIds.length > 0) {
+            const filteredRequests = leaveRequests.filter(request =>
+              hierarchy.employeeIds.includes(request.employeeId)
+            );
+            setPendingWFHApprovalsCount(filteredRequests.length);
+          } else {
+            setPendingWFHApprovalsCount(0);
+          }
+          return;
+        }
+
+        // If admin, show only:
+        // 1. WFH requests from managers
+        // 2. WFH requests from employees NOT assigned under any manager
+        if (isAdmin) {
+          const { managerHierarchyService } = await import('@/services/manager-hierarchy.service');
+          const allHierarchies = await managerHierarchyService.getAll();
+
+          const assignedEmployeeIds = new Set<string>();
+          allHierarchies.forEach(hierarchy => {
+            hierarchy.employeeIds.forEach(empId => assignedEmployeeIds.add(empId));
+          });
+
+          const managerIds = new Set(allHierarchies.map(h => h.managerId));
+
+          const filteredRequests = leaveRequests.filter(request =>
+            managerIds.has(request.employeeId) || !assignedEmployeeIds.has(request.employeeId)
+          );
+          setPendingWFHApprovalsCount(filteredRequests.length);
+        }
+      } catch (err) {
+        console.error('Error fetching pending WFH approvals count:', err);
+      }
+    };
+
+    fetchPendingWFHApprovalsCount();
   }, [user, isAdmin, isManager]);
 
   // Kanban task handlers
@@ -1142,6 +1197,7 @@ export default function DashboardPage() {
           isAdmin={isAdmin}
           pendingInvoicesCount={pendingInvoicesCount}
           pendingLeaveApprovalsCount={pendingLeaveApprovalsCount}
+          pendingWFHApprovalsCount={pendingWFHApprovalsCount}
         />
       </div>
 
