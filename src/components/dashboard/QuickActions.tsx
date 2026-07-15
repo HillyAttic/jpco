@@ -16,7 +16,9 @@ import {
   CalendarIcon,
   Squares2X2Icon,
   BuildingOfficeIcon,
-  UsersIcon
+  UsersIcon,
+  HomeIcon,
+  DocumentChartBarIcon
 } from '@heroicons/react/24/outline';
 import { useRouter } from 'next/navigation';
 
@@ -33,6 +35,7 @@ interface QuickActionsProps {
   isAdmin?: boolean;
   pendingInvoicesCount?: number;
   pendingLeaveApprovalsCount?: number;
+  pendingWFHApprovalsCount?: number;
 }
 
 export function QuickActions({
@@ -48,6 +51,7 @@ export function QuickActions({
   isAdmin = false,
   pendingInvoicesCount = 0,
   pendingLeaveApprovalsCount = 0,
+  pendingWFHApprovalsCount = 0,
 }: QuickActionsProps) {
   const router = useRouter();
   
@@ -114,6 +118,21 @@ export function QuickActions({
       color: 'bg-orange-600 hover:bg-orange-700',
       showForManager: true,
       badge: pendingLeaveApprovalsCount > 0 ? pendingLeaveApprovalsCount : undefined
+    },
+    {
+      label: 'WFH Approvals',
+      icon: <HomeIcon className="w-5 h-5" />,
+      onClick: () => router.push('/admin/leave-approvals?tab=wfh'),
+      color: 'bg-[#0891B2] hover:bg-[#0E7490]',
+      showForManager: true,
+      badge: pendingWFHApprovalsCount > 0 ? pendingWFHApprovalsCount : undefined
+    },
+    {
+      label: 'MIS Tracker',
+      icon: <DocumentChartBarIcon className="w-5 h-5" />,
+      onClick: () => router.push('/mis-tracker?formId=dK0D8ziCvcROvPhFnx3k'),
+      color: 'bg-[#C2410C] hover:bg-[#9A3412]',
+      showForManager: true
     },
     {
       label: 'Compliance',
