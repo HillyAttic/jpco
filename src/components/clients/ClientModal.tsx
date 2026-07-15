@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Client } from '@/services/client.service';
+import { apiGet } from '@/lib/api-client';
 import {
   Dialog,
   DialogContent,
@@ -70,7 +71,9 @@ export function ClientModal({
   isLoading = false,
 }: ClientModalProps) {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  
+  const [isFetchingSerial, setIsFetchingSerial] = useState(false);
+  const [nextSerialNumber, setNextSerialNumber] = useState<string>('');
+
   const {
     register,
     handleSubmit,
@@ -121,9 +124,10 @@ export function ClientModal({
 
   const currentName = watch('clientName');
 
-  // Update form when client prop changes (edit mode)
+  // Update form when client prop changes (edit mode) or when modal opens (create mode)
   useEffect(() => {
     if (client) {
+      // Edit mode: use existing client data
       reset({
         clientName: client.clientName,
         serialNumber: client.serialNumber || '',
@@ -154,10 +158,11 @@ export function ClientModal({
         status: client.status,
       });
       setAvatarPreview(null);
-    } else {
+    } else if (isOpen) {
+      // Create mode: reset with auto-fetched serial number
       reset({
         clientName: '',
-        serialNumber: '',
+        serialNumber: nextSerialNumber,
         businessName: '',
         pan: '',
         tan: '',
@@ -185,7 +190,33 @@ export function ClientModal({
       });
       setAvatarPreview(null);
     }
-  }, [client, reset]);
+  }, [client, reset, isOpen, nextSerialNumber]);
+
+  // Auto-fetch next serial number when creating a new client
+  useEffect(() => {
+    if (isOpen && !client) {
+      const fetchNextSerial = async () => {
+        setIsFetchingSerial(true);
+        console.log('[ClientModal] Fetching next serial number...');
+        try {
+          const data = await apiGet('/api/clients/next-serial');
+          console.log('[ClientModal] API response:', data);
+          if (data.success && data.nextSerial) {
+            setNextSerialNumber(data.nextSerial);
+            console.log('[ClientModal] Set nextSerialNumber to:', data.nextSerial);
+          }
+        } catch (error) {
+          console.error('[ClientModal] Error fetching next serial number:', error);
+        } finally {
+          setIsFetchingSerial(false);
+        }
+      };
+      fetchNextSerial();
+    } else {
+      // Reset when modal closes or switching to edit mode
+      setNextSerialNumber('');
+    }
+  }, [isOpen, client]);
 
   // Handle avatar file selection
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -248,10 +279,21 @@ export function ClientModal({
               id="serialNumber"
               label="S.No"
               {...register('serialNumber')}
-              placeholder="Enter serial number (e.g., 001, 002)"
+              placeholder={
+                isFetchingSerial
+                  ? 'Fetching next S.No...'
+                  : client
+                    ? 'Enter serial number'
+                    : 'Auto-generated (you can change it)'
+              }
               error={errors.serialNumber?.message}
-              disabled={isLoading}
+              disabled={isLoading || isFetchingSerial}
             />
+            {!client && !isFetchingSerial && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Auto-filled with the next available S.No. (highest existing + 1). You can change it if needed.
+              </p>
+            )}
           </div>
 
           {/* Business Name */}

@@ -121,6 +121,7 @@ export function FileVerificationReport({
   const [searchTerm, setSearchTerm] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [presetFilter, setPresetFilter] = useState<string | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
@@ -212,6 +213,61 @@ export function FileVerificationReport({
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this submission?')) return;
     if (onDelete) onDelete(id);
+  };
+
+  // Quick filter button presets
+  interface FilterPreset {
+    label: string;
+    getDates: () => { start: string; end: string };
+  }
+
+  const filterPresets: FilterPreset[] = [
+    {
+      label: 'Today',
+      getDates: () => {
+        const now = new Date();
+        return { start: format(now, 'yyyy-MM-dd'), end: format(now, 'yyyy-MM-dd') };
+      },
+    },
+    {
+      label: 'Yesterday',
+      getDates: () => {
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        return { start: format(yesterday, 'yyyy-MM-dd'), end: format(yesterday, 'yyyy-MM-dd') };
+      },
+    },
+    {
+      label: 'This Week',
+      getDates: () => {
+        const now = new Date();
+        const start = new Date(now);
+        start.setDate(now.getDate() - now.getDay()); // Sunday
+        const end = new Date(now);
+        end.setDate(start.getDate() + 6); // Saturday
+        return { start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') };
+      },
+    },
+    {
+      label: 'This Month',
+      getDates: () => {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        return { start: format(start, 'yyyy-MM-dd'), end: format(end, 'yyyy-MM-dd') };
+      },
+    },
+    {
+      label: 'All Time',
+      getDates: () => ({ start: '', end: '' }),
+    },
+  ];
+
+  const applyPresetFilter = (preset: FilterPreset) => {
+    setPresetFilter(preset.label);
+    const { start, end } = preset.getDates();
+    setStartDate(start);
+    setEndDate(end);
   };
 
   const formatSubmittedAt = (submittedAt: Timestamp | string): string => {
@@ -332,6 +388,7 @@ export function FileVerificationReport({
                 setSearchTerm('');
                 setStartDate('');
                 setEndDate('');
+                setPresetFilter(null);
               }}
               className="text-sm text-blue-600 hover:text-blue-700 font-medium"
             >
@@ -352,6 +409,7 @@ export function FileVerificationReport({
                   setSearchTerm('');
                   setStartDate('');
                   setEndDate('');
+                  setPresetFilter(null);
                 }}
                 className="mt-2 text-blue-600 hover:text-blue-700"
               >
@@ -370,7 +428,7 @@ export function FileVerificationReport({
                   <div key={dayLabel} className="space-y-3">
                     {/* Day Header */}
                     <div className="bg-blue-100 border border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3">
-                      <div className="flex items-start justify-between gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
                         <div>
                           <h3 className="text-base sm:text-lg font-semibold text-blue-900">
                             {dayLabel}
@@ -379,13 +437,13 @@ export function FileVerificationReport({
                             {daySubs.length} submission(s)
                           </p>
                         </div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                           {/* Daily category totals */}
-                          <div className="flex flex-wrap justify-end gap-2 text-xs sm:text-sm font-semibold text-blue-900">
+                          <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold text-blue-900">
                             {categories.map((cat) => (
                               <span
                                 key={cat.key}
-                                className="rounded bg-white/70 px-2 py-1"
+                                className="rounded bg-white/70 px-1.5 sm:px-2 py-0.5 sm:py-1"
                               >
                                 {cat.shortLabel}: {totals[cat.key] ?? 0}
                               </span>
@@ -593,28 +651,31 @@ export function FileVerificationReport({
                               </div>
 
                               {/* Category values */}
-                              <div className="space-y-3">
+                              <div className="grid grid-cols-2 gap-2">
                                 {categories.map((cat) => (
-                                  <div key={cat.key} className="flex items-center justify-between">
+                                  <div
+                                    key={cat.key}
+                                    className="flex flex-col items-center bg-gray-50 rounded-lg p-2"
+                                  >
                                     <span className="text-xs font-medium text-gray-500">
-                                      {cat.label}
+                                      {cat.shortLabel}
                                     </span>
-                                    <span className="text-sm font-semibold text-gray-900 bg-gray-100 rounded px-2 py-0.5">
+                                    <span className="text-sm font-bold text-gray-900 mt-0.5">
                                       {getValue(submission, cat.fieldId)}
                                     </span>
                                   </div>
                                 ))}
-                                {remarkField && (
-                                  <div>
-                                    <div className="text-xs font-medium text-gray-500 mb-1">
-                                      {remarkField.label}
-                                    </div>
-                                    <div className="text-sm text-gray-900 bg-gray-50 rounded p-2">
-                                      {getRemarkValue(submission)}
-                                    </div>
-                                  </div>
-                                )}
                               </div>
+                              {remarkField && (
+                                <div className="mt-3 bg-gray-50 rounded-lg p-3">
+                                  <div className="text-xs font-medium text-gray-500 mb-1">
+                                    {remarkField.shortLabel || remarkField.label}
+                                  </div>
+                                  <div className="text-sm text-gray-900">
+                                    {getRemarkValue(submission)}
+                                  </div>
+                                </div>
+                              )}
 
                               {/* Actions */}
                               {onDelete && (
@@ -637,6 +698,27 @@ export function FileVerificationReport({
                   </div>
                 );
               }
+            )}
+
+            {/* Quick Filter Presets — above Grand Totals */}
+            {filteredSubmissions.length > 0 && (
+              <div className="flex items-start sm:items-center justify-between flex-wrap gap-2 sm:gap-3 mb-4">
+                <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-1.5 sm:gap-2 w-full sm:w-auto">
+                  {filterPresets.map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => applyPresetFilter(preset)}
+                      className={`px-2 sm:px-3 md:px-4 py-2 sm:py-2 text-xs sm:text-sm font-medium rounded-lg transition-colors whitespace-nowrap ${
+                        presetFilter === preset.label
+                          ? 'bg-blue-600 text-white shadow-sm'
+                          : 'bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                      }`}
+                      >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {/* Grand Totals */}
