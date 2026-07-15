@@ -5,13 +5,15 @@ import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
 import { useAuthEnhanced } from '@/hooks/use-auth-enhanced';
 import { authenticatedFetch } from '@/lib/api-client';
-import UserMultiSelect, { User } from '@/components/mis/UserMultiSelect';
+import { User } from '@/components/mis/UserMultiSelect';
+import UserFormAccessSelect from '@/components/mis/UserFormAccessSelect';
 import { FormToUserMappingDialog } from '@/components/mis/FormToUserMappingDialog';
-import { FormToUserMapping } from '@/services/mis-config.service';
+import { FormToUserMapping, SheetUserFormMapping } from '@/services/mis-config.service';
 import type { FormTemplate } from '@/types/form.types';
 
 interface MISConfig {
   formToUserMappings?: FormToUserMapping[];
+  sheetUserFormMappings?: SheetUserFormMapping[];
   dailyFormTemplateId?: string;
   formAssignedUsers: string[];
   sheetAssignedUsers: string[];
@@ -28,8 +30,8 @@ export default function MISAccessibilityPage() {
   const [formTemplates, setFormTemplates] = useState<FormTemplate[]>([]);
 
   const [formToUserMappings, setFormToUserMappings] = useState<FormToUserMapping[]>([]);
+  const [sheetUserFormMappings, setSheetUserFormMappings] = useState<SheetUserFormMapping[]>([]);
   const [showMappingDialog, setShowMappingDialog] = useState(false);
-  const [sheetAssignedUsers, setSheetAssignedUsers] = useState<string[]>([]);
 
   // Legacy fields (for backward compatibility)
   const [dailyFormTemplateId, setDailyFormTemplateId] = useState('');
@@ -63,7 +65,7 @@ export default function MISAccessibilityPage() {
         const configData = await configRes.json();
         if (configData.success && configData.data) {
           setFormToUserMappings(configData.data.formToUserMappings || []);
-          setSheetAssignedUsers(configData.data.sheetAssignedUsers || []);
+          setSheetUserFormMappings(configData.data.sheetUserFormMappings || []);
           // Legacy fields
           setDailyFormTemplateId(configData.data.dailyFormTemplateId || '');
           setFormAssignedUsers(configData.data.formAssignedUsers || []);
@@ -108,7 +110,7 @@ export default function MISAccessibilityPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           formToUserMappings,
-          sheetAssignedUsers,
+          sheetUserFormMappings,
         }),
       });
 
@@ -266,16 +268,12 @@ export default function MISAccessibilityPage() {
             </h2>
 
             <div className="space-y-3 sm:space-y-4 md:space-y-6">
-              <UserMultiSelect
+              <UserFormAccessSelect
                 users={users}
-                selectedUserIds={sheetAssignedUsers}
-                onSelectionChange={setSheetAssignedUsers}
-                label="Who can view submissions"
-                placeholder="Search users by name or email..."
+                formTemplates={formTemplates}
+                selectedMappings={sheetUserFormMappings}
+                onMappingsChange={setSheetUserFormMappings}
               />
-              <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400">
-                These users will be able to view form submissions in the MIS Tracker
-              </p>
             </div>
           </div>
 

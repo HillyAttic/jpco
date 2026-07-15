@@ -91,10 +91,17 @@ export default function MISTrackerPage() {
       }
 
       const forms = formsResult.templates || [];
-      setAvailableForms(forms);
 
-      if (forms.length === 0) {
-        // No published forms available
+      // 2b. Filter forms based on per-user access control
+      const allowedFormIds = configData.data.allowedFormIds;
+      const filteredForms = (allowedFormIds !== null && allowedFormIds !== undefined)
+        ? forms.filter((f: FormTemplate) => allowedFormIds.includes(f.id))
+        : forms; // null = legacy blanket access, show all
+
+      setAvailableForms(filteredForms);
+
+      if (filteredForms.length === 0) {
+        // No forms available for this user
         return;
       }
 
@@ -102,16 +109,16 @@ export default function MISTrackerPage() {
       let formToDisplay: string | null = null;
 
       const formIdFromUrl = searchParams.get('formId');
-      if (formIdFromUrl && forms.some((f: FormTemplate) => f.id === formIdFromUrl)) {
-        // URL param is valid
+      if (formIdFromUrl && filteredForms.some((f: FormTemplate) => f.id === formIdFromUrl)) {
+        // URL param is valid (and user has access to it)
         formToDisplay = formIdFromUrl;
       } else if (configData.data.dailyFormTemplateId &&
-                 forms.some((f: FormTemplate) => f.id === configData.data.dailyFormTemplateId)) {
-        // Use MIS config default
+                 filteredForms.some((f: FormTemplate) => f.id === configData.data.dailyFormTemplateId)) {
+        // Use MIS config default (if user has access)
         formToDisplay = configData.data.dailyFormTemplateId;
-      } else if (forms.length > 0) {
-        // Use first form
-        formToDisplay = forms[0].id;
+      } else if (filteredForms.length > 0) {
+        // Use first allowed form
+        formToDisplay = filteredForms[0].id;
       }
 
       if (!formToDisplay) {

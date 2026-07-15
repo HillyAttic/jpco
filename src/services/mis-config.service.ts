@@ -8,9 +8,17 @@ export interface FormToUserMapping {
   requiredForClockout: boolean; // Per-form clock-out requirement
 }
 
+export interface SheetUserFormMapping {
+  userId: string;
+  formIds: string[]; // Which forms this user can view in MIS Tracker
+}
+
 export interface MISConfiguration {
   // NEW: Multi-form assignments
   formToUserMappings: FormToUserMapping[];
+
+  // NEW: Per-user form access for submissions viewing
+  sheetUserFormMappings?: SheetUserFormMapping[];
 
   // LEGACY: Keep for backward compatibility (will auto-migrate)
   dailyFormTemplateId?: string; // ID of the form template to use for daily MIS
@@ -30,6 +38,9 @@ export interface MISConfiguration {
 export interface MISConfigUpdate {
   // NEW: Multi-form mappings
   formToUserMappings?: FormToUserMapping[];
+
+  // NEW: Per-user sheet form access
+  sheetUserFormMappings?: SheetUserFormMapping[];
 
   // LEGACY: Keep for backward compatibility
   dailyFormTemplateId?: string;
@@ -99,6 +110,15 @@ export class MISConfigService {
       updateData.formUpdatedBy = updates.updatedBy;
     }
 
+    // Handle new sheetUserFormMappings
+    if (updates.sheetUserFormMappings !== undefined) {
+      updateData.sheetUserFormMappings = updates.sheetUserFormMappings;
+      updateData.sheetUpdatedAt = now;
+      updateData.sheetUpdatedBy = updates.updatedBy;
+      // Auto-sync sheetAssignedUsers from mappings
+      updateData.sheetAssignedUsers = updates.sheetUserFormMappings.map(m => m.userId);
+    }
+
     // Handle legacy fields (for backward compatibility)
     if (updates.dailyFormTemplateId !== undefined) {
       updateData.dailyFormTemplateId = updates.dailyFormTemplateId;
@@ -125,11 +145,14 @@ export class MISConfigService {
     if (!doc.exists) {
       const newConfig: MISConfiguration = {
         formToUserMappings: updates.formToUserMappings || [],
+        sheetUserFormMappings: updates.sheetUserFormMappings || [],
         dailyFormTemplateId: updates.dailyFormTemplateId || '',
         formAssignedUsers: updates.formAssignedUsers || [],
         formUpdatedAt: now,
         formUpdatedBy: updates.updatedBy,
-        sheetAssignedUsers: updates.sheetAssignedUsers || [],
+        sheetAssignedUsers: updates.sheetUserFormMappings
+          ? updates.sheetUserFormMappings.map(m => m.userId)
+          : (updates.sheetAssignedUsers || []),
         sheetUpdatedAt: now,
         sheetUpdatedBy: updates.updatedBy,
         createdAt: now,
@@ -183,6 +206,34 @@ export class MISConfigService {
   async isUserAssignedToAnyForm(userId: string): Promise<boolean> {
     const assignedForms = await this.getUserAssignedForms(userId);
     return assignedForms.length > 0;
+  }
+
+  /**
+   * Get form IDs allowed for a user to view in MIS Tracker.
+   * Returns null if the user has legacy blanket access (all forms).
+   * Returns string[] if per-user mappings exist.
+   * Returns undefined if the user has no sheet access.
+   */
+  async getUserAllowedFormIds(userId: string): Promise<string[] | null | undefined> {
+    const config = await this.getMISConfig();
+    if (!config) return undefined;
+
+    const hasLegacyAccess = config.sheetAssignedUsers.includes(userId);
+    const mappings = config.sheetUserFormMappings || [];
+    const userMapping = mappings.find(m => m.userId === userId);
+
+    if (userMapping) {
+      // Per-user mapping exists — return their allowed forms
+      return userMapping.formIds;
+    }
+
+    if (hasLegacyAccess) {
+      // Legacy blanket access — null means "all forms"
+      return null;
+    }
+
+    // No access
+    return undefined;
   }
 }
 

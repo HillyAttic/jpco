@@ -61,20 +61,20 @@ function extractCategoryFields(fields: FormField[]): {
   const matchedPatterns = new Set<string>();
 
   fields.forEach((field) => {
-    if (field.type !== 'number') return;
-
-    const label = field.label;
-
-    // Check if this is a remark field
-    if (/remark/i.test(label) && !remarkField) {
+    // Check if this is a remark field (can be text or number type)
+    if (/remark/i.test(field.label) && !remarkField) {
       remarkField = {
         key: 'remark',
         fieldId: field.id,
-        label,
+        label: field.label,
         shortLabel: 'Remark',
       };
-      return;
     }
+
+    // Category fields must be number type
+    if (field.type !== 'number') return;
+
+    const label = field.label;
 
     // Check each category pattern
     for (const { pattern, shortLabel } of categoryPatterns) {
