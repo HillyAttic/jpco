@@ -263,8 +263,8 @@ export default function LeaveApprovalsPage() {
                         <div>{new Date(request.startDate).toLocaleDateString()}</div>
                         <div className="text-gray-500">to {new Date(request.endDate).toLocaleDateString()}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white max-w-xs">
-                        <div className="line-clamp-3">{request.reason}</div>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white min-w-[280px]">
+                        {request.reason}
                       </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(request.status)}`}>
