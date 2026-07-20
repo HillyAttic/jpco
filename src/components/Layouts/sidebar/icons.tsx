@@ -32,6 +32,8 @@ import {
   LogIn,
   FileSpreadsheet,
   Settings,
+  Wallet,
+  DollarSign,
 } from "lucide-react";
 
 export type PropsType = SVGProps<SVGSVGElement>;
@@ -75,6 +77,8 @@ export const Authentication = wrap(LogIn);
 export const User = wrap(Users);
 export const MISTrackerIcon = wrap(FileSpreadsheet);
 export const SettingsIcon = wrap(Settings);
+export const SalarySlipIcon = wrap(Wallet);
+export const SalaryConfigIcon = wrap(DollarSign);
 
 export function ChevronUp(props: PropsType) {
   const { className } = props;

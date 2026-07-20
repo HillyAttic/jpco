@@ -200,7 +200,7 @@ export function EmployeeModal({
                 placeholder="EMP001"
                 error={errors.employeeId?.message}
                 required
-                disabled={isLoading || !!employee} // Disable editing employee ID
+                disabled={isLoading}
               />
             </div>
 

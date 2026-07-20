@@ -12,6 +12,11 @@ const updateEmployeeSchema = z.object({
   department: z.string().optional(),
   role: z.enum(['Manager', 'Admin', 'Employee']).optional(),
   status: z.enum(['active', 'on-leave', 'resigned']).optional(),
+  // Payroll fields
+  doj: z.string().optional().nullable(),
+  pan: z.string().optional().nullable(),
+  designation: z.string().optional(),
+  grossSalary: z.number().min(0).optional(),
 });
 
 /**

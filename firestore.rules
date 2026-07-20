@@ -369,6 +369,25 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // PAYROLL SETTINGS (singleton document for company configuration)
+    match /payroll-settings/{settingsId} {
+      // Managers and admins can read payroll settings (for preview)
+      allow read: if isManager();
+      // Only admins can create, update, or delete payroll settings
+      allow write: if isAdmin();
+    }
+
+    // SALARY SLIPS
+    match /salary-slips/{slipId} {
+      // Employees can read their own slips, managers/admins can read all
+      allow read: if isAuthenticated() && (
+        resource.data.employeeId == request.auth.uid ||
+        isManager()
+      );
+      // Only admins can create, update, or delete salary slips
+      allow write: if isAdmin();
+    }
+
     // CATCH ALL - Deny everything else
     match /{document=**} {
       allow read, write: if false;
