@@ -97,6 +97,12 @@ export const NAV_DATA = [
         items: [],
       },
       {
+        title: "Salary Slip",
+        url: "/salary-slip",
+        icon: Icons.SalarySlipIcon,
+        items: [],
+      },
+      {
         title: "Attendance Tray",
         url: "/attendance/tray",
         icon: Icons.ClockIcon,
@@ -210,6 +216,13 @@ export const NAV_DATA = [
         icon: Icons.SettingsIcon,
         items: [],
         requiresRole: ['admin'], // Only admins can configure MIS
+      },
+      {
+        title: "Salary Config",
+        url: "/admin/salary-config",
+        icon: Icons.SalaryConfigIcon,
+        items: [],
+        requiresRole: ['admin'], // Only admins can configure payroll
       },
 
       // Authentication menu item hidden - users can access auth pages directly via URL if needed

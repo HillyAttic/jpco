@@ -17,6 +17,10 @@ export interface Employee {
   photoURL?: string;
   role: 'Manager' | 'Admin' | 'Employee';
   status: 'active' | 'on-leave' | 'resigned';
+  doj?: string | null; // Date of Joining (ISO string "YYYY-MM-DD")
+  pan?: string | null; // PAN number
+  designation?: string; // Job title/position
+  grossSalary?: number; // Monthly gross salary in INR
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -61,6 +65,10 @@ export const employeeAdminService = {
           photoURL: data.photoURL || '',
           role: this.mapUserRoleToEmployeeRole(data.role),
           status: (data.status as 'active' | 'on-leave' | 'resigned') || 'active',
+          doj: data.doj || null,
+          pan: data.pan || null,
+          designation: data.designation || '',
+          grossSalary: data.grossSalary || 0,
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
         });
@@ -130,6 +138,10 @@ export const employeeAdminService = {
         photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
         status: (data.status as 'active' | 'on-leave' | 'resigned') || 'active',
+        doj: data.doj || null,
+        pan: data.pan || null,
+        designation: data.designation || '',
+        grossSalary: data.grossSalary || 0,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
       };
@@ -166,6 +178,10 @@ export const employeeAdminService = {
         photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
         status: (data.status as 'active' | 'on-leave' | 'resigned') || 'active',
+        doj: data.doj || null,
+        pan: data.pan || null,
+        designation: data.designation || '',
+        grossSalary: data.grossSalary || 0,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
       };
@@ -233,6 +249,19 @@ export const employeeAdminService = {
       }
       if (data.employeeId) {
         updatePayload.employeeId = data.employeeId;
+      }
+      // Payroll fields
+      if (data.doj !== undefined) {
+        updatePayload.doj = data.doj;
+      }
+      if (data.pan !== undefined) {
+        updatePayload.pan = data.pan;
+      }
+      if (data.designation !== undefined) {
+        updatePayload.designation = data.designation;
+      }
+      if (data.grossSalary !== undefined) {
+        updatePayload.grossSalary = data.grossSalary;
       }
 
       // Update user document
@@ -317,6 +346,10 @@ export const employeeAdminService = {
         employeeId: data.employeeId,
         status: data.status,
         isActive: data.status === 'active',
+        doj: null,
+        pan: null,
+        designation: '',
+        grossSalary: 0,
         createdAt: now,
         updatedAt: now,
       });
@@ -337,6 +370,10 @@ export const employeeAdminService = {
         photoURL: '',
         role: data.role,
         status: data.status,
+        doj: null,
+        pan: null,
+        designation: '',
+        grossSalary: 0,
         createdAt: now.toDate(),
         updatedAt: now.toDate(),
       };

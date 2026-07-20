@@ -166,6 +166,7 @@ export default function EmployeesPage() {
       if (editingEmployee) {
         // Update existing employee - only update allowed fields
         const employeeData = {
+          employeeId: data.employeeId,
           name: data.name,
           email: data.email,
           phone: data.phone,
