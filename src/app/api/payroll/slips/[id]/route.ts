@@ -26,9 +26,14 @@ export async function GET(
       return ErrorResponses.notFound('Salary slip not found');
     }
 
-    // Employees can only view their own slips
-    if (authResult.user.claims.role === 'employee' && slip.employeeId !== authResult.user.uid) {
-      return ErrorResponses.forbidden('You can only view your own salary slips');
+    // CRITICAL: Employees can only view their own slips AND only if access is granted
+    if (authResult.user.claims.role === 'employee') {
+      if (slip.employeeId !== authResult.user.uid) {
+        return ErrorResponses.forbidden('You can only view your own salary slips');
+      }
+      if (!slip.accessGranted) {
+        return ErrorResponses.forbidden('Access to this salary slip has not been granted');
+      }
     }
 
     return NextResponse.json(slip, { status: 200 });

@@ -1,6 +1,7 @@
 /**
- * Salary Slip Page
- * Allows employees and managers to view and download salary slips
+ * Salary Slip Page (Self-Service)
+ * Users can ONLY view and download their OWN salary slips.
+ * Admins/Managers should use the payroll admin page to manage other employees' slips.
  */
 
 'use client';
@@ -13,8 +14,12 @@ import { SalarySlipPreview } from '@/components/payroll/SalarySlipPreview';
 import { generateSalarySlipPDF } from '@/components/payroll/SalarySlipPDF';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
+import { useRouter } from 'next/navigation';
 
 export default function SalarySlipPage() {
+  const { user, isAdmin, isManager } = useEnhancedAuth();
+  const router = useRouter();
   const [slips, setSlips] = useState<EmployeeSalary[]>([]);
   const [allSlips, setAllSlips] = useState<EmployeeSalary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,10 +34,13 @@ export default function SalarySlipPage() {
   ];
 
   useEffect(() => {
-    fetchAllSlips();
-    fetchSettings();
+    // Only fetch slips after we have user information
+    if (user?.uid) {
+      fetchAllSlips();
+      fetchSettings();
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [user?.uid]);
 
   // Apply month/year filter to already-loaded slips
   useEffect(() => {
@@ -44,15 +52,50 @@ export default function SalarySlipPage() {
     }
   }, [month, year, allSlips]);
 
+  // Redirect non-admin users with no accessible slips
+  useEffect(() => {
+    if (
+      user?.uid &&
+      !loading &&
+      !isAdmin &&
+      !isManager &&
+      allSlips.length === 0
+    ) {
+      toast.error('No salary slips available for your account');
+      router.push('/dashboard');
+    }
+  }, [user, loading, allSlips.length, isAdmin, isManager]);
+
   const fetchAllSlips = async () => {
     setLoading(true);
     try {
-      console.log('[SalarySlipPage] Fetching all slips');
-      const data = await payrollService.getSlips();
+      if (!user?.uid) {
+        console.error('[SalarySlipPage] Cannot fetch slips without user uid');
+        return;
+      }
+
+      console.log('[SalarySlipPage] Fetching salary slips for user:', user.uid);
+
+      // Always fetch only the current user's own slips
+      // The API enforces this server-side, but we pass employeeId explicitly for defense in depth
+      const data = await payrollService.getSlips({ employeeId: user.uid });
       console.log('[SalarySlipPage] Received', data.length, 'slip(s)');
 
+      // DEFENSIVE CHECK: Filter out any slips that don't belong to current user
+      // Extra safety measure in case the API ever fails to enforce the filter
+      const filteredData = data.filter(slip =>
+        slip.employeeId === user.uid && slip.accessGranted === true
+      );
+
+      if (data.length !== filteredData.length) {
+        console.error(
+          `[SalarySlipPage] SECURITY VIOLATION: API returned ${data.length - filteredData.length} ` +
+          `slip(s) not belonging to user ${user.uid}. This should never happen.`
+        );
+      }
+
       // Sort by year desc, then month desc (most recent first)
-      const sorted = [...data].sort((a, b) => {
+      const sorted = [...filteredData].sort((a, b) => {
         if (b.year !== a.year) return b.year - a.year;
         return b.month - a.month;
       });
@@ -113,8 +156,18 @@ export default function SalarySlipPage() {
         <p className="text-gray-600 dark:text-gray-400 mt-1">View and download your salary slips</p>
       </div>
 
-      {/* Filters */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
+      {/* Wait for user authentication */}
+      {!user?.uid ? (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-8">
+          <div className="text-center text-gray-500">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p>Loading your information...</p>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Filters */}
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4 mb-6">
         <div className="flex gap-4 items-end flex-wrap">
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -166,8 +219,28 @@ export default function SalarySlipPage() {
         {loading ? (
           <div className="p-8 text-center text-gray-500">Loading...</div>
         ) : allSlips.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">
-            No salary slips available yet
+          <div className="p-8 text-center">
+            <div className="flex flex-col items-center justify-center py-12">
+              <svg 
+                className="w-16 h-16 text-gray-400 dark:text-gray-600 mb-4" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  strokeWidth={2} 
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" 
+                />
+              </svg>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                No Salary Slips Available
+              </h3>
+              <p className="text-gray-600 dark:text-gray-400 text-center max-w-md">
+                Your salary slips will appear here once they are generated and access is granted by your administrator.
+              </p>
+            </div>
           </div>
         ) : slips.length === 0 ? (
           <div className="p-8 text-center text-gray-500">
@@ -273,6 +346,8 @@ export default function SalarySlipPage() {
           ) : null}
         </DialogContent>
       </Dialog>
+        </>
+      )}
     </div>
   );
 }

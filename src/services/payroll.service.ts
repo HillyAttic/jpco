@@ -70,11 +70,13 @@ export const payrollService = {
     employeeId?: string;
     month?: number;
     year?: number;
+    includeAll?: boolean;
   } = {}): Promise<EmployeeSalary[]> {
     const searchParams = new URLSearchParams();
     if (params.employeeId) searchParams.set('employeeId', params.employeeId);
     if (params.month !== undefined) searchParams.set('month', params.month.toString());
     if (params.year !== undefined) searchParams.set('year', params.year.toString());
+    if (params.includeAll) searchParams.set('includeAll', 'true');
 
     const response = await authenticatedFetch(`/api/payroll/slips?${searchParams.toString()}`);
     if (!response.ok) return [];
@@ -191,6 +193,32 @@ export const payrollService = {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ accessConfig }),
+    });
+    return response.ok;
+  },
+
+  /**
+   * Update accessGranted on a single salary slip
+   */
+  async updateSlipAccess(slipId: string, accessGranted: boolean): Promise<boolean> {
+    const response = await authenticatedFetch(`/api/payroll/slips/${slipId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ accessGranted }),
+    });
+    return response.ok;
+  },
+
+  /**
+   * Batch update accessGranted on multiple salary slips
+   */
+  async batchUpdateSlipAccess(
+    updates: Array<{ slipId: string; accessGranted: boolean }>
+  ): Promise<boolean> {
+    const response = await authenticatedFetch('/api/payroll/slips/batch-access', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ updates }),
     });
     return response.ok;
   },

@@ -17,6 +17,7 @@ import { PayrollSettingsForm } from '@/components/payroll/PayrollSettingsForm';
 import { GenerateSlipsPanel } from '@/components/payroll/GenerateSlipsPanel';
 import { TemplateManager } from '@/components/payroll/TemplateManager';
 import { FormulaEditor } from '@/components/payroll/FormulaEditor';
+import { PayrollAccessGate } from '@/components/payroll/PayrollAccessGate';
 import dynamic from 'next/dynamic';
 import {
   Users,
@@ -70,7 +71,7 @@ const TABS = [
   },
   {
     value: 'formula',
-    label: 'Formula',
+    label: 'Logic',
     icon: FunctionSquare,
   },
 ] as const;
@@ -156,6 +157,7 @@ export default function AdminSalaryConfigPage() {
   };
 
   return (
+    <PayrollAccessGate>
     <div className="p-6 space-y-6">
       {/* Page Header */}
       <div className="flex items-center gap-4">
@@ -344,5 +346,6 @@ export default function AdminSalaryConfigPage() {
         />
       )}
     </div>
+    </PayrollAccessGate>
   );
 }

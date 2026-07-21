@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'react-toastify';
 import { Button } from '@/components/ui/button';
 import { EmployeeSalary, PayrollSettings, SalaryCalculationResult, SalarySlipTemplate } from '@/types/payroll.types';
@@ -44,12 +44,21 @@ interface EmployeeWithCalculation extends Employee {
   loading?: boolean;
 }
 
+interface CalculationProgress {
+  current: number;
+  total: number;
+  successCount: number;
+  errorCount: number;
+}
+
 export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateToSettings }: GenerateSlipsPanelProps) {
   const [employees, setEmployees] = useState<EmployeeWithCalculation[]>([]);
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
   const [calculating, setCalculating] = useState(false);
+  const [calculationProgress, setCalculationProgress] = useState<CalculationProgress | null>(null);
   const [generating, setGenerating] = useState(false);
+  const [cleaning, setCleaning] = useState(false);
   const [previewSlip, setPreviewSlip] = useState<EmployeeSalary | null>(null);
   const [editSlip, setEditSlip] = useState<EmployeeSalary | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -59,6 +68,9 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
   // Attendance calendar modal state
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [selectedEmployeeForAttendance, setSelectedEmployeeForAttendance] = useState<{ id: string; name: string } | null>(null);
+
+  // Ref to track which year-month's access config has been applied (prevents re-applying on re-renders)
+  const appliedConfigKey = useRef<string | null>(null);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -70,20 +82,29 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     fetchTemplates();
   }, []);
 
-  // Apply saved access config when settings, employees, month, or year change
+  // Reset the ref when period changes so config gets reapplied
   useEffect(() => {
-    if (settings?.accessConfig && employees.length > 0) {
-      const key = `${year}-${month}`;
-      const savedConfig = settings.accessConfig[key] || {};
-      setEmployees(prev =>
-        prev.map(emp => ({
-          ...emp,
-          selected: savedConfig[emp.id] ?? false,
-        }))
-      );
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings?.accessConfig, employees.length, month, year]);
+    appliedConfigKey.current = null;
+  }, [month, year]);
+
+  // Apply saved access config when settings or period changes (race-condition-safe)
+  useEffect(() => {
+    const key = `${year}-${month}`;
+
+    // Guard: need settings, employees, and haven't applied this period yet
+    if (!settings?.accessConfig || employees.length === 0) return;
+    if (appliedConfigKey.current === key) return;
+
+    const savedConfig = settings.accessConfig[key] || {};
+    setEmployees(prev =>
+      prev.map(emp => ({
+        ...emp,
+        selected: savedConfig[emp.id] ?? false,
+      }))
+    );
+
+    appliedConfigKey.current = key;
+  }, [settings?.accessConfig, month, year]);
 
   // Auto-calculate salaries when settings are available and employees are loaded
   useEffect(() => {
@@ -116,7 +137,24 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       if (response.ok) {
         const json = await response.json();
         const list: Employee[] = Array.isArray(json) ? json : json.data ?? [];
-        setEmployees(list.map(emp => ({ ...emp, selected: false })).sort((a, b) => a.name.localeCompare(b.name)));
+
+        // Apply saved access config immediately when loading employees (only if settings already available)
+        const key = `${year}-${month}`;
+        const savedConfig = settings?.accessConfig?.[key];
+
+        setEmployees(
+          list
+            .map(emp => ({
+              ...emp,
+              selected: savedConfig ? (savedConfig[emp.id] ?? false) : false,
+            }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+        );
+
+        // Only mark as applied if we actually had config data to apply
+        if (savedConfig) {
+          appliedConfigKey.current = key;
+        }
       }
     } catch (error) {
       toast.error('Failed to fetch employees');
@@ -131,10 +169,11 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     }
 
     setCalculating(true);
+    const updatedEmployees = [...employees];
+    setCalculationProgress({ current: 0, total: updatedEmployees.length, successCount: 0, errorCount: 0 });
     let successCount = 0;
     let errorCount = 0;
     try {
-      const updatedEmployees = [...employees];
       for (let i = 0; i < updatedEmployees.length; i++) {
         updatedEmployees[i] = { ...updatedEmployees[i], loading: true };
         setEmployees([...updatedEmployees]);
@@ -151,6 +190,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
             loading: false,
           };
           successCount++;
+          setCalculationProgress({ current: i + 1, total: updatedEmployees.length, successCount, errorCount });
         } catch (error) {
           updatedEmployees[i] = {
             ...updatedEmployees[i],
@@ -158,6 +198,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
             loading: false,
           };
           errorCount++;
+          setCalculationProgress({ current: i + 1, total: updatedEmployees.length, successCount, errorCount });
           console.error(`Failed to calculate for ${updatedEmployees[i].name}:`, error);
         }
       }
@@ -174,24 +215,23 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       console.error(error);
     } finally {
       setCalculating(false);
+      setCalculationProgress(null);
     }
   };
 
   const handleToggleAccess = async (id: string) => {
-    // First update local state
+    // Get the new selected state before toggling
+    const emp = employees.find(e => e.id === id);
+    const newState = !emp?.selected;
+
+    // Optimistic local update
     setEmployees(prev =>
-      prev.map(emp =>
-        emp.id === id ? { ...emp, selected: !emp.selected } : emp
-      )
+      prev.map(e => (e.id === id ? { ...e, selected: newState } : e))
     );
 
     // Then persist to Firestore
     try {
       const key = `${year}-${month}`;
-      // Get the new selected state after toggle
-      const emp = employees.find(e => e.id === id);
-      const newState = !emp?.selected;
-
       const currentConfig = settings?.accessConfig || {};
       const monthConfig = currentConfig[key] || {};
       const newAccessConfig = {
@@ -202,17 +242,80 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         },
       };
 
+      // 1. Persist to settings
       await payrollService.saveAccessConfig(newAccessConfig);
+
+      // 2. Update accessGranted on existing slip if one exists
+      console.log(`[GenerateSlipsPanel] handleToggleAccess - Looking for slip: employeeId=${id}, month=${month}, year=${year}`);
+
+      // Try to find the slip with includeAll=true (bypasses accessGranted filter)
+      const existingSlips = await payrollService.getSlips({ employeeId: id, month, year, includeAll: true });
+      console.log(`[GenerateSlipsPanel] handleToggleAccess - Found ${existingSlips.length} slip(s)`, existingSlips);
+
+      if (existingSlips.length > 0 && existingSlips[0].id) {
+        const slipId = existingSlips[0].id;
+        console.log(`[GenerateSlipsPanel] handleToggleAccess - Updating slip ${slipId} to accessGranted=${newState}`);
+
+        const success = await payrollService.updateSlipAccess(slipId, newState);
+        console.log(`[GenerateSlipsPanel] handleToggleAccess - Update result: ${success}`);
+
+        if (!success) {
+          console.error(`[GenerateSlipsPanel] handleToggleAccess - Failed to update slip access`);
+          toast.error('Failed to update slip access');
+        } else {
+          toast.success(`Access ${newState ? 'granted' : 'revoked'} for ${emp?.name || 'employee'}`);
+        }
+      } else {
+        console.warn(`[GenerateSlipsPanel] handleToggleAccess - No slip found for employee ${id}. The slip may not have been generated yet.`);
+        toast.warn(`No slip found for this period. Generate the slip first.`);
+      }
     } catch (error) {
       console.error('Failed to save access config:', error);
+      toast.error('Failed to save access settings');
     }
   };
 
-  const handleToggleAll = () => {
+  const handleToggleAll = async () => {
     const allEnabled = employees.every(emp => emp.selected);
+    const newState = !allEnabled;
+
+    // Optimistic local update
     setEmployees(prev =>
-      prev.map(emp => ({ ...emp, selected: !allEnabled }))
+      prev.map(emp => ({ ...emp, selected: newState }))
     );
+
+    try {
+      const key = `${year}-${month}`;
+      const currentConfig = settings?.accessConfig || {};
+      const monthConfig = currentConfig[key] || {};
+
+      // Build config with all employees set to newState
+      const newAccessConfig = {
+        ...currentConfig,
+        [key]: {
+          ...monthConfig,
+          ...Object.fromEntries(employees.map(emp => [emp.id, newState])),
+        },
+      };
+
+      // 1. Persist to settings
+      await payrollService.saveAccessConfig(newAccessConfig);
+
+      // 2. Update accessGranted on existing slips for this period
+      const existingSlips = await payrollService.getSlips({ month, year, includeAll: true });
+      if (existingSlips.length > 0) {
+        const updates = existingSlips
+          .filter(slip => slip.id)
+          .map(slip => ({ slipId: slip.id!, accessGranted: newState }));
+
+        if (updates.length > 0) {
+          await payrollService.batchUpdateSlipAccess(updates);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to update all toggles:', error);
+      toast.error('Failed to update all toggles');
+    }
   };
 
   const handlePreview = (employee: EmployeeWithCalculation) => {
@@ -486,6 +589,46 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     }
   };
 
+  const handleCleanupSlips = async () => {
+    const confirmMessage = `⚠️ WARNING: This will DELETE all generated salary slips for ${monthNames[month]} ${year}.\n\nThis action cannot be undone!\n\nAre you sure you want to proceed?`;
+    
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    // Double confirmation for safety
+    if (!confirm('FINAL CONFIRMATION: Delete all slips for this period?')) {
+      return;
+    }
+
+    setCleaning(true);
+    try {
+      console.log(`[GenerateSlipsPanel] Cleaning up slips for month=${month}, year=${year}`);
+      
+      const response = await authenticatedFetch('/api/payroll/cleanup-slips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month, year }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        toast.success(`Successfully deleted ${data.deletedCount} salary slip(s)`);
+        onGenerationComplete?.();
+        // Reset selections
+        setEmployees(prev => prev.map(emp => ({ ...emp, selected: false })));
+      } else {
+        const errorData = await response.json();
+        toast.error(errorData.error || 'Failed to clean up salary slips');
+      }
+    } catch (error) {
+      toast.error('Failed to clean up salary slips');
+      console.error(error);
+    } finally {
+      setCleaning(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Settings not configured warning */}
@@ -550,6 +693,52 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
           </Button>
         </div>
       </div>
+
+      {/* Calculation Progress Bar */}
+      {calculating && calculationProgress && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Calculating salaries...
+              </span>
+            </div>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {calculationProgress.current} / {calculationProgress.total}
+            </span>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300 ease-out flex items-center justify-center"
+              style={{
+                width: `${(calculationProgress.current / calculationProgress.total) * 100}%`,
+                background: 'linear-gradient(90deg, #3b82f6, #2563eb)',
+              }}
+            >
+              {calculationProgress.current / calculationProgress.total >= 0.2 && (
+                <span className="text-[10px] font-bold text-white leading-none">
+                  {Math.round((calculationProgress.current / calculationProgress.total) * 100)}%
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex gap-4 mt-2">
+            <span className="text-xs text-gray-500">
+              ✓ {calculationProgress.successCount} success
+            </span>
+            {calculationProgress.errorCount > 0 && (
+              <span className="text-xs text-red-500">
+                ✗ {calculationProgress.errorCount} failed
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Employee List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
@@ -684,7 +873,18 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       </div>
 
       {/* Generate Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-between items-center gap-4">
+        <Button
+          onClick={handleCleanupSlips}
+          loading={cleaning}
+          size="lg"
+          variant="destructive"
+          disabled={generating || calculating}
+          className="bg-red-600 hover:bg-red-700 text-white"
+        >
+          {cleaning ? 'Cleaning Up...' : 'Clean Up Slips'}
+        </Button>
+        
         <Button
           onClick={handleGenerate}
           loading={generating}

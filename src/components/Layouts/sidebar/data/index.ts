@@ -101,6 +101,7 @@ export const NAV_DATA = [
         url: "/salary-slip",
         icon: Icons.SalarySlipIcon,
         items: [],
+        dynamicVisibility: true, // Hidden if employee has no accessible slips
       },
       {
         title: "Attendance Tray",
@@ -218,7 +219,7 @@ export const NAV_DATA = [
         requiresRole: ['admin'], // Only admins can configure MIS
       },
       {
-        title: "Salary Config",
+        title: "Payroll Panel",
         url: "/admin/salary-config",
         icon: Icons.SalaryConfigIcon,
         items: [],
