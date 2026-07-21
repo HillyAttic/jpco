@@ -29,6 +29,7 @@ import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/sol
 import { pendingInvoiceService, type PendingInvoice } from '@/services/pending-invoice.service';
 import { CreateEditInvoiceModal } from '@/components/admin/CreateEditInvoiceModal';
 import { EyeIcon } from '@heroicons/react/24/outline';
+import { InvoicesAccessGate } from '@/components/admin/InvoicesAccessGate';
 
 type ActiveTab = 'pending' | 'archived';
 
@@ -146,6 +147,7 @@ export default function PendingInvoicesPage() {
   };
 
   return (
+    <InvoicesAccessGate>
     <div className="p-4 sm:p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
@@ -561,5 +563,6 @@ export default function PendingInvoicesPage() {
         </DialogContent>
       </Dialog>
     </div>
+    </InvoicesAccessGate>
   );
 }
