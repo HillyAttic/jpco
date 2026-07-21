@@ -101,6 +101,7 @@ export const NAV_DATA = [
         url: "/salary-slip",
         icon: Icons.SalarySlipIcon,
         items: [],
+        dynamicVisibility: true, // Hidden if employee has no accessible slips
       },
       {
         title: "Attendance Tray",

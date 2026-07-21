@@ -379,13 +379,10 @@ service cloud.firestore {
 
     // SALARY SLIPS
     match /salary-slips/{slipId} {
-      // Employees can read their own slips, managers/admins can read all
-      allow read: if isAuthenticated() && (
-        resource.data.employeeId == request.auth.uid ||
-        isManager()
-      );
-      // Only admins can create, update, or delete salary slips
-      allow write: if isAdmin();
+      // Employees/managers can read their own slips (real-time listener for sidebar + self-service page)
+      allow read: if isAuthenticated() && resource.data.employeeId == request.auth.uid;
+      // Only admins can read all slips and create/update/delete
+      allow read, write: if isAdmin();
     }
 
     // CATCH ALL - Deny everything else

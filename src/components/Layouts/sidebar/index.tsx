@@ -12,6 +12,8 @@ import { MenuItem } from "./menu-item";
 import { useSidebarContext } from "./sidebar-context";
 import { useAuthEnhanced } from "@/hooks/use-auth-enhanced";
 import { authenticatedFetch } from "@/lib/api-client";
+import { db } from "@/lib/firebase";
+import { collection, query, where, onSnapshot, Unsubscribe } from "firebase/firestore";
 
 export function Sidebar() {
   const pathname = usePathname();
@@ -24,6 +26,8 @@ export function Sidebar() {
   );
   const [misConfig, setMisConfig] = useState<any>(null);
   const [misConfigLoaded, setMisConfigLoaded] = useState(false);
+  const [hasAccessibleSlips, setHasAccessibleSlips] = useState<boolean | null>(null);
+  const [slipCheckDone, setSlipCheckDone] = useState(false);
 
   const toggleSection = (label: string) => {
     setCollapsedSections((prev) =>
@@ -59,6 +63,45 @@ export function Sidebar() {
         });
     }
   }, [user, misConfigLoaded]);
+
+  // Real-time listener for salary slip access changes
+  // Hides/shows the Salary Slip tab instantly when admin toggles per-employee access
+  useEffect(() => {
+    if (!user) return;
+
+    // Admins: always show the Salary Slip link — no listener needed
+    if (hasRole(['admin'])) {
+      setHasAccessibleSlips(true);
+      setSlipCheckDone(true);
+      return;
+    }
+
+    setSlipCheckDone(false);
+    setHasAccessibleSlips(false); // Default to hidden until listener confirms
+
+    const q = query(
+      collection(db, 'salary-slips'),
+      where('employeeId', '==', user.uid),
+      where('accessGranted', '==', true),
+    );
+
+    const unsubscribe: Unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const count = snapshot.docs.length;
+        console.log(`[Sidebar] Salary slip real-time: ${count} accessible slip(s)`);
+        setHasAccessibleSlips(count > 0);
+        setSlipCheckDone(true);
+      },
+      (error) => {
+        console.error('[Sidebar] Salary slip listener error:', error);
+        setHasAccessibleSlips(false);
+        setSlipCheckDone(true);
+      },
+    );
+
+    return () => { unsubscribe(); };
+  }, [user, hasRole]);
 
   useEffect(() => {
     // Keep collapsible open when its subpage is active
@@ -209,6 +252,12 @@ export function Sidebar() {
                 if (item.dynamicVisibility && item.url === '/mis-tracker') {
                   if (!misConfigLoaded) return false;
                   return misConfig?.hasSheetAccess || false;
+                }
+                // Handle dynamic visibility for Salary Slip — hidden if user has no accessible slips
+                if (item.dynamicVisibility && item.url === '/salary-slip') {
+                  // Admins: always visible. Others: only visible when check is done AND has slips
+                  if (hasRole(['admin'])) return true;
+                  return slipCheckDone && hasAccessibleSlips === true;
                 }
                 // Filter out items that require specific roles
                 if (item.requiresRole) {
