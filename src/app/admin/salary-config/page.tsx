@@ -70,7 +70,7 @@ const TABS = [
   },
   {
     value: 'formula',
-    label: 'Formula',
+    label: 'Logic',
     icon: FunctionSquare,
   },
 ] as const;

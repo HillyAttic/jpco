@@ -219,7 +219,7 @@ export const NAV_DATA = [
         requiresRole: ['admin'], // Only admins can configure MIS
       },
       {
-        title: "Salary Config",
+        title: "Payroll Panel",
         url: "/admin/salary-config",
         icon: Icons.SalaryConfigIcon,
         items: [],

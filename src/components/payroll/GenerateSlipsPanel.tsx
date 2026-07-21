@@ -44,11 +44,19 @@ interface EmployeeWithCalculation extends Employee {
   loading?: boolean;
 }
 
+interface CalculationProgress {
+  current: number;
+  total: number;
+  successCount: number;
+  errorCount: number;
+}
+
 export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateToSettings }: GenerateSlipsPanelProps) {
   const [employees, setEmployees] = useState<EmployeeWithCalculation[]>([]);
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
   const [calculating, setCalculating] = useState(false);
+  const [calculationProgress, setCalculationProgress] = useState<CalculationProgress | null>(null);
   const [generating, setGenerating] = useState(false);
   const [cleaning, setCleaning] = useState(false);
   const [previewSlip, setPreviewSlip] = useState<EmployeeSalary | null>(null);
@@ -161,10 +169,11 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     }
 
     setCalculating(true);
+    const updatedEmployees = [...employees];
+    setCalculationProgress({ current: 0, total: updatedEmployees.length, successCount: 0, errorCount: 0 });
     let successCount = 0;
     let errorCount = 0;
     try {
-      const updatedEmployees = [...employees];
       for (let i = 0; i < updatedEmployees.length; i++) {
         updatedEmployees[i] = { ...updatedEmployees[i], loading: true };
         setEmployees([...updatedEmployees]);
@@ -181,6 +190,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
             loading: false,
           };
           successCount++;
+          setCalculationProgress({ current: i + 1, total: updatedEmployees.length, successCount, errorCount });
         } catch (error) {
           updatedEmployees[i] = {
             ...updatedEmployees[i],
@@ -188,6 +198,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
             loading: false,
           };
           errorCount++;
+          setCalculationProgress({ current: i + 1, total: updatedEmployees.length, successCount, errorCount });
           console.error(`Failed to calculate for ${updatedEmployees[i].name}:`, error);
         }
       }
@@ -204,6 +215,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       console.error(error);
     } finally {
       setCalculating(false);
+      setCalculationProgress(null);
     }
   };
 
@@ -681,6 +693,52 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
           </Button>
         </div>
       </div>
+
+      {/* Calculation Progress Bar */}
+      {calculating && calculationProgress && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow p-4">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-2">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                Calculating salaries...
+              </span>
+            </div>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+              {calculationProgress.current} / {calculationProgress.total}
+            </span>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-300 ease-out flex items-center justify-center"
+              style={{
+                width: `${(calculationProgress.current / calculationProgress.total) * 100}%`,
+                background: 'linear-gradient(90deg, #3b82f6, #2563eb)',
+              }}
+            >
+              {calculationProgress.current / calculationProgress.total >= 0.2 && (
+                <span className="text-[10px] font-bold text-white leading-none">
+                  {Math.round((calculationProgress.current / calculationProgress.total) * 100)}%
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div className="flex gap-4 mt-2">
+            <span className="text-xs text-gray-500">
+              ✓ {calculationProgress.successCount} success
+            </span>
+            {calculationProgress.errorCount > 0 && (
+              <span className="text-xs text-red-500">
+                ✗ {calculationProgress.errorCount} failed
+              </span>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Employee List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow">
