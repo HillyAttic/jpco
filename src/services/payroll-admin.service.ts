@@ -61,6 +61,7 @@ export const payrollAdminService = {
     variables: {
       grossSalary: number;
       totalDaysInMonth: number;
+      totalWorkingDays: number;
       basicPercentage: number;
       hraPercentage: number;
       specialPercentage: number;
@@ -70,8 +71,8 @@ export const payrollAdminService = {
       wfh: number;
       halfDay: number;
       paidLeave: number;
-      lopLeave: number;
-      lopDays: number;
+      leaveTaken: number;
+      unpaidLeave: number;
       holidays: number;
       approvedLeave: number;
       unapprovedLeave: number;
@@ -81,6 +82,7 @@ export const payrollAdminService = {
       const {
         grossSalary,
         totalDaysInMonth,
+        totalWorkingDays,
         basicPercentage,
         hraPercentage,
         specialPercentage,
@@ -90,8 +92,8 @@ export const payrollAdminService = {
         wfh,
         halfDay,
         paidLeave,
-        lopLeave,
-        lopDays,
+        leaveTaken,
+        unpaidLeave,
         holidays,
         approvedLeave,
         unapprovedLeave,
@@ -112,6 +114,7 @@ export const payrollAdminService = {
       const evaluateFn = new Function(
         'grossSalary',
         'totalDaysInMonth',
+        'totalWorkingDays',
         'basicPercentage',
         'hraPercentage',
         'specialPercentage',
@@ -121,8 +124,8 @@ export const payrollAdminService = {
         'wfh',
         'halfDay',
         'paidLeave',
-        'lopLeave',
-        'lopDays',
+        'leaveTaken',
+        'unpaidLeave',
         'holidays',
         'approvedLeave',
         'unapprovedLeave',
@@ -139,6 +142,7 @@ export const payrollAdminService = {
       const result = evaluateFn(
         grossSalary,
         totalDaysInMonth,
+        totalWorkingDays,
         basicPercentage,
         hraPercentage,
         specialPercentage,
@@ -148,8 +152,8 @@ export const payrollAdminService = {
         wfh,
         halfDay,
         paidLeave,
-        lopLeave,
-        lopDays,
+        leaveTaken,
+        unpaidLeave,
         holidays,
         approvedLeave,
         unapprovedLeave,
@@ -177,13 +181,9 @@ export const payrollAdminService = {
       } = result;
 
       // Calculate paidDays from the formula result or fallback
-      // Paid Days = baseDays − lopDeduction (free leaves reduce the penalty from absences)
-      const baseDays = present + wfh + (halfDay * 0.5);
-      const totalLeavesForFormula = approvedLeave + unapprovedLeave;
-      const lopDeductionForFormula = Math.max(0, totalLeavesForFormula - allowedPaidLeaves);
-      const computedPaidDays = paidDays || (includePaidLeavesInPaidDays && totalLeavesForFormula > 0
-        ? Math.max(0, baseDays - lopDeductionForFormula)
-        : Math.max(0, baseDays));
+      // Paid Days = totalWorkingDays - unpaidLeave
+      const totalWorking = totalDaysInMonth - holidays;
+      const computedPaidDays = paidDays || Math.max(0, totalWorking - unpaidLeave);
 
       return {
         breakup: {
@@ -198,14 +198,10 @@ export const payrollAdminService = {
     } catch (error) {
       console.error('[PayrollAdminService] Error evaluating formula:', error);
       // Fallback to default calculation
-      const { present = 0, wfh = 0, halfDay = 0, paidLeave = 0, lopLeave = 0, approvedLeave = 0, unapprovedLeave = 0, allowedPaidLeaves = 0, includePaidLeavesInPaidDays = false } = variables;
-      const fallbackBaseDays = present + wfh + (halfDay * 0.5);
-      const fallbackTotalLeaves = approvedLeave + unapprovedLeave;
-      const fallbackLopDeduction = Math.max(0, fallbackTotalLeaves - allowedPaidLeaves);
-      const fallbackPaidDays = includePaidLeavesInPaidDays && fallbackTotalLeaves > 0
-        ? Math.max(0, fallbackBaseDays - fallbackLopDeduction)
-        : Math.max(0, fallbackBaseDays);
-      const netSalary = variables.grossSalary * (fallbackPaidDays / 26);
+      const { present = 0, wfh = 0, halfDay = 0, leaveTaken = 0, unpaidLeave = 0, holidays = 0, totalDaysInMonth: tdim = 30 } = variables;
+      const totalWkDays = tdim - holidays;
+      const fallbackPaidDays = Math.max(0, totalWkDays - unpaidLeave);
+      const netSalary = variables.grossSalary * (fallbackPaidDays / totalWkDays);
       const basic = netSalary * (variables.basicPercentage / 100);
       const hra = netSalary * (variables.hraPercentage / 100);
       const special = netSalary * (variables.specialPercentage / 100);
@@ -369,14 +365,11 @@ export const payrollAdminService = {
         unapprovedLeave++;
       }
 
-      // Calculate total leaves and apply free leave allowance
-      const totalLeaves = approvedLeave + unapprovedLeave;
-      const freeLeaves = Math.min(totalLeaves, settings.allowedPaidLeaves);
-
-      // LOP Days = total absent days (for display transparency)
-      // The actual deduction from Paid Days is only the EXCESS beyond allowed leaves
-      const lopDays = totalLeaves;
-      const lopDeduction = Math.max(0, lopDays - settings.allowedPaidLeaves);
+      // Calculate leave metrics
+      const leaveTaken = approvedLeave + unapprovedLeave;
+      const paidLeave = Math.min(leaveTaken, settings.allowedPaidLeaves);
+      const unpaidLeave = Math.max(0, leaveTaken - paidLeave);
+      const totalWorkingDays = totalDaysInMonth - holiday;
 
       // ── Salary Formula ─────────────────────────────────────────────
       // All variables are passed to the formula scope.
@@ -393,6 +386,7 @@ export const payrollAdminService = {
           {
             grossSalary,
             totalDaysInMonth,
+            totalWorkingDays,
             basicPercentage: settings.basicPercentage,
             hraPercentage: settings.hraPercentage,
             specialPercentage: settings.specialPercentage,
@@ -401,9 +395,9 @@ export const payrollAdminService = {
             present,
             wfh,
             halfDay,
-            paidLeave: freeLeaves,
-            lopLeave: lopDeduction,
-            lopDays,
+            paidLeave,
+            leaveTaken,
+            unpaidLeave,
             holidays: holiday,
             approvedLeave,
             unapprovedLeave,
@@ -412,15 +406,9 @@ export const payrollAdminService = {
         salaryBreakup = result.breakup;
         computedPaidDays = result.paidDays;
       } else {
-        // Default: Paid Days = baseDays [− lopDeduction if toggle is ON and employee has taken leave]
-        // Free leaves reduce the penalty from absences — they don't add extra paid days on top of present.
-        const baseDays = present + wfh + (halfDay * 0.5);
-        if (settings.includePaidLeavesInPaidDays && totalLeaves > 0) {
-          computedPaidDays = Math.max(0, baseDays - lopDeduction);
-        } else {
-          computedPaidDays = Math.max(0, baseDays);
-        }
-        const netSalary = (grossSalary * computedPaidDays) / 26;
+        // Default: Paid Days = totalWorkingDays - unpaidLeave
+        computedPaidDays = Math.max(0, totalWorkingDays - unpaidLeave);
+        const netSalary = (grossSalary * computedPaidDays) / Math.max(1, totalWorkingDays);
         const basic = netSalary * (settings.basicPercentage / 100);
         const hra = netSalary * (settings.hraPercentage / 100);
         const special = netSalary * (settings.specialPercentage / 100);
@@ -442,10 +430,10 @@ export const payrollAdminService = {
         unapprovedLeave,
         halfDay,
         holiday,
-        paidLeave: freeLeaves,
-        lopLeave: lopDeduction, // Actual deduction from paid days (excess beyond allowed leaves)
+        paidLeave,
+        leaveTaken,
+        unpaidLeave,
         paidDays: computedPaidDays,
-        lopDays, // Total absent days (for display)
       };
 
       return {
@@ -453,7 +441,6 @@ export const payrollAdminService = {
         salaryBreakup,
         totalDaysInMonth,
         paidDays: computedPaidDays,
-        lopDays,
       };
     } catch (error) {
       console.error('[PayrollAdminService] Error calculating salary:', error);
@@ -531,7 +518,6 @@ export const payrollAdminService = {
           year,
           totalDaysInMonth: calculation.totalDaysInMonth,
           paidDays: calculation.paidDays,
-          lopDays: calculation.lopDays,
           attendanceBreakdown: calculation.attendanceBreakdown,
           salaryBreakup: calculation.salaryBreakup,
           slipNumber,

@@ -27,14 +27,15 @@ const SUGGESTION_LIBRARY: SuggestionItem[] = [
   { name: 'present', description: 'Days present in office', category: 'Variable', type: 'variable' },
   { name: 'wfh', description: 'Work from home days', category: 'Variable', type: 'variable' },
   { name: 'halfDay', description: 'Half-day attendance count', category: 'Variable', type: 'variable' },
-  { name: 'paidLeave', description: 'Allowed paid leave days used', category: 'Variable', type: 'variable' },
-  { name: 'lopLeave', description: 'Loss of pay days (excess leave)', category: 'Variable', type: 'variable' },
-  { name: 'lopDays', description: 'Total loss of pay days', category: 'Variable', type: 'variable' },
+  { name: 'paidLeave', description: 'Allowed paid leaves per month from settings', category: 'Variable', type: 'variable' },
+  { name: 'leaveTaken', description: 'Total leaves taken (approved + unapproved)', category: 'Variable', type: 'variable' },
+  { name: 'unpaidLeave', description: 'Excess leave beyond allowed paid leaves', category: 'Variable', type: 'variable' },
   { name: 'holidays', description: 'Number of holidays in the month', category: 'Variable', type: 'variable' },
   { name: 'approvedLeave', description: 'Approved leave days taken', category: 'Variable', type: 'variable' },
   { name: 'unapprovedLeave', description: 'Unapproved leave days taken', category: 'Variable', type: 'variable' },
 
   // Components — Calculated values
+  { name: 'totalWorkingDays', description: 'Total working days (total days minus holidays)', category: 'Component', type: 'component' },
   { name: 'paidDays', description: 'Total paid days for the month', category: 'Component', type: 'component' },
   { name: 'proratedGross', description: 'Gross salary adjusted for attendance', category: 'Component', type: 'component' },
   { name: 'basic', description: 'Basic wage component', category: 'Component', type: 'component' },

@@ -1,6 +1,7 @@
 /**
  * EditSalarySlipModal
  * Dialog for editing all fields of a salary slip (salary, deductions, attendance, etc.)
+ * Template-driven: respects template section/field visibility and custom labels.
  */
 
 'use client';
@@ -14,7 +15,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { EmployeeSalary } from '@/types/payroll.types';
+import { EmployeeSalary, SalarySlipTemplate } from '@/types/payroll.types';
 
 interface EditSalarySlipModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ interface EditSalarySlipModalProps {
   onSave: (data: EditSalarySlipData) => Promise<void>;
   slip: EmployeeSalary | null;
   isLoading: boolean;
+  template?: SalarySlipTemplate | null; // template for dynamic field/section rendering
 }
 
 const schema = z.object({
@@ -35,10 +37,10 @@ const schema = z.object({
   wfh: z.number().min(0),
   halfDay: z.number().min(0),
   paidLeave: z.number().min(0),
-  lopLeave: z.number().min(0),
+  leaveTaken: z.number().min(0),
+  unpaidLeave: z.number().min(0),
   holiday: z.number().min(0),
   paidDays: z.number().min(0),
-  lopDays: z.number().min(0),
   // Salary breakup
   basic: z.number().min(0),
   hra: z.number().min(0),
@@ -58,7 +60,8 @@ const formatCurrency = (amount: number) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(amount);
 
 export function EditSalarySlipModal({
@@ -67,6 +70,7 @@ export function EditSalarySlipModal({
   onSave,
   slip,
   isLoading,
+  template,
 }: EditSalarySlipModalProps) {
   const { register, handleSubmit, reset, watch, setValue, formState: { errors } } = useForm<EditSalarySlipData>({
     resolver: zodResolver(schema),
@@ -80,10 +84,10 @@ export function EditSalarySlipModal({
       wfh: 0,
       halfDay: 0,
       paidLeave: 0,
-      lopLeave: 0,
+      leaveTaken: 0,
+      unpaidLeave: 0,
       holiday: 0,
       paidDays: 0,
-      lopDays: 0,
       basic: 0,
       hra: 0,
       special: 0,
@@ -113,21 +117,22 @@ export function EditSalarySlipModal({
     (tds || 0) + (loanRecovery || 0) + (otherDeduction || 0);
   const netSalary = totalEarnings - totalDeductions;
 
-  // Auto-set paidDays = present + wfh + (halfDay * 0.5) when attendance changes
+  // Auto-set paidDays = present + wfh + (halfDay * 0.5) - unpaidLeave when attendance changes
   const present = watch('present');
   const wfh = watch('wfh');
   const halfDay = watch('halfDay');
+  const unpaidLeave = watch('unpaidLeave');
   const paidDays = watch('paidDays');
 
   useEffect(() => {
-    if (present !== undefined && wfh !== undefined && halfDay !== undefined) {
-      const computed = present + wfh + (halfDay * 0.5);
+    if (present !== undefined && wfh !== undefined && halfDay !== undefined && unpaidLeave !== undefined) {
+      const computed = present + wfh + (halfDay * 0.5) - unpaidLeave;
       if (Math.abs(paidDays - computed) > 0.01) {
         setValue('paidDays', computed, { shouldValidate: true });
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [present, wfh, halfDay, setValue]);
+  }, [present, wfh, halfDay, unpaidLeave, setValue]);
 
   useEffect(() => {
     if (isOpen && slip) {
@@ -141,19 +146,19 @@ export function EditSalarySlipModal({
         wfh: slip.attendanceBreakdown?.wfh || 0,
         halfDay: slip.attendanceBreakdown?.halfDay || 0,
         paidLeave: slip.attendanceBreakdown?.paidLeave || 0,
-        lopLeave: slip.attendanceBreakdown?.lopLeave || 0,
+        leaveTaken: slip.attendanceBreakdown?.leaveTaken || 0,
+        unpaidLeave: slip.attendanceBreakdown?.unpaidLeave || 0,
         holiday: slip.attendanceBreakdown?.holiday || 0,
         paidDays: slip.paidDays || 0,
-        lopDays: slip.lopDays || 0,
         basic: slip.salaryBreakup?.basic || 0,
         hra: slip.salaryBreakup?.hra || 0,
         special: slip.salaryBreakup?.special || 0,
-        epf: 0,
-        esi: 0,
-        professionalTax: 0,
-        tds: 0,
-        loanRecovery: 0,
-        otherDeduction: 0,
+        epf: slip.salaryBreakup?.epf ?? 0,
+        esi: slip.salaryBreakup?.esi ?? 0,
+        professionalTax: slip.salaryBreakup?.professionalTax ?? 0,
+        tds: slip.salaryBreakup?.tds ?? 0,
+        loanRecovery: slip.salaryBreakup?.loanRecovery ?? 0,
+        otherDeduction: slip.salaryBreakup?.otherDeduction ?? 0,
       });
     }
   }, [isOpen, slip, reset]);
@@ -182,6 +187,55 @@ export function EditSalarySlipModal({
   const inputClass =
     'w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm';
 
+  // ── Template helpers ────────────────────────────────────────────────
+  const isSectionVisible = (key: string) =>
+    !template || template.sections.find((s) => s.key === key)?.visible !== false;
+
+  const getSectionFields = (key: string) => {
+    const section = template?.sections.find((s) => s.key === key);
+    if (!section) return null;
+    return section.fields.filter((f) => f.visible);
+  };
+
+  const fieldLabel = (sectionKey: string, fieldKey: string, fallback: string): string => {
+    if (!template) return fallback;
+    const fields = getSectionFields(sectionKey);
+    if (!fields) return fallback;
+    return fields.find((f) => f.key === fieldKey)?.label ?? fallback;
+  };
+
+  const sectionTitle = (key: string, fallback: string): string => {
+    if (!template) return fallback;
+    return template.sections.find((s) => s.key === key)?.title ?? fallback;
+  };
+
+  // ── Render helpers ─────────────────────────────────────────────────
+  const renderNumberField = (
+    fieldKey: string,
+    sectionKey: string,
+    fallbackLabel: string,
+    opts?: { min?: number; step?: number; bg?: string; disabled?: boolean }
+  ) => {
+    if (template && !isSectionVisible(sectionKey)) return null;
+    const fields = getSectionFields(sectionKey);
+    if (fields && !fields.find((f) => f.key === fieldKey)) return null;
+    return (
+      <div key={fieldKey}>
+        <Label htmlFor={fieldKey} className="text-xs">{fieldLabel(sectionKey, fieldKey, fallbackLabel)}</Label>
+        <Input
+          id={fieldKey}
+          type="number"
+          min={opts?.min ?? 0}
+          step={opts?.step ?? 0.01}
+          {...register(fieldKey as any, { valueAsNumber: true })}
+          error={(errors as any)[fieldKey]?.message}
+          disabled={isLoading}
+          className={opts?.bg ? `${inputClass} ${opts.bg}` : inputClass}
+        />
+      </div>
+    );
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[950px] max-h-[90vh] overflow-y-auto">
@@ -194,211 +248,210 @@ export function EditSalarySlipModal({
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* ── Employee Details ── */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-            <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-              Employee Details
-            </h4>
-            <div className="grid grid-cols-3 gap-3">
-              <div>
-                <Label className="text-xs">Employee ID</Label>
-                <div className="text-sm font-medium text-gray-900 dark:text-white py-1.5">
-                  {slip?.employeeCode || '-'}
-                </div>
-              </div>
-              <div>
-                <Label className="text-xs">Employee Name</Label>
-                <div className="text-sm font-medium text-gray-900 dark:text-white py-1.5">
-                  {slip?.name || '-'}
-                </div>
-              </div>
-              <div>
-                <Label htmlFor="grossSalary" className="text-xs">Gross Salary</Label>
-                <Input
-                  id="grossSalary"
-                  type="number"
-                  placeholder="e.g., 50000"
-                  {...register('grossSalary', { valueAsNumber: true })}
-                  error={errors.grossSalary?.message}
-                  disabled={isLoading}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <Label htmlFor="designation" className="text-xs">Designation</Label>
-                <Input
-                  id="designation"
-                  placeholder="e.g., Software Engineer"
-                  {...register('designation')}
-                  error={errors.designation?.message}
-                  disabled={isLoading}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <Label htmlFor="department" className="text-xs">Department</Label>
-                <Input
-                  id="department"
-                  placeholder="e.g., Engineering"
-                  {...register('department')}
-                  error={errors.department?.message}
-                  disabled={isLoading}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <Label htmlFor="pan" className="text-xs">PAN</Label>
-                <Input
-                  id="pan"
-                  placeholder="ABCDE1234F"
-                  {...register('pan')}
-                  error={errors.pan?.message}
-                  disabled={isLoading}
-                  className={inputClass}
-                />
-              </div>
-              <div>
-                <Label htmlFor="doj" className="text-xs">Date of Joining</Label>
-                <Input
-                  id="doj"
-                  type="date"
-                  {...register('doj')}
-                  error={errors.doj?.message}
-                  disabled={isLoading}
-                  className={inputClass}
-                />
+          {isSectionVisible('employeeDetails') && (
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+              <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                {sectionTitle('employeeDetails', 'Employee Details')}
+              </h4>
+              <div className="grid grid-cols-3 gap-3">
+                {(!getSectionFields('employeeDetails') ||
+                  getSectionFields('employeeDetails')!.some((f) => f.key === 'employeeId')) && (
+                  <div>
+                    <Label className="text-xs">{fieldLabel('employeeDetails', 'employeeId', 'Employee ID')}</Label>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white py-1.5">
+                      {slip?.employeeCode || '-'}
+                    </div>
+                  </div>
+                )}
+                {(!getSectionFields('employeeDetails') ||
+                  getSectionFields('employeeDetails')!.some((f) => f.key === 'name')) && (
+                  <div>
+                    <Label className="text-xs">{fieldLabel('employeeDetails', 'name', 'Employee Name')}</Label>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white py-1.5">
+                      {slip?.name || '-'}
+                    </div>
+                  </div>
+                )}
+                {/* Read-only fields + editable fields from template */}
+                {(() => {
+                  const empSection = template?.sections.find((s) => s.key === 'employeeDetails');
+                  const visibleFieldKeys = empSection
+                    ? new Set(empSection.fields.filter((f) => f.visible).map((f) => f.key))
+                    : new Set(['grossSalary', 'designation', 'department', 'pan', 'doj']);
+
+                  return (
+                    <>
+                      {visibleFieldKeys.has('grossSalary') && (
+                        <div>
+                          <Label htmlFor="grossSalary" className="text-xs">
+                            {fieldLabel('employeeDetails', 'grossSalary', 'Gross Salary')}
+                          </Label>
+                          <Input
+                            id="grossSalary"
+                            type="number"
+                            placeholder="e.g., 50000"
+                            {...register('grossSalary', { valueAsNumber: true })}
+                            error={errors.grossSalary?.message}
+                            disabled={isLoading}
+                            className={inputClass}
+                          />
+                        </div>
+                      )}
+                      {visibleFieldKeys.has('designation') && (
+                        <div>
+                          <Label htmlFor="designation" className="text-xs">
+                            {fieldLabel('employeeDetails', 'designation', 'Designation')}
+                          </Label>
+                          <Input
+                            id="designation"
+                            placeholder="e.g., Software Engineer"
+                            {...register('designation')}
+                            error={errors.designation?.message}
+                            disabled={isLoading}
+                            className={inputClass}
+                          />
+                        </div>
+                      )}
+                      {visibleFieldKeys.has('department') && (
+                        <div>
+                          <Label htmlFor="department" className="text-xs">
+                            {fieldLabel('employeeDetails', 'department', 'Department')}
+                          </Label>
+                          <Input
+                            id="department"
+                            placeholder="e.g., Engineering"
+                            {...register('department')}
+                            error={errors.department?.message}
+                            disabled={isLoading}
+                            className={inputClass}
+                          />
+                        </div>
+                      )}
+                      {visibleFieldKeys.has('pan') && (
+                        <div>
+                          <Label htmlFor="pan" className="text-xs">
+                            {fieldLabel('employeeDetails', 'pan', 'PAN')}
+                          </Label>
+                          <Input
+                            id="pan"
+                            placeholder="ABCDE1234F"
+                            {...register('pan')}
+                            error={errors.pan?.message}
+                            disabled={isLoading}
+                            className={inputClass}
+                          />
+                        </div>
+                      )}
+                      {visibleFieldKeys.has('doj') && (
+                        <div>
+                          <Label htmlFor="doj" className="text-xs">
+                            {fieldLabel('employeeDetails', 'doj', 'Date of Joining')}
+                          </Label>
+                          <Input
+                            id="doj"
+                            type="date"
+                            {...register('doj')}
+                            error={errors.doj?.message}
+                            disabled={isLoading}
+                            className={inputClass}
+                          />
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             </div>
-          </div>
+          )}
 
           {/* ── Attendance ── */}
-          <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-            <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-              Attendance
-            </h4>
-            <div className="grid grid-cols-4 gap-3">
-              <div>
-                <Label htmlFor="present" className="text-xs">Present</Label>
-                <Input id="present" type="number" min={0} step={1}
-                  {...register('present', { valueAsNumber: true })}
-                  error={errors.present?.message} disabled={isLoading} className={inputClass} />
-              </div>
-              <div>
-                <Label htmlFor="wfh" className="text-xs">WFH</Label>
-                <Input id="wfh" type="number" min={0} step={1}
-                  {...register('wfh', { valueAsNumber: true })}
-                  error={errors.wfh?.message} disabled={isLoading} className={inputClass} />
-              </div>
-              <div>
-                <Label htmlFor="halfDay" className="text-xs">Half Day</Label>
-                <Input id="halfDay" type="number" min={0} step={1}
-                  {...register('halfDay', { valueAsNumber: true })}
-                  error={errors.halfDay?.message} disabled={isLoading} className={inputClass} />
-              </div>
-              <div>
-                <Label htmlFor="holiday" className="text-xs">Holiday</Label>
-                <Input id="holiday" type="number" min={0} step={1}
-                  {...register('holiday', { valueAsNumber: true })}
-                  error={errors.holiday?.message} disabled={isLoading} className={inputClass} />
-              </div>
-              <div>
-                <Label htmlFor="paidLeave" className="text-xs">Paid Leave</Label>
-                <Input id="paidLeave" type="number" min={0} step={1}
-                  {...register('paidLeave', { valueAsNumber: true })}
-                  error={errors.paidLeave?.message} disabled={isLoading} className={inputClass} />
-              </div>
-              <div>
-                <Label htmlFor="lopLeave" className="text-xs">LOP Leave</Label>
-                <Input id="lopLeave" type="number" min={0} step={1}
-                  {...register('lopLeave', { valueAsNumber: true })}
-                  error={errors.lopLeave?.message} disabled={isLoading} className={inputClass} />
-              </div>
-              <div>
-                <Label htmlFor="paidDays" className="text-xs">Paid Days</Label>
-                <Input id="paidDays" type="number" min={0} step={0.5}
-                  {...register('paidDays', { valueAsNumber: true })}
-                  error={errors.paidDays?.message} disabled={isLoading}
-                  className={`${inputClass} bg-blue-50 dark:bg-blue-900/20`} />
-              </div>
-              <div>
-                <Label htmlFor="lopDays" className="text-xs">LOP Days</Label>
-                <Input id="lopDays" type="number" min={0} step={1}
-                  {...register('lopDays', { valueAsNumber: true })}
-                  error={errors.lopDays?.message} disabled={isLoading} className={inputClass} />
+          {isSectionVisible('attendance') && (
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+              <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                {sectionTitle('attendance', 'Attendance')}
+              </h4>
+              <div className="grid grid-cols-4 gap-3">
+                {(() => {
+                  const attSection = template?.sections.find((s) => s.key === 'attendance');
+                  const visibleFieldKeys = attSection
+                    ? new Set(attSection.fields.filter((f) => f.visible).map((f) => f.key))
+                    : new Set(['present', 'wfh', 'halfDay', 'holiday', 'paidLeave', 'leaveTaken', 'unpaidLeave', 'paidDays']);
+
+                  const attFields: Array<{ key: string; label: string; opts?: { min?: number; step?: number; bg?: string } }> = [
+                    { key: 'present', label: 'Present', opts: { min: 0, step: 1 } },
+                    { key: 'wfh', label: 'WFH', opts: { min: 0, step: 1 } },
+                    { key: 'halfDay', label: 'Half Day', opts: { min: 0, step: 1 } },
+                    { key: 'holiday', label: 'Holiday', opts: { min: 0, step: 1 } },
+                    { key: 'paidLeave', label: 'Paid Leave', opts: { min: 0, step: 1 } },
+                    { key: 'leaveTaken', label: 'Leave Taken', opts: { min: 0, step: 1 } },
+                    { key: 'unpaidLeave', label: 'Unpaid Leave', opts: { min: 0, step: 1 } },
+                    { key: 'paidDays', label: 'Paid Days', opts: { min: 0, step: 0.5, bg: 'bg-blue-50 dark:bg-blue-900/20' } },
+                  ];
+
+                  return attFields
+                    .filter((f) => visibleFieldKeys.has(f.key))
+                    .map((f) => renderNumberField(f.key, 'attendance', f.label, f.opts));
+                })()}
               </div>
             </div>
-          </div>
+          )}
 
           {/* ── Earnings + Deductions side by side ── */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-              <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                Earnings
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="basic" className="text-xs">Basic</Label>
-                  <Input id="basic" type="number" min={0} step={0.01}
-                    {...register('basic', { valueAsNumber: true })}
-                    error={errors.basic?.message} disabled={isLoading} className={inputClass} />
-                </div>
-                <div>
-                  <Label htmlFor="hra" className="text-xs">HRA</Label>
-                  <Input id="hra" type="number" min={0} step={0.01}
-                    {...register('hra', { valueAsNumber: true })}
-                    error={errors.hra?.message} disabled={isLoading} className={inputClass} />
-                </div>
-                <div>
-                  <Label htmlFor="special" className="text-xs">Special Allowance</Label>
-                  <Input id="special" type="number" min={0} step={0.01}
-                    {...register('special', { valueAsNumber: true })}
-                    error={errors.special?.message} disabled={isLoading} className={inputClass} />
-                </div>
-              </div>
-            </div>
+            {isSectionVisible('earnings') && (
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                  {sectionTitle('earnings', 'Earnings')}
+                </h4>
+                <div className="space-y-3">
+                  {(() => {
+                    const sec = template?.sections.find((s) => s.key === 'earnings');
+                    const visibleFieldKeys = sec
+                      ? new Set(sec.fields.filter((f) => f.visible).map((f) => f.key))
+                      : new Set(['basic', 'hra', 'special']);
 
-            <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
-              <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                Deductions
-              </h4>
-              <div className="space-y-3">
-                <div>
-                  <Label htmlFor="epf" className="text-xs">EPF</Label>
-                  <Input id="epf" type="number" min={0} step={0.01}
-                    {...register('epf', { valueAsNumber: true })}
-                    error={errors.epf?.message} disabled={isLoading} className={inputClass} />
-                </div>
-                <div>
-                  <Label htmlFor="esi" className="text-xs">ESI / Health Insurance</Label>
-                  <Input id="esi" type="number" min={0} step={0.01}
-                    {...register('esi', { valueAsNumber: true })}
-                    error={errors.esi?.message} disabled={isLoading} className={inputClass} />
-                </div>
-                <div>
-                  <Label htmlFor="professionalTax" className="text-xs">Professional Tax</Label>
-                  <Input id="professionalTax" type="number" min={0} step={0.01}
-                    {...register('professionalTax', { valueAsNumber: true })}
-                    error={errors.professionalTax?.message} disabled={isLoading} className={inputClass} />
-                </div>
-                <div>
-                  <Label htmlFor="tds" className="text-xs">TDS / Income Tax</Label>
-                  <Input id="tds" type="number" min={0} step={0.01}
-                    {...register('tds', { valueAsNumber: true })}
-                    error={errors.tds?.message} disabled={isLoading} className={inputClass} />
-                </div>
-                <div>
-                  <Label htmlFor="loanRecovery" className="text-xs">Loan Recovery</Label>
-                  <Input id="loanRecovery" type="number" min={0} step={0.01}
-                    {...register('loanRecovery', { valueAsNumber: true })}
-                    error={errors.loanRecovery?.message} disabled={isLoading} className={inputClass} />
-                </div>
-                <div>
-                  <Label htmlFor="otherDeduction" className="text-xs">Other Deduction</Label>
-                  <Input id="otherDeduction" type="number" min={0} step={0.01}
-                    {...register('otherDeduction', { valueAsNumber: true })}
-                    error={errors.otherDeduction?.message} disabled={isLoading} className={inputClass} />
+                    const fields: Array<{ key: string; label: string }> = [
+                      { key: 'basic', label: 'Basic' },
+                      { key: 'hra', label: 'HRA' },
+                      { key: 'special', label: 'Special Allowance' },
+                    ];
+
+                    return fields
+                      .filter((f) => visibleFieldKeys.has(f.key))
+                      .map((f) => renderNumberField(f.key, 'earnings', f.label));
+                  })()}
                 </div>
               </div>
-            </div>
+            )}
+
+            {isSectionVisible('deductions') && (
+              <div className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+                <h4 className="font-semibold text-sm text-gray-700 dark:text-gray-300 uppercase tracking-wide">
+                  {sectionTitle('deductions', 'Deductions')}
+                </h4>
+                <div className="space-y-3">
+                  {(() => {
+                    const sec = template?.sections.find((s) => s.key === 'deductions');
+                    const visibleFieldKeys = sec
+                      ? new Set(sec.fields.filter((f) => f.visible).map((f) => f.key))
+                      : new Set(['epf', 'esi', 'professionalTax', 'tds', 'loanRecovery', 'otherDeduction']);
+
+                    const fields: Array<{ key: string; label: string }> = [
+                      { key: 'epf', label: 'EPF' },
+                      { key: 'esi', label: 'ESI / Health Insurance' },
+                      { key: 'professionalTax', label: 'Professional Tax' },
+                      { key: 'tds', label: 'TDS / Income Tax' },
+                      { key: 'loanRecovery', label: 'Loan Recovery' },
+                      { key: 'otherDeduction', label: 'Other Deduction' },
+                    ];
+
+                    return fields
+                      .filter((f) => visibleFieldKeys.has(f.key))
+                      .map((f) => renderNumberField(f.key, 'deductions', f.label));
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* ── Live Totals ── */}

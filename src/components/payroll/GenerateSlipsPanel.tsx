@@ -202,7 +202,34 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
           console.error(`Failed to calculate for ${updatedEmployees[i].name}:`, error);
         }
       }
+
+      // Merge saved Firestore data into calculations so manual edits survive refresh
+      try {
+        const savedSlips = await payrollService.getSlips({ month, year, includeAll: true });
+        for (let i = 0; i < updatedEmployees.length; i++) {
+          const saved = savedSlips.find(s => s.employeeId === updatedEmployees[i].id);
+          const existingCalc = updatedEmployees[i].calculation;
+          if (!saved || !existingCalc) continue;
+          updatedEmployees[i] = {
+            ...updatedEmployees[i],
+            grossSalary: saved.grossSalary || updatedEmployees[i].grossSalary || 0,
+            designation: saved.designation || updatedEmployees[i].designation,
+            department: saved.department || updatedEmployees[i].department,
+            calculation: {
+              ...existingCalc,
+              paidDays: saved.paidDays ?? existingCalc.paidDays,
+              attendanceBreakdown: saved.attendanceBreakdown,
+              salaryBreakup: saved.salaryBreakup,
+              totalDaysInMonth: existingCalc.totalDaysInMonth,
+            },
+          };
+        }
+      } catch (e) {
+        console.error('[GenerateSlipsPanel] Failed to merge saved slips:', e);
+      }
+
       setEmployees(updatedEmployees);
+
       if (successCount > 0 && errorCount === 0) {
         toast.success(`Calculated salaries for ${successCount} employee(s)`);
       } else if (successCount > 0) {
@@ -318,9 +345,25 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     }
   };
 
-  const handlePreview = (employee: EmployeeWithCalculation) => {
+  const handlePreview = async (employee: EmployeeWithCalculation) => {
     if (!employee.calculation || !settings) return;
 
+    // Try to find existing saved slip first (so manual edits show in preview)
+    try {
+      const existingSlips = await payrollService.getSlips({
+        employeeId: employee.id,
+        month,
+        year,
+      });
+      if (existingSlips.length > 0) {
+        setPreviewSlip(existingSlips[0]);
+        return;
+      }
+    } catch (error) {
+      console.error('Failed to check for existing slip:', error);
+    }
+
+    // Fall back to calculation-based synthetic slip
     const slip: EmployeeSalary = {
       employeeId: employee.id,
       name: employee.name,
@@ -334,7 +377,6 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       year,
       totalDaysInMonth: employee.calculation.totalDaysInMonth,
       paidDays: employee.calculation.paidDays,
-      lopDays: employee.calculation.lopDays,
       attendanceBreakdown: employee.calculation.attendanceBreakdown,
       salaryBreakup: employee.calculation.salaryBreakup,
       slipNumber: `SAL-${year}${String(month + 1).padStart(2, '0')}-${employee.employeeId}`,
@@ -383,7 +425,6 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         year,
         totalDaysInMonth: employee.calculation.totalDaysInMonth,
         paidDays: employee.calculation.paidDays,
-        lopDays: employee.calculation.lopDays,
         attendanceBreakdown: employee.calculation.attendanceBreakdown,
         salaryBreakup: employee.calculation.salaryBreakup,
         slipNumber: `SAL-${year}${String(month + 1).padStart(2, '0')}-${employee.employeeId}`,
@@ -406,10 +447,10 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     wfh: number;
     halfDay: number;
     paidLeave: number;
-    lopLeave: number;
+    leaveTaken: number;
+    unpaidLeave: number;
     holiday: number;
     paidDays: number;
-    lopDays: number;
     basic: number;
     hra: number;
     special: number;
@@ -437,7 +478,6 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         const success = await payrollService.updateSlip(slipId, {
           grossSalary: data.grossSalary,
           paidDays: data.paidDays,
-          lopDays: data.lopDays,
           designation: data.designation || '',
           department: data.department || '',
           pan: data.pan || null,
@@ -448,29 +488,68 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
             special: data.special,
             totalDeductions,
             netSalary,
+            epf: data.epf,
+            esi: data.esi,
+            professionalTax: data.professionalTax,
+            tds: data.tds,
+            loanRecovery: data.loanRecovery,
+            otherDeduction: data.otherDeduction,
           },
           attendanceBreakdown: {
             present: data.present,
             wfh: data.wfh,
-            approvedLeave: data.paidLeave,
-            unapprovedLeave: data.lopLeave,
+            approvedLeave: data.leaveTaken,
+            unapprovedLeave: 0,
             halfDay: data.halfDay,
             holiday: data.holiday,
             paidLeave: data.paidLeave,
-            lopLeave: data.lopLeave,
+            leaveTaken: data.leaveTaken,
+            unpaidLeave: data.unpaidLeave,
             paidDays: data.paidDays,
-            lopDays: data.lopDays,
           },
         });
         if (!success) throw new Error('Update failed');
 
-        // Update the employee list to reflect new gross salary
+        // Update the employee list to reflect edited values (includes calculation for Preview refresh)
         setEmployees(prev =>
-          prev.map(emp =>
-            emp.id === editSlip.employeeId
-              ? { ...emp, grossSalary: data.grossSalary }
-              : emp
-          )
+          prev.map(emp => {
+            if (emp.id !== editSlip.employeeId) return emp;
+            return {
+              ...emp,
+              grossSalary: data.grossSalary,
+              designation: data.designation || emp.designation,
+              department: data.department || emp.department,
+              calculation: emp.calculation ? {
+                ...emp.calculation,
+                paidDays: data.paidDays,
+                salaryBreakup: {
+                  basic: data.basic,
+                  hra: data.hra,
+                  special: data.special,
+                  totalDeductions,
+                  netSalary,
+                  epf: data.epf,
+                  esi: data.esi,
+                  professionalTax: data.professionalTax,
+                  tds: data.tds,
+                  loanRecovery: data.loanRecovery,
+                  otherDeduction: data.otherDeduction,
+                },
+                attendanceBreakdown: {
+                  present: data.present,
+                  wfh: data.wfh,
+                  approvedLeave: data.leaveTaken,
+                  unapprovedLeave: 0,
+                  halfDay: data.halfDay,
+                  holiday: data.holiday,
+                  paidLeave: data.paidLeave,
+                  leaveTaken: data.leaveTaken,
+                  unpaidLeave: data.unpaidLeave,
+                  paidDays: data.paidDays,
+                },
+              } : emp.calculation,
+            };
+          })
         );
       } else {
         // No saved slip yet — generate one for this employee then update it
@@ -494,7 +573,6 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         const success = await payrollService.updateSlip(generatedSlip.id, {
           grossSalary: data.grossSalary,
           paidDays: data.paidDays,
-          lopDays: data.lopDays,
           designation: data.designation || '',
           department: data.department || '',
           pan: data.pan || null,
@@ -509,24 +587,51 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
           attendanceBreakdown: {
             present: data.present,
             wfh: data.wfh,
-            approvedLeave: data.paidLeave,
-            unapprovedLeave: data.lopLeave,
+            approvedLeave: data.leaveTaken,
+            unapprovedLeave: 0,
             halfDay: data.halfDay,
             holiday: data.holiday,
             paidLeave: data.paidLeave,
-            lopLeave: data.lopLeave,
+            leaveTaken: data.leaveTaken,
+            unpaidLeave: data.unpaidLeave,
             paidDays: data.paidDays,
-            lopDays: data.lopDays,
           },
         });
         if (!success) throw new Error('Update failed');
 
         setEmployees(prev =>
-          prev.map(emp =>
-            emp.id === editSlip.employeeId
-              ? { ...emp, grossSalary: data.grossSalary }
-              : emp
-          )
+          prev.map(emp => {
+            if (emp.id !== editSlip.employeeId) return emp;
+            return {
+              ...emp,
+              grossSalary: data.grossSalary,
+              designation: data.designation || emp.designation,
+              department: data.department || emp.department,
+              calculation: emp.calculation ? {
+                ...emp.calculation,
+                paidDays: data.paidDays,
+                salaryBreakup: {
+                  basic: data.basic,
+                  hra: data.hra,
+                  special: data.special,
+                  totalDeductions,
+                  netSalary,
+                },
+                attendanceBreakdown: {
+                  present: data.present,
+                  wfh: data.wfh,
+                  approvedLeave: data.leaveTaken,
+                  unapprovedLeave: 0,
+                  halfDay: data.halfDay,
+                  holiday: data.holiday,
+                  paidLeave: data.paidLeave,
+                  leaveTaken: data.leaveTaken,
+                  unpaidLeave: data.unpaidLeave,
+                  paidDays: data.paidDays,
+                },
+              } : emp.calculation,
+            };
+          })
         );
       }
     } catch (error) {
@@ -952,6 +1057,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         onSave={handleSaveEdit}
         slip={editSlip}
         isLoading={editLoading}
+        template={templates.find((t) => t.id === selectedTemplateId) ?? null}
       />
     </div>
   );

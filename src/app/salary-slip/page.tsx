@@ -8,7 +8,7 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
-import { EmployeeSalary, PayrollSettings } from '@/types/payroll.types';
+import { EmployeeSalary, PayrollSettings, SalarySlipTemplate } from '@/types/payroll.types';
 import { payrollService } from '@/services/payroll.service';
 import { SalarySlipPreview } from '@/components/payroll/SalarySlipPreview';
 import { generateSalarySlipPDF } from '@/components/payroll/SalarySlipPDF';
@@ -27,6 +27,9 @@ export default function SalarySlipPage() {
   const [settings, setSettings] = useState<PayrollSettings | null>(null);
   const [month, setMonth] = useState<number | undefined>(undefined);
   const [year, setYear] = useState<number | undefined>(undefined);
+  const [template, setTemplate] = useState<SalarySlipTemplate | null>(null);
+  const [templates, setTemplates] = useState<SalarySlipTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -38,6 +41,7 @@ export default function SalarySlipPage() {
     if (user?.uid) {
       fetchAllSlips();
       fetchSettings();
+      fetchTemplate();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.uid]);
@@ -119,6 +123,19 @@ export default function SalarySlipPage() {
     const data = await payrollService.getSettings();
     if (data) {
       setSettings(data);
+    }
+  };
+
+  const fetchTemplate = async () => {
+    try {
+      const list = await payrollService.getTemplates();
+      if (list.length > 0) {
+        setTemplates(list as SalarySlipTemplate[]);
+        setSelectedTemplateId(list[0].id ?? '');
+        setTemplate(list[0] as SalarySlipTemplate);
+      }
+    } catch (error) {
+      console.error('[SalarySlipPage] Failed to fetch template:', error);
     }
   };
 
@@ -264,9 +281,6 @@ export default function SalarySlipPage() {
                     Paid Days
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                    LOP Days
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                     Net Salary
                   </th>
                   <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -288,9 +302,6 @@ export default function SalarySlipPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
                       {slip.paidDays}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">
-                      {slip.lopDays}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-900 dark:text-white">
                       ₹{slip.salaryBreakup.netSalary.toLocaleString('en-IN', { maximumFractionDigits: 0 })}
@@ -326,9 +337,38 @@ export default function SalarySlipPage() {
           <DialogHeader>
             <DialogTitle>Salary Slip Preview</DialogTitle>
           </DialogHeader>
+
+          {/* Template Selector */}
+          {selectedSlip && templates.length > 0 && (
+            <div className="flex items-center gap-3 px-1 -mt-2">
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                Slip Template:
+              </label>
+              <select
+                value={selectedTemplateId}
+                onChange={(e) => {
+                  const tplId = e.target.value;
+                  setSelectedTemplateId(tplId);
+                  setTemplate(templates.find((t) => t.id === tplId) ?? null);
+                }}
+                className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm"
+              >
+                {templates.map((tpl) => (
+                  <option key={tpl.id} value={tpl.id}>
+                    {tpl.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {selectedSlip && settings ? (
             <div>
-              <SalarySlipPreview slip={selectedSlip} settings={settings} />
+              <SalarySlipPreview
+                slip={selectedSlip}
+                settings={settings}
+                template={templates.find((t) => t.id === selectedTemplateId) ?? null}
+              />
               <div className="flex justify-end gap-2 mt-4">
                 <Button variant="outline" onClick={() => setSelectedSlip(null)}>
                   Close
