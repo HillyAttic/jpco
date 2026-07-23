@@ -29,9 +29,9 @@ export interface AttendanceBreakdown {
   halfDay: number;
   holiday: number;
   paidLeave: number;
-  lopLeave: number;
+  leaveTaken: number;
+  unpaidLeave: number;
   paidDays: number;
-  lopDays: number;
 }
 
 export interface SalaryBreakup {
@@ -40,6 +40,12 @@ export interface SalaryBreakup {
   special: number;
   totalDeductions: number;
   netSalary: number;
+  epf?: number;
+  esi?: number;
+  professionalTax?: number;
+  tds?: number;
+  loanRecovery?: number;
+  otherDeduction?: number;
 }
 
 export interface EmployeeSalary {
@@ -56,7 +62,6 @@ export interface EmployeeSalary {
   year: number;
   totalDaysInMonth: number;
   paidDays: number;
-  lopDays: number;
   attendanceBreakdown: AttendanceBreakdown;
   salaryBreakup: SalaryBreakup;
   slipNumber: string;
@@ -70,7 +75,6 @@ export interface SalaryCalculationResult {
   salaryBreakup: SalaryBreakup;
   totalDaysInMonth: number;
   paidDays: number;
-  lopDays: number;
 }
 
 // ── Salary Slip Template ─────────────────────────────────────────────────────
@@ -125,12 +129,12 @@ export const DEFAULT_SALARY_SLIP_TEMPLATE: Omit<SalarySlipTemplate, 'id' | 'upda
       fields: [
         { key: 'totalDaysInMonth',  label: 'Total Days in Month', visible: true },
         { key: 'paidDays',          label: 'Paid Days',           visible: true },
-        { key: 'lopDays',           label: 'LOP Days',            visible: true },
         { key: 'present',           label: 'Present',             visible: true },
         { key: 'wfh',               label: 'WFH',                 visible: true },
         { key: 'holiday',           label: 'Holidays',            visible: true },
+        { key: 'leaveTaken',        label: 'Leave Taken',         visible: true },
         { key: 'paidLeave',         label: 'Paid Leave',          visible: true },
-        { key: 'lopLeave',          label: 'LOP Leave',           visible: true },
+        { key: 'unpaidLeave',       label: 'Unpaid Leave',        visible: true },
         { key: 'approvedLeave',     label: 'Approved Leave',      visible: true },
         { key: 'unapprovedLeave',   label: 'Unapproved Leave',    visible: true },
         { key: 'halfDay',           label: 'Half Day',            visible: true },

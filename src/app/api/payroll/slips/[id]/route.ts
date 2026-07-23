@@ -98,7 +98,6 @@ export async function PUT(
     const updateSchema = z.object({
       grossSalary: z.number().optional(),
       paidDays: z.number().optional(),
-      lopDays: z.number().optional(),
       designation: z.string().optional(),
       department: z.string().optional(),
       pan: z.string().nullable().optional(),
@@ -109,6 +108,12 @@ export async function PUT(
         special: z.number(),
         totalDeductions: z.number(),
         netSalary: z.number(),
+        epf: z.number().optional(),
+        esi: z.number().optional(),
+        professionalTax: z.number().optional(),
+        tds: z.number().optional(),
+        loanRecovery: z.number().optional(),
+        otherDeduction: z.number().optional(),
       }).optional(),
       attendanceBreakdown: z.object({
         present: z.number(),
@@ -118,9 +123,9 @@ export async function PUT(
         halfDay: z.number(),
         holiday: z.number(),
         paidLeave: z.number(),
-        lopLeave: z.number(),
+        leaveTaken: z.number(),
+        unpaidLeave: z.number(),
         paidDays: z.number(),
-        lopDays: z.number(),
       }).optional(),
     });
 

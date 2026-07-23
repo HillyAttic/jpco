@@ -103,8 +103,9 @@ export async function generateSalarySlipPDF(
 
   const attendanceDetails = [
     ['Total Days in Month:', slip.totalDaysInMonth.toString(), 'Paid Days:', slip.paidDays.toString()],
-    ['LOP Days:', slip.lopDays.toString(), 'Present:', slip.attendanceBreakdown.present.toString()],
-    ['WFH:', slip.attendanceBreakdown.wfh.toString(), 'Holidays:', slip.attendanceBreakdown.holiday.toString()],
+    ['Present:', slip.attendanceBreakdown.present.toString(), 'WFH:', slip.attendanceBreakdown.wfh.toString()],
+    ['Holidays:', slip.attendanceBreakdown.holiday.toString(), 'Leave Taken:', slip.attendanceBreakdown.leaveTaken.toString()],
+    ['Paid Leave:', slip.attendanceBreakdown.paidLeave.toString(), 'Unpaid Leave:', slip.attendanceBreakdown.unpaidLeave.toString()],
     ['Approved Leave:', slip.attendanceBreakdown.approvedLeave.toString(), 'Unapproved Leave:', slip.attendanceBreakdown.unapprovedLeave.toString()],
     ['Half Day:', slip.attendanceBreakdown.halfDay.toString(), '', ''],
   ];

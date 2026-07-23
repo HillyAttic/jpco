@@ -161,12 +161,12 @@ export function SalarySlipPreview({ slip, settings, template }: SalarySlipPrevie
                 switch (f.key) {
                   case 'totalDaysInMonth': value = slip.totalDaysInMonth; break;
                   case 'paidDays':         value = slip.paidDays; break;
-                  case 'lopDays':          value = slip.lopDays; break;
                   case 'present':          value = slip.attendanceBreakdown.present; break;
                   case 'wfh':              value = slip.attendanceBreakdown.wfh; break;
                   case 'holiday':          value = slip.attendanceBreakdown.holiday; break;
+                  case 'leaveTaken':       value = slip.attendanceBreakdown.leaveTaken; break;
                   case 'paidLeave':        value = slip.attendanceBreakdown.paidLeave; break;
-                  case 'lopLeave':         value = slip.attendanceBreakdown.lopLeave; break;
+                  case 'unpaidLeave':      value = slip.attendanceBreakdown.unpaidLeave; break;
                   case 'approvedLeave':    value = slip.attendanceBreakdown.approvedLeave; break;
                   case 'unapprovedLeave':  value = slip.attendanceBreakdown.unapprovedLeave; break;
                   case 'halfDay':          value = slip.attendanceBreakdown.halfDay; break;
@@ -192,10 +192,6 @@ export function SalarySlipPreview({ slip, settings, template }: SalarySlipPrevie
                 <span className="font-semibold">{slip.paidDays}</span>
               </div>
               <div className="flex justify-between">
-                <span>LOP Days:</span>
-                <span className="font-semibold">{slip.lopDays}</span>
-              </div>
-              <div className="flex justify-between">
                 <span>Present:</span>
                 <span>{slip.attendanceBreakdown.present}</span>
               </div>
@@ -208,12 +204,16 @@ export function SalarySlipPreview({ slip, settings, template }: SalarySlipPrevie
                 <span>{slip.attendanceBreakdown.holiday}</span>
               </div>
               <div className="flex justify-between">
+                <span>Leave Taken:</span>
+                <span>{slip.attendanceBreakdown.leaveTaken}</span>
+              </div>
+              <div className="flex justify-between">
                 <span>Paid Leave:</span>
                 <span>{slip.attendanceBreakdown.paidLeave}</span>
               </div>
               <div className="flex justify-between">
-                <span>LOP Leave:</span>
-                <span>{slip.attendanceBreakdown.lopLeave}</span>
+                <span>Unpaid Leave:</span>
+                <span>{slip.attendanceBreakdown.unpaidLeave}</span>
               </div>
               <div className="flex justify-between">
                 <span>Approved Leave:</span>
@@ -295,12 +295,12 @@ export function SalarySlipPreview({ slip, settings, template }: SalarySlipPrevie
                     deductionsFields.map((f) => {
                       let value = 0;
                       switch (f.key) {
-                        case 'epf':             value = 0; break;
-                        case 'esi':             value = 0; break;
-                        case 'professionalTax': value = 0; break;
-                        case 'tds':             value = 0; break;
-                        case 'loanRecovery':    value = 0; break;
-                        case 'otherDeduction':  value = 0; break;
+                        case 'epf':             value = slip.salaryBreakup?.epf ?? 0; break;
+                        case 'esi':             value = slip.salaryBreakup?.esi ?? 0; break;
+                        case 'professionalTax': value = slip.salaryBreakup?.professionalTax ?? 0; break;
+                        case 'tds':             value = slip.salaryBreakup?.tds ?? 0; break;
+                        case 'loanRecovery':    value = slip.salaryBreakup?.loanRecovery ?? 0; break;
+                        case 'otherDeduction':  value = slip.salaryBreakup?.otherDeduction ?? 0; break;
                         default:                value = 0;
                       }
                       return (
