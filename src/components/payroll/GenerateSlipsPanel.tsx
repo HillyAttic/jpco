@@ -208,17 +208,19 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         const savedSlips = await payrollService.getSlips({ month, year, includeAll: true });
         for (let i = 0; i < updatedEmployees.length; i++) {
           const saved = savedSlips.find(s => s.employeeId === updatedEmployees[i].id);
-          if (!saved || !updatedEmployees[i].calculation) continue;
+          const existingCalc = updatedEmployees[i].calculation;
+          if (!saved || !existingCalc) continue;
           updatedEmployees[i] = {
             ...updatedEmployees[i],
             grossSalary: saved.grossSalary || updatedEmployees[i].grossSalary || 0,
             designation: saved.designation || updatedEmployees[i].designation,
             department: saved.department || updatedEmployees[i].department,
             calculation: {
-              ...updatedEmployees[i].calculation,
-              paidDays: saved.paidDays ?? updatedEmployees[i].calculation.paidDays,
+              ...existingCalc,
+              paidDays: saved.paidDays ?? existingCalc.paidDays,
               attendanceBreakdown: saved.attendanceBreakdown,
               salaryBreakup: saved.salaryBreakup,
+              totalDaysInMonth: existingCalc.totalDaysInMonth,
             },
           };
         }
