@@ -163,7 +163,7 @@ const DEFAULT_EXPRESSIONS: Record<string, string> = {
   unpaidLeave: 'MAX(0, approvedLeave + unapprovedLeave - allowedPaidLeaves)',
   holidays: 'holidays',
   approvedLeave: 'approvedLeave',
-  unapprovedLeave: 'totalWorkingDays - present - wfh - holidays - approvedLeave - (halfDay * 0.5)',
+  unapprovedLeave: 'totalWorkingDays - present - wfh - approvedLeave - (halfDay * 0.5)',
   // Calculated components
   totalWorkingDays: 'totalDaysInMonth - holidays',
   paidDays: 'totalWorkingDays - unpaidLeave',

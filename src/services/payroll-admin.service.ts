@@ -293,18 +293,21 @@ export const payrollAdminService = {
         }
       });
 
-      // Build set of approved leave dates (only within this month)
+      // Build sets of approved full-day and half-day leave dates (only within this month)
       const leaveDates = new Set<string>();
+      const halfDayLeaveDates = new Set<string>();
       leaveSnapshot.forEach((doc) => {
         const leave = doc.data();
         if (leave.startDate && leave.endDate) {
+          const isHalfDay = leave.halfDay === true;
+          const targetSet = isHalfDay ? halfDayLeaveDates : leaveDates;
           const start = leave.startDate.toDate ? leave.startDate.toDate() : new Date(leave.startDate);
           const end = leave.endDate.toDate ? leave.endDate.toDate() : new Date(leave.endDate);
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
             // Only include dates within the current month
             if (d.getFullYear() === year && d.getMonth() === month) {
               const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-              leaveDates.add(dateStr);
+              targetSet.add(dateStr);
             }
           }
         }
@@ -336,7 +339,13 @@ export const payrollAdminService = {
           continue;
         }
 
-        // Approved Leave
+        // Half-Day Leave (approved leave for a portion of the day)
+        if (halfDayLeaveDates.has(dateStr)) {
+          halfDay++;
+          continue;
+        }
+
+        // Approved Full-Day Leave
         if (leaveDates.has(dateStr)) {
           approvedLeave++;
           continue;
@@ -354,14 +363,9 @@ export const payrollAdminService = {
           continue;
         }
 
-        // Skip future days — matching attendance overview behavior (future days are 'upcoming', not absent)
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (date > today) {
-          continue;
-        }
-
-        // Unapproved absence (LOP)
+        // Unapproved absence (LOP) — including future days in the current month
+        // that haven't been worked yet. This ensures mid-month slip generation
+        // correctly prorates salary for unworked future days.
         unapprovedLeave++;
       }
 
@@ -406,8 +410,8 @@ export const payrollAdminService = {
         salaryBreakup = result.breakup;
         computedPaidDays = result.paidDays;
       } else {
-        // Default: Paid Days = totalWorkingDays - unpaidLeave
-        computedPaidDays = Math.max(0, totalWorkingDays - unpaidLeave);
+        // Default: Paid Days = totalWorkingDays - unpaidLeave - halfDays (half-day counts as 0.5 day)
+        computedPaidDays = Math.max(0, totalWorkingDays - unpaidLeave - (halfDay * 0.5));
         const netSalary = (grossSalary * computedPaidDays) / Math.max(1, totalWorkingDays);
         const basic = netSalary * (settings.basicPercentage / 100);
         const hra = netSalary * (settings.hraPercentage / 100);
