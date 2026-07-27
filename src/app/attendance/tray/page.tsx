@@ -24,6 +24,10 @@ const LocationMapModal = dynamic(() => import('@/components/attendance/LocationM
   ssr: false
 });
 
+const MapAccessGate = dynamic(() => import('@/components/attendance/MapAccessGate').then(mod => ({ default: mod.MapAccessGate })), {
+  ssr: false
+});
+
 const AttendanceCalendarModal = dynamic(() => import('@/components/attendance/AttendanceCalendarModal').then(mod => ({ default: mod.AttendanceCalendarModal })), {
   loading: () => <div className="flex items-center justify-center p-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div></div>,
   ssr: false
@@ -88,6 +92,10 @@ export default function AttendanceTrayPage() {
   // State for location map modal
   const [showMapModal, setShowMapModal] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState<{ latitude: number; longitude: number; title: string } | null>(null);
+
+  // State for map access password gate
+  const [showMapPasswordModal, setShowMapPasswordModal] = useState(false);
+  const [pendingMapLocation, setPendingMapLocation] = useState<{ latitude: number; longitude: number; title: string } | null>(null);
 
   // State for calendar modal
   const [showCalendarModal, setShowCalendarModal] = useState(false);
@@ -384,10 +392,20 @@ export default function AttendanceTrayPage() {
     }
   };
 
-  // Handle location click
+  // Handle location click — show password gate first
   const handleLocationClick = (latitude: number, longitude: number, title: string) => {
-    setSelectedLocation({ latitude, longitude, title });
-    setShowMapModal(true);
+    setPendingMapLocation({ latitude, longitude, title });
+    setShowMapPasswordModal(true);
+  };
+
+  // Called when password gate verifies successfully
+  const handleMapAccessGranted = () => {
+    if (pendingMapLocation) {
+      setSelectedLocation(pendingMapLocation);
+      setShowMapModal(true);
+    }
+    setShowMapPasswordModal(false);
+    setPendingMapLocation(null);
   };
 
   // Handle calendar overview click
@@ -683,6 +701,18 @@ export default function AttendanceTrayPage() {
             </div>
           )}
         </div>
+      )}
+
+      {/* Map Access Password Gate */}
+      {showMapPasswordModal && (
+        <MapAccessGate
+          isOpen={showMapPasswordModal}
+          onClose={() => {
+            setShowMapPasswordModal(false);
+            setPendingMapLocation(null);
+          }}
+          onSuccess={handleMapAccessGranted}
+        />
       )}
 
       {/* Location Map Modal */}

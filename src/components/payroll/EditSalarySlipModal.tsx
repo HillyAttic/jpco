@@ -117,22 +117,22 @@ export function EditSalarySlipModal({
     (tds || 0) + (loanRecovery || 0) + (otherDeduction || 0);
   const netSalary = totalEarnings - totalDeductions;
 
-  // Auto-set paidDays = present + wfh + (halfDay * 0.5) - unpaidLeave when attendance changes
+  // Auto-set paidDays = present + wfh + paidLeave + (halfDay * 0.5) when attendance changes
   const present = watch('present');
   const wfh = watch('wfh');
   const halfDay = watch('halfDay');
-  const unpaidLeave = watch('unpaidLeave');
+  const paidLeave = watch('paidLeave');
   const paidDays = watch('paidDays');
 
   useEffect(() => {
-    if (present !== undefined && wfh !== undefined && halfDay !== undefined && unpaidLeave !== undefined) {
-      const computed = present + wfh + (halfDay * 0.5) - unpaidLeave;
+    if (present !== undefined && wfh !== undefined && halfDay !== undefined && paidLeave !== undefined) {
+      const computed = present + wfh + paidLeave + (halfDay * 0.5);
       if (Math.abs(paidDays - computed) > 0.01) {
         setValue('paidDays', computed, { shouldValidate: true });
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [present, wfh, halfDay, unpaidLeave, setValue]);
+  }, [present, wfh, halfDay, paidLeave, setValue]);
 
   useEffect(() => {
     if (isOpen && slip) {
