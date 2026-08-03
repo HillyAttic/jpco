@@ -65,12 +65,22 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
   const [templates, setTemplates] = useState<SalarySlipTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
 
+  // Local access config state (avoids stale prop issue)
+  const [localAccessConfig, setLocalAccessConfig] = useState<Record<string, Record<string, boolean>>>({});
+
   // Attendance calendar modal state
   const [showAttendanceModal, setShowAttendanceModal] = useState(false);
   const [selectedEmployeeForAttendance, setSelectedEmployeeForAttendance] = useState<{ id: string; name: string } | null>(null);
 
   // Ref to track which year-month's access config has been applied (prevents re-applying on re-renders)
   const appliedConfigKey = useRef<string | null>(null);
+
+  // Sync local access config with settings prop when it changes
+  useEffect(() => {
+    if (settings?.accessConfig) {
+      setLocalAccessConfig(settings.accessConfig);
+    }
+  }, [settings?.accessConfig]);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -87,15 +97,15 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     appliedConfigKey.current = null;
   }, [month, year]);
 
-  // Apply saved access config when settings or period changes (race-condition-safe)
+  // Apply saved access config when period changes (race-condition-safe)
   useEffect(() => {
     const key = `${year}-${month}`;
 
-    // Guard: need settings, employees, and haven't applied this period yet
-    if (!settings?.accessConfig || employees.length === 0) return;
+    // Guard: need employees and haven't applied this period yet
+    if (employees.length === 0) return;
     if (appliedConfigKey.current === key) return;
 
-    const savedConfig = settings.accessConfig[key] || {};
+    const savedConfig = localAccessConfig[key] || {};
     setEmployees(prev =>
       prev.map(emp => ({
         ...emp,
@@ -104,19 +114,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     );
 
     appliedConfigKey.current = key;
-  }, [settings?.accessConfig, month, year]);
-
-  // Auto-calculate salaries when settings are available and employees are loaded
-  useEffect(() => {
-    if (settings && employees.length > 0 && !calculating && !generating) {
-      // Check if any employee already has a calculation
-      const hasAnyCalculation = employees.some(emp => emp.calculation);
-      if (!hasAnyCalculation) {
-        handleCalculateAll();
-      }
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [settings, employees]);
+  }, [localAccessConfig, month, year]);
 
   const fetchTemplates = async () => {
     try {
@@ -138,9 +136,9 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         const json = await response.json();
         const list: Employee[] = Array.isArray(json) ? json : json.data ?? [];
 
-        // Apply saved access config immediately when loading employees (only if settings already available)
+        // Apply saved access config immediately when loading employees
         const key = `${year}-${month}`;
-        const savedConfig = settings?.accessConfig?.[key];
+        const savedConfig = localAccessConfig[key];
 
         setEmployees(
           list
@@ -259,7 +257,8 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     // Then persist to Firestore
     try {
       const key = `${year}-${month}`;
-      const currentConfig = settings?.accessConfig || {};
+      // Build from local state (not stale settings prop)
+      const currentConfig = localAccessConfig;
       const monthConfig = currentConfig[key] || {};
       const newAccessConfig = {
         ...currentConfig,
@@ -268,6 +267,9 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
           [id]: newState,
         },
       };
+
+      // Update local state immediately so subsequent toggles use fresh data
+      setLocalAccessConfig(newAccessConfig);
 
       // 1. Persist to settings
       await payrollService.saveAccessConfig(newAccessConfig);
@@ -313,7 +315,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
 
     try {
       const key = `${year}-${month}`;
-      const currentConfig = settings?.accessConfig || {};
+      const currentConfig = localAccessConfig;
       const monthConfig = currentConfig[key] || {};
 
       // Build config with all employees set to newState
@@ -324,6 +326,9 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
           ...Object.fromEntries(employees.map(emp => [emp.id, newState])),
         },
       };
+
+      // Update local state immediately so subsequent toggles use fresh data
+      setLocalAccessConfig(newAccessConfig);
 
       // 1. Persist to settings
       await payrollService.saveAccessConfig(newAccessConfig);

@@ -51,21 +51,21 @@ const LINE_KEYS = [
   'present',
   'wfh',
   'halfDay',
-  'paidLeave',
-  'leaveTaken',
-  'unpaidLeave',
   'holidays',
   'approvedLeave',
-  'unapprovedLeave',
-  // Calculated components
-  'totalWorkingDays',
-  'paidDays',
-  'proratedGross',
-  'basic',
-  'hra',
-  'special',
+  // Calculated components (order matters - dependencies first)
+  'totalWorkingDays',        // depends on: totalDaysInMonth, holidays
+  'unapprovedLeave',         // depends on: totalWorkingDays, present, wfh, approvedLeave, halfDay
+  'paidLeave',               // depends on: approvedLeave, unapprovedLeave, allowedPaidLeaves
+  'leaveTaken',              // depends on: approvedLeave, unapprovedLeave
+  'unpaidLeave',             // depends on: approvedLeave, unapprovedLeave, allowedPaidLeaves
+  'paidDays',                // depends on: totalWorkingDays, unpaidLeave
+  'proratedGross',           // depends on: grossSalary, paidDays, totalWorkingDays
+  'basic',                   // depends on: proratedGross, basicPercentage
+  'hra',                     // depends on: proratedGross, hraPercentage
+  'special',                 // depends on: proratedGross, specialPercentage
   'totalDeductions',
-  'netSalary',
+  'netSalary',               // depends on: basic, hra, special, totalDeductions
 ] as const;
 
 const LINE_META: Record<string, { label: string; description: string }> = {
@@ -179,7 +179,11 @@ const DEFAULT_EXPRESSIONS: Record<string, string> = {
 
 function parseFormulaToExpressions(formulaString: string): Record<string, string> {
   const result: Record<string, string> = {};
-  const lineRegex = /const\s+(\w+)\s*=\s*(.+?);/g;
+
+  // Handle both old format (const X = ...) and new format (X = ...)
+  // Old format: const variableName = expression;
+  // New format: variableName = expression;
+  const lineRegex = /(?:const\s+)?(\w+)\s*=\s*(.+?);/g;
   let match;
 
   while ((match = lineRegex.exec(formulaString)) !== null) {
@@ -199,11 +203,25 @@ function parseFormulaToExpressions(formulaString: string): Record<string, string
 function generateFormulaString(expressions: Record<string, string>): string {
   const lines: string[] = [];
 
+  // Variables passed as function parameters to evaluateSalaryFormula — use plain assignment
+  const paramVars = new Set([
+    'grossSalary', 'totalDaysInMonth', 'basicPercentage', 'hraPercentage',
+    'specialPercentage', 'allowedPaidLeaves', 'present', 'wfh', 'halfDay',
+    'holidays', 'approvedLeave', 'unapprovedLeave', 'paidLeave', 'leaveTaken',
+    'unpaidLeave', 'totalWorkingDays',
+  ]);
+
   LINE_KEYS.forEach((key) => {
     const expr = expressions[key] || '';
     // Skip self-referencing (input variables that use their value as-is)
     if (expr === key) return;
-    lines.push(`const ${key} = ${expr};`);
+    if (paramVars.has(key)) {
+      // Already a function parameter — use plain assignment to avoid redeclaration error
+      lines.push(`${key} = ${expr};`);
+    } else {
+      // Not a parameter — declare with const
+      lines.push(`const ${key} = ${expr};`);
+    }
   });
 
   lines.push('return { paidDays, basic, hra, special, totalDeductions, netSalary };');
