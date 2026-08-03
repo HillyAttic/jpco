@@ -99,6 +99,23 @@ export const payrollAdminService = {
         unapprovedLeave,
       } = variables;
 
+      // Backward compatibility: transform old formula format (with `const` declarations for parameters)
+      // to new format (plain assignment) to avoid SyntaxError
+      const paramNames = [
+        'grossSalary', 'totalDaysInMonth', 'totalWorkingDays', 'basicPercentage',
+        'hraPercentage', 'specialPercentage', 'allowedPaidLeaves', 'includePaidLeavesInPaidDays',
+        'present', 'wfh', 'halfDay', 'paidLeave', 'leaveTaken', 'unpaidLeave',
+        'holidays', 'approvedLeave', 'unapprovedLeave'
+      ];
+      let transformedFormula = formula;
+      paramNames.forEach(name => {
+        // Replace `const paramName = ` with `paramName = ` for backward compatibility
+        transformedFormula = transformedFormula.replace(
+          new RegExp(`\\bconst\\s+${name}\\s*=`, 'g'),
+          `${name} =`
+        );
+      });
+
       // Make Excel functions available in the formula scope
       const {
         IF, IFS, AND, OR, NOT, IFERROR,
