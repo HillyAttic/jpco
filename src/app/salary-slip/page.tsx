@@ -10,6 +10,7 @@ import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { EmployeeSalary, PayrollSettings, SalarySlipTemplate } from '@/types/payroll.types';
 import { payrollService } from '@/services/payroll.service';
+import { authenticatedFetch } from '@/lib/api-client';
 import { SalarySlipPreview } from '@/components/payroll/SalarySlipPreview';
 import { generateSalarySlipPDF } from '@/components/payroll/SalarySlipPDF';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -30,6 +31,12 @@ export default function SalarySlipPage() {
   const [template, setTemplate] = useState<SalarySlipTemplate | null>(null);
   const [templates, setTemplates] = useState<SalarySlipTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
+  const [showPanDialog, setShowPanDialog] = useState(false);
+  const [panInput, setPanInput] = useState('');
+  const [pendingAction, setPendingAction] = useState<'view' | 'download' | null>(null);
+  const [pendingSlip, setPendingSlip] = useState<EmployeeSalary | null>(null);
+  const [panError, setPanError] = useState('');
+  const [savingPan, setSavingPan] = useState(false);
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -140,10 +147,27 @@ export default function SalarySlipPage() {
   };
 
   const handleViewSlip = (slip: EmployeeSalary) => {
-    setSelectedSlip(slip);
+    if (!slip.pan || slip.pan.trim() === '') {
+      setPendingAction('view');
+      setPendingSlip(slip);
+      setPanInput('');
+      setPanError('');
+      setShowPanDialog(true);
+    } else {
+      setSelectedSlip(slip);
+    }
   };
 
   const handleDownloadPDF = async (slip: EmployeeSalary) => {
+    if (!slip.pan || slip.pan.trim() === '') {
+      setPendingAction('download');
+      setPendingSlip(slip);
+      setPanInput('');
+      setPanError('');
+      setShowPanDialog(true);
+      return;
+    }
+
     let currentSettings = settings;
     if (!currentSettings) {
       // Retry fetching settings (in case initial fetch failed due to 403 or timing)
@@ -163,6 +187,76 @@ export default function SalarySlipPage() {
     } catch (error) {
       toast.error('Failed to generate PDF');
       console.error(error);
+    }
+  };
+
+  const handlePanSubmit = async () => {
+    const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
+    if (!panRegex.test(panInput)) {
+      setPanError('Invalid PAN format. Expected format: ABCDE1234F');
+      return;
+    }
+
+    const formattedPan = panInput.toUpperCase();
+    setSavingPan(true);
+
+    try {
+      // Save PAN to user profile (for future slips)
+      const profileResponse = await authenticatedFetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ displayName: user?.displayName || user?.name || '', pan: formattedPan }),
+      });
+
+      if (!profileResponse.ok) {
+        throw new Error('Failed to save PAN to profile');
+      }
+
+      // Save PAN to current slip
+      if (pendingSlip?.id) {
+        const slipResponse = await payrollService.updateSlipPan(pendingSlip.id, formattedPan);
+        if (!slipResponse) {
+          throw new Error('Failed to save PAN to slip');
+        }
+      }
+
+      // Update local slip data
+      const updatedSlip = { ...pendingSlip!, pan: formattedPan };
+
+      // Close dialog and proceed with action
+      setShowPanDialog(false);
+
+      if (pendingAction === 'view') {
+        setSelectedSlip(updatedSlip);
+      } else if (pendingAction === 'download') {
+        // Proceed with download using updated slip
+        let currentSettings = settings;
+        if (!currentSettings) {
+          const data = await payrollService.getSettings();
+          if (data) {
+            currentSettings = data;
+            setSettings(data);
+          }
+        }
+        if (!currentSettings) {
+          toast.error('Payroll settings not configured');
+          return;
+        }
+        await generateSalarySlipPDF(updatedSlip, currentSettings, template);
+        toast.success('PDF downloaded successfully');
+      }
+
+      // Update slips list to reflect PAN change
+      setAllSlips(prev => prev.map(s =>
+        s.employeeId === user?.uid ? { ...s, pan: formattedPan } : s
+      ));
+
+      toast.success('PAN number saved successfully');
+    } catch (error) {
+      toast.error('Failed to save PAN number');
+      console.error('[SalarySlipPage] Error saving PAN:', error);
+    } finally {
+      setSavingPan(false);
     }
   };
 
@@ -384,6 +478,55 @@ export default function SalarySlipPage() {
               <p className="text-sm mt-2">Please try again in a moment.</p>
             </div>
           ) : null}
+        </DialogContent>
+      </Dialog>
+
+      {/* PAN Entry Dialog */}
+      <Dialog open={showPanDialog} onOpenChange={() => !savingPan && setShowPanDialog(false)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-base sm:text-lg">Enter PAN Number</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Your PAN number is required to generate the salary slip. Please enter your 10-character PAN number.
+            </p>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                PAN Number
+              </label>
+              <input
+                type="text"
+                value={panInput}
+                onChange={(e) => {
+                  setPanInput(e.target.value.toUpperCase());
+                  setPanError('');
+                }}
+                placeholder="ABCDE1234F"
+                maxLength={10}
+                disabled={savingPan}
+                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm uppercase disabled:opacity-50"
+              />
+              {panError && (
+                <p className="text-red-500 text-xs mt-1">{panError}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => setShowPanDialog(false)}
+                disabled={savingPan}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handlePanSubmit}
+                disabled={savingPan || panInput.length !== 10}
+              >
+                {savingPan ? 'Saving...' : 'Save & Continue'}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
         </>

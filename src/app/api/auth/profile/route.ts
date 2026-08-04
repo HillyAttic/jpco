@@ -47,7 +47,7 @@ export const PUT = withAuth(async (request: AuthenticatedRequest) => {
     }
 
     const body = await request.json();
-    const { displayName, department, phoneNumber } = body;
+    const { displayName, department, phoneNumber, pan } = body;
 
     if (!displayName || displayName.trim().length === 0) {
       return NextResponse.json({ error: 'Display name is required' }, { status: 400 });
@@ -60,6 +60,22 @@ export const PUT = withAuth(async (request: AuthenticatedRequest) => {
 
     if (department !== undefined) updates.department = department?.trim() ?? null;
     if (phoneNumber !== undefined) updates.phoneNumber = phoneNumber?.trim() ?? null;
+
+    // Validate and update PAN if provided
+    if (pan !== undefined) {
+      if (pan !== null && pan !== '') {
+        const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/i;
+        if (!panRegex.test(pan)) {
+          return NextResponse.json(
+            { error: 'Invalid PAN format. Expected format: ABCDE1234F' },
+            { status: 400 }
+          );
+        }
+        updates.pan = pan.toUpperCase();
+      } else {
+        updates.pan = null;
+      }
+    }
 
     await adminDb.collection('users').doc(userId).update(updates);
 

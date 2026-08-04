@@ -122,6 +122,19 @@ export const payrollService = {
     return response.ok;
   },
 
+  /**
+   * Update PAN on a salary slip (employee self-service)
+   * Also updates the employee's user profile for future slips
+   */
+  async updateSlipPan(slipId: string, pan: string): Promise<boolean> {
+    const response = await authenticatedFetch(`/api/payroll/slips/${slipId}/pan`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ pan }),
+    });
+    return response.ok;
+  },
+
   // ── Templates ────────────────────────────────────────────────────────────
 
   /**

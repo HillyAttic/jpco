@@ -306,6 +306,10 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
                   Denominator is always <span className="font-bold">26</span> (fixed working days).
                   Paid days = 26 − unpaid leaves − (half days × 0.5)
                 </p>
+                <p className="text-[10px] sm:text-xs text-blue-600 mt-1">
+                  <span className="font-bold">Unpaid Leaves</span> = Total Leave Taken − Paid Leave
+                  (up to {settings.allowedPaidLeaves} allowed)
+                </p>
               </div>
 
               {/* Step-by-Step Calculation */}
