@@ -11,7 +11,7 @@ import { z } from 'zod';
  */
 export const POST = withAuth(async (
   request: AuthenticatedRequest,
-  { params }: { params: Promise<{ id: string }> }
+  context?: { params: Promise<{ id: string }> }
 ) => {
   try {
     const userId = request.user?.uid;
@@ -19,7 +19,7 @@ export const POST = withAuth(async (
       return ErrorResponses.unauthorized();
     }
 
-    const { id } = await params;
+    const { id } = await context!.params;
 
     // Get the salary slip
     const slipDoc = await adminDb.collection('salary-slips').doc(id).get();
