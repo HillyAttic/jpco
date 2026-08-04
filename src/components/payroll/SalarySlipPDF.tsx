@@ -1,220 +1,131 @@
 /**
  * SalarySlipPDF Generator
- * Generates PDF salary slips using jspdf + jspdf-autotable
- * Matches the layout of SalarySlipPreview component
+ * Uses html2canvas to capture the SalarySlipPreview HTML and convert to PDF,
+ * ensuring the downloaded PDF looks identical to the on-screen view.
+ * The Calculation Breakdown section is excluded from the PDF via the forPDF prop.
  */
 
-import { EmployeeSalary, PayrollSettings } from '@/types/payroll.types';
+import { EmployeeSalary, PayrollSettings, SalarySlipTemplate } from '@/types/payroll.types';
 
 export async function generateSalarySlipPDF(
   slip: EmployeeSalary,
-  settings: PayrollSettings
+  settings: PayrollSettings,
+  template?: SalarySlipTemplate | null
 ): Promise<void> {
-  const jsPDF = (await import('jspdf')).default;
+  const [html2canvasModule, jsPDFModule] = await Promise.all([
+    import('html2canvas'),
+    import('jspdf'),
+  ]);
 
-  const doc = new jsPDF('portrait', 'mm', 'a4');
-  const pageWidth = 210;
-  const margin = 15;
-  let yPos = 15;
+  const html2canvas = html2canvasModule.default;
+  const jsPDF = jsPDFModule.default;
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    }).format(amount);
-  };
+  // Dynamically import React and ReactDOM to render the preview offscreen
+  const React = await import('react');
+  const ReactDOMClient = await import('react-dom/client');
 
-  const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('en-IN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
+  // Create a temporary container for offscreen rendering
+  const container = document.createElement('div');
+  container.style.position = 'fixed';
+  container.style.left = '-9999px';
+  container.style.top = '0';
+  container.style.width = '210mm';
+  container.style.background = 'white';
+  container.style.zIndex = '-1';
+  document.body.appendChild(container);
+
+  try {
+    // Dynamically import the SalarySlipPreview component
+    const { SalarySlipPreview } = await import('@/components/payroll/SalarySlipPreview');
+
+    // Render the preview offscreen with forPDF=true (hides Calculation Breakdown)
+    const root = ReactDOMClient.createRoot(container);
+    await new Promise<void>((resolve) => {
+      root.render(
+        React.createElement(SalarySlipPreview, {
+          slip,
+          settings,
+          template: template ?? null,
+          forPDF: true,
+        })
+      );
+      // Wait for rendering to complete
+      setTimeout(resolve, 500);
     });
-  };
 
-  const monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-
-  // Company Header
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.text(settings.companyName, pageWidth / 2, yPos, { align: 'center' });
-  yPos += 6;
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  const addressLines = settings.companyAddress.split('\n');
-  addressLines.forEach((line) => {
-    doc.text(line, pageWidth / 2, yPos, { align: 'center' });
-    yPos += 4;
-  });
-  yPos += 4;
-
-  // Divider
-  doc.setDrawColor(200);
-  doc.line(margin, yPos, pageWidth - margin, yPos);
-  yPos += 6;
-
-  // Title
-  doc.setFontSize(16);
-  doc.setFont('helvetica', 'bold');
-  doc.text('SALARY SLIP', pageWidth / 2, yPos, { align: 'center' });
-  yPos += 6;
-
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text(`Pay Slip for ${monthNames[slip.month]}, ${slip.year}`, pageWidth / 2, yPos, { align: 'center' });
-  yPos += 8;
-
-  // Employee Details
-  doc.setFontSize(9);
-  const employeeDetails = [
-    ['Name of the Employee:', slip.name, 'PAN:', slip.pan || '-'],
-    ['Employee ID:', slip.employeeCode, 'Department:', slip.department || '-'],
-    ['Designation:', slip.designation || '-', 'Date of Joining:', formatDate(slip.doj)],
-  ];
-
-  employeeDetails.forEach((row) => {
-    doc.setFont('helvetica', 'bold');
-    doc.text(row[0], margin, yPos);
-    doc.text(row[2], pageWidth / 2, yPos);
-
-    doc.setFont('helvetica', 'normal');
-    doc.text(row[1], margin + 40, yPos);
-    doc.text(row[3], pageWidth / 2 + 35, yPos);
-
-    yPos += 5;
-  });
-  yPos += 4;
-
-  // Attendance Details
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Attendance Details', margin, yPos);
-  yPos += 5;
-
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-
-  const attendanceDetails = [
-    ['Total Days in Month:', slip.totalDaysInMonth.toString(), 'Paid Days:', slip.paidDays.toString()],
-    ['Present:', slip.attendanceBreakdown.present.toString(), 'WFH:', slip.attendanceBreakdown.wfh.toString()],
-    ['Holidays:', slip.attendanceBreakdown.holiday.toString(), 'Leave Taken:', slip.attendanceBreakdown.leaveTaken.toString()],
-    ['Paid Leave:', slip.attendanceBreakdown.paidLeave.toString(), 'Unpaid Leave:', slip.attendanceBreakdown.unpaidLeave.toString()],
-    ['Approved Leave:', slip.attendanceBreakdown.approvedLeave.toString(), 'Unapproved Leave:', slip.attendanceBreakdown.unapprovedLeave.toString()],
-    ['Half Day:', slip.attendanceBreakdown.halfDay.toString(), '', ''],
-  ];
-
-  attendanceDetails.forEach((row) => {
-    if (row[0]) {
-      doc.setFont('helvetica', 'normal');
-      doc.text(row[0], margin, yPos);
-      doc.text(row[2] || '', pageWidth / 2, yPos);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text(row[1], margin + 40, yPos);
-      doc.text(row[3] || '', pageWidth / 2 + 35, yPos);
-
-      yPos += 5;
+    // Get the rendered slip content
+    const slipContent = container.querySelector('.bg-white');
+    if (!slipContent) {
+      throw new Error('Failed to find slip content for PDF capture');
     }
-  });
-  yPos += 4;
 
-  // Earnings and Deductions
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
+    // Capture the HTML as a canvas
+    const canvas = await html2canvas(slipContent as HTMLElement, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: true,
+      backgroundColor: '#ffffff',
+      logging: false,
+      width: slipContent.scrollWidth,
+      height: slipContent.scrollHeight,
+    });
 
-  // Earnings header
-  doc.text('Earnings', margin + 20, yPos, { align: 'center' });
-  // Deductions header
-  doc.text('Deductions', pageWidth / 2 + 20, yPos, { align: 'center' });
+    // Convert canvas to PDF
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('portrait', 'mm', 'a4');
 
-  // Header underline
-  doc.setDrawColor(150);
-  doc.line(margin, yPos + 1, pageWidth / 2 - 5, yPos + 1);
-  doc.line(pageWidth / 2, yPos + 1, pageWidth - margin, yPos + 1);
-  yPos += 6;
+    const pdfWidth = pdf.internal.pageSize.getWidth();
+    const pdfHeight = pdf.internal.pageSize.getHeight();
 
-  // Earnings items
-  const earnings = [
-    ['Basic Wage', formatCurrency(slip.salaryBreakup.basic)],
-    ['HRA', formatCurrency(slip.salaryBreakup.hra)],
-    ['Special Allowances', formatCurrency(slip.salaryBreakup.special)],
-  ];
+    const imgWidth = pdfWidth - 20; // 10mm margin on each side
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-  // Deductions items
-  const deductions = [
-    ['EPF', formatCurrency(0)],
-    ['ESI/Health Insurance', formatCurrency(0)],
-    ['Professional Tax', formatCurrency(0)],
-    ['TDS / Income Tax', formatCurrency(0)],
-    ['Loan Recovery', formatCurrency(0)],
-    ['Other Deduction', formatCurrency(0)],
-  ];
+    // If the image fits on one page, add it directly
+    if (imgHeight <= pdfHeight - 20) {
+      pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, imgHeight);
+    } else {
+      // Multi-page: slice the canvas into page-sized chunks
+      let yOffset = 0;
+      const pageContentHeight = pdfHeight - 20; // usable height per page
+      const sourcePageHeight = (pageContentHeight / imgHeight) * canvas.height;
 
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
+      while (yOffset < canvas.height) {
+        if (yOffset > 0) {
+          pdf.addPage();
+        }
 
-  const maxRows = Math.max(earnings.length, deductions.length);
-  for (let i = 0; i < maxRows; i++) {
-    if (earnings[i]) {
-      doc.text(earnings[i][0], margin, yPos);
-      doc.text(earnings[i][1], pageWidth / 2 - 20, yPos, { align: 'right' });
+        // Create a temporary canvas for this page slice
+        const pageCanvas = document.createElement('canvas');
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = Math.min(sourcePageHeight, canvas.height - yOffset);
+
+        const ctx = pageCanvas.getContext('2d');
+        if (ctx) {
+          ctx.drawImage(
+            canvas,
+            0, yOffset, canvas.width, pageCanvas.height,
+            0, 0, canvas.width, pageCanvas.height
+          );
+
+          const pageImgData = pageCanvas.toDataURL('image/png');
+          const sliceHeight = (pageCanvas.height * imgWidth) / canvas.width;
+          pdf.addImage(pageImgData, 'PNG', 10, 10, imgWidth, sliceHeight);
+        }
+
+        yOffset += sourcePageHeight;
+      }
     }
-    if (deductions[i]) {
-      doc.text(deductions[i][0], pageWidth / 2, yPos);
-      doc.text(deductions[i][1], pageWidth - margin - 10, yPos, { align: 'right' });
-    }
-    yPos += 5;
+
+    // Save the PDF
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    pdf.save(`SalarySlip_${slip.employeeCode}_${monthNames[slip.month]}_${slip.year}.pdf`);
+
+    // Clean up
+    root.unmount();
+  } finally {
+    document.body.removeChild(container);
   }
-
-  // Total row
-  yPos += 2;
-  doc.setDrawColor(150);
-  doc.line(margin, yPos, pageWidth / 2 - 5, yPos);
-  doc.line(pageWidth / 2, yPos, pageWidth - margin, yPos);
-  yPos += 5;
-
-  doc.setFont('helvetica', 'bold');
-  doc.text('Total Earnings', margin, yPos);
-  doc.text(formatCurrency(slip.salaryBreakup.basic + slip.salaryBreakup.hra + slip.salaryBreakup.special), pageWidth / 2 - 20, yPos, { align: 'right' });
-
-  doc.text('Total Deductions', pageWidth / 2, yPos);
-  doc.text(formatCurrency(slip.salaryBreakup.totalDeductions), pageWidth - margin - 10, yPos, { align: 'right' });
-  yPos += 8;
-
-  // Net Salary Box
-  doc.setFillColor(240, 240, 240);
-  doc.rect(margin, yPos, pageWidth - 2 * margin, 12, 'F');
-
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(33, 33, 33);
-  doc.text('Net Salary', margin + 5, yPos + 8);
-  doc.text(formatCurrency(slip.salaryBreakup.netSalary), pageWidth - margin - 5, yPos + 8, { align: 'right' });
-  yPos += 20;
-
-  // Footer
-  doc.setFontSize(8);
-  doc.setFont('helvetica', 'italic');
-  doc.setTextColor(100, 100, 100);
-  doc.text(
-    settings.footerNote || 'This is a computer generated statement, does not require signature.',
-    margin,
-    yPos
-  );
-  yPos += 6;
-
-  // Slip Number
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(150, 150, 150);
-  doc.text(`Slip No: ${slip.slipNumber}`, margin, yPos);
-
-  // Save PDF
-  doc.save(`SalarySlip_${slip.employeeCode}_${monthNames[slip.month]}_${slip.year}.pdf`);
 }

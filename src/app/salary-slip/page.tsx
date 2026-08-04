@@ -158,7 +158,7 @@ export default function SalarySlipPage() {
       return;
     }
     try {
-      await generateSalarySlipPDF(slip, currentSettings);
+      await generateSalarySlipPDF(slip, currentSettings, template);
       toast.success('PDF downloaded successfully');
     } catch (error) {
       toast.error('Failed to generate PDF');

@@ -6,15 +6,19 @@
 
 'use client';
 
+import { useMemo, useState } from 'react';
 import { EmployeeSalary, PayrollSettings, SalarySlipTemplate } from '@/types/payroll.types';
 
 interface SalarySlipPreviewProps {
   slip: EmployeeSalary;
   settings: PayrollSettings;
   template?: SalarySlipTemplate | null;
+  /** When true, hides the Calculation Breakdown section (used for PDF generation) */
+  forPDF?: boolean;
 }
 
-export function SalarySlipPreview({ slip, settings, template }: SalarySlipPreviewProps) {
+export function SalarySlipPreview({ slip, settings, template, forPDF = false }: SalarySlipPreviewProps) {
+  const [showSteps, setShowSteps] = useState(false);
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -66,6 +70,35 @@ export function SalarySlipPreview({ slip, settings, template }: SalarySlipPrevie
     : true;
 
   const showSlipNo = template ? template.showSlipNumber : true;
+
+  // ── Step-by-step calculation breakdown ──────────────────────────
+  const steps = useMemo(() => {
+    const { totalDaysInMonth, paidDays, attendanceBreakdown: ab, salaryBreakup: sb } = slip;
+    const { holiday, present, wfh, approvedLeave, unapprovedLeave, halfDay, leaveTaken, paidLeave, unpaidLeave } = ab;
+    const gross = slip.grossSalary;
+    const totalWorkingDays = totalDaysInMonth - holiday;
+
+    const fmt = (n: number) => n.toLocaleString('en-IN');
+    const fmtD = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    return [
+      { label: 'Total Days in Month', formula: `${fmt(totalDaysInMonth)}` },
+      { label: 'Holidays', formula: `${fmt(holiday)}` },
+      { label: 'Total Working Days', formula: `${fmt(totalDaysInMonth)} - ${fmt(holiday)} = ${fmt(totalWorkingDays)}` },
+      { label: 'Present', formula: `${fmt(present)}` },
+      { label: 'Approved Leave', formula: `${fmt(approvedLeave)}` },
+      { label: 'Unapproved Leave', formula: `${fmt(totalWorkingDays)} - ${fmt(present)} - ${fmt(wfh)} - ${fmt(approvedLeave)} - (${fmt(halfDay)} × 0.5) = ${fmt(unapprovedLeave)}` },
+      { label: 'Leave Taken', formula: `${fmt(approvedLeave)} + ${fmt(unapprovedLeave)} = ${fmt(leaveTaken)}` },
+      { label: 'Paid Leave', formula: `MIN(${fmt(leaveTaken)}, ${fmt(settings.allowedPaidLeaves)}) = ${fmt(paidLeave)}` },
+      { label: 'Unpaid Leave', formula: `MAX(0, ${fmt(leaveTaken)} - ${fmt(paidLeave)}) = ${fmt(unpaidLeave)}` },
+      { label: 'Paid Days', formula: `26 - ${fmt(unpaidLeave)} - (${fmt(halfDay)} × 0.5) = ${fmt(paidDays)}` },
+      { label: 'Prorated Gross', formula: `${fmt(gross)} × (${fmt(paidDays)} / 26) = ${fmtD(gross * paidDays / 26)}` },
+      { label: `Basic (${settings.basicPercentage}%)`, formula: `${fmtD(sb.basic)}` },
+      { label: `HRA (${settings.hraPercentage}%)`, formula: `${fmtD(sb.hra)}` },
+      { label: `Special (${settings.specialPercentage}%)`, formula: `${fmtD(sb.special)}` },
+      { label: 'Net Salary', formula: `${fmt(sb.basic)} + ${fmt(sb.hra)} + ${fmt(sb.special)} - ${fmt(sb.totalDeductions)} = ₹${fmt(sb.netSalary)}` },
+    ];
+  }, [slip, settings]);
 
   // Footer note text
   const footerNoteText = template?.footerNote || settings.footerNote ||
@@ -228,6 +261,64 @@ export function SalarySlipPreview({ slip, settings, template }: SalarySlipPrevie
                 <span>{slip.attendanceBreakdown.halfDay}</span>
               </div>
             </div>
+          )}
+        </div>
+      )}
+
+      {/* Step-by-Step Calculation Breakdown — hidden in PDF */}
+      {!forPDF && (
+        <div className="border-t border-gray-300 pt-4 mb-6">
+          <button
+            onClick={() => setShowSteps(!showSteps)}
+            className="w-full flex items-center justify-between cursor-pointer"
+          >
+            <div>
+              <h3 className="font-bold text-left">Calculation Breakdown</h3>
+              <p className="text-xs text-gray-500 mt-0.5 text-left">
+                See how the net salary was computed step by step — from total days to final take-home pay
+              </p>
+            </div>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="20"
+              height="20"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={`h-5 w-5 text-gray-400 transition-transform ${showSteps ? 'rotate-180' : ''}`}
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </button>
+
+          {showSteps && (
+            <div className="mt-3 space-y-3">
+              {/* Salary Formula Card */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Salary Formula</p>
+                <p className="font-mono text-sm text-blue-900 font-bold">
+                  Net Salary = Gross Salary − (Gross Salary × Unpaid Leaves) / 26
+                </p>
+                <p className="text-xs text-blue-600 mt-1.5">
+                  Denominator is always <span className="font-bold">26</span> (fixed working days per month).
+                  Paid days = 26 − unpaid leaves − (half days × 0.5)
+                </p>
+              </div>
+
+              {/* Step-by-Step Calculation */}
+              <div className="bg-gray-50 rounded-lg p-4 font-mono text-xs space-y-1.5">
+                {steps.map((step, i) => (
+                <div key={i} className="flex gap-2">
+                  <span className="text-gray-400 w-7 shrink-0 text-right">{i + 1}.</span>
+                  <span className="font-semibold text-gray-800">{step.label}:</span>
+                  <span className="text-gray-600">{step.formula}</span>
+                </div>
+              ))}
+            </div>
+          </div>
           )}
         </div>
       )}
