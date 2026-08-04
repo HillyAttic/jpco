@@ -105,31 +105,31 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
     'This is a computer generated statement, does not require signature.';
 
   return (
-    <div className="bg-white text-black p-8 max-w-[210mm] mx-auto font-sans">
+    <div className="bg-white text-black p-4 sm:p-6 md:p-8 max-w-[210mm] mx-auto font-sans">
       {/* Company Header */}
-      <div className="text-center mb-6">
+      <div className="text-center mb-4 sm:mb-6">
         {settings.logoUrl && (
           <img
             src={settings.logoUrl}
             alt="Company Logo"
-            className="h-16 mx-auto mb-2"
+            className="h-12 sm:h-16 mx-auto mb-2"
           />
         )}
-        <h1 className="text-2xl font-bold">{settings.companyName}</h1>
-        <p className="text-sm text-gray-600 whitespace-pre-line">{settings.companyAddress}</p>
+        <h1 className="text-xl sm:text-2xl font-bold">{settings.companyName}</h1>
+        <p className="text-xs sm:text-sm text-gray-600 whitespace-pre-line">{settings.companyAddress}</p>
       </div>
 
       {/* Title */}
-      <div className="border-b-2 border-gray-800 pb-2 mb-6">
-        <h2 className="text-xl font-bold text-center">SALARY SLIP</h2>
-        <p className="text-center text-sm">
+      <div className="border-b-2 border-gray-800 pb-2 mb-4 sm:mb-6">
+        <h2 className="text-lg sm:text-xl font-bold text-center">SALARY SLIP</h2>
+        <p className="text-center text-xs sm:text-sm">
           Pay Slip for {monthNames[slip.month]}, {slip.year}
         </p>
       </div>
 
       {/* Employee Details */}
       {sectionVisible('employeeDetails') && (
-        <div className="grid grid-cols-2 gap-x-8 gap-y-2 mb-6 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-2 mb-4 sm:mb-6 text-xs sm:text-sm">
           {empFields ? (
             empFields.map((f) => {
               let value: string = '-';
@@ -143,38 +143,38 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
                 default:            value = '-';
               }
               return (
-                <div key={f.key} className="flex">
-                  <span className="font-semibold w-40">{f.label}:</span>
-                  <span>{value}</span>
+                <div key={f.key} className="flex justify-between">
+                  <span className="text-gray-700">{f.label}:</span>
+                  <span className="font-semibold">{value}</span>
                 </div>
               );
             })
           ) : (
             // Fallback: no template → show all fields with hardcoded labels
             <>
-              <div className="flex">
-                <span className="font-semibold w-40">Name of the Employee:</span>
-                <span>{slip.name}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Name:</span>
+                <span className="font-semibold">{slip.name}</span>
               </div>
-              <div className="flex">
-                <span className="font-semibold w-32">PAN:</span>
-                <span>{slip.pan || '-'}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-700">PAN:</span>
+                <span className="font-semibold">{slip.pan || '-'}</span>
               </div>
-              <div className="flex">
-                <span className="font-semibold w-40">Employee ID:</span>
-                <span>{slip.employeeCode}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Employee ID:</span>
+                <span className="font-semibold">{slip.employeeCode}</span>
               </div>
-              <div className="flex">
-                <span className="font-semibold w-32">Department:</span>
-                <span>{slip.department || '-'}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Department:</span>
+                <span className="font-semibold">{slip.department || '-'}</span>
               </div>
-              <div className="flex">
-                <span className="font-semibold w-40">Designation:</span>
-                <span>{slip.designation || '-'}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Designation:</span>
+                <span className="font-semibold">{slip.designation || '-'}</span>
               </div>
-              <div className="flex">
-                <span className="font-semibold w-32">Date of Joining:</span>
-                <span>{formatDate(slip.doj)}</span>
+              <div className="flex justify-between">
+                <span className="text-gray-700">Date of Joining:</span>
+                <span className="font-semibold">{formatDate(slip.doj)}</span>
               </div>
             </>
           )}
@@ -183,12 +183,12 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
 
       {/* Attendance Details */}
       {sectionVisible('attendance') && (
-        <div className="border-t border-gray-300 pt-4 mb-6">
-          <h3 className="font-bold mb-2">
+        <div className="border-t border-gray-300 pt-3 sm:pt-4 mb-4 sm:mb-6">
+          <h3 className="font-bold mb-2 text-sm sm:text-base">
             {template?.sections.find((s) => s.key === 'attendance')?.title || 'Attendance Details'}
           </h3>
           {attendanceFields ? (
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
               {attendanceFields.map((f) => {
                 let value: string | number = '-';
                 switch (f.key) {
@@ -206,59 +206,59 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
                   default:                 value = '-';
                 }
                 return (
-                  <div key={f.key} className="flex justify-between">
-                    <span>{f.label}:</span>
-                    <span className="font-semibold">{value}</span>
+                  <div key={f.key} className="flex justify-between sm:justify-between">
+                    <span className="text-gray-700">{f.label}:</span>
+                    <span className="font-semibold ml-2">{value}</span>
                   </div>
                 );
               })}
             </div>
           ) : (
             // Fallback: no template → show all fields with hardcoded labels
-            <div className="grid grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-1.5 text-xs sm:text-sm">
               <div className="flex justify-between">
-                <span>Total Days in Month:</span>
-                <span className="font-semibold">{slip.totalDaysInMonth}</span>
+                <span className="text-gray-700">Total Days:</span>
+                <span className="font-semibold ml-2">{slip.totalDaysInMonth}</span>
               </div>
               <div className="flex justify-between">
-                <span>Paid Days:</span>
-                <span className="font-semibold">{slip.paidDays}</span>
+                <span className="text-gray-700">Paid Days:</span>
+                <span className="font-semibold ml-2">{slip.paidDays}</span>
               </div>
               <div className="flex justify-between">
-                <span>Present:</span>
-                <span>{slip.attendanceBreakdown.present}</span>
+                <span className="text-gray-700">Present:</span>
+                <span className="font-semibold ml-2">{slip.attendanceBreakdown.present}</span>
               </div>
               <div className="flex justify-between">
-                <span>WFH:</span>
-                <span>{slip.attendanceBreakdown.wfh}</span>
+                <span className="text-gray-700">WFH:</span>
+                <span className="font-semibold ml-2">{slip.attendanceBreakdown.wfh}</span>
               </div>
               <div className="flex justify-between">
-                <span>Holidays:</span>
-                <span>{slip.attendanceBreakdown.holiday}</span>
+                <span className="text-gray-700">Holidays:</span>
+                <span className="font-semibold ml-2">{slip.attendanceBreakdown.holiday}</span>
               </div>
               <div className="flex justify-between">
-                <span>Leave Taken:</span>
-                <span>{slip.attendanceBreakdown.leaveTaken}</span>
+                <span className="text-gray-700">Leave Taken:</span>
+                <span className="font-semibold ml-2">{slip.attendanceBreakdown.leaveTaken}</span>
               </div>
               <div className="flex justify-between">
-                <span>Paid Leave:</span>
-                <span>{slip.attendanceBreakdown.paidLeave}</span>
+                <span className="text-gray-700">Paid Leave:</span>
+                <span className="font-semibold ml-2">{slip.attendanceBreakdown.paidLeave}</span>
               </div>
               <div className="flex justify-between">
-                <span>Unpaid Leave:</span>
-                <span>{slip.attendanceBreakdown.unpaidLeave}</span>
+                <span className="text-gray-700">Unpaid Leave:</span>
+                <span className="font-semibold ml-2">{slip.attendanceBreakdown.unpaidLeave}</span>
               </div>
               <div className="flex justify-between">
-                <span>Approved Leave:</span>
-                <span>{slip.attendanceBreakdown.approvedLeave}</span>
+                <span className="text-gray-700">Approved Leave:</span>
+                <span className="font-semibold ml-2">{slip.attendanceBreakdown.approvedLeave}</span>
               </div>
               <div className="flex justify-between">
-                <span>Unapproved Leave:</span>
-                <span>{slip.attendanceBreakdown.unapprovedLeave}</span>
+                <span className="text-gray-700">Unapproved Leave:</span>
+                <span className="font-semibold ml-2">{slip.attendanceBreakdown.unapprovedLeave}</span>
               </div>
               <div className="flex justify-between">
-                <span>Half Day:</span>
-                <span>{slip.attendanceBreakdown.halfDay}</span>
+                <span className="text-gray-700">Half Day:</span>
+                <span className="font-semibold ml-2">{slip.attendanceBreakdown.halfDay}</span>
               </div>
             </div>
           )}
@@ -267,15 +267,15 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
 
       {/* Step-by-Step Calculation Breakdown — hidden in PDF */}
       {!forPDF && (
-        <div className="border-t border-gray-300 pt-4 mb-6">
+        <div className="border-t border-gray-300 pt-3 sm:pt-4 mb-4 sm:mb-6">
           <button
             onClick={() => setShowSteps(!showSteps)}
             className="w-full flex items-center justify-between cursor-pointer"
           >
-            <div>
-              <h3 className="font-bold text-left">Calculation Breakdown</h3>
-              <p className="text-xs text-gray-500 mt-0.5 text-left">
-                See how the net salary was computed step by step — from total days to final take-home pay
+            <div className="text-left">
+              <h3 className="font-bold text-sm sm:text-base">Calculation Breakdown</h3>
+              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
+                See how the net salary was computed step by step
               </p>
             </div>
             <svg
@@ -288,7 +288,7 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
               strokeWidth="2"
               strokeLinecap="round"
               strokeLinejoin="round"
-              className={`h-5 w-5 text-gray-400 transition-transform ${showSteps ? 'rotate-180' : ''}`}
+              className={`h-4 w-4 sm:h-5 sm:w-5 text-gray-400 transition-transform ${showSteps ? 'rotate-180' : ''}`}
             >
               <path d="m6 9 6 6 6-6" />
             </svg>
@@ -297,24 +297,26 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
           {showSteps && (
             <div className="mt-3 space-y-3">
               {/* Salary Formula Card */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Salary Formula</p>
-                <p className="font-mono text-sm text-blue-900 font-bold">
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+                <p className="text-[10px] sm:text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Salary Formula</p>
+                <p className="font-mono text-[10px] sm:text-xs text-blue-900 font-bold">
                   Net Salary = Gross Salary − (Gross Salary × Unpaid Leaves) / 26
                 </p>
-                <p className="text-xs text-blue-600 mt-1.5">
-                  Denominator is always <span className="font-bold">26</span> (fixed working days per month).
+                <p className="text-[10px] sm:text-xs text-blue-600 mt-1.5">
+                  Denominator is always <span className="font-bold">26</span> (fixed working days).
                   Paid days = 26 − unpaid leaves − (half days × 0.5)
                 </p>
               </div>
 
               {/* Step-by-Step Calculation */}
-              <div className="bg-gray-50 rounded-lg p-4 font-mono text-xs space-y-1.5">
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs space-y-2">
                 {steps.map((step, i) => (
-                <div key={i} className="flex gap-2">
-                  <span className="text-gray-400 w-7 shrink-0 text-right">{i + 1}.</span>
-                  <span className="font-semibold text-gray-800">{step.label}:</span>
-                  <span className="text-gray-600">{step.formula}</span>
+                <div key={i} className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
+                  <span className="text-gray-400 text-right">{i + 1}.</span>
+                  <div>
+                    <span className="font-semibold text-gray-800">{step.label}:</span>
+                    <span className="text-gray-600 ml-1">{step.formula}</span>
+                  </div>
                 </div>
               ))}
             </div>
@@ -325,15 +327,15 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
 
       {/* Earnings and Deductions */}
       {(sectionVisible('earnings') || sectionVisible('deductions')) && (
-        <div className="border-t border-gray-300 pt-4 mb-6">
-          <div className="grid grid-cols-2 gap-8">
+        <div className="border-t border-gray-300 pt-3 sm:pt-4 mb-4 sm:mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-8">
             {/* Earnings Column */}
             {sectionVisible('earnings') && (
               <div>
-                <h3 className="font-bold mb-2 text-center border-b border-gray-400 pb-1">
+                <h3 className="font-bold mb-2 sm:mb-3 text-center border-b border-gray-400 pb-2 text-sm sm:text-base">
                   {template?.sections.find((s) => s.key === 'earnings')?.title || 'Earnings'}
                 </h3>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                   {earningsFields ? (
                     earningsFields.map((f) => {
                       let value = 0;
@@ -378,10 +380,10 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
             {/* Deductions Column */}
             {sectionVisible('deductions') && (
               <div>
-                <h3 className="font-bold mb-2 text-center border-b border-gray-400 pb-1">
+                <h3 className="font-bold mb-2 sm:mb-3 text-center border-b border-gray-400 pb-2 text-sm sm:text-base">
                   {template?.sections.find((s) => s.key === 'deductions')?.title || 'Deductions'}
                 </h3>
-                <div className="space-y-2 text-sm">
+                <div className="space-y-1.5 sm:space-y-2 text-xs sm:text-sm">
                   {deductionsFields ? (
                     deductionsFields.map((f) => {
                       let value = 0;
@@ -442,23 +444,23 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
       )}
 
       {/* Net Salary Box */}
-      <div className="bg-gray-200 p-4 rounded mb-6">
+      <div className="bg-gray-200 p-3 sm:p-4 rounded mb-4 sm:mb-6">
         <div className="flex justify-between items-center">
-          <span className="text-lg font-bold">Net Salary</span>
-          <span className="text-xl font-bold">{formatCurrency(slip.salaryBreakup.netSalary)}</span>
+          <span className="text-base sm:text-lg font-bold">Net Salary</span>
+          <span className="text-lg sm:text-xl font-bold">{formatCurrency(slip.salaryBreakup.netSalary)}</span>
         </div>
       </div>
 
       {/* Footer */}
       {showFooter && (
-        <div className="text-xs text-gray-600 italic mt-8 pt-4 border-t border-gray-300">
+        <div className="text-[10px] sm:text-xs text-gray-600 italic mt-6 sm:mt-8 pt-3 sm:pt-4 border-t border-gray-300">
           {footerNoteText}
         </div>
       )}
 
       {/* Slip Number */}
       {showSlipNo && (
-        <div className="text-xs text-gray-500 mt-4">
+        <div className="text-[10px] sm:text-xs text-gray-500 mt-3 sm:mt-4">
           Slip No: {slip.slipNumber}
         </div>
       )}

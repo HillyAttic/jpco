@@ -1085,14 +1085,14 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
 
       {/* Preview Dialog */}
       <Dialog open={!!previewSlip} onOpenChange={() => setPreviewSlip(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle>Salary Slip Preview</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Salary Slip Preview</DialogTitle>
           </DialogHeader>
 
           {/* Template Selector */}
           {templates.length > 0 && (
-            <div className="flex items-center gap-3 px-1">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-1">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                 Slip Template:
               </label>
@@ -1111,11 +1111,13 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
           )}
 
           {previewSlip && settings && (
-            <SalarySlipPreview
-              slip={previewSlip}
-              settings={settings}
-              template={templates.find((t) => t.id === selectedTemplateId) ?? null}
-            />
+            <div className="overflow-x-auto">
+              <SalarySlipPreview
+                slip={previewSlip}
+                settings={settings}
+                template={templates.find((t) => t.id === selectedTemplateId) ?? null}
+              />
+            </div>
           )}
         </DialogContent>
       </Dialog>

@@ -333,14 +333,14 @@ export default function SalarySlipPage() {
 
       {/* Preview Dialog */}
       <Dialog open={!!selectedSlip} onOpenChange={() => setSelectedSlip(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle>Salary Slip Preview</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Salary Slip Preview</DialogTitle>
           </DialogHeader>
 
           {/* Template Selector */}
           {selectedSlip && templates.length > 0 && (
-            <div className="flex items-center gap-3 px-1 -mt-2">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-1 -mt-2">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                 Slip Template:
               </label>
@@ -363,17 +363,17 @@ export default function SalarySlipPage() {
           )}
 
           {selectedSlip && settings ? (
-            <div>
+            <div className="overflow-x-auto">
               <SalarySlipPreview
                 slip={selectedSlip}
                 settings={settings}
                 template={templates.find((t) => t.id === selectedTemplateId) ?? null}
               />
-              <div className="flex justify-end gap-2 mt-4">
-                <Button variant="outline" onClick={() => setSelectedSlip(null)}>
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-4">
+                <Button variant="outline" onClick={() => setSelectedSlip(null)} className="w-full sm:w-auto">
                   Close
                 </Button>
-                <Button onClick={() => handleDownloadPDF(selectedSlip)}>
+                <Button onClick={() => handleDownloadPDF(selectedSlip)} className="w-full sm:w-auto">
                   Download PDF
                 </Button>
               </div>
