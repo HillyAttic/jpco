@@ -244,6 +244,75 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     }
   };
 
+  /**
+   * Calculate salary for a single employee (individual calculation)
+   * Merges any saved Firestore slip data so manual edits survive refresh.
+   */
+  const handleCalculateEmployee = async (employee: EmployeeWithCalculation) => {
+    if (!settings) {
+      toast.error('Please configure payroll settings first. Go to the Payroll Settings tab.');
+      return;
+    }
+    if (employee.loading) return; // avoid double-clicks
+
+    // Optimistic loading state for this row only
+    setEmployees(prev =>
+      prev.map(e => (e.id === employee.id ? { ...e, loading: true } : e))
+    );
+
+    try {
+      const result = await payrollService.calculateSalary(employee.id, month, year);
+
+      if (!result) {
+        setEmployees(prev =>
+          prev.map(e => (e.id === employee.id ? { ...e, calculation: null, loading: false } : e))
+        );
+        toast.error(`Failed to calculate salary for ${employee.name}. Check employee salary config.`);
+        return;
+      }
+
+      // Merge saved Firestore data into the calculation so manual edits survive refresh
+      let calculation: SalaryCalculationResult = result;
+      let grossSalary = employee.grossSalary;
+      let designation = employee.designation;
+      let department = employee.department;
+      try {
+        const savedSlips = await payrollService.getSlips({ employeeId: employee.id, month, year, includeAll: true });
+        const saved = savedSlips.find(s => s.employeeId === employee.id);
+        if (saved) {
+          grossSalary = saved.grossSalary || grossSalary || 0;
+          designation = saved.designation || designation;
+          department = saved.department || department;
+          calculation = {
+            ...result,
+            paidDays: saved.paidDays ?? result.paidDays,
+            attendanceBreakdown: saved.attendanceBreakdown,
+            salaryBreakup: saved.salaryBreakup,
+            totalDaysInMonth: result.totalDaysInMonth,
+          };
+        }
+      } catch (e) {
+        console.error('[GenerateSlipsPanel] Failed to merge saved slip:', e);
+      }
+
+      setEmployees(prev =>
+        prev.map(e =>
+          e.id === employee.id
+            ? { ...e, calculation, loading: false, grossSalary, designation, department }
+            : e
+        )
+      );
+
+      toast.success(`Calculated salary for ${employee.name}`);
+    } catch (error) {
+      console.error(`Failed to calculate for ${employee.name}:`, error);
+      setEmployees(prev =>
+        prev.map(e => (e.id === employee.id ? { ...e, loading: false } : e))
+      );
+      toast.error(`Failed to calculate salary for ${employee.name}`);
+    }
+  };
+
   const handleToggleAccess = async (id: string) => {
     // Get the new selected state before toggling
     const emp = employees.find(e => e.id === id);
@@ -961,7 +1030,16 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleCalculateEmployee(employee)}
+                        disabled={!settings || employee.loading}
+                      >
+                        {employee.loading ? 'Calculating...' : 'Calculate'}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleEdit(employee)}
+                        disabled={employee.loading}
                       >
                         Edit
                       </Button>
@@ -969,7 +1047,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
                         variant="outline"
                         size="sm"
                         onClick={() => handlePreview(employee)}
-                        disabled={!employee.calculation}
+                        disabled={!employee.calculation || employee.loading}
                       >
                         Preview
                       </Button>
@@ -1007,14 +1085,14 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
 
       {/* Preview Dialog */}
       <Dialog open={!!previewSlip} onOpenChange={() => setPreviewSlip(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-full sm:max-w-4xl max-h-[90vh] overflow-y-auto mx-2 sm:mx-auto">
           <DialogHeader>
-            <DialogTitle>Salary Slip Preview</DialogTitle>
+            <DialogTitle className="text-base sm:text-lg">Salary Slip Preview</DialogTitle>
           </DialogHeader>
 
           {/* Template Selector */}
           {templates.length > 0 && (
-            <div className="flex items-center gap-3 px-1">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-1">
               <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
                 Slip Template:
               </label>
@@ -1033,11 +1111,13 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
           )}
 
           {previewSlip && settings && (
-            <SalarySlipPreview
-              slip={previewSlip}
-              settings={settings}
-              template={templates.find((t) => t.id === selectedTemplateId) ?? null}
-            />
+            <div className="overflow-x-auto">
+              <SalarySlipPreview
+                slip={previewSlip}
+                settings={settings}
+                template={templates.find((t) => t.id === selectedTemplateId) ?? null}
+              />
+            </div>
           )}
         </DialogContent>
       </Dialog>
