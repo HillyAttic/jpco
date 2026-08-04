@@ -59,8 +59,8 @@ const LINE_KEYS = [
   'paidLeave',               // depends on: approvedLeave, unapprovedLeave, allowedPaidLeaves
   'leaveTaken',              // depends on: approvedLeave, unapprovedLeave
   'unpaidLeave',             // depends on: approvedLeave, unapprovedLeave, allowedPaidLeaves
-  'paidDays',                // depends on: totalWorkingDays, unpaidLeave
-  'proratedGross',           // depends on: grossSalary, paidDays, totalWorkingDays
+  'paidDays',                // depends on: unpaidLeave, halfDay
+  'proratedGross',           // depends on: grossSalary, unpaidLeave
   'basic',                   // depends on: proratedGross, basicPercentage
   'hra',                     // depends on: proratedGross, hraPercentage
   'special',                 // depends on: proratedGross, specialPercentage
@@ -166,8 +166,8 @@ const DEFAULT_EXPRESSIONS: Record<string, string> = {
   unapprovedLeave: 'totalWorkingDays - present - wfh - approvedLeave - (halfDay * 0.5)',
   // Calculated components
   totalWorkingDays: 'totalDaysInMonth - holidays',
-  paidDays: 'totalWorkingDays - unpaidLeave',
-  proratedGross: 'grossSalary * (paidDays / totalWorkingDays)',
+  paidDays: '26 - unpaidLeave - (halfDay * 0.5)',
+  proratedGross: 'grossSalary - (grossSalary * unpaidLeave) / 26',
   basic: 'proratedGross * (basicPercentage / 100)',
   hra: 'proratedGross * (hraPercentage / 100)',
   special: 'proratedGross * (specialPercentage / 100)',
