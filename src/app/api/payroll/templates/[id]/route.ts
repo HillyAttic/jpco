@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 /**
  * GET /api/payroll/templates/[id]
- * Admin only - returns a single template
+ * Any authenticated user can read a template (needed for salary slip display)
  */
 export async function GET(
   request: NextRequest,
@@ -16,10 +16,6 @@ export async function GET(
     const authResult = await verifyAuthToken(request);
     if (!authResult.success || !authResult.user) {
       return ErrorResponses.unauthorized();
-    }
-
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can access salary slip templates');
     }
 
     const { id } = await params;
