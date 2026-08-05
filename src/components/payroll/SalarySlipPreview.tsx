@@ -96,7 +96,7 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
     'This is a computer generated statement, does not require signature.';
 
   return (
-    <div className="bg-white text-black p-4 sm:p-6 md:p-8 max-w-[210mm] mx-auto font-sans">
+    <div data-for-pdf={forPDF || undefined} className="bg-white text-black p-4 sm:p-6 md:p-8 max-w-[210mm] mx-auto font-sans">
       {/* Company Header */}
       <div className="text-center mb-4 sm:mb-6">
         {settings.logoUrl && (

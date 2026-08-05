@@ -26,6 +26,7 @@ export async function generateSalarySlipPDF(
 
   // Create a temporary container for offscreen rendering
   const container = document.createElement('div');
+  container.setAttribute('data-for-pdf', 'true');
   container.style.position = 'fixed';
   container.style.left = '-9999px';
   container.style.top = '0';
