@@ -105,8 +105,40 @@ export default function SalarySlipPage() {
         );
       }
 
+      // Fetch current employee profile to override stale snapshotted data
+      // Salary slips snapshot employee data at generation time; when admin updates
+      // PAN, designation, salary etc. on the salary-config page, existing slips
+      // still show the old values. We merge live data here so the slip always
+      // reflects the current profile.
+      let liveProfile: Record<string, any> | null = null;
+      try {
+        const profileRes = await authenticatedFetch('/api/auth/profile');
+        if (profileRes.ok) {
+          const profileJson = await profileRes.json();
+          liveProfile = profileJson?.data ?? null;
+          console.log('[SalarySlipPage] Fetched live employee profile for data merge');
+        }
+      } catch (profileErr) {
+        console.warn('[SalarySlipPage] Could not fetch live profile, using snapshotted data:', profileErr);
+      }
+
+      // Merge live profile data into slips so they always show current values
+      const enrichedData = filteredData.map(slip => {
+        if (!liveProfile) return slip;
+        return {
+          ...slip,
+          // Override snapshotted fields with live values from the employee profile
+          pan: liveProfile.pan || slip.pan,
+          name: liveProfile.displayName || liveProfile.name || slip.name,
+          designation: liveProfile.designation || slip.designation,
+          department: liveProfile.department || slip.department,
+          doj: liveProfile.doj || slip.doj,
+          grossSalary: liveProfile.grossSalary || slip.grossSalary,
+        };
+      });
+
       // Sort by year desc, then month desc (most recent first)
-      const sorted = [...filteredData].sort((a, b) => {
+      const sorted = [...enrichedData].sort((a, b) => {
         if (b.year !== a.year) return b.year - a.year;
         return b.month - a.month;
       });
