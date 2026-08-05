@@ -72,32 +72,23 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
   const showSlipNo = template ? template.showSlipNumber : true;
 
   // ── Step-by-step calculation breakdown ──────────────────────────
-  const steps = useMemo(() => {
-    const { totalDaysInMonth, paidDays, attendanceBreakdown: ab, salaryBreakup: sb } = slip;
-    const { holiday, present, wfh, approvedLeave, unapprovedLeave, halfDay, leaveTaken, paidLeave, unpaidLeave } = ab;
+  const calcData = useMemo(() => {
+    const { attendanceBreakdown: ab, salaryBreakup: sb } = slip;
+    const { leaveTaken, paidLeave, unpaidLeave } = ab;
     const gross = slip.grossSalary;
-    const totalWorkingDays = totalDaysInMonth - holiday;
 
     const fmt = (n: number) => n.toLocaleString('en-IN');
     const fmtD = (n: number) => n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-    return [
-      { label: 'Total Days in Month', formula: `${fmt(totalDaysInMonth)}` },
-      { label: 'Holidays', formula: `${fmt(holiday)}` },
-      { label: 'Total Working Days', formula: `${fmt(totalDaysInMonth)} - ${fmt(holiday)} = ${fmt(totalWorkingDays)}` },
-      { label: 'Present', formula: `${fmt(present)}` },
-      { label: 'Approved Leave', formula: `${fmt(approvedLeave)}` },
-      { label: 'Unapproved Leave', formula: `${fmt(totalWorkingDays)} - ${fmt(present)} - ${fmt(wfh)} - ${fmt(approvedLeave)} - (${fmt(halfDay)} × 0.5) = ${fmt(unapprovedLeave)}` },
-      { label: 'Leave Taken', formula: `${fmt(approvedLeave)} + ${fmt(unapprovedLeave)} = ${fmt(leaveTaken)}` },
-      { label: 'Paid Leave', formula: `MIN(${fmt(leaveTaken)}, ${fmt(settings.allowedPaidLeaves)}) = ${fmt(paidLeave)}` },
-      { label: 'Unpaid Leave', formula: `MAX(0, ${fmt(leaveTaken)} - ${fmt(paidLeave)}) = ${fmt(unpaidLeave)}` },
-      { label: 'Paid Days', formula: `26 - ${fmt(unpaidLeave)} - (${fmt(halfDay)} × 0.5) = ${fmt(paidDays)}` },
-      { label: 'Prorated Gross', formula: `${fmt(gross)} × (${fmt(paidDays)} / 26) = ${fmtD(gross * paidDays / 26)}` },
-      { label: `Basic (${settings.basicPercentage}%)`, formula: `${fmtD(gross * paidDays / 26)} × ${settings.basicPercentage}% = ${fmtD(sb.basic)}` },
-      { label: `HRA (${settings.hraPercentage}%)`, formula: `${fmtD(gross * paidDays / 26)} × ${settings.hraPercentage}% = ${fmtD(sb.hra)}` },
-      { label: `Special (${settings.specialPercentage}%)`, formula: `${fmtD(gross * paidDays / 26)} × ${settings.specialPercentage}% = ${fmtD(sb.special)}` },
-      { label: 'Net Salary', formula: `${fmt(sb.basic)} + ${fmt(sb.hra)} + ${fmt(sb.special)} - ${fmt(sb.totalDeductions)} = ₹${fmt(sb.netSalary)}` },
-    ];
+    const leaveDeduction = (gross * unpaidLeave) / 26;
+    const netSalary = gross - leaveDeduction;
+
+    return {
+      fmt, fmtD,
+      gross, unpaidLeave, leaveTaken, paidLeave,
+      leaveDeduction, netSalary,
+      sb,
+    };
   }, [slip, settings]);
 
   // Footer note text
@@ -302,28 +293,59 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
                 <p className="font-mono text-[10px] sm:text-xs text-blue-900 font-bold">
                   Net Salary = Gross Salary − (Gross Salary × Unpaid Leaves) / 26
                 </p>
-                <p className="text-[10px] sm:text-xs text-blue-600 mt-1.5">
-                  Denominator is always <span className="font-bold">26</span> (fixed working days).
-                  Paid days = 26 − unpaid leaves − (half days × 0.5)
-                </p>
                 <p className="text-[10px] sm:text-xs text-blue-600 mt-1">
                   <span className="font-bold">Unpaid Leaves</span> = Total Leave Taken − Paid Leave
                   (up to {settings.allowedPaidLeaves} allowed)
                 </p>
               </div>
 
-              {/* Step-by-Step Calculation */}
-              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs space-y-2">
-                {steps.map((step, i) => (
-                <div key={i} className="grid grid-cols-[auto_1fr] gap-x-2 gap-y-0.5">
-                  <span className="text-gray-400 text-right">{i + 1}.</span>
-                  <div>
-                    <span className="font-semibold text-gray-800">{step.label}:</span>
-                    <span className="text-gray-600 ml-1">{step.formula}</span>
+              {/* Given */}
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs">
+                <p className="font-semibold text-gray-700 mb-1">Given:</p>
+                <p className="text-gray-600 ml-2">Gross Salary = {calcData.fmt(calcData.gross)}</p>
+                <p className="text-gray-600 ml-2">Unpaid Leaves = {calcData.unpaidLeave}</p>
+              </div>
+
+              {/* Calculation */}
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs space-y-1">
+                <p className="font-semibold text-gray-700 mb-1">Calculation:</p>
+                <p className="text-gray-600 ml-2">Leave Deduction = ({calcData.fmt(calcData.gross)} × {calcData.unpaidLeave}) ÷ 26</p>
+                <p className="text-gray-600 ml-2">Leave Deduction = {calcData.fmt(calcData.gross * calcData.unpaidLeave)} ÷ 26 = {calcData.fmtD(calcData.leaveDeduction)}</p>
+                <p className="text-gray-600 ml-2">Net Salary = {calcData.fmt(calcData.gross)} − {calcData.fmtD(calcData.leaveDeduction)}</p>
+                <p className="text-gray-800 font-semibold ml-2">Net Salary = {calcData.fmtD(calcData.netSalary)}</p>
+              </div>
+
+              {/* Breakdown Table */}
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs">
+                <p className="font-semibold text-gray-700 mb-1">Breakdown</p>
+                <div className="ml-2 space-y-0.5">
+                  <div className="flex justify-between max-w-[280px]">
+                    <span className="text-gray-600">Gross Salary</span>
+                    <span className="text-gray-800">{calcData.fmtD(calcData.gross)}</span>
+                  </div>
+                  <div className="flex justify-between max-w-[280px]">
+                    <span className="text-gray-600">Unpaid Leaves</span>
+                    <span className="text-gray-800">{calcData.unpaidLeave}</span>
+                  </div>
+                  <div className="flex justify-between max-w-[280px]">
+                    <span className="text-gray-600">Leave Deduction</span>
+                    <span className="text-gray-800">{calcData.fmtD(calcData.leaveDeduction)}</span>
+                  </div>
+                  <div className="flex justify-between max-w-[280px] border-t border-gray-300 pt-1 mt-1">
+                    <span className="font-semibold text-gray-800">Net Salary</span>
+                    <span className="font-semibold text-gray-800">{calcData.fmtD(calcData.netSalary)}</span>
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+
+              {/* Subsequent Calculations */}
+              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs space-y-1">
+                <p className="font-semibold text-gray-700 mb-1">Subsequent Calculations:</p>
+                <p className="text-gray-600 ml-2">Basic ({settings.basicPercentage}%) = {calcData.fmtD(calcData.netSalary)} × {settings.basicPercentage}% = {calcData.fmtD(calcData.sb.basic)}</p>
+                <p className="text-gray-600 ml-2">HRA ({settings.hraPercentage}%) = {calcData.fmtD(calcData.netSalary)} × {settings.hraPercentage}% = {calcData.fmtD(calcData.sb.hra)}</p>
+                <p className="text-gray-600 ml-2">Special Allowance ({settings.specialPercentage}%) = {calcData.fmtD(calcData.netSalary)} × {settings.specialPercentage}% = {calcData.fmtD(calcData.sb.special)}</p>
+                <p className="text-gray-800 font-semibold ml-2 mt-1">Total = {calcData.fmtD(calcData.sb.basic)} + {calcData.fmtD(calcData.sb.hra)} + {calcData.fmtD(calcData.sb.special)} = {calcData.fmtD(calcData.netSalary)}</p>
+              </div>
           </div>
           )}
         </div>
