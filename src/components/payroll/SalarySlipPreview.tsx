@@ -93,9 +93,9 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
       { label: 'Unpaid Leave', formula: `MAX(0, ${fmt(leaveTaken)} - ${fmt(paidLeave)}) = ${fmt(unpaidLeave)}` },
       { label: 'Paid Days', formula: `26 - ${fmt(unpaidLeave)} - (${fmt(halfDay)} × 0.5) = ${fmt(paidDays)}` },
       { label: 'Prorated Gross', formula: `${fmt(gross)} × (${fmt(paidDays)} / 26) = ${fmtD(gross * paidDays / 26)}` },
-      { label: `Basic (${settings.basicPercentage}%)`, formula: `${fmtD(sb.basic)}` },
-      { label: `HRA (${settings.hraPercentage}%)`, formula: `${fmtD(sb.hra)}` },
-      { label: `Special (${settings.specialPercentage}%)`, formula: `${fmtD(sb.special)}` },
+      { label: `Basic (${settings.basicPercentage}%)`, formula: `${fmtD(gross * paidDays / 26)} × ${settings.basicPercentage}% = ${fmtD(sb.basic)}` },
+      { label: `HRA (${settings.hraPercentage}%)`, formula: `${fmtD(gross * paidDays / 26)} × ${settings.hraPercentage}% = ${fmtD(sb.hra)}` },
+      { label: `Special (${settings.specialPercentage}%)`, formula: `${fmtD(gross * paidDays / 26)} × ${settings.specialPercentage}% = ${fmtD(sb.special)}` },
       { label: 'Net Salary', formula: `${fmt(sb.basic)} + ${fmt(sb.hra)} + ${fmt(sb.special)} - ${fmt(sb.totalDeductions)} = ₹${fmt(sb.netSalary)}` },
     ];
   }, [slip, settings]);

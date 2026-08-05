@@ -42,6 +42,7 @@ interface EmployeeWithCalculation extends Employee {
   selected: boolean;
   calculation?: SalaryCalculationResult | null;
   loading?: boolean;
+  slipId?: string; // ID of existing saved slip for this employee/month/year
 }
 
 interface CalculationProgress {
@@ -59,6 +60,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
   const [calculationProgress, setCalculationProgress] = useState<CalculationProgress | null>(null);
   const [generating, setGenerating] = useState(false);
   const [cleaning, setCleaning] = useState(false);
+  const [cleaningSlipId, setCleaningSlipId] = useState<string | null>(null);
   const [previewSlip, setPreviewSlip] = useState<EmployeeSalary | null>(null);
   const [editSlip, setEditSlip] = useState<EmployeeSalary | null>(null);
   const [editLoading, setEditLoading] = useState(false);
@@ -90,11 +92,17 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
   useEffect(() => {
     fetchEmployees();
     fetchTemplates();
+    fetchExistingSlips();
   }, []);
 
   // Reset the ref when period changes so config gets reapplied
   useEffect(() => {
     appliedConfigKey.current = null;
+  }, [month, year]);
+
+  // Re-fetch existing slips when period changes
+  useEffect(() => {
+    fetchExistingSlips();
   }, [month, year]);
 
   // Apply saved access config when period changes (race-condition-safe)
@@ -157,6 +165,25 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     } catch (error) {
       toast.error('Failed to fetch employees');
       console.error(error);
+    }
+  };
+
+  /**
+   * Fetch existing slips for the current period and attach slipId to each employee
+   */
+  const fetchExistingSlips = async () => {
+    try {
+      const savedSlips = await payrollService.getSlips({ month, year, includeAll: true });
+      const slipMap = new Map(savedSlips.map(s => [s.employeeId, s.id]));
+
+      setEmployees(prev =>
+        prev.map(emp => ({
+          ...emp,
+          slipId: slipMap.get(emp.id) || undefined,
+        }))
+      );
+    } catch (error) {
+      console.error('Failed to fetch existing slips:', error);
     }
   };
 
@@ -794,8 +821,8 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         const data = await response.json();
         toast.success(`Successfully deleted ${data.deletedCount} salary slip(s)`);
         onGenerationComplete?.();
-        // Reset selections
-        setEmployees(prev => prev.map(emp => ({ ...emp, selected: false })));
+        // Reset selections and clear slip IDs
+        setEmployees(prev => prev.map(emp => ({ ...emp, selected: false, slipId: undefined })));
       } else {
         const errorData = await response.json();
         toast.error(errorData.error || 'Failed to clean up salary slips');
@@ -805,6 +832,42 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       console.error(error);
     } finally {
       setCleaning(false);
+    }
+  };
+
+  /**
+   * Delete a single employee's salary slip for the current period
+   */
+  const handleDeleteSingleSlip = async (employee: EmployeeWithCalculation) => {
+    if (!employee.slipId) return;
+
+    const confirmMessage = `Are you sure you want to delete the salary slip for ${employee.name} (${monthNames[month]} ${year})?\n\nThis action cannot be undone.`;
+
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    setCleaningSlipId(employee.slipId);
+    try {
+      const success = await payrollService.deleteSlip(employee.slipId);
+
+      if (success) {
+        toast.success(`Deleted salary slip for ${employee.name}`);
+        // Remove slipId from this employee
+        setEmployees(prev =>
+          prev.map(emp =>
+            emp.id === employee.id ? { ...emp, slipId: undefined } : emp
+          )
+        );
+        onGenerationComplete?.();
+      } else {
+        toast.error(`Failed to delete salary slip for ${employee.name}`);
+      }
+    } catch (error) {
+      toast.error(`Failed to delete salary slip for ${employee.name}`);
+      console.error(error);
+    } finally {
+      setCleaningSlipId(null);
     }
   };
 
@@ -1050,6 +1113,18 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
                         disabled={!employee.calculation || employee.loading}
                       >
                         Preview
+                      </Button>
+                      <Button
+                        variant={employee.slipId ? 'destructive' : 'outline'}
+                        size="sm"
+                        onClick={() => handleDeleteSingleSlip(employee)}
+                        disabled={!employee.slipId || cleaningSlipId === employee.slipId}
+                        className={employee.slipId
+                          ? 'bg-red-600 hover:bg-red-700 text-white dark:bg-red-500 dark:hover:bg-red-600'
+                          : 'disabled:opacity-50 disabled:pointer-events-none text-gray-400 border-gray-200 dark:text-gray-600 dark:border-gray-700'
+                        }
+                      >
+                        {cleaningSlipId === employee.slipId ? 'Deleting...' : 'Clean Up'}
                       </Button>
                     </div>
                   </td>
