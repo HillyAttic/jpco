@@ -320,6 +320,23 @@ body.modal-open header {
   }
 }
 
+/* Salary Slip PDF - Force Desktop Layout
+   When generating PDF, the offscreen container has data-for-pdf="true".
+   Override Tailwind's viewport-based sm: breakpoints to force desktop layout
+   regardless of the actual viewport width (e.g. on mobile devices). */
+[data-for-pdf="true"] [class*="grid-cols-1"][class*="sm:grid-cols-2"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+[data-for-pdf="true"] [class*="grid-cols-2"][class*="sm:grid-cols-3"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+[data-for-pdf="true"] [class*="p-4"][class*="sm:p-6"][class*="md:p-8"] {
+  padding: 2rem !important;
+}
+[data-for-pdf="true"] [class*="mb-4"][class*="sm:mb-6"] {
+  margin-bottom: 1.5rem !important;
+}
+
 /* Safe Area Insets for Notched Devices */
 @supports (padding: max(0px)) {
   body {
