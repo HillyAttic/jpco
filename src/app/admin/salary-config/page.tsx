@@ -130,6 +130,7 @@ export default function AdminSalaryConfigPage() {
   const handleSaveSalary = async (data: {
     doj?: string | null;
     pan?: string | null;
+    department?: string | null;
     designation: string;
     grossSalary: number;
   }) => {

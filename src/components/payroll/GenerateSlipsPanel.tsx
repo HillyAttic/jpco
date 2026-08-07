@@ -449,22 +449,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
   const handlePreview = async (employee: EmployeeWithCalculation) => {
     if (!employee.calculation || !settings) return;
 
-    // Try to find existing saved slip first (so manual edits show in preview)
-    try {
-      const existingSlips = await payrollService.getSlips({
-        employeeId: employee.id,
-        month,
-        year,
-      });
-      if (existingSlips.length > 0) {
-        setPreviewSlip(existingSlips[0]);
-        return;
-      }
-    } catch (error) {
-      console.error('Failed to check for existing slip:', error);
-    }
-
-    // Fall back to calculation-based synthetic slip
+    // Build slip from live calculation (always use fresh attendance data)
     const slip: EmployeeSalary = {
       employeeId: employee.id,
       name: employee.name,
@@ -484,6 +469,25 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       generatedBy: '',
       accessGranted: true,
     };
+
+    // If a saved slip exists, merge manual edits (salary breakup, deductions, employee info)
+    // but always keep the live attendance breakdown to avoid stale data
+    try {
+      const existingSlips = await payrollService.getSlips({
+        employeeId: employee.id,
+        month,
+        year,
+      });
+      if (existingSlips.length > 0) {
+        const saved = existingSlips[0];
+        // Merge saved manual edits but preserve live attendance data
+        slip.salaryBreakup = saved.salaryBreakup;
+        slip.doj = saved.doj;
+        slip.pan = saved.pan;
+      }
+    } catch (error) {
+      console.error('Failed to check for existing slip:', error);
+    }
 
     setPreviewSlip(slip);
   };

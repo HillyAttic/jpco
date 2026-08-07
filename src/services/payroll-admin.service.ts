@@ -309,14 +309,15 @@ export const payrollAdminService = {
         }
       });
 
-      // Build sets of approved full-day and half-day leave dates (only within this month)
+      // Build sets of approved full-day, half-day, and WFH leave dates (only within this month)
       const leaveDates = new Set<string>();
       const halfDayLeaveDates = new Set<string>();
       leaveSnapshot.forEach((doc) => {
         const leave = doc.data();
         if (leave.startDate && leave.endDate) {
-          const isHalfDay = leave.halfDay === true;
-          const targetSet = isHalfDay ? halfDayLeaveDates : leaveDates;
+          const isHalfDay = leave.halfDay === true || leave.leaveType === 'half-day';
+          const isWFH = leave.leaveType === 'wfh';
+          const targetSet = isWFH ? wfhDates : isHalfDay ? halfDayLeaveDates : leaveDates;
           const start = leave.startDate.toDate ? leave.startDate.toDate() : new Date(leave.startDate);
           const end = leave.endDate.toDate ? leave.endDate.toDate() : new Date(leave.endDate);
           for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -379,9 +380,15 @@ export const payrollAdminService = {
           continue;
         }
 
-        // Unapproved absence (LOP) — including future days in the current month
-        // that haven't been worked yet. This ensures mid-month slip generation
-        // correctly prorates salary for unworked future days.
+        // Unapproved absence (LOP) — only for past days that weren't worked.
+        // Future days in the current month are skipped to avoid incorrectly
+        // prorating salary for days that haven't occurred yet.
+        const today = new Date();
+        const isCurrentMonth = year === today.getFullYear() && month === today.getMonth();
+        if (isCurrentMonth && date > today) {
+          // Future day in current month — don't count as unapproved
+          continue;
+        }
         unapprovedLeave++;
       }
 
