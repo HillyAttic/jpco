@@ -111,7 +111,8 @@ export function AttendanceCalendarModal({
         dataMap.set(dateKey, { date: clockIn, status: 'present', duration, hours });
       });
 
-      // Fetch approved leave requests via API (bypasses Firestore security rules)
+      // Fetch all leave requests via API (bypasses Firestore security rules)
+      // We fetch all statuses to track both approved and unapproved leaves
       try {
         const { authenticatedFetch } = await import('@/lib/api-client');
         const leaveRes = await authenticatedFetch(
@@ -126,11 +127,15 @@ export function AttendanceCalendarModal({
               : [];
 
           leaveData
-            .filter((l: any) => l.employeeId === employeeId && l.status === 'approved')
+            .filter((l: any) => l.employeeId === employeeId)
             .forEach((leave: any) => {
               const leaveStart = leave.startDate?.split('T')[0];
               const leaveEnd = leave.endDate?.split('T')[0];
               if (!leaveStart || !leaveEnd) return;
+
+              const isApproved = leave.status === 'approved';
+              const isWfh = leave.leaveType === 'wfh';
+              const isHalfDay = leave.halfDay === true || leave.leaveType === 'half-day';
 
               const cur = new Date(leaveStart + 'T00:00:00');
               const end = new Date(leaveEnd + 'T00:00:00');
@@ -143,13 +148,18 @@ export function AttendanceCalendarModal({
 
                 // Present takes precedence over leave
                 if (!dataMap.has(dateKey)) {
-                  const isWfh = leave.leaveType === 'wfh';
-                  const isHalfDay = leave.leaveType === 'half-day';
+                  let status: 'present' | 'wfh' | 'half-day' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'upcoming' | 'holiday';
+                  if (isApproved) {
+                    status = isWfh ? 'wfh' : isHalfDay ? 'half-day' : 'approved-leave';
+                  } else {
+                    // Pending or rejected leave requests are unapproved
+                    status = 'unapproved-leave';
+                  }
                   dataMap.set(dateKey, {
                     date: new Date(cur),
-                    status: isWfh ? 'wfh' : isHalfDay ? 'half-day' : 'approved-leave',
+                    status,
                     leaveType: isHalfDay ? 'half' : 'full',
-                    leaveStatus: 'approved',
+                    leaveStatus: leave.status,
                   });
                 }
                 cur.setDate(cur.getDate() + 1);

@@ -45,6 +45,7 @@ const schema = z.object({
       if (!val) return true;
       return /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(val) || val === '';
     }, 'Invalid PAN format (ABCDE1234F)'),
+  department: z.string().optional().nullable(),
   designation: z.string().min(1, 'Designation is required'),
   grossSalary: z.number().min(0, 'Gross salary must be positive'),
 });
@@ -63,6 +64,7 @@ export function SalaryConfigModal({
     defaultValues: {
       doj: null,
       pan: null,
+      department: '',
       designation: '',
       grossSalary: 0,
     },
@@ -73,6 +75,7 @@ export function SalaryConfigModal({
       reset({
         doj: employee.doj || '',
         pan: employee.pan || '',
+        department: employee.department || '',
         designation: employee.designation || '',
         grossSalary: employee.grossSalary || 0,
       });
@@ -80,6 +83,7 @@ export function SalaryConfigModal({
       reset({
         doj: '',
         pan: '',
+        department: '',
         designation: '',
         grossSalary: 0,
       });
@@ -135,6 +139,18 @@ export function SalaryConfigModal({
               disabled={isLoading}
             />
             <p className="text-xs text-gray-500 mt-1">Format: 5 letters, 4 digits, 1 letter (e.g., ABCDE1234F)</p>
+          </div>
+
+          {/* Department */}
+          <div>
+            <Label htmlFor="department">Department</Label>
+            <Input
+              id="department"
+              placeholder="e.g., Engineering"
+              {...register('department')}
+              error={errors.department?.message}
+              disabled={isLoading}
+            />
           </div>
 
           {/* Designation */}
