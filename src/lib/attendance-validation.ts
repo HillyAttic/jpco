@@ -181,6 +181,17 @@ export const reportConfigSchema = z.object({
   }
 );
 
+// Delay Sign-In Request Schema
+export const delaySigninRequestSchema = z.object({
+  attendanceRecordId: z.string().min(1, 'Attendance record ID is required'),
+  shiftId: z.string().min(1, 'Shift ID is required'),
+  shiftName: z.string().min(1, 'Shift name is required'),
+  shiftStartTime: z.string().min(1, 'Shift start time is required'),
+  reason: z.string()
+    .min(10, 'Reason must be at least 10 characters')
+    .max(500, 'Reason must be 500 characters or less'),
+});
+
 // Type exports for use in components
 export type ClockInDataInput = z.infer<typeof clockInDataSchema>;
 export type ClockOutDataInput = z.infer<typeof clockOutDataSchema>;
@@ -193,3 +204,4 @@ export type AttendancePolicyInput = z.infer<typeof attendancePolicySchema>;
 export type AttendanceFiltersInput = z.infer<typeof attendanceFiltersSchema>;
 export type LeaveFiltersInput = z.infer<typeof leaveFiltersSchema>;
 export type ReportConfigInput = z.infer<typeof reportConfigSchema>;
+export type DelaySigninRequestInput = z.infer<typeof delaySigninRequestSchema>;

@@ -2,10 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { LeaveRequest, LeaveStatus } from '@/types/leave.types';
+import { DelaySigninRequest } from '@/types/delay-signin.types';
 import { toast } from 'react-toastify';
+import { Clock, AlertTriangle } from 'lucide-react';
 
 export default function LeaveApprovalsPage() {
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [delayRequests, setDelayRequests] = useState<DelaySigninRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<LeaveStatus | 'all'>('pending');
   const [selectedRequest, setSelectedRequest] = useState<LeaveRequest | null>(null);
@@ -13,16 +16,20 @@ export default function LeaveApprovalsPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [approvalReason, setApprovalReason] = useState('');
   const [showApproveModal, setShowApproveModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'leave' | 'wfh'>('leave');
+  const [activeTab, setActiveTab] = useState<'leave' | 'wfh' | 'delay-signin'>('leave');
+  const [selectedDelayRequest, setSelectedDelayRequest] = useState<DelaySigninRequest | null>(null);
 
   // Read tab from URL query param
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('tab') === 'wfh') setActiveTab('wfh');
+    const tab = params.get('tab');
+    if (tab === 'wfh') setActiveTab('wfh');
+    if (tab === 'delay-signin') setActiveTab('delay-signin');
   }, []);
 
   useEffect(() => {
     fetchRequests();
+    fetchDelayRequests();
   }, [filter]);
 
   const fetchRequests = async () => {
@@ -44,6 +51,98 @@ export default function LeaveApprovalsPage() {
       toast.error('Failed to load leave requests');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchDelayRequests = async () => {
+    try {
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const url = filter === 'all'
+        ? '/api/delay-signin-requests'
+        : `/api/delay-signin-requests?status=${filter}`;
+      const response = await authenticatedFetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        setDelayRequests(data);
+      }
+    } catch (error) {
+      console.error('Error fetching delay sign-in requests:', error);
+    }
+  };
+
+  const handleDelayApprove = async (id: string) => {
+    try {
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch(`/api/delay-signin-requests/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve' }),
+      });
+
+      if (response.ok) {
+        toast.success('Delay sign-in request approved');
+        fetchDelayRequests();
+      } else {
+        toast.error('Failed to approve delay sign-in request');
+      }
+    } catch (error) {
+      console.error('Error approving delay sign-in:', error);
+      toast.error('Failed to approve delay sign-in request');
+    }
+  };
+
+  const handleDelayApproveWithReason = async () => {
+    if (!selectedDelayRequest || !approvalReason.trim()) {
+      toast.error('Please provide an approval reason');
+      return;
+    }
+
+    try {
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch(`/api/delay-signin-requests/${selectedDelayRequest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'approve', approvalReason }),
+      });
+
+      if (response.ok) {
+        toast.success('Delay sign-in request approved with reason');
+        setShowApproveModal(false);
+        setApprovalReason('');
+        setSelectedDelayRequest(null);
+        fetchDelayRequests();
+      } else {
+        toast.error('Failed to approve delay sign-in request');
+      }
+    } catch (error) {
+      console.error('Error approving delay sign-in:', error);
+      toast.error('Failed to approve delay sign-in request');
+    }
+  };
+
+  const handleDelayReject = async () => {
+    if (!selectedDelayRequest) return;
+
+    try {
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch(`/api/delay-signin-requests/${selectedDelayRequest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject', reason: rejectionReason }),
+      });
+
+      if (response.ok) {
+        toast.success('Delay sign-in request rejected');
+        setShowRejectModal(false);
+        setRejectionReason('');
+        setSelectedDelayRequest(null);
+        fetchDelayRequests();
+      } else {
+        toast.error('Failed to reject delay sign-in request');
+      }
+    } catch (error) {
+      console.error('Error rejecting delay sign-in:', error);
+      toast.error('Failed to reject delay sign-in request');
     }
   };
 
@@ -190,6 +289,17 @@ export default function LeaveApprovalsPage() {
         >
           WFH Requests
         </button>
+        <button
+          onClick={() => setActiveTab('delay-signin')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
+            activeTab === 'delay-signin'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-300'
+          }`}
+        >
+          <Clock className="h-4 w-4" />
+          Delay Sign-In
+        </button>
       </div>
 
       {/* Filter Tabs */}
@@ -211,7 +321,8 @@ export default function LeaveApprovalsPage() {
         </div>
       </div>
 
-      {/* Leave Requests */}
+      {/* Leave/WFH Requests */}
+      {activeTab !== 'delay-signin' && (
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
         {loading ? (
           <div className="p-8 text-center">
@@ -391,12 +502,201 @@ export default function LeaveApprovalsPage() {
           </>
         )}
       </div>
+      )}
+
+      {/* Delay Sign-In Requests */}
+      {activeTab === 'delay-signin' && (
+      <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
+        {loading ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          </div>
+        ) : delayRequests.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            No delay sign-in requests found
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden lg:block overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Employee</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Shift</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Clock-In</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Minutes Late</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Reason</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {delayRequests.map((request) => (
+                    <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">{request.employeeName}</div>
+                          <div className="text-sm text-gray-500">{request.employeeEmail}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                        <div>{request.shiftName}</div>
+                        <div className="text-gray-500 text-xs">Starts at {request.shiftStartTime}</div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                        {new Date(request.clockInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className="flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full bg-orange-100 text-orange-800">
+                          <AlertTriangle className="h-3 w-3" />
+                          {request.minutesLate} min
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white min-w-[200px]">
+                        {request.reason}
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                          request.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                          'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {request.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        {request.status === 'pending' && (
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => handleDelayApprove(request.id!)}
+                              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                            >
+                              Approve
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedDelayRequest(request);
+                                setShowApproveModal(true);
+                              }}
+                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            >
+                              Approve with Note
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedDelayRequest(request);
+                                setShowRejectModal(true);
+                              }}
+                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                        {request.status !== 'pending' && (
+                          <div className="text-sm text-gray-500">
+                            By {request.approverName || 'Manager'}
+                          </div>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="lg:hidden divide-y divide-gray-200 dark:divide-gray-700">
+              {delayRequests.map((request) => (
+                <div key={request.id} className="p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900 dark:text-white">{request.employeeName}</div>
+                      <div className="text-sm text-gray-500 break-all">{request.employeeEmail}</div>
+                    </div>
+                    <span className={`ml-2 px-2 py-1 text-xs font-medium rounded-full whitespace-nowrap ${
+                      request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                      request.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                      'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {request.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <div className="text-gray-500 dark:text-gray-400 text-xs">Shift</div>
+                      <div className="text-gray-900 dark:text-white font-medium">{request.shiftName}</div>
+                      <div className="text-gray-500 text-xs">Starts at {request.shiftStartTime}</div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 dark:text-gray-400 text-xs">Clock-In</div>
+                      <div className="text-gray-900 dark:text-white font-medium">
+                        {new Date(request.clockInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-gray-500 dark:text-gray-400 text-xs">Minutes Late</div>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800">
+                        <AlertTriangle className="h-3 w-3" />
+                        {request.minutesLate} min
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="text-sm">
+                    <div className="text-gray-500 dark:text-gray-400 text-xs mb-1">Reason</div>
+                    <div className="text-gray-900 dark:text-white break-words whitespace-pre-wrap">{request.reason}</div>
+                  </div>
+
+                  {request.status === 'pending' ? (
+                    <div className="flex flex-col gap-2 pt-2">
+                      <button
+                        onClick={() => handleDelayApprove(request.id!)}
+                        className="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedDelayRequest(request);
+                          setShowApproveModal(true);
+                        }}
+                        className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                      >
+                        Approve with Note
+                      </button>
+                      <button
+                        onClick={() => {
+                          setSelectedDelayRequest(request);
+                          setShowRejectModal(true);
+                        }}
+                        className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-500 pt-2">
+                      {request.status === 'approved' ? 'Approved' : 'Rejected'} by {request.approverName || 'Manager'}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+      )}
 
       {/* Reject Modal */}
       {showRejectModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Reject Leave Request</h3>
+            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">
+              Reject {activeTab === 'delay-signin' ? 'Delay Sign-In' : 'Leave'} Request
+            </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               You can provide a reason for rejecting <span className="text-blue-600 dark:text-blue-400 font-semibold">(optional)</span>:
             </p>
@@ -409,7 +709,7 @@ export default function LeaveApprovalsPage() {
             />
             <div className="flex gap-2 mt-4">
               <button
-                onClick={handleReject}
+                onClick={activeTab === 'delay-signin' ? handleDelayReject : handleReject}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                 Reject
@@ -419,6 +719,7 @@ export default function LeaveApprovalsPage() {
                   setShowRejectModal(false);
                   setRejectionReason('');
                   setSelectedRequest(null);
+                  setSelectedDelayRequest(null);
                 }}
                 className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
               >
@@ -433,20 +734,22 @@ export default function LeaveApprovalsPage() {
       {showApproveModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Approve Leave Request with Reason</h3>
+            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">
+              Approve {activeTab === 'delay-signin' ? 'Delay Sign-In' : 'Leave'} Request with Note
+            </h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Please provide a reason or note for approving this leave request:
+              Please provide a note for approving this request:
             </p>
             <textarea
               value={approvalReason}
               onChange={(e) => setApprovalReason(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-green-500 dark:bg-gray-700 dark:text-white"
               rows={4}
-              placeholder="Enter approval reason or note..."
+              placeholder="Enter approval note..."
             />
             <div className="flex gap-2 mt-4">
               <button
-                onClick={handleApproveWithReason}
+                onClick={activeTab === 'delay-signin' ? handleDelayApproveWithReason : handleApproveWithReason}
                 className="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
               >
                 Approve
@@ -456,6 +759,7 @@ export default function LeaveApprovalsPage() {
                   setShowApproveModal(false);
                   setApprovalReason('');
                   setSelectedRequest(null);
+                  setSelectedDelayRequest(null);
                 }}
                 className="flex-1 px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
               >

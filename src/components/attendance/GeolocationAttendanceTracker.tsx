@@ -5,12 +5,17 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { attendanceService } from '@/services/attendance.service';
+import { shiftService } from '@/services/shift.service';
+import { delaySigninService } from '@/services/delay-signin.service';
+import { DelaySigninConfirmationModal } from './DelaySigninConfirmationModal';
+import { isLate } from '@/utils/time-calculations';
 import { apiPost } from '@/lib/api-client';
-import { 
-  Clock, 
-  MapPin, 
-  Loader2, 
-  CheckCircle, 
+import { toast } from 'react-toastify';
+import {
+  Clock,
+  MapPin,
+  Loader2,
+  CheckCircle,
   AlertCircle,
   LogIn,
   LogOut,
@@ -57,6 +62,20 @@ export function GeolocationAttendanceTracker() {
   const [formSubmissionRequired, setFormSubmissionRequired] = useState(false);
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [dailyFormId, setDailyFormId] = useState<string | null>(null);
+
+  // Delay sign-in modal state
+  const [showDelaySigninModal, setShowDelaySigninModal] = useState(false);
+  const [lateInfo, setLateInfo] = useState<{
+    shiftStartTime: string;
+    shiftName: string;
+    clockInTime: Date;
+    minutesLate: number;
+    monthlyDelayCount: number;
+    maxMonthlyDelay: number;
+    attendanceRecordId: string;
+    shiftId: string;
+  } | null>(null);
+  const [delaySigninLoading, setDelaySigninLoading] = useState(false);
 
   // Check if we're running in a secure context (HTTPS)
   const isSecureContext = typeof window !== 'undefined' ? window.isSecureContext : true;
@@ -365,12 +384,72 @@ export function GeolocationAttendanceTracker() {
         await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms for Firestore
         console.log('Refreshing status after clock in...');
         await loadStatus();
+
+        // Check if employee is late by fetching their shift
+        try {
+          const shift = await shiftService.getEmployeeShift(auth.user.uid, new Date());
+          if (shift) {
+            const clockInTime = new Date();
+            const now = new Date();
+            const graceMinutes = 30; // 30 minutes grace period
+
+            if (isLate(clockInTime, shift, graceMinutes)) {
+              // Calculate minutes late
+              const shiftStartParts = shift.startTime.split(':');
+              const shiftStartMinutes = parseInt(shiftStartParts[0]) * 60 + parseInt(shiftStartParts[1]);
+              const clockInMinutes = clockInTime.getHours() * 60 + clockInTime.getMinutes();
+              const minutesLate = clockInMinutes - shiftStartMinutes;
+
+              // Get monthly delay count
+              const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+              const monthlyCount = await delaySigninService.getMonthlyCount(auth.user.uid, monthStr);
+
+              setLateInfo({
+                shiftStartTime: shift.startTime,
+                shiftName: shift.name,
+                clockInTime,
+                minutesLate,
+                monthlyDelayCount: monthlyCount.count,
+                maxMonthlyDelay: monthlyCount.maxMonthly,
+                attendanceRecordId: record.id || '',
+                shiftId: shift.id,
+              });
+              setShowDelaySigninModal(true);
+            }
+          }
+        } catch (lateError) {
+          console.error('Error checking late status:', lateError);
+          // Don't block the clock-in flow if late detection fails
+        }
       }
     } catch (err: any) {
       console.error('Geolocation tracker clock in error:', err);
       setError(err.message || 'Failed to clock in');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDelaySigninSubmit = async (data: { reason: string }) => {
+    if (!lateInfo || !auth.user) return;
+
+    setDelaySigninLoading(true);
+    try {
+      await delaySigninService.create({
+        attendanceRecordId: lateInfo.attendanceRecordId,
+        shiftId: lateInfo.shiftId,
+        shiftName: lateInfo.shiftName,
+        shiftStartTime: lateInfo.shiftStartTime,
+        reason: data.reason,
+      });
+      toast.success('Delay sign-in request submitted successfully');
+      setShowDelaySigninModal(false);
+      setLateInfo(null);
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to submit delay sign-in request');
+      throw error;
+    } finally {
+      setDelaySigninLoading(false);
     }
   };
 
@@ -881,6 +960,17 @@ export function GeolocationAttendanceTracker() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Delay Sign-In Confirmation Modal */}
+      {lateInfo && (
+        <DelaySigninConfirmationModal
+          open={showDelaySigninModal}
+          onOpenChange={setShowDelaySigninModal}
+          onSubmit={handleDelaySigninSubmit}
+          loading={delaySigninLoading}
+          lateInfo={lateInfo}
+        />
       )}
     </Card>
   );

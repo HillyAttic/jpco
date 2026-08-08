@@ -34,6 +34,10 @@ export default function AttendancePage() {
   const [myWfhRequests, setMyWfhRequests] = useState<LeaveRequest[]>([]);
   const [pendingWfhRequests, setPendingWfhRequests] = useState<LeaveRequest[]>([]);
 
+  // Delay Sign-In State
+  const [myDelaySignins, setMyDelaySignins] = useState<any[]>([]);
+  const [pendingDelaySignins, setPendingDelaySignins] = useState<any[]>([]);
+
   // Auto-open leave modal if query parameter is present
   useEffect(() => {
     if (searchParams?.get('openLeaveModal') === 'true') {
@@ -75,7 +79,17 @@ export default function AttendancePage() {
         // Split: non-WFH → pendingLeaves, WFH → pendingWfhRequests
         setPendingLeaves(pending.filter(r => r.leaveTypeId !== 'wfh'));
         setPendingWfhRequests(pending.filter(r => r.leaveTypeId === 'wfh'));
+
+        // Fetch pending delay sign-in requests
+        const { delaySigninService } = await import('@/services/delay-signin.service');
+        const delayRequests = await delaySigninService.getAll({ status: 'pending' });
+        setPendingDelaySignins(delayRequests);
       }
+
+      // Fetch my delay sign-in requests
+      const { delaySigninService } = await import('@/services/delay-signin.service');
+      const myDelayRequests = await delaySigninService.getAll({ employeeId: user.uid });
+      setMyDelaySignins(myDelayRequests);
     } catch (error) {
       console.error('Error fetching data:', error);
       toast.error('Failed to load leave data');
@@ -576,6 +590,160 @@ export default function AttendancePage() {
                               toast.success('WFH request cancelled');
                               fetchData();
                             });
+                          }
+                        }}
+                      >
+                        Cancel Request
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Pending Delay Sign-In Approvals (Managers Only) */}
+        {(isManager || isAdmin) && pendingDelaySignins.length > 0 && (
+          <Card className="border-orange-200 dark:border-orange-900">
+            <CardHeader className="bg-orange-50 dark:bg-orange-900/10">
+              <CardTitle className="flex items-center gap-2 text-orange-800 dark:text-orange-500">
+                <ClockIconBox className="h-5 w-5" />
+                Pending Delay Sign-In Approvals ({pendingDelaySignins.length})
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <div className="space-y-4">
+                {pendingDelaySignins.map((request: any) => (
+                  <div key={request.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+                    <div className="mb-4 sm:mb-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-semibold text-lg">{request.employeeName}</p>
+                        <Badge variant="outline" className="bg-orange-100 text-orange-800">{request.minutesLate} min late</Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                        Shift: {request.shiftName} (starts at {request.shiftStartTime}) • Signed in at {new Date(request.clockInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      <p className="text-sm mt-2 italic text-gray-700 dark:text-gray-300">"{request.reason}"</p>
+                    </div>
+                    <div className="flex gap-2 w-full sm:w-auto">
+                      <Button
+                        size="sm"
+                        variant="default"
+                        className="bg-green-600 hover:bg-green-700 flex-1 sm:flex-none"
+                        onClick={async () => {
+                          try {
+                            const { delaySigninService } = await import('@/services/delay-signin.service');
+                            await delaySigninService.approveRequest(request.id);
+                            toast.success('Delay sign-in approved');
+                            fetchData();
+                          } catch (error) {
+                            toast.error('Failed to approve');
+                          }
+                        }}
+                      >
+                        <CheckCircle className="h-4 w-4 mr-1" />
+                        Approve
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        className="flex-1 sm:flex-none"
+                        onClick={async () => {
+                          try {
+                            const { delaySigninService } = await import('@/services/delay-signin.service');
+                            await delaySigninService.rejectRequest(request.id, 'Rejected by manager');
+                            toast.success('Delay sign-in rejected');
+                            fetchData();
+                          } catch (error) {
+                            toast.error('Failed to reject');
+                          }
+                        }}
+                      >
+                        <XCircle className="h-4 w-4 mr-1" />
+                        Reject
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* My Delay Sign-In History Section */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <ClockIconBox className="h-5 w-5" />
+              My Delay Sign-In History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {myDelaySignins.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <ClockIconBox className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                <p>No delay sign-in requests found.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myDelaySignins.map((request: any) => (
+                  <div key={request.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-medium text-lg">{request.shiftName}</span>
+                        {getStatusBadge(request.status)}
+                        <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-orange-100 text-orange-800">
+                          {request.minutesLate} min late
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <ClockIconBox className="h-3 w-3" />
+                        Shift starts at {request.shiftStartTime} • Signed in at {new Date(request.clockInTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">Reason: {request.reason}</p>
+
+                      {/* Show rejection reason if rejected */}
+                      {request.status === 'rejected' && request.rejectionReason && (
+                        <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
+                          <div className="flex items-start gap-2">
+                            <XCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-red-800 dark:text-red-300 mb-1">Admin Remarks:</p>
+                              <p className="text-sm text-red-700 dark:text-red-400">{request.rejectionReason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Show approval reason if approved */}
+                      {request.status === 'approved' && request.approvalReason && (
+                        <div className="mt-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
+                          <div className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                            <div>
+                              <p className="text-xs font-semibold text-green-800 dark:text-green-300 mb-1">Admin Note:</p>
+                              <p className="text-sm text-green-700 dark:text-green-400">{request.approvalReason}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                    {request.status === 'pending' && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-700 hover:bg-red-50 mt-2 sm:mt-0"
+                        onClick={async () => {
+                          if (confirm('Are you sure you want to cancel this delay sign-in request?')) {
+                            try {
+                              const { delaySigninService } = await import('@/services/delay-signin.service');
+                              await delaySigninService.deleteRequest(request.id);
+                              toast.success('Delay sign-in request cancelled');
+                              fetchData();
+                            } catch (error) {
+                              toast.error('Failed to cancel request');
+                            }
                           }
                         }}
                       >

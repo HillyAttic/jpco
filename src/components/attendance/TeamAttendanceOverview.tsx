@@ -4,18 +4,22 @@ import React from 'react';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { TeamMemberAttendanceStatus } from '@/types/attendance.types';
-import { Clock, Coffee, Plane, AlertCircle } from 'lucide-react';
+import { Clock, Coffee, Plane, AlertCircle, CheckCircle } from 'lucide-react';
 
 interface TeamAttendanceOverviewProps {
   teamMembers: TeamMemberAttendanceStatus[];
   onEmployeeClick: (employeeId: string) => void;
   loading?: boolean;
+  delaySigninEmployeeIds?: Set<string>;
+  delaySigninApprovedIds?: Set<string>;
 }
 
 export function TeamAttendanceOverview({
   teamMembers,
   onEmployeeClick,
   loading,
+  delaySigninEmployeeIds = new Set(),
+  delaySigninApprovedIds = new Set(),
 }: TeamAttendanceOverviewProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -59,11 +63,21 @@ export function TeamAttendanceOverview({
     <Card className="p-6">
       <h3 className="text-lg font-semibold mb-4">Team Attendance</h3>
       <div className="space-y-3">
-        {teamMembers.map((member) => (
+        {teamMembers.map((member) => {
+          const hasDelayRequest = delaySigninEmployeeIds.has(member.employeeId);
+          const hasApprovedDelay = delaySigninApprovedIds.has(member.employeeId);
+
+          return (
           <div
             key={member.employeeId}
             onClick={() => onEmployeeClick(member.employeeId)}
-            className="flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:bg-gray-800 cursor-pointer transition-colors"
+            className={`flex items-center justify-between p-3 rounded-lg hover:bg-gray-50 dark:bg-gray-800 cursor-pointer transition-colors ${
+              hasApprovedDelay
+                ? 'border-2 border-green-500 bg-green-50/50 dark:bg-green-900/10'
+                : hasDelayRequest
+                ? 'border-2 border-green-300 bg-green-50/30 dark:bg-green-900/5'
+                : ''
+            }`}
           >
             <div className="flex items-center gap-3">
               {getStatusIcon(member.status)}
@@ -73,11 +87,22 @@ export function TeamAttendanceOverview({
                   <Badge className={getStatusBadge(member.status)}>
                     {member.status.replace('-', ' ')}
                   </Badge>
-                  {member.isLate && (
+                  {member.isLate && !hasDelayRequest && (
                     <Badge className="bg-orange-100 text-orange-800">Late</Badge>
                   )}
                   {member.isEarlyDeparture && (
                     <Badge className="bg-orange-100 text-orange-800">Early</Badge>
+                  )}
+                  {hasApprovedDelay && (
+                    <Badge className="bg-green-100 text-green-800 flex items-center gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Delay Approved
+                    </Badge>
+                  )}
+                  {hasDelayRequest && !hasApprovedDelay && (
+                    <Badge className="bg-green-50 text-green-700 border border-green-300">
+                      Delay Submitted
+                    </Badge>
                   )}
                 </div>
               </div>
@@ -98,7 +123,8 @@ export function TeamAttendanceOverview({
               )}
             </div>
           </div>
-        ))}
+        );
+        })}
         {teamMembers.length === 0 && (
           <p className="text-center text-muted-foreground py-8">
             No team members found

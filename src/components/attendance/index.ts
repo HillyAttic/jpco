@@ -8,3 +8,4 @@ export { TeamAttendanceOverview } from './TeamAttendanceOverview';
 export { ShiftManagementModal } from './ShiftManagementModal';
 export { AttendanceReportGenerator } from './AttendanceReportGenerator';
 export { GeolocationAttendanceTracker } from './GeolocationAttendanceTracker';
+export { DelaySigninConfirmationModal } from './DelaySigninConfirmationModal';
