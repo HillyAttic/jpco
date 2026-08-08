@@ -111,6 +111,7 @@ export default function AdminSalaryConfigPage() {
         setEmployees(
           list
             .filter(emp => emp.status === 'active')
+            .filter(emp => !(emp as any).excludeFromPayroll)
             .sort((a, b) => a.name.localeCompare(b.name))
         );
       }

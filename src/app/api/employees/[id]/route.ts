@@ -17,6 +17,8 @@ const updateEmployeeSchema = z.object({
   pan: z.string().optional().nullable(),
   designation: z.string().optional(),
   grossSalary: z.number().min(0).optional(),
+  // Attendance/Payroll exclusion
+  excludeFromPayroll: z.boolean().optional(),
 });
 
 /**

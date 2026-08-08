@@ -150,6 +150,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
 
         setEmployees(
           list
+            .filter(emp => !(emp as any).excludeFromPayroll)
             .map(emp => ({
               ...emp,
               selected: savedConfig ? (savedConfig[emp.id] ?? false) : false,
@@ -564,6 +565,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     professionalTax: number;
     tds: number;
     loanRecovery: number;
+    leaveDeduction: number;
     otherDeduction: number;
   }) => {
     if (!editSlip) return;
@@ -572,7 +574,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     try {
       const totalDeductions =
         data.epf + data.esi + data.professionalTax +
-        data.tds + data.loanRecovery + data.otherDeduction;
+        data.tds + data.loanRecovery + data.leaveDeduction + data.otherDeduction;
       const totalEarnings = data.basic + data.hra + data.special;
       const netSalary = totalEarnings - totalDeductions;
 
@@ -598,6 +600,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
             professionalTax: data.professionalTax,
             tds: data.tds,
             loanRecovery: data.loanRecovery,
+            leaveDeduction: data.leaveDeduction,
             otherDeduction: data.otherDeduction,
           },
           attendanceBreakdown: {

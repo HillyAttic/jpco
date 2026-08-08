@@ -21,6 +21,7 @@ export interface Employee {
   pan?: string | null; // PAN number
   designation?: string; // Job title/position
   grossSalary?: number; // Monthly gross salary in INR
+  excludeFromPayroll?: boolean; // Exclude from attendance sheet and payroll
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -69,6 +70,7 @@ export const employeeAdminService = {
           pan: data.pan || null,
           designation: data.designation || '',
           grossSalary: data.grossSalary || 0,
+          excludeFromPayroll: data.excludeFromPayroll || false,
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
         });
@@ -142,6 +144,7 @@ export const employeeAdminService = {
         pan: data.pan || null,
         designation: data.designation || '',
         grossSalary: data.grossSalary || 0,
+        excludeFromPayroll: data.excludeFromPayroll || false,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
       };
@@ -182,6 +185,7 @@ export const employeeAdminService = {
         pan: data.pan || null,
         designation: data.designation || '',
         grossSalary: data.grossSalary || 0,
+        excludeFromPayroll: data.excludeFromPayroll || false,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
       };
@@ -262,6 +266,9 @@ export const employeeAdminService = {
       }
       if (data.grossSalary !== undefined) {
         updatePayload.grossSalary = data.grossSalary;
+      }
+      if (data.excludeFromPayroll !== undefined) {
+        updatePayload.excludeFromPayroll = data.excludeFromPayroll;
       }
 
       // Update user document
@@ -350,6 +357,7 @@ export const employeeAdminService = {
         pan: null,
         designation: '',
         grossSalary: 0,
+        excludeFromPayroll: false,
         createdAt: now,
         updatedAt: now,
       });
@@ -374,6 +382,7 @@ export const employeeAdminService = {
         pan: null,
         designation: '',
         grossSalary: 0,
+        excludeFromPayroll: false,
         createdAt: now.toDate(),
         updatedAt: now.toDate(),
       };

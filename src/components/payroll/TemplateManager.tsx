@@ -529,6 +529,7 @@ function TemplatePreview({ template }: { template: SalarySlipTemplate }) {
     professionalTax: 0,
     tds: 0,
     loanRecovery: 0,
+    leaveDeduction: 0,
     otherDeduction: 0,
   };
 
@@ -669,6 +670,7 @@ function TemplatePreview({ template }: { template: SalarySlipTemplate }) {
               (mock.professionalTax ?? 0) -
               (mock.tds ?? 0) -
               (mock.loanRecovery ?? 0) -
+              (mock.leaveDeduction ?? 0) -
               (mock.otherDeduction ?? 0)
           )}
         </span>

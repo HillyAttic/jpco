@@ -45,6 +45,7 @@ export interface SalaryBreakup {
   professionalTax?: number;
   tds?: number;
   loanRecovery?: number;
+  leaveDeduction?: number;
   otherDeduction?: number;
 }
 
@@ -160,6 +161,7 @@ export const DEFAULT_SALARY_SLIP_TEMPLATE: Omit<SalarySlipTemplate, 'id' | 'upda
         { key: 'professionalTax',  label: 'Professional Tax',    visible: true },
         { key: 'tds',              label: 'TDS / Income Tax',    visible: true },
         { key: 'loanRecovery',     label: 'Loan Recovery',       visible: true },
+        { key: 'leaveDeduction',   label: 'Leave Deduction',     visible: true },
         { key: 'otherDeduction',   label: 'Other Deduction',     visible: true },
       ],
     },

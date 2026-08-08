@@ -66,6 +66,7 @@ export default function EmployeesPage() {
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isBulkImportModalOpen, setIsBulkImportModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('list'); // 'grid' or 'list' view mode
+  const [sortOption, setSortOption] = useState<'id-desc' | 'name-asc' | 'name-desc'>('id-desc');
 
   // Filter employees based on current filters
   const filteredEmployees = useMemo(() => {
@@ -92,9 +93,14 @@ export default function EmployeesPage() {
       return true;
     });
 
-    // Sort by Employee ID in descending order (EMP032, EMP031, EMP030, etc.)
+    // Sort based on selected option
     filtered.sort((a, b) => {
-      // Extract numeric part from employee ID (e.g., "EMP032" -> 32)
+      if (sortOption === 'name-asc') {
+        return a.name.localeCompare(b.name);
+      } else if (sortOption === 'name-desc') {
+        return b.name.localeCompare(a.name);
+      }
+      // Default: Sort by Employee ID in descending order (EMP032, EMP031, EMP030, etc.)
       const getNumericPart = (empId: string) => {
         const match = empId.match(/\d+/);
         return match ? parseInt(match[0], 10) : 0;
@@ -108,7 +114,7 @@ export default function EmployeesPage() {
     });
 
     return filtered;
-  }, [employees, filters]);
+  }, [employees, filters, sortOption]);
 
   // Bulk selection state - Requirement 10.1
   const {
@@ -173,6 +179,7 @@ export default function EmployeesPage() {
           department: data.department,
           role: data.role,
           status: data.status,
+          excludeFromPayroll: data.excludeFromPayroll || false,
         };
         // Pass password and currentPassword if provided (optional for updates)
         await updateEmployee(
@@ -460,6 +467,16 @@ export default function EmployeesPage() {
           
           {/* View Toggle Buttons */}
           <div className="flex items-center space-x-2">
+            <select
+              value={sortOption}
+              onChange={(e) => setSortOption(e.target.value as typeof sortOption)}
+              className="px-3 py-1.5 rounded-md text-sm font-medium border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 focus:ring-2 focus:ring-primary"
+              aria-label="Sort employees"
+            >
+              <option value="id-desc">ID (Newest)</option>
+              <option value="name-asc">Name (A-Z)</option>
+              <option value="name-desc">Name (Z-A)</option>
+            </select>
             <button
               onClick={() => setViewMode('grid')}
               className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'grid' ? 'bg-primary text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'}`}

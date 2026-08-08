@@ -27,6 +27,7 @@ const employeeFormSchema = z.object({
   password: z.string().optional(),
   confirmPassword: z.string().optional(),
   status: z.enum(['active', 'on-leave', 'resigned']),
+  excludeFromPayroll: z.boolean().optional(),
 });
 
 type EmployeeFormData = z.infer<typeof employeeFormSchema>;
@@ -98,6 +99,7 @@ export function EmployeeModal({
         department: employee.department || '',
         role: employee.role || 'Employee',
         status: employee.status,
+        excludeFromPayroll: (employee as any).excludeFromPayroll || false,
         password: '',
         confirmPassword: '',
       });
@@ -110,6 +112,7 @@ export function EmployeeModal({
         department: '',
         role: 'Employee',
         status: 'active',
+        excludeFromPayroll: false,
         password: '',
         confirmPassword: '',
       });
@@ -341,6 +344,28 @@ export function EmployeeModal({
             {errors.status && (
               <p className="text-sm text-red-600 mt-1">{errors.status.message}</p>
             )}
+          </div>
+
+          {/* Exclude from Attendance & Payroll Toggle */}
+          <div className="flex items-center justify-between p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800/50">
+            <div className="flex-1 min-w-0 mr-4">
+              <Label htmlFor="excludeFromPayroll" className="text-sm font-medium cursor-pointer">
+                Exclude from Attendance & Payroll
+              </Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                When enabled, this employee will not appear in the attendance sheet or salary generation
+              </p>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                id="excludeFromPayroll"
+                type="checkbox"
+                {...register('excludeFromPayroll')}
+                disabled={isLoading}
+                className="sr-only peer"
+              />
+              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-600 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+            </label>
           </div>
 
           <DialogFooter>

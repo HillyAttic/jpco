@@ -20,6 +20,7 @@ export interface Employee {
   role: 'Manager' | 'Admin' | 'Employee';
   passwordHash?: string; // Hashed password, not plain text
   status: 'active' | 'on-leave' | 'resigned';
+  excludeFromPayroll?: boolean; // Exclude from attendance sheet and payroll
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -60,6 +61,7 @@ export const employeeService = {
           photoURL: data.photoURL || '',
           role: this.mapUserRoleToEmployeeRole(data.role),
           status: data.isActive === false ? 'on-leave' : 'active',
+          excludeFromPayroll: data.excludeFromPayroll || false,
           createdAt: data.createdAt?.toDate?.() || new Date(),
           updatedAt: data.updatedAt?.toDate?.() || new Date(),
         });
@@ -129,6 +131,7 @@ export const employeeService = {
         photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
         status: data.isActive === false ? 'on-leave' : 'active',
+        excludeFromPayroll: data.excludeFromPayroll || false,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
       };
@@ -164,6 +167,7 @@ export const employeeService = {
         photoURL: data.photoURL || '',
         role: this.mapUserRoleToEmployeeRole(data.role),
         status: data.isActive === false ? 'on-leave' : 'active',
+        excludeFromPayroll: data.excludeFromPayroll || false,
         createdAt: data.createdAt?.toDate?.() || new Date(),
         updatedAt: data.updatedAt?.toDate?.() || new Date(),
       };

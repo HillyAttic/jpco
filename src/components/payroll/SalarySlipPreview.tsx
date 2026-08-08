@@ -419,6 +419,7 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
                         case 'professionalTax': value = slip.salaryBreakup?.professionalTax ?? 0; break;
                         case 'tds':             value = slip.salaryBreakup?.tds ?? 0; break;
                         case 'loanRecovery':    value = slip.salaryBreakup?.loanRecovery ?? 0; break;
+                        case 'leaveDeduction':  value = calcData.leaveDeduction; break;
                         case 'otherDeduction':  value = slip.salaryBreakup?.otherDeduction ?? 0; break;
                         default:                value = 0;
                       }
@@ -451,6 +452,10 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
                       <div className="flex justify-between">
                         <span>Loan Recovery</span>
                         <span>{formatCurrency(0)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Leave Deduction</span>
+                        <span>{formatCurrency(calcData.leaveDeduction)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span>Other Deduction</span>
