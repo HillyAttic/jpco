@@ -6,19 +6,18 @@
 
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { EmployeeSalary, PayrollSettings, SalarySlipTemplate } from '@/types/payroll.types';
 
 interface SalarySlipPreviewProps {
   slip: EmployeeSalary;
   settings: PayrollSettings;
   template?: SalarySlipTemplate | null;
-  /** When true, hides the Calculation Breakdown section (used for PDF generation) */
+  /** When true, adds data-for-pdf attribute (used for PDF generation) */
   forPDF?: boolean;
 }
 
 export function SalarySlipPreview({ slip, settings, template, forPDF = false }: SalarySlipPreviewProps) {
-  const [showSteps, setShowSteps] = useState(true);
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
@@ -71,7 +70,7 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
 
   const showSlipNo = template ? template.showSlipNumber : true;
 
-  // ── Step-by-step calculation breakdown ──────────────────────────
+  // ── Salary calculation data (used for deductions section) ──────
   const calcData = useMemo(() => {
     const { attendanceBreakdown: ab, salaryBreakup: sb } = slip;
     const { leaveTaken, paidLeave, unpaidLeave } = ab;
@@ -252,101 +251,6 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
                 <span className="font-semibold ml-2">{slip.attendanceBreakdown.halfDay}</span>
               </div>
             </div>
-          )}
-        </div>
-      )}
-
-      {/* Step-by-Step Calculation Breakdown — hidden in PDF */}
-      {!forPDF && (
-        <div className="border-t border-gray-300 pt-3 sm:pt-4 mb-4 sm:mb-6">
-          <button
-            onClick={() => setShowSteps(!showSteps)}
-            className="w-full flex items-center justify-between cursor-pointer"
-          >
-            <div className="text-left">
-              <h3 className="font-bold text-sm sm:text-base">Calculation Breakdown</h3>
-              <p className="text-[10px] sm:text-xs text-gray-500 mt-0.5">
-                See how the net salary was computed step by step
-              </p>
-            </div>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="20"
-              height="20"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={`h-4 w-4 sm:h-5 sm:w-5 text-gray-400 transition-transform ${showSteps ? 'rotate-180' : ''}`}
-            >
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
-
-          {showSteps && (
-            <div className="mt-3 space-y-3">
-              {/* Salary Formula Card */}
-              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
-                <p className="text-[10px] sm:text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">Salary Formula</p>
-                <p className="font-mono text-[10px] sm:text-xs text-blue-900 font-bold">
-                  Net Salary = Gross Salary − (Gross Salary × Unpaid Leaves) / 26
-                </p>
-                <p className="text-[10px] sm:text-xs text-blue-600 mt-1">
-                  <span className="font-bold">Unpaid Leaves</span> = Total Leave Taken − Paid Leave
-                  (up to {settings.allowedPaidLeaves} allowed)
-                </p>
-              </div>
-
-              {/* Given */}
-              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs">
-                <p className="font-semibold text-gray-700 mb-1">Given:</p>
-                <p className="text-gray-600 ml-2">Gross Salary = {calcData.fmt(calcData.gross)}</p>
-                <p className="text-gray-600 ml-2">Unpaid Leaves = {calcData.unpaidLeave}</p>
-              </div>
-
-              {/* Calculation */}
-              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs space-y-1">
-                <p className="font-semibold text-gray-700 mb-1">Calculation:</p>
-                <p className="text-gray-600 ml-2">Leave Deduction = ({calcData.fmt(calcData.gross)} × {calcData.unpaidLeave}) ÷ 26</p>
-                <p className="text-gray-600 ml-2">Leave Deduction = {calcData.fmt(calcData.gross * calcData.unpaidLeave)} ÷ 26 = {calcData.fmtD(calcData.leaveDeduction)}</p>
-                <p className="text-gray-600 ml-2">Net Salary = {calcData.fmt(calcData.gross)} − {calcData.fmtD(calcData.leaveDeduction)}</p>
-                <p className="text-gray-800 font-semibold ml-2">Net Salary = {calcData.fmtD(calcData.netSalary)}</p>
-              </div>
-
-              {/* Breakdown Table */}
-              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs">
-                <p className="font-semibold text-gray-700 mb-1">Breakdown</p>
-                <div className="ml-2 space-y-0.5">
-                  <div className="flex justify-between max-w-[280px]">
-                    <span className="text-gray-600">Gross Salary</span>
-                    <span className="text-gray-800">{calcData.fmtD(calcData.gross)}</span>
-                  </div>
-                  <div className="flex justify-between max-w-[280px]">
-                    <span className="text-gray-600">Unpaid Leaves</span>
-                    <span className="text-gray-800">{calcData.unpaidLeave}</span>
-                  </div>
-                  <div className="flex justify-between max-w-[280px]">
-                    <span className="text-gray-600">Leave Deduction</span>
-                    <span className="text-gray-800">{calcData.fmtD(calcData.leaveDeduction)}</span>
-                  </div>
-                  <div className="flex justify-between max-w-[280px] border-t border-gray-300 pt-1 mt-1">
-                    <span className="font-semibold text-gray-800">Net Salary</span>
-                    <span className="font-semibold text-gray-800">{calcData.fmtD(calcData.netSalary)}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Subsequent Calculations */}
-              <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs space-y-1">
-                <p className="font-semibold text-gray-700 mb-1">Subsequent Calculations:</p>
-                <p className="text-gray-600 ml-2">Basic ({settings.basicPercentage}%) = {calcData.fmtD(calcData.netSalary)} × {settings.basicPercentage}% = {calcData.fmtD(calcData.sb.basic)}</p>
-                <p className="text-gray-600 ml-2">HRA ({settings.hraPercentage}%) = {calcData.fmtD(calcData.netSalary)} × {settings.hraPercentage}% = {calcData.fmtD(calcData.sb.hra)}</p>
-                <p className="text-gray-600 ml-2">Special Allowance ({settings.specialPercentage}%) = {calcData.fmtD(calcData.netSalary)} × {settings.specialPercentage}% = {calcData.fmtD(calcData.sb.special)}</p>
-                <p className="text-gray-800 font-semibold ml-2 mt-1">Total = {calcData.fmtD(calcData.sb.basic)} + {calcData.fmtD(calcData.sb.hra)} + {calcData.fmtD(calcData.sb.special)} = {calcData.fmtD(calcData.netSalary)}</p>
-              </div>
-          </div>
           )}
         </div>
       )}
