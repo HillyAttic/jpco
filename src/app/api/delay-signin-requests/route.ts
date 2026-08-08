@@ -14,8 +14,24 @@ const createDelaySigninSchema = z.object({
 });
 
 /**
+ * Helper to convert Firestore timestamps in a delay-signin document
+ */
+function convertDelaySigninDoc(doc: FirebaseFirestore.QueryDocumentSnapshot) {
+  const data = doc.data();
+  return {
+    id: doc.id,
+    ...data,
+    clockInTime: data.clockInTime?.toDate ? data.clockInTime.toDate().toISOString() : data.clockInTime,
+    createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+    updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
+    approvedAt: data.approvedAt?.toDate ? data.approvedAt.toDate().toISOString() : data.approvedAt,
+  };
+}
+
+/**
  * GET /api/delay-signin-requests
- * Get delay sign-in requests with role-based filtering
+ * Get delay sign-in requests with role-based filtering.
+ * Fetches all docs then filters in memory to avoid Firestore composite index requirements.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -32,13 +48,16 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get('status') || undefined;
     const employeeId = searchParams.get('employeeId') || undefined;
-    const includeAll = searchParams.get('includeAll') === 'true';
 
     const { adminDb } = await import('@/lib/firebase-admin');
-    let query: FirebaseFirestore.Query = adminDb.collection('delay-signin-requests');
 
+    // Fetch all docs, then filter in memory (avoids composite index issues)
+    const snapshot = await adminDb.collection('delay-signin-requests').get();
+    let docs = snapshot.docs;
+
+    // Role-based filtering
     if (userRole === 'employee') {
-      query = query.where('employeeId', '==', userId);
+      docs = docs.filter((doc) => doc.data().employeeId === userId);
     } else if (userRole === 'manager') {
       const hierarchySnapshot = await adminDb
         .collection('manager-hierarchies')
@@ -52,77 +71,28 @@ export async function GET(request: NextRequest) {
 
       const hierarchy = hierarchySnapshot.docs[0].data();
       const employeeIds: string[] = hierarchy.employeeIds || [];
-
-      if (employeeIds.length === 0) {
-        return NextResponse.json([], { status: 200 });
-      }
-
-      if (employeeIds.length <= 30) {
-        query = query.where('employeeId', 'in', employeeIds);
-        if (status) query = query.where('status', '==', status);
-        query = query.orderBy('createdAt', 'desc');
-
-        const snapshot = await query.get();
-        const requests = snapshot.docs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            clockInTime: data.clockInTime?.toDate ? data.clockInTime.toDate().toISOString() : data.clockInTime,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
-            approvedAt: data.approvedAt?.toDate ? data.approvedAt.toDate().toISOString() : data.approvedAt,
-          };
-        });
-
-        return NextResponse.json(requests, { status: 200 });
-      } else {
-        const allSnapshot = await adminDb
-          .collection('delay-signin-requests')
-          .orderBy('createdAt', 'desc')
-          .get();
-        const employeeIdSet = new Set(employeeIds);
-        let filteredDocs = allSnapshot.docs.filter((doc) => employeeIdSet.has(doc.data().employeeId));
-        if (status) filteredDocs = filteredDocs.filter((doc) => doc.data().status === status);
-
-        const requests = filteredDocs.map((doc) => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            ...data,
-            clockInTime: data.clockInTime?.toDate ? data.clockInTime.toDate().toISOString() : data.clockInTime,
-            createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
-            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
-            approvedAt: data.approvedAt?.toDate ? data.approvedAt.toDate().toISOString() : data.approvedAt,
-          };
-        });
-
-        return NextResponse.json(requests, { status: 200 });
-      }
-    } else {
-      // Admin
-      if (employeeId) {
-        query = query.where('employeeId', '==', employeeId);
-      }
-
-      if (status) query = query.where('status', '==', status);
-      query = query.orderBy('createdAt', 'desc');
-
-      const snapshot = await query.get();
-      const requests = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          ...data,
-          clockInTime: data.clockInTime?.toDate ? data.clockInTime.toDate().toISOString() : data.clockInTime,
-          createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
-          updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate().toISOString() : data.updatedAt,
-          approvedAt: data.approvedAt?.toDate ? data.approvedAt.toDate().toISOString() : data.approvedAt,
-        };
-      });
-
-      return NextResponse.json(requests, { status: 200 });
+      const employeeIdSet = new Set(employeeIds);
+      docs = docs.filter((doc) => employeeIdSet.has(doc.data().employeeId));
     }
+    // Admin sees all
+
+    // Apply filters
+    if (status) {
+      docs = docs.filter((doc) => doc.data().status === status);
+    }
+    if (employeeId) {
+      docs = docs.filter((doc) => doc.data().employeeId === employeeId);
+    }
+
+    // Sort by createdAt descending
+    docs.sort((a, b) => {
+      const aTime = a.data().createdAt?.toMillis?.() || 0;
+      const bTime = b.data().createdAt?.toMillis?.() || 0;
+      return bTime - aTime;
+    });
+
+    const requests = docs.map(convertDelaySigninDoc);
+    return NextResponse.json(requests, { status: 200 });
   } catch (error) {
     return handleApiError(error);
   }
@@ -168,17 +138,22 @@ export async function POST(request: NextRequest) {
     const monthlySnapshot = await adminDb
       .collection('delay-signin-requests')
       .where('employeeId', '==', employeeId)
-      .where('status', 'in', ['pending', 'approved'])
-      .where('createdAt', '>=', startOfMonth)
-      .where('createdAt', '<=', endOfMonth)
       .get();
 
-    if (monthlySnapshot.docs.length >= 2) {
+    const monthlyCount = monthlySnapshot.docs.filter((doc) => {
+      const data = doc.data();
+      const status = data.status;
+      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+      return (status === 'pending' || status === 'approved') &&
+             createdAt >= startOfMonth && createdAt <= endOfMonth;
+    }).length;
+
+    if (monthlyCount >= 2) {
       return NextResponse.json(
         {
           error: 'Monthly limit reached',
           message: 'You have reached the maximum of 2 delay sign-in requests per month.',
-          monthlyCount: monthlySnapshot.docs.length,
+          monthlyCount,
           maxMonthly: 2,
         },
         { status: 403 }
@@ -187,19 +162,28 @@ export async function POST(request: NextRequest) {
 
     // Check for duplicate submission within last 5 minutes
     const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
-    const duplicateCheck = await adminDb
+    const duplicateSnapshot = await adminDb
       .collection('delay-signin-requests')
       .where('employeeId', '==', employeeId)
-      .where('attendanceRecordId', '==', attendanceRecordId)
-      .where('createdAt', '>', fiveMinutesAgo)
       .get();
 
-    if (!duplicateCheck.empty) {
+    const isDuplicate = duplicateSnapshot.docs.some((doc) => {
+      const data = doc.data();
+      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+      return data.attendanceRecordId === attendanceRecordId && createdAt > fiveMinutesAgo;
+    });
+
+    if (isDuplicate) {
+      const duplicateDoc = duplicateSnapshot.docs.find((doc) => {
+        const data = doc.data();
+        const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+        return data.attendanceRecordId === attendanceRecordId && createdAt > fiveMinutesAgo;
+      });
       return NextResponse.json(
         {
           error: 'Duplicate request detected',
           message: 'A delay sign-in request for this attendance record was just submitted.',
-          existingRequestId: duplicateCheck.docs[0].id,
+          existingRequestId: duplicateDoc?.id,
         },
         { status: 409 }
       );

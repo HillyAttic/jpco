@@ -3,7 +3,8 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
 /**
  * GET /api/delay-signin-requests/count?employeeId=xxx&month=YYYY-MM
- * Get the monthly count of pending/approved delay sign-in requests for an employee
+ * Get the monthly count of pending/approved delay sign-in requests for an employee.
+ * Fetches all docs then filters in memory to avoid Firestore composite index issues.
  */
 export async function GET(request: NextRequest) {
   try {
@@ -33,18 +34,25 @@ export async function GET(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase-admin');
+
+    // Fetch all docs for this employee, then filter in memory
     const snapshot = await adminDb
       .collection('delay-signin-requests')
       .where('employeeId', '==', employeeId)
-      .where('status', 'in', ['pending', 'approved'])
-      .where('createdAt', '>=', startDate)
-      .where('createdAt', '<=', endDate)
       .get();
 
+    const count = snapshot.docs.filter((doc) => {
+      const data = doc.data();
+      const status = data.status;
+      const createdAt = data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt);
+      return (status === 'pending' || status === 'approved') &&
+             createdAt >= startDate && createdAt <= endDate;
+    }).length;
+
     return NextResponse.json({
-      count: snapshot.docs.length,
+      count,
       maxMonthly: 2,
-      remaining: Math.max(0, 2 - snapshot.docs.length),
+      remaining: Math.max(0, 2 - count),
       month: monthParam || `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`,
     }, { status: 200 });
   } catch (error) {
