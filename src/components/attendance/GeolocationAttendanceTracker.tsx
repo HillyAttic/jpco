@@ -5,10 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { attendanceService } from '@/services/attendance.service';
-import { shiftService } from '@/services/shift.service';
 import { delaySigninService } from '@/services/delay-signin.service';
 import { DelaySigninConfirmationModal } from './DelaySigninConfirmationModal';
-import { isLate } from '@/utils/time-calculations';
 import { apiPost } from '@/lib/api-client';
 import { toast } from 'react-toastify';
 import {
@@ -141,6 +139,63 @@ export function GeolocationAttendanceTracker() {
     }
   };
 
+  /**
+   * Check if the employee is late using the server-side API.
+   * Runs on page load when user is already clocked in, using the actual clockInTime.
+   */
+  const checkIfLate = async (attendanceRecordId: string) => {
+    if (!auth.user) return;
+
+    // Don't show modal if we already showed it this session
+    if (lateInfo || showDelaySigninModal) {
+      console.log('[Late Detection] Already showing modal, skipping');
+      return;
+    }
+
+    try {
+      console.log('[Late Detection] Checking if late for record:', attendanceRecordId);
+
+      const lateCheckResult = await apiPost('/api/attendance/check-late', {
+        employeeId: auth.user.uid,
+        attendanceRecordId,
+      });
+
+      console.log('[Late Detection] Server response:', lateCheckResult);
+
+      if (lateCheckResult.isLate) {
+        const clockInTime = new Date(lateCheckResult.clockInTime);
+        const now = new Date();
+        const minutesLate = lateCheckResult.minutesLate;
+
+        console.log('[Late Detection] Employee is', minutesLate, 'minutes late');
+
+        // Get monthly delay count
+        const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+        console.log('[Late Detection] Fetching monthly count for month:', monthStr);
+        const monthlyCount = await delaySigninService.getMonthlyCount(auth.user.uid, monthStr);
+        console.log('[Late Detection] Monthly count:', monthlyCount);
+
+        setLateInfo({
+          shiftStartTime: lateCheckResult.shift.startTime,
+          shiftName: lateCheckResult.shift.name,
+          clockInTime,
+          minutesLate,
+          monthlyDelayCount: monthlyCount.count,
+          maxMonthlyDelay: monthlyCount.maxMonthly,
+          attendanceRecordId,
+          shiftId: lateCheckResult.shift.id,
+        });
+        setShowDelaySigninModal(true);
+        console.log('[Late Detection] Modal shown');
+      } else {
+        console.log('[Late Detection] Employee is NOT late. No modal shown.');
+      }
+    } catch (lateError) {
+      console.error('[Late Detection] ERROR:', lateError);
+      // Don't block the UI if late detection fails
+    }
+  };
+
   const loadStatus = async () => {
     if (!auth.user) return;
 
@@ -200,6 +255,11 @@ export function GeolocationAttendanceTracker() {
         status: mappedStatus,
         data: result
       });
+
+      // If user is clocked in, check if they were late (runs on page load/refresh too)
+      if (mappedStatus === 'CLOCKED_IN' && result.currentRecordId) {
+        checkIfLate(result.currentRecordId);
+      }
     } catch (err: any) {
       console.error('Error loading status:', err);
       setStatus({
@@ -380,47 +440,11 @@ export function GeolocationAttendanceTracker() {
         await loadStatus();
       } else {
         // Successfully clocked in, wait a bit for Firestore to propagate, then refresh
+        // loadStatus() will trigger checkIfLate() automatically
         console.log('Clock in successful, waiting for Firestore propagation...');
         await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms for Firestore
         console.log('Refreshing status after clock in...');
         await loadStatus();
-
-        // Check if employee is late by fetching their shift
-        try {
-          const shift = await shiftService.getEmployeeShift(auth.user.uid, new Date());
-          if (shift) {
-            const clockInTime = new Date();
-            const now = new Date();
-            const graceMinutes = 30; // 30 minutes grace period
-
-            if (isLate(clockInTime, shift, graceMinutes)) {
-              // Calculate minutes late
-              const shiftStartParts = shift.startTime.split(':');
-              const shiftStartMinutes = parseInt(shiftStartParts[0]) * 60 + parseInt(shiftStartParts[1]);
-              const clockInMinutes = clockInTime.getHours() * 60 + clockInTime.getMinutes();
-              const minutesLate = clockInMinutes - shiftStartMinutes;
-
-              // Get monthly delay count
-              const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
-              const monthlyCount = await delaySigninService.getMonthlyCount(auth.user.uid, monthStr);
-
-              setLateInfo({
-                shiftStartTime: shift.startTime,
-                shiftName: shift.name,
-                clockInTime,
-                minutesLate,
-                monthlyDelayCount: monthlyCount.count,
-                maxMonthlyDelay: monthlyCount.maxMonthly,
-                attendanceRecordId: record.id || '',
-                shiftId: shift.id,
-              });
-              setShowDelaySigninModal(true);
-            }
-          }
-        } catch (lateError) {
-          console.error('Error checking late status:', lateError);
-          // Don't block the clock-in flow if late detection fails
-        }
       }
     } catch (err: any) {
       console.error('Geolocation tracker clock in error:', err);
