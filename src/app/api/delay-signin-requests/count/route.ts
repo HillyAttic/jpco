@@ -34,6 +34,11 @@ export async function GET(request: NextRequest) {
     }
 
     const { adminDb } = await import('@/lib/firebase-admin');
+    const { attendancePolicyAdminService } = await import('@/services/attendance-policy-admin.service');
+
+    // Get max monthly delays from attendance policy
+    const policy = await attendancePolicyAdminService.getDefaultPolicy();
+    const maxMonthly = policy?.maxMonthlyDelayRequests ?? 2; // fallback to 2
 
     // Fetch all docs for this employee, then filter in memory
     const snapshot = await adminDb
@@ -51,8 +56,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       count,
-      maxMonthly: 2,
-      remaining: Math.max(0, 2 - count),
+      maxMonthly,
+      remaining: Math.max(0, maxMonthly - count),
       month: monthParam || `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`,
     }, { status: 200 });
   } catch (error) {

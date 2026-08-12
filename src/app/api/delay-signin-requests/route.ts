@@ -125,12 +125,17 @@ export async function POST(request: NextRequest) {
     const employeeId = authResult.user.uid;
 
     const { adminDb } = await import('@/lib/firebase-admin');
+    const { attendancePolicyAdminService } = await import('@/services/attendance-policy-admin.service');
 
     // Get employee profile
     const userDoc = await adminDb.collection('users').doc(employeeId).get();
     const userData = userDoc.data();
 
-    // Monthly limit check: max 2 pending/approved per month
+    // Get max monthly delays from attendance policy
+    const policy = await attendancePolicyAdminService.getDefaultPolicy();
+    const maxMonthly = policy?.maxMonthlyDelayRequests ?? 2; // fallback to 2
+
+    // Monthly limit check
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
@@ -148,13 +153,13 @@ export async function POST(request: NextRequest) {
              createdAt >= startOfMonth && createdAt <= endOfMonth;
     }).length;
 
-    if (monthlyCount >= 2) {
+    if (monthlyCount >= maxMonthly) {
       return NextResponse.json(
         {
           error: 'Monthly limit reached',
-          message: 'You have reached the maximum of 2 delay sign-in requests per month.',
+          message: `You have reached the maximum of ${maxMonthly} delay sign-in requests per month.`,
           monthlyCount,
-          maxMonthly: 2,
+          maxMonthly,
         },
         { status: 403 }
       );

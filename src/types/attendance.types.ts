@@ -151,6 +151,7 @@ export interface AttendancePolicy {
   id: string;
   name: string;
   graceMinutes: number;
+  maxMonthlyDelayRequests: number; // Max delay sign-in requests allowed per month
   maxBreakMinutes: number;
   autoClockOutTime: string; // HH:mm format
   geolocationRequired: boolean;
@@ -310,6 +311,7 @@ export interface LeaveTypeFormData {
 export interface AttendancePolicyFormData {
   name: string;
   graceMinutes: number;
+  maxMonthlyDelayRequests: number;
   maxBreakMinutes: number;
   autoClockOutTime: string;
   geolocationRequired: boolean;

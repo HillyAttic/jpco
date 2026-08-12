@@ -170,6 +170,13 @@ export const NAV_DATA = [
         requiresRole: ['admin', 'manager'], // Managers see their assigned employees' attendance
       },
       {
+        title: "Attendance Settings",
+        url: "/admin/attendance-settings",
+        icon: Icons.SettingsIcon,
+        items: [],
+        requiresRole: ['admin'], // Only admins can configure attendance policies
+      },
+      {
         title: "Client Visits",
         url: "/admin/client-visits",
         icon: Icons.MapPinIcon,

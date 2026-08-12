@@ -112,6 +112,7 @@ export const leaveTypeSchema = z.object({
 export const attendancePolicySchema = z.object({
   name: z.string().min(1, 'Policy name is required').max(100, 'Policy name must be 100 characters or less'),
   graceMinutes: z.number().min(0, 'Grace period cannot be negative').max(60, 'Grace period cannot exceed 60 minutes'),
+  maxMonthlyDelayRequests: z.number().min(0, 'Max monthly delays cannot be negative').max(31, 'Max monthly delays cannot exceed 31'),
   maxBreakMinutes: z.number().min(0, 'Max break duration cannot be negative').max(480, 'Max break duration cannot exceed 8 hours'),
   autoClockOutTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Invalid time format (use HH:mm)'),
   geolocationRequired: z.boolean(),
