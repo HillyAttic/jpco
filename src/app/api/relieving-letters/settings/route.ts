@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuthToken, withAdminAuth, AuthenticatedRequest } from '@/lib/server-auth';
+import { verifyAuthToken, withManagerAuth, AuthenticatedRequest } from '@/lib/server-auth';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 import { adminDb } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
@@ -45,14 +45,14 @@ export async function GET(request: NextRequest) {
 
 /**
  * PUT /api/relieving-letters/settings
- * Save relieving letter settings (admin only)
+ * Save relieving letter settings (admin/manager only)
  */
-export const PUT = withAdminAuth(async (request: AuthenticatedRequest) => {
+export const PUT = withManagerAuth(async (request: AuthenticatedRequest) => {
   try {
     const { uid } = request.user!;
     const body = await request.json();
 
-    console.log(`[API /api/relieving-letters/settings] PUT - Admin: ${uid}`);
+    console.log(`[API /api/relieving-letters/settings] PUT - User: ${uid}`);
 
     // Validate settings
     const validation = relievingLetterSettingsSchema.safeParse(body);

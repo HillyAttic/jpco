@@ -6,8 +6,9 @@ import { z } from 'zod';
 
 /**
  * POST /api/payroll/cleanup-slips
- * Admin only - delete all salary slips for a specific month/year
- * This is a bulk cleanup operation for admin convenience
+ * Admin/Manager - delete salary slips for a specific month/year
+ * For managers: only deletes slips for their assigned employees
+ * For admins: deletes all slips for the period
  */
 export async function POST(request: NextRequest) {
   try {
@@ -16,9 +17,9 @@ export async function POST(request: NextRequest) {
       return ErrorResponses.unauthorized();
     }
 
-    // Only admins can perform cleanup operations
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can clean up salary slips');
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only admins and managers can clean up salary slips');
     }
 
     const cleanupSchema = z.object({
@@ -29,13 +30,20 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validatedData = cleanupSchema.parse(body);
 
-    console.log(`[API /api/payroll/cleanup-slips] POST - Admin: ${authResult.user.uid}, Month: ${validatedData.month}, Year: ${validatedData.year}`);
+    console.log(`[API /api/payroll/cleanup-slips] POST - User: ${authResult.user.uid} (${userRole}), Month: ${validatedData.month}, Year: ${validatedData.year}`);
 
     // Get all slips for the specified period
-    const slipsToDelete = await payrollAdminService.getSlips({
+    let slipsToDelete = await payrollAdminService.getSlips({
       month: validatedData.month,
       year: validatedData.year,
     });
+
+    // For managers: filter to only their assigned employees
+    if (userRole === 'manager') {
+      const { getAccessibleEmployeeIds } = await import('@/lib/manager-access');
+      const accessibleIds = await getAccessibleEmployeeIds(authResult.user.uid, userRole);
+      slipsToDelete = slipsToDelete.filter(slip => accessibleIds.includes(slip.employeeId));
+    }
 
     if (slipsToDelete.length === 0) {
       return NextResponse.json(

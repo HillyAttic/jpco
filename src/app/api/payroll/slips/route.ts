@@ -24,6 +24,7 @@ export async function GET(request: NextRequest) {
 
     // Build filters
     const filters: { employeeId?: string; month?: number; year?: number; accessGranted?: boolean } = {};
+    const userRole = authResult.user.claims.role;
 
     // CRITICAL: Every user sees ONLY their own slips by default (self-service page)
     // Admins/Managers must explicitly pass an employeeId to view another employee's slips
@@ -33,14 +34,34 @@ export async function GET(request: NextRequest) {
       filters.accessGranted = true;
     } else if (employeeId) {
       // Admins/Managers explicitly requesting a specific employee
+      // Managers can only request their assigned employees
+      if (userRole === 'manager') {
+        const { hasAccessToEmployee } = await import('@/lib/manager-access');
+        if (!(await hasAccessToEmployee(authResult.user.uid, userRole, employeeId))) {
+          return ErrorResponses.forbidden('You can only view slips for your assigned employees');
+        }
+      }
       filters.employeeId = employeeId;
-      // Skip accessGranted filter when includeAll is set (admin needs to find slips regardless of state)
+      // Skip accessGranted filter when includeAll is set (admin/manager needs to find slips regardless of state)
       if (!includeAll) {
         filters.accessGranted = true;
       }
-    } else if (includeAll && authResult.user.claims.role === 'admin') {
+    } else if (includeAll && userRole === 'admin') {
       // Admins with includeAll=true — list all slips for the period (no uid/accessGranted filter)
       // Used by GenerateSlipsPanel handleToggleAll to batch-update existing slips
+    } else if (includeAll && userRole === 'manager') {
+      // Managers with includeAll=true — list only their assigned employees' slips
+      const { getAccessibleEmployeeIds } = await import('@/lib/manager-access');
+      const accessibleIds = await getAccessibleEmployeeIds(authResult.user.uid, userRole);
+      // We can't use Firestore 'in' with more than 30 items, so we fetch all and filter
+      // For small teams this is fine; for large orgs we'd need a different approach
+      const allSlips = await payrollAdminService.getSlips({ month: filters.month, year: filters.year });
+      const filtered = allSlips.filter(slip =>
+        accessibleIds.includes(slip.employeeId) &&
+        (!filters.accessGranted || slip.accessGranted === filters.accessGranted)
+      );
+      console.log(`[API /api/payroll/slips] GET - Manager ${authResult.user.uid}: returning ${filtered.length} slip(s) from ${allSlips.length} total`);
+      return NextResponse.json(filtered, { status: 200 });
     } else {
       // Admins/Managers WITHOUT employeeId — force to their own uid (self-service)
       filters.employeeId = authResult.user.uid;

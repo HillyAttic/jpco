@@ -230,14 +230,14 @@ export const NAV_DATA = [
         url: "/admin/salary-config",
         icon: Icons.SalaryConfigIcon,
         items: [],
-        requiresRole: ['admin'], // Only admins can configure payroll
+        requiresRole: ['admin', 'manager'], // Admins and managers can access payroll
       },
       {
         title: "Relieving Letters",
         url: "/admin/relieving-letters",
         icon: Icons.SalarySlipIcon,
         items: [],
-        requiresRole: ['admin'], // Only admins can manage relieving letters
+        requiresRole: ['admin', 'manager'], // Admins and managers can manage relieving letters
       },
 
       // Authentication menu item hidden - users can access auth pages directly via URL if needed

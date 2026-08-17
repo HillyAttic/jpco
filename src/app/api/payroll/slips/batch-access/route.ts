@@ -6,7 +6,8 @@ import { z } from 'zod';
 
 /**
  * PATCH /api/payroll/slips/batch-access
- * Admin only — batch update accessGranted on multiple salary slips
+ * Admin/Manager — batch update accessGranted on multiple salary slips
+ * For managers: only updates slips for their assigned employees
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -15,8 +16,9 @@ export async function PATCH(request: NextRequest) {
       return ErrorResponses.unauthorized();
     }
 
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can update slip access');
+    const userRole = authResult.user.claims.role;
+    if (!['admin', 'manager'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only admins and managers can update slip access');
     }
 
     const batchSchema = z.object({
@@ -33,6 +35,26 @@ export async function PATCH(request: NextRequest) {
 
     const body = await request.json();
     const validatedData = batchSchema.parse(body);
+
+    // For managers: verify all slips belong to their assigned employees
+    if (userRole === 'manager') {
+      const { getAccessibleEmployeeIds } = await import('@/lib/manager-access');
+      const accessibleIds = await getAccessibleEmployeeIds(authResult.user.uid, userRole);
+
+      // Fetch all slips to verify ownership
+      const slipIds = validatedData.updates.map(u => u.slipId);
+      const slipDocs = await Promise.all(
+        slipIds.map(id => adminDb.collection('salary-slips').doc(id).get())
+      );
+
+      for (const doc of slipDocs) {
+        if (!doc.exists) continue;
+        const slipData = doc.data();
+        if (!accessibleIds.includes(slipData!.employeeId as string)) {
+          return ErrorResponses.forbidden('You can only update slips for your assigned employees');
+        }
+      }
+    }
 
     // Firestore batch — atomic, single round-trip
     const batch = adminDb.batch();

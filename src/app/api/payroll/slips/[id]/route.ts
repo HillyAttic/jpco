@@ -37,6 +37,14 @@ export async function GET(
       }
     }
 
+    // Managers can only view slips for their assigned employees
+    if (authResult.user.claims.role === 'manager') {
+      const { hasAccessToEmployee } = await import('@/lib/manager-access');
+      if (!(await hasAccessToEmployee(authResult.user.uid, authResult.user.claims.role, slip.employeeId))) {
+        return ErrorResponses.forbidden('You can only view slips for your assigned employees');
+      }
+    }
+
     return NextResponse.json(slip, { status: 200 });
   } catch (error) {
     return handleApiError(error);
@@ -57,8 +65,8 @@ export async function DELETE(
       return ErrorResponses.unauthorized();
     }
 
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can delete salary slips');
+    if (!['admin', 'manager'].includes(authResult.user.claims.role)) {
+      return ErrorResponses.forbidden('Only admins and managers can delete salary slips');
     }
 
     const { id } = await params;
@@ -84,8 +92,8 @@ export async function PUT(
       return ErrorResponses.unauthorized();
     }
 
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can update salary slips');
+    if (!['admin', 'manager'].includes(authResult.user.claims.role)) {
+      return ErrorResponses.forbidden('Only admins and managers can update salary slips');
     }
 
     const { id } = await params;
@@ -155,8 +163,8 @@ export async function PATCH(
       return ErrorResponses.unauthorized();
     }
 
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can update slip access');
+    if (!['admin', 'manager'].includes(authResult.user.claims.role)) {
+      return ErrorResponses.forbidden('Only admins and managers can update slip access');
     }
 
     const { id } = await params;

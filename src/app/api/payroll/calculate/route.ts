@@ -6,7 +6,7 @@ import { z } from 'zod';
 
 /**
  * POST /api/payroll/calculate
- * Admin only - preview salary calculation for one employee
+ * Admin/Manager - preview salary calculation for one employee
  */
 export async function POST(request: NextRequest) {
   try {
@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
       return ErrorResponses.unauthorized();
     }
 
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can calculate salary');
+    if (!['admin', 'manager'].includes(authResult.user.claims.role)) {
+      return ErrorResponses.forbidden('Only admins and managers can calculate salary');
     }
 
     const calculateSchema = z.object({

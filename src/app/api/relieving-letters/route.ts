@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { verifyAuthToken, withAdminAuth, AuthenticatedRequest } from '@/lib/server-auth';
+import { verifyAuthToken, withManagerAuth, AuthenticatedRequest } from '@/lib/server-auth';
 import { RelievingLetter } from '@/types/relieving-letter.types';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 import { adminDb } from '@/lib/firebase-admin';
@@ -30,6 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Build Firestore query filters
     const filters: { employeeId?: string; accessGranted?: boolean } = {};
+    const userRole = authResult.user.claims.role;
 
     // Role-based access logic (mirrors payroll slips)
     if (authResult.user.claims.role === 'employee') {
@@ -38,9 +39,30 @@ export async function GET(request: NextRequest) {
       filters.accessGranted = true;
     } else if (employeeId) {
       // Admins/Managers explicitly requesting a specific employee
+      // Managers can only request their assigned employees
+      if (userRole === 'manager') {
+        const { hasAccessToEmployee } = await import('@/lib/manager-access');
+        if (!(await hasAccessToEmployee(authResult.user.uid, userRole, employeeId))) {
+          return ErrorResponses.forbidden('You can only view letters for your assigned employees');
+        }
+      }
       filters.employeeId = employeeId;
-    } else if (includeAll && authResult.user.claims.role === 'admin') {
+    } else if (includeAll && userRole === 'admin') {
       // Admins with includeAll=true — list all letters (no uid/accessGranted filter)
+    } else if (includeAll && userRole === 'manager') {
+      // Managers with includeAll=true — list only their assigned employees' letters
+      const { getAccessibleEmployeeIds } = await import('@/lib/manager-access');
+      const accessibleIds = await getAccessibleEmployeeIds(authResult.user.uid, userRole);
+      // Fetch all letters and filter to accessible employees
+      const allLetters = await adminDb.collection('relieving-letters').get();
+      const filteredLetters = allLetters.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter((letter: any) =>
+          accessibleIds.includes(letter.employeeId) &&
+          (filters.accessGranted === undefined || letter.accessGranted === filters.accessGranted)
+        );
+      console.log(`[API /api/relieving-letters] GET - Manager ${authResult.user.uid}: returning ${filteredLetters.length} letter(s)`);
+      return NextResponse.json(filteredLetters, { status: 200 });
     } else {
       // Admins/Managers WITHOUT employeeId — force to their own uid (self-service)
       filters.employeeId = authResult.user.uid;
@@ -89,14 +111,14 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/relieving-letters
- * Create new relieving letter (admin only)
+ * Create new relieving letter (admin/manager only)
  */
-export const POST = withAdminAuth(async (request: AuthenticatedRequest) => {
+export const POST = withManagerAuth(async (request: AuthenticatedRequest) => {
   try {
     const { uid } = request.user!;
     const body = await request.json();
 
-    console.log(`[API /api/relieving-letters] POST - Admin: ${uid}, Creating letter for employee:`, body.employeeId);
+    console.log(`[API /api/relieving-letters] POST - User: ${uid}, Creating letter for employee:`, body.employeeId);
 
     // Validate input (create schema omits letterNumber and createdBy — server generates those)
     const validation = relievingLetterCreateSchema.safeParse(body);

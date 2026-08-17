@@ -19,6 +19,7 @@ import { RelievingLetterModal } from '@/components/relieving-letter/RelievingLet
 import { RelievingLetterPreview } from '@/components/relieving-letter/RelievingLetterPreview';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileText, Plus } from 'lucide-react';
+import { RelievingLetterAccessGate } from '@/components/relieving-letter/RelievingLetterAccessGate';
 
 const TABS = [
   { value: 'letters', label: 'Letters', icon: FileText },
@@ -26,7 +27,15 @@ const TABS = [
 ] as const;
 
 export default function AdminRelievingLettersPage() {
-  const { isAdmin } = useEnhancedAuth();
+  return (
+    <RelievingLetterAccessGate>
+      <AdminRelievingLettersContent />
+    </RelievingLetterAccessGate>
+  );
+}
+
+function AdminRelievingLettersContent() {
+  const { isAdmin, isManager } = useEnhancedAuth();
   const router = useRouter();
   const [letters, setLetters] = useState<RelievingLetter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,18 +49,22 @@ export default function AdminRelievingLettersPage() {
   const [previewLetter, setPreviewLetter] = useState<RelievingLetter | null>(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
 
+  const canAccess = isAdmin || isManager;
+
   useEffect(() => {
-    if (!isAdmin) {
-      toast.error('Access denied. Admin only.');
+    if (!canAccess) {
+      toast.error('Access denied. Admins and managers only.');
       router.push('/dashboard');
       return;
     }
     fetchLetters();
-  }, [isAdmin, router]);
+  }, [canAccess, router]);
 
   const fetchLetters = useCallback(async () => {
     setLoading(true);
     try {
+      // For managers, this will only return letters for their assigned employees
+      // For admins, this returns all letters
       const data = await relievingLetterService.getLetters({ includeAll: true });
       // Sort by createdAt descending (most recent first)
       const sorted = [...data].sort((a, b) => {
@@ -100,7 +113,7 @@ export default function AdminRelievingLettersPage() {
     setActiveTab('letters');
   };
 
-  if (!isAdmin) {
+  if (!canAccess) {
     return null;
   }
 

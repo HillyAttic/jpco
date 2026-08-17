@@ -104,6 +104,8 @@ export default function AdminSalaryConfigPage() {
   const fetchEmployees = async () => {
     setLoading(true);
     try {
+      // For managers, /api/employees already returns only their assigned employees
+      // For admins, it returns all employees
       const response = await authenticatedFetch('/api/employees');
       if (response.ok) {
         const json = await response.json();

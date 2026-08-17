@@ -18,8 +18,17 @@ import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { FileText, Eye, Download } from 'lucide-react';
+import { RelievingLetterAccessGate } from '@/components/relieving-letter/RelievingLetterAccessGate';
 
 export default function RelievingLetterPage() {
+  return (
+    <RelievingLetterAccessGate>
+      <RelievingLetterContent />
+    </RelievingLetterAccessGate>
+  );
+}
+
+function RelievingLetterContent() {
   const { user, isAdmin, isManager } = useEnhancedAuth();
   const router = useRouter();
   const [letters, setLetters] = useState<RelievingLetter[]>([]);

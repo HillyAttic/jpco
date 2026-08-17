@@ -43,6 +43,14 @@ export async function GET(
       }
     }
 
+    // Managers can only view letters for their assigned employees
+    if (authResult.user.claims.role === 'manager') {
+      const { hasAccessToEmployee } = await import('@/lib/manager-access');
+      if (!(await hasAccessToEmployee(authResult.user.uid, authResult.user.claims.role, letter.employeeId as string))) {
+        return NextResponse.json({ error: 'Access denied' }, { status: 403 });
+      }
+    }
+
     return NextResponse.json(letter, { status: 200 });
   } catch (error) {
     return handleApiError(error);
@@ -63,8 +71,8 @@ export async function PUT(
       return ErrorResponses.unauthorized();
     }
 
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can update relieving letters');
+    if (!['admin', 'manager'].includes(authResult.user.claims.role)) {
+      return ErrorResponses.forbidden('Only admins and managers can update relieving letters');
     }
 
     const { id } = await params;
@@ -105,8 +113,8 @@ export async function DELETE(
       return ErrorResponses.unauthorized();
     }
 
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can delete relieving letters');
+    if (!['admin', 'manager'].includes(authResult.user.claims.role)) {
+      return ErrorResponses.forbidden('Only admins and managers can delete relieving letters');
     }
 
     const { id } = await params;
@@ -142,8 +150,8 @@ export async function PATCH(
       return ErrorResponses.unauthorized();
     }
 
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can toggle letter access');
+    if (!['admin', 'manager'].includes(authResult.user.claims.role)) {
+      return ErrorResponses.forbidden('Only admins and managers can toggle letter access');
     }
 
     const { id } = await params;

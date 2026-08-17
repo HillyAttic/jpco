@@ -15,8 +15,8 @@ export async function POST(request: NextRequest) {
       return ErrorResponses.unauthorized();
     }
 
-    if (authResult.user.claims.role !== 'admin') {
-      return ErrorResponses.forbidden('Only admins can generate salary slips');
+    if (!['admin', 'manager'].includes(authResult.user.claims.role)) {
+      return ErrorResponses.forbidden('Only admins and managers can generate salary slips');
     }
 
     const generateSchema = z.object({
