@@ -3,7 +3,8 @@ import { verifyAuthToken } from '@/lib/server-auth';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 import { payrollAdminService } from '@/services/payroll-admin.service';
 import { z } from 'zod';
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminMessaging } from '@/lib/firebase-admin';
+import { Timestamp } from 'firebase-admin/firestore';
 
 /**
  * GET /api/payroll/slips/[id]
@@ -166,11 +167,75 @@ export async function PATCH(
     const body = await request.json();
     const validatedData = patchSchema.parse(body);
 
+    // Check previous access state before updating
+    const slipDoc = await adminDb.collection('salary-slips').doc(id).get();
+    if (!slipDoc.exists) {
+      return NextResponse.json({ error: 'Salary slip not found' }, { status: 404 });
+    }
+    const slipData = slipDoc.data()!;
+    const previousAccessGranted = slipData.accessGranted as boolean;
+    const employeeId = slipData.employeeId as string;
+    const month = slipData.month as number;
+    const year = slipData.year as number;
+
     await adminDb.collection('salary-slips').doc(id).update({
       accessGranted: validatedData.accessGranted,
     });
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    let notificationSent = false;
+
+    // Send notification when toggling access from false to true
+    if (validatedData.accessGranted && !previousAccessGranted) {
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+      ];
+      const periodLabel = `${monthNames[month]} ${year}`;
+
+      // Look up employee's FCM token
+      const userDoc = await adminDb.collection('users').doc(employeeId).get();
+      const userData = userDoc.data();
+      const fcmToken = userData?.fcmToken;
+
+      // Send FCM push notification if token exists
+      if (fcmToken) {
+        try {
+          await adminMessaging.send({
+            token: fcmToken,
+            notification: {
+              title: 'Salary Slip Available',
+              body: `Your salary slip for ${periodLabel} has been made available. Check your dashboard to view and download it.`,
+            },
+            data: {
+              type: 'salary-slip',
+              slipId: id,
+              month: String(month),
+              year: String(year),
+              url: '/salary-slip',
+            },
+          });
+          notificationSent = true;
+          console.log(`[API /api/payroll/slips/${id}] PATCH - FCM notification sent to employee ${employeeId}`);
+        } catch (fcmError) {
+          console.error(`[API /api/payroll/slips/${id}] PATCH - FCM notification failed:`, fcmError);
+        }
+      }
+
+      // Always create in-app notification
+      await adminDb.collection('notifications').add({
+        userId: employeeId,
+        type: 'salary-slip-access',
+        title: 'Salary Slip Available',
+        message: `Your salary slip for ${periodLabel} has been made available. Visit the Salary Slip page to view and download it.`,
+        read: false,
+        createdAt: Timestamp.now(),
+        metadata: { slipId: id, month, year },
+      });
+      notificationSent = true;
+      console.log(`[API /api/payroll/slips/${id}] PATCH - In-app notification created for employee ${employeeId}`);
+    }
+
+    return NextResponse.json({ success: true, notificationSent }, { status: 200 });
   } catch (error) {
     return handleApiError(error);
   }

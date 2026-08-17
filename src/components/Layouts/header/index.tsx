@@ -1,8 +1,6 @@
 "use client";
 
 import { useResponsive } from "@/hooks/use-responsive";
-import Image from "next/image";
-import Link from "next/link";
 import { useSidebarContext } from "../sidebar/sidebar-context";
 import { MenuIcon } from "./icons";
 import { Notification } from "./notification";
@@ -36,26 +34,6 @@ export function Header() {
       >
         <MenuIcon />
       </button>
-
-      {/* Mobile Logo */}
-      {isMobile && (
-        <Link 
-          href={"/"} 
-          className={`
-            ml-2 flex items-center justify-center
-            max-[430px]:hidden min-[375px]:ml-4
-            ${isTouchDevice ? 'min-h-[44px]' : ''}
-          `}
-        >
-          <Image
-            src={"/images/logo/logo-icon.svg"}
-            width={32}
-            height={32}
-            alt="JPCO Logo"
-            className="h-8 w-8"
-          />
-        </Link>
-      )}
 
       {/* Desktop Title */}
       <div className={`

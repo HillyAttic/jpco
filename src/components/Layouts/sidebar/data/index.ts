@@ -104,6 +104,13 @@ export const NAV_DATA = [
         dynamicVisibility: true, // Hidden if employee has no accessible slips
       },
       {
+        title: "Relieving Letter",
+        url: "/relieving-letter",
+        icon: Icons.SalarySlipIcon,
+        items: [],
+        dynamicVisibility: true, // Hidden if employee has no accessible letters
+      },
+      {
         title: "Attendance Tray",
         url: "/attendance/tray",
         icon: Icons.ClockIcon,
@@ -224,6 +231,13 @@ export const NAV_DATA = [
         icon: Icons.SalaryConfigIcon,
         items: [],
         requiresRole: ['admin'], // Only admins can configure payroll
+      },
+      {
+        title: "Relieving Letters",
+        url: "/admin/relieving-letters",
+        icon: Icons.SalarySlipIcon,
+        items: [],
+        requiresRole: ['admin'], // Only admins can manage relieving letters
       },
 
       // Authentication menu item hidden - users can access auth pages directly via URL if needed

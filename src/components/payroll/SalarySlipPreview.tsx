@@ -96,20 +96,24 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
     'This is a computer generated statement, does not require signature.';
 
   return (
-    <div data-for-pdf={forPDF || undefined} className="bg-white text-black p-4 sm:p-6 md:p-8 max-w-[210mm] mx-auto font-sans">
-      {/* Company Header */}
-      <div className="text-center mb-4 sm:mb-6">
-        {settings.logoUrl && (
-          <img
-            src={settings.logoUrl}
-            alt="Company Logo"
-            className="h-12 sm:h-16 mx-auto mb-2"
-          />
-        )}
-        <h1 className="text-xl sm:text-2xl font-bold">{settings.companyName}</h1>
-        <p className="text-xs sm:text-sm text-gray-600 whitespace-pre-line">{settings.companyAddress}</p>
-      </div>
-
+    <div
+      id="salary-slip-preview"
+      className="text-black"
+      style={{
+        width: '210mm',
+        minHeight: '297mm',
+        fontFamily: 'Arial, sans-serif',
+        backgroundImage: "url('/images/letter-head.jpeg')",
+        backgroundSize: '100% 100%',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        // Padding to keep text in the blank middle area (below header, above footer)
+        paddingTop: '180px',
+        paddingBottom: '120px',
+        paddingLeft: '60px',
+        paddingRight: '60px',
+      }}
+    >
       {/* Title */}
       <div className="border-b-2 border-gray-800 pb-2 mb-4 sm:mb-6">
         <h2 className="text-lg sm:text-xl font-bold text-center">SALARY SLIP</h2>

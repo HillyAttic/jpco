@@ -31,7 +31,7 @@ export async function generateSalarySlipPDF(
   container.style.left = '-9999px';
   container.style.top = '0';
   container.style.width = '210mm';
-  container.style.background = 'white';
+  container.style.background = 'transparent';
   container.style.zIndex = '-1';
   document.body.appendChild(container);
 
@@ -55,7 +55,7 @@ export async function generateSalarySlipPDF(
     });
 
     // Get the rendered slip content
-    const slipContent = container.querySelector('.bg-white');
+    const slipContent = container.querySelector('#salary-slip-preview') || container.querySelector('.text-black');
     if (!slipContent) {
       throw new Error('Failed to find slip content for PDF capture');
     }
@@ -65,7 +65,7 @@ export async function generateSalarySlipPDF(
       scale: 2,
       useCORS: true,
       allowTaint: true,
-      backgroundColor: '#ffffff',
+      backgroundColor: null,
       logging: false,
       width: slipContent.scrollWidth,
       height: slipContent.scrollHeight,

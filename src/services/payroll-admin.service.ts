@@ -4,7 +4,7 @@
  * This bypasses Firestore security rules and should only be used in API routes
  */
 
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminMessaging } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { PayrollSettings, EmployeeSalary, SalaryCalculationResult, AttendanceBreakdown, SalaryBreakup, SalarySlipTemplate, DEFAULT_SALARY_SLIP_TEMPLATE } from '@/types/payroll.types';
 import * as FormulaFunctions from '@/lib/formula-functions';
@@ -571,6 +571,61 @@ export const payrollAdminService = {
       // Commit remaining slips
       if (batchCount > 0) {
         await batch.commit();
+      }
+
+      // ── Send notifications to employees whose slips were generated with access granted ──
+      const monthNames = [
+        'January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December',
+      ];
+      const periodLabel = `${monthNames[month]} ${year}`;
+
+      for (const slip of generatedSlips) {
+        if (!slip.accessGranted) continue;
+
+        try {
+          // Look up employee's FCM token
+          const userDoc = await adminDb.collection('users').doc(slip.employeeId).get();
+          const userData = userDoc.data();
+          const fcmToken = userData?.fcmToken;
+
+          // Send FCM push notification if token exists
+          if (fcmToken) {
+            try {
+              await adminMessaging.send({
+                token: fcmToken,
+                notification: {
+                  title: 'Salary Slip Available',
+                  body: `Your salary slip for ${periodLabel} has been generated. Check your dashboard to view and download it.`,
+                },
+                data: {
+                  type: 'salary-slip',
+                  slipId: slip.id || '',
+                  month: String(month),
+                  year: String(year),
+                  url: '/salary-slip',
+                },
+              });
+              console.log(`[PayrollAdminService] FCM notification sent to employee ${slip.employeeId} for slip ${slip.id}`);
+            } catch (fcmError) {
+              console.error(`[PayrollAdminService] FCM notification failed for employee ${slip.employeeId}:`, fcmError);
+            }
+          }
+
+          // Always create in-app notification
+          await adminDb.collection('notifications').add({
+            userId: slip.employeeId,
+            type: 'salary-slip-generated',
+            title: 'Salary Slip Available',
+            message: `Your salary slip for ${periodLabel} has been generated. Visit the Salary Slip page to view and download it.`,
+            read: false,
+            createdAt: Timestamp.now(),
+            metadata: { slipId: slip.id || '', month, year },
+          });
+          console.log(`[PayrollAdminService] In-app notification created for employee ${slip.employeeId}`);
+        } catch (notifError) {
+          console.error(`[PayrollAdminService] Notification failed for employee ${slip.employeeId}:`, notifError);
+        }
       }
 
       console.log(`[PayrollAdminService] Generated ${generatedSlips.length} slip(s). Skipped: ${skippedEmployees.length} (${skippedEmployees.join(', ')})`);
