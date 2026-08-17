@@ -18,7 +18,7 @@ interface SalarySlipPreviewProps {
 }
 
 export function SalarySlipPreview({ slip, settings, template, forPDF = false }: SalarySlipPreviewProps) {
-  const [showSteps, setShowSteps] = useState(true);
+  const [showSteps, setShowSteps] = useState(false);
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
     'July', 'August', 'September', 'October', 'November', 'December'
