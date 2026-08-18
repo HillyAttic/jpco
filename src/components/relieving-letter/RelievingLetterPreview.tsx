@@ -86,11 +86,16 @@ export function RelievingLetterPreview({ letter }: RelievingLetterPreviewProps) 
       </div>
 
       {/* Signature Block */}
-      <div className="mt-16">
+      <div className="mt-8">
+        <img
+          src="/images/sign.png"
+          alt="Digital Signature"
+          className="h-16 w-auto mb-2"
+        />
         <div className="border-t border-black w-64 mb-2"></div>
         <p className="font-semibold">{letter.signatoryName}</p>
         <p>{letter.signatoryDesignation}</p>
-        <p className="mt-4 text-sm italic">Company Seal</p>
+        <p className="mt-4 text-sm italic text-center">This is a computer-generated statement and thus contains a digital signature.</p>
       </div>
     </div>
   );
