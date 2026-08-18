@@ -52,6 +52,7 @@ const schema = z.object({
   tds: z.number().min(0),
   loanRecovery: z.number().min(0),
   otherDeduction: z.number().min(0),
+  leaveDeduction: z.number().min(0),
 });
 
 type EditSalarySlipData = z.infer<typeof schema>;
@@ -97,6 +98,7 @@ export function EditSalarySlipModal({
       tds: 0,
       loanRecovery: 0,
       otherDeduction: 0,
+      leaveDeduction: 0,
     },
   });
 
@@ -110,11 +112,12 @@ export function EditSalarySlipModal({
   const tds = watch('tds');
   const loanRecovery = watch('loanRecovery');
   const otherDeduction = watch('otherDeduction');
+  const leaveDeduction = watch('leaveDeduction');
 
   const totalEarnings = (basic || 0) + (hra || 0) + (special || 0);
   const totalDeductions =
     (epf || 0) + (esi || 0) + (professionalTax || 0) +
-    (tds || 0) + (loanRecovery || 0) + (otherDeduction || 0);
+    (tds || 0) + (loanRecovery || 0) + (otherDeduction || 0) + (leaveDeduction || 0);
   const netSalary = totalEarnings - totalDeductions;
 
   // Auto-set paidDays = present + wfh + paidLeave + (halfDay * 0.5) when attendance changes
@@ -159,6 +162,7 @@ export function EditSalarySlipModal({
         tds: slip.salaryBreakup?.tds ?? 0,
         loanRecovery: slip.salaryBreakup?.loanRecovery ?? 0,
         otherDeduction: slip.salaryBreakup?.otherDeduction ?? 0,
+        leaveDeduction: slip.salaryBreakup?.leaveDeduction ?? 0,
       });
     }
   }, [isOpen, slip, reset]);
@@ -434,7 +438,7 @@ export function EditSalarySlipModal({
                     const sec = template?.sections.find((s) => s.key === 'deductions');
                     const visibleFieldKeys = sec
                       ? new Set(sec.fields.filter((f) => f.visible).map((f) => f.key))
-                      : new Set(['epf', 'esi', 'professionalTax', 'tds', 'loanRecovery', 'otherDeduction']);
+                      : new Set(['epf', 'esi', 'professionalTax', 'tds', 'loanRecovery', 'otherDeduction', 'leaveDeduction']);
 
                     const fields: Array<{ key: string; label: string }> = [
                       { key: 'epf', label: 'EPF' },
@@ -443,6 +447,7 @@ export function EditSalarySlipModal({
                       { key: 'tds', label: 'TDS / Income Tax' },
                       { key: 'loanRecovery', label: 'Loan Recovery' },
                       { key: 'otherDeduction', label: 'Other Deduction' },
+                      { key: 'leaveDeduction', label: 'Leave Deduction' },
                     ];
 
                     return fields

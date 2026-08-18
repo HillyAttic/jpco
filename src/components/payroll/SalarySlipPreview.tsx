@@ -347,10 +347,10 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false, hi
               {/* Subsequent Calculations */}
               <div className="bg-gray-50 rounded-lg p-3 sm:p-4 text-[11px] sm:text-xs space-y-1">
                 <p className="font-semibold text-gray-700 mb-1">Subsequent Calculations:</p>
-                <p className="text-gray-600 ml-2">Basic ({settings.basicPercentage}%) = {calcData.fmtD(calcData.netSalary)} × {settings.basicPercentage}% = {calcData.fmtD(calcData.sb.basic)}</p>
-                <p className="text-gray-600 ml-2">HRA ({settings.hraPercentage}%) = {calcData.fmtD(calcData.netSalary)} × {settings.hraPercentage}% = {calcData.fmtD(calcData.sb.hra)}</p>
-                <p className="text-gray-600 ml-2">Special Allowance ({settings.specialPercentage}%) = {calcData.fmtD(calcData.netSalary)} × {settings.specialPercentage}% = {calcData.fmtD(calcData.sb.special)}</p>
-                <p className="text-gray-800 font-semibold ml-2 mt-1">Total = {calcData.fmtD(calcData.sb.basic)} + {calcData.fmtD(calcData.sb.hra)} + {calcData.fmtD(calcData.sb.special)} = {calcData.fmtD(calcData.netSalary)}</p>
+                <p className="text-gray-600 ml-2">Basic ({settings.basicPercentage}%) = {calcData.fmtD(calcData.gross)} × {settings.basicPercentage}% = {calcData.fmtD(calcData.sb.basic)}</p>
+                <p className="text-gray-600 ml-2">HRA ({settings.hraPercentage}%) = {calcData.fmtD(calcData.gross)} × {settings.hraPercentage}% = {calcData.fmtD(calcData.sb.hra)}</p>
+                <p className="text-gray-600 ml-2">Special Allowance ({settings.specialPercentage}%) = {calcData.fmtD(calcData.gross)} × {settings.specialPercentage}% = {calcData.fmtD(calcData.sb.special)}</p>
+                <p className="text-gray-800 font-semibold ml-2 mt-1">Total = {calcData.fmtD(calcData.sb.basic)} + {calcData.fmtD(calcData.sb.hra)} + {calcData.fmtD(calcData.sb.special)} = {calcData.fmtD(calcData.gross)}</p>
               </div>
           </div>
           )}
@@ -426,6 +426,7 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false, hi
                         case 'tds':             value = slip.salaryBreakup?.tds ?? 0; break;
                         case 'loanRecovery':    value = slip.salaryBreakup?.loanRecovery ?? 0; break;
                         case 'otherDeduction':  value = slip.salaryBreakup?.otherDeduction ?? 0; break;
+                        case 'leaveDeduction':  value = slip.salaryBreakup?.leaveDeduction ?? calcData.leaveDeduction ?? 0; break;
                         default:                value = 0;
                       }
                       return (

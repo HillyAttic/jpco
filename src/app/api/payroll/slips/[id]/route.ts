@@ -127,6 +127,7 @@ export async function PUT(
         tds: z.number().optional(),
         loanRecovery: z.number().optional(),
         otherDeduction: z.number().optional(),
+        leaveDeduction: z.number().optional(),
       }).optional(),
       attendanceBreakdown: z.object({
         present: z.number(),

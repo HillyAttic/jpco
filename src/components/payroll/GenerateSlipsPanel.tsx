@@ -565,6 +565,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     tds: number;
     loanRecovery: number;
     otherDeduction: number;
+    leaveDeduction: number;
   }) => {
     if (!editSlip) return;
 
@@ -572,7 +573,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     try {
       const totalDeductions =
         data.epf + data.esi + data.professionalTax +
-        data.tds + data.loanRecovery + data.otherDeduction;
+        data.tds + data.loanRecovery + data.otherDeduction + (data.leaveDeduction || 0);
       const totalEarnings = data.basic + data.hra + data.special;
       const netSalary = totalEarnings - totalDeductions;
 
@@ -599,6 +600,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
             tds: data.tds,
             loanRecovery: data.loanRecovery,
             otherDeduction: data.otherDeduction,
+            leaveDeduction: data.leaveDeduction ?? 0,
           },
           attendanceBreakdown: {
             present: data.present,
@@ -639,6 +641,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
                   tds: data.tds,
                   loanRecovery: data.loanRecovery,
                   otherDeduction: data.otherDeduction,
+                  leaveDeduction: data.leaveDeduction ?? 0,
                 },
                 attendanceBreakdown: {
                   present: data.present,
@@ -688,6 +691,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
             special: data.special,
             totalDeductions,
             netSalary,
+            leaveDeduction: data.leaveDeduction ?? 0,
           },
           attendanceBreakdown: {
             present: data.present,
@@ -721,6 +725,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
                   special: data.special,
                   totalDeductions,
                   netSalary,
+                  leaveDeduction: data.leaveDeduction ?? 0,
                 },
                 attendanceBreakdown: {
                   present: data.present,

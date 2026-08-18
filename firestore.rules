@@ -389,6 +389,14 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
+    // RELIEVING LETTERS
+    match /relieving-letters/{letterId} {
+      // Employees can read their own granted letters (real-time listener for sidebar + self-service page)
+      allow read: if isAuthenticated() && resource.data.employeeId == request.auth.uid;
+      // Only admins can read all letters and create/update/delete
+      allow read, write: if isAdmin();
+    }
+
     // CATCH ALL - Deny everything else
     match /{document=**} {
       allow read, write: if false;

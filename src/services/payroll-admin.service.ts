@@ -195,6 +195,7 @@ export const payrollAdminService = {
         totalDeductions = 0,
         netSalary = 0,
         paidDays = 0,
+        leaveDeduction = 0,
       } = result;
 
       // Calculate paidDays from the formula result or fallback
@@ -209,6 +210,7 @@ export const payrollAdminService = {
           special: Number(special) || 0,
           totalDeductions: Number(totalDeductions) || 0,
           netSalary: Number(netSalary) || 0,
+          leaveDeduction: Number(leaveDeduction) || 0,
         },
         paidDays: computedPaidDays,
       };
@@ -217,19 +219,20 @@ export const payrollAdminService = {
       // Fallback to whiteboard formula: Net Salary = Gross Salary - (Gross Salary × Unpaid Leaves) / 26
       const { present = 0, wfh = 0, halfDay = 0, leaveTaken = 0, unpaidLeave = 0, holidays = 0, totalDaysInMonth: tdim = 30 } = variables;
       const fallbackPaidDays = Math.max(0, 26 - unpaidLeave - (halfDay * 0.5));
-      const netSalary = variables.grossSalary - (variables.grossSalary * unpaidLeave) / 26;
-      const basic = netSalary * (variables.basicPercentage / 100);
-      const hra = netSalary * (variables.hraPercentage / 100);
-      const special = netSalary * (variables.specialPercentage / 100);
-      const totalDeductions = 0;
+      const leaveDeduction = (variables.grossSalary * unpaidLeave) / 26;
+      const netSalary = variables.grossSalary - leaveDeduction;
+      const basic = variables.grossSalary * (variables.basicPercentage / 100);
+      const hra = variables.grossSalary * (variables.hraPercentage / 100);
+      const special = variables.grossSalary * (variables.specialPercentage / 100);
 
       return {
         breakup: {
           basic,
           hra,
           special,
-          totalDeductions,
+          totalDeductions: leaveDeduction,
           netSalary,
+          leaveDeduction,
         },
         paidDays: fallbackPaidDays,
       };
@@ -436,18 +439,19 @@ export const payrollAdminService = {
         // Whiteboard formula: Net Salary = Gross Salary - (Gross Salary × Unpaid Leaves) / 26
         // Denominator is always 26, paid days = 26 - unpaidLeave
         computedPaidDays = Math.max(0, 26 - unpaidLeave - (halfDay * 0.5));
-        const netSalary = grossSalary - (grossSalary * unpaidLeave) / 26;
-        const basic = netSalary * (settings.basicPercentage / 100);
-        const hra = netSalary * (settings.hraPercentage / 100);
-        const special = netSalary * (settings.specialPercentage / 100);
-        const totalDeductions = 0;
+        const leaveDeduction = (grossSalary * unpaidLeave) / 26;
+        const netSalary = grossSalary - leaveDeduction;
+        const basic = grossSalary * (settings.basicPercentage / 100);
+        const hra = grossSalary * (settings.hraPercentage / 100);
+        const special = grossSalary * (settings.specialPercentage / 100);
 
         salaryBreakup = {
           basic,
           hra,
           special,
-          totalDeductions,
+          totalDeductions: leaveDeduction,
           netSalary,
+          leaveDeduction,
         };
       }
 
