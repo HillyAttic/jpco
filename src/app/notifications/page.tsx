@@ -30,6 +30,8 @@ interface Notification {
     taskId?: string;
     url?: string;
     type?: string;
+    month?: string;
+    year?: string;
   };
 }
 
