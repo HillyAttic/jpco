@@ -98,7 +98,7 @@ export function RelievingLetterPreview({ letter }: RelievingLetterPreviewProps) 
       </div>
 
       {/* Disclaimer */}
-      <p className="text-sm italic text-center" style={{ marginTop: '99px' }}>This is a computer-generated statement and thus contains a digital signature.</p>
+      <p className="text-sm italic text-center" style={{ marginTop: '99px' }}>This is a computer-generated statement, thus contains a digital signature.</p>
     </div>
   );
 }
