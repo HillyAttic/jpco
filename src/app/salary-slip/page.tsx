@@ -259,7 +259,7 @@ export default function SalarySlipPage() {
       const profileResponse = await authenticatedFetch('/api/auth/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName: user?.displayName || user?.name || 'Employee', pan: formattedPan }),
+        body: JSON.stringify({ displayName: user?.displayName || user?.email?.split('@')[0] || 'Employee', pan: formattedPan }),
       });
 
       if (!profileResponse.ok) {
