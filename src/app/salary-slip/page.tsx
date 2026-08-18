@@ -259,7 +259,7 @@ export default function SalarySlipPage() {
       const profileResponse = await authenticatedFetch('/api/auth/profile', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ displayName: user?.displayName || '', pan: formattedPan }),
+        body: JSON.stringify({ displayName: user?.displayName || user?.name || 'Employee', pan: formattedPan }),
       });
 
       if (!profileResponse.ok) {
@@ -514,7 +514,7 @@ export default function SalarySlipPage() {
 
       {/* PAN Entry Dialog */}
       <Dialog open={showPanDialog} onOpenChange={() => !savingPan && setShowPanDialog(false)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
           <DialogHeader>
             <DialogTitle className="text-base sm:text-lg">Enter PAN Number</DialogTitle>
           </DialogHeader>
