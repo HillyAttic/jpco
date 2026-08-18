@@ -63,6 +63,8 @@ export function useNotifications() {
           taskId: n.data?.taskId,
           url: n.actionUrl || n.data?.url,
           type: n.type || n.data?.type,
+          month: n.data?.month,
+          year: n.data?.year,
         },
       }));
 

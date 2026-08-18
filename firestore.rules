@@ -10,11 +10,15 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Checks Custom Claims first, falls back to document lookup
+    // Checks Custom Claims first, falls back to document lookup.
+    // Defaults to 'employee' if the user document doesn't exist or has no role
+    // field, to avoid crashing the rule evaluation.
     function getUserRole() {
-      return request.auth.token.keys().hasAny(['role']) 
-        ? request.auth.token.role 
-        : get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      return request.auth.token.keys().hasAny(['role'])
+        ? request.auth.token.role
+        : (exists(/databases/$(database)/documents/users/$(request.auth.uid))
+            ? get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role
+            : 'employee');
     }
     
     function isAdmin() {

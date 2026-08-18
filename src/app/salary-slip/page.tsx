@@ -26,8 +26,17 @@ export default function SalarySlipPage() {
   const [loading, setLoading] = useState(true);
   const [selectedSlip, setSelectedSlip] = useState<EmployeeSalary | null>(null);
   const [settings, setSettings] = useState<PayrollSettings | null>(null);
-  const [month, setMonth] = useState<number | undefined>(undefined);
-  const [year, setYear] = useState<number | undefined>(undefined);
+  // Read month/year from sessionStorage so notification clicks land on the right period
+  const [month, setMonth] = useState<number | undefined>(() => {
+    const v = sessionStorage.getItem('salarySlipMonth');
+    if (v !== null) { sessionStorage.removeItem('salarySlipMonth'); return parseInt(v, 10); }
+    return undefined;
+  });
+  const [year, setYear] = useState<number | undefined>(() => {
+    const v = sessionStorage.getItem('salarySlipYear');
+    if (v !== null) { sessionStorage.removeItem('salarySlipYear'); return parseInt(v, 10); }
+    return undefined;
+  });
   const [template, setTemplate] = useState<SalarySlipTemplate | null>(null);
   const [templates, setTemplates] = useState<SalarySlipTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
@@ -62,6 +71,19 @@ export default function SalarySlipPage() {
       setSlips(allSlips);
     }
   }, [month, year, allSlips]);
+
+  // Listen for filter changes dispatched by notification clicks (handles the case
+  // where the user is already on /salary-slip and clicks a notification — the page
+  // won't remount, so we react to the custom event instead).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { month: m, year: y } = (e as CustomEvent).detail;
+      setMonth(m);
+      setYear(y);
+    };
+    window.addEventListener('salarySlipFilterChange', handler);
+    return () => window.removeEventListener('salarySlipFilterChange', handler);
+  }, []);
 
   // Redirect non-admin users with no accessible slips
   useEffect(() => {

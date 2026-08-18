@@ -10,6 +10,7 @@ import { useNotifications } from "@/hooks/use-notifications";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { BellIcon } from "./icons";
 import {
   ClockIcon,
@@ -68,6 +69,7 @@ const getNotificationIcon = (type: string) => {
 export function Notification() {
   const [isOpen, setIsOpen] = useState(false);
   const isMobile = useIsMobile();
+  const router = useRouter();
   const {
     notifications,
     unreadCount,
@@ -87,6 +89,20 @@ export function Notification() {
   }, [isOpen, permissionGranted, requestPermission]);
 
   const handleNotificationClick = async (notification: any) => {
+    // Store month/year IMMEDIATELY (before any async work) so the destination page
+    // can read them from sessionStorage even if the Link navigation fires before
+    // markAsRead resolves.
+    const notifMonth = notification.data?.month;
+    const notifYear = notification.data?.year;
+    if (notifMonth !== undefined && notifYear !== undefined) {
+      sessionStorage.setItem('salarySlipMonth', String(notifMonth));
+      sessionStorage.setItem('salarySlipYear', String(notifYear));
+      // Dispatch custom event so an already-mounted salary-slip page can react
+      window.dispatchEvent(new CustomEvent('salarySlipFilterChange', {
+        detail: { month: parseInt(notifMonth, 10), year: parseInt(notifYear, 10) },
+      }));
+    }
+
     if (!notification.read) {
       await markAsRead(notification.id);
     }

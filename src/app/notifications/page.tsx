@@ -228,6 +228,20 @@ export default function NotificationsPage() {
     const typeUrl = NOTIFICATION_TYPE_URLS[type || ''];
     const url = storedUrl && storedUrl !== '/notifications' ? storedUrl : typeUrl;
 
+    // If the notification carries a specific month/year (e.g. salary-slip-generated),
+    // stash them in sessionStorage so the destination page can apply them as initial
+    // filters instead of defaulting to the most recent period.
+    const notifMonth = notification.data?.month;
+    const notifYear = notification.data?.year;
+    if (notifMonth !== undefined && notifYear !== undefined) {
+      sessionStorage.setItem('salarySlipMonth', String(notifMonth));
+      sessionStorage.setItem('salarySlipYear', String(notifYear));
+      // Dispatch custom event so an already-mounted salary-slip page can react
+      window.dispatchEvent(new CustomEvent('salarySlipFilterChange', {
+        detail: { month: parseInt(notifMonth, 10), year: parseInt(notifYear, 10) },
+      }));
+    }
+
     if (url) {
       // Set flag to prevent AuthWrapper from interfering
       sessionStorage.setItem('notificationNavigation', 'true');
