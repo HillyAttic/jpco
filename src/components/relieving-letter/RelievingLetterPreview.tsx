@@ -80,17 +80,17 @@ export function RelievingLetterPreview({ letter }: RelievingLetterPreviewProps) 
       </div>
 
       {/* Closing */}
-      <div className="mt-12">
-        <p className="mb-8">Sincerely,</p>
-        <p className="mb-2">For <strong>{letter.companyName}</strong></p>
+      <div className="mt-4">
+        <p className="mb-2">Sincerely,</p>
+        <p>For <strong>{letter.companyName}</strong></p>
       </div>
 
       {/* Signature Block */}
-      <div className="mt-8">
+      <div>
         <img
           src="/images/sign.png"
           alt="Digital Signature"
-          className="h-16 w-auto mb-2"
+          className="h-20 w-auto -rotate-6"
         />
         <div className="border-t border-black w-64 mb-2"></div>
         <p className="font-semibold">{letter.signatoryName}</p>
