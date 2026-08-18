@@ -464,36 +464,13 @@ export default function SalarySlipPage() {
             <DialogTitle className="text-base sm:text-lg">Salary Slip Preview</DialogTitle>
           </DialogHeader>
 
-          {/* Template Selector */}
-          {selectedSlip && templates.length > 0 && (
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-1 -mt-2">
-              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                Slip Template:
-              </label>
-              <select
-                value={selectedTemplateId}
-                onChange={(e) => {
-                  const tplId = e.target.value;
-                  setSelectedTemplateId(tplId);
-                  setTemplate(templates.find((t) => t.id === tplId) ?? null);
-                }}
-                className="flex-1 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 px-3 py-2 text-sm"
-              >
-                {templates.map((tpl) => (
-                  <option key={tpl.id} value={tpl.id}>
-                    {tpl.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {selectedSlip && settings ? (
             <div className="overflow-x-auto">
               <SalarySlipPreview
                 slip={selectedSlip}
                 settings={settings}
                 template={templates.find((t) => t.id === selectedTemplateId) ?? null}
+                hideBreakdown
               />
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-4">
                 <Button variant="outline" onClick={() => setSelectedSlip(null)} className="w-full sm:w-auto">

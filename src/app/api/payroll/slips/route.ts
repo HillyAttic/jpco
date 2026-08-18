@@ -33,9 +33,11 @@ export async function GET(request: NextRequest) {
       filters.employeeId = authResult.user.uid;
       filters.accessGranted = true;
     } else if (employeeId) {
-      // Admins/Managers explicitly requesting a specific employee
-      // Managers can only request their assigned employees
-      if (userRole === 'manager') {
+      // Admins/Managers explicitly requesting a specific employee.
+      // Managers can only request their assigned employees — but always allow a
+      // manager to view their OWN slips (self-service), even if not listed in
+      // their own hierarchy.
+      if (userRole === 'manager' && employeeId !== authResult.user.uid) {
         const { hasAccessToEmployee } = await import('@/lib/manager-access');
         if (!(await hasAccessToEmployee(authResult.user.uid, userRole, employeeId))) {
           return ErrorResponses.forbidden('You can only view slips for your assigned employees');

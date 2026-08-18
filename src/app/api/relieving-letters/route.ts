@@ -38,15 +38,23 @@ export async function GET(request: NextRequest) {
       filters.employeeId = authResult.user.uid;
       filters.accessGranted = true;
     } else if (employeeId) {
-      // Admins/Managers explicitly requesting a specific employee
-      // Managers can only request their assigned employees
-      if (userRole === 'manager') {
+      // Admins/Managers explicitly requesting a specific employee.
+      // Managers can only request their assigned employees — but always allow a
+      // manager to view their OWN letters (self-service), even if not listed in
+      // their own hierarchy.
+      if (userRole === 'manager' && employeeId !== authResult.user.uid) {
         const { hasAccessToEmployee } = await import('@/lib/manager-access');
         if (!(await hasAccessToEmployee(authResult.user.uid, userRole, employeeId))) {
           return ErrorResponses.forbidden('You can only view letters for your assigned employees');
         }
       }
       filters.employeeId = employeeId;
+      // Self-service (viewing one's own letters) must require access granted, matching
+      // the employee branch and the client-side contract. Looking up another employee's
+      // letters (admin/manager) keeps the looser filter for management purposes.
+      if (employeeId === authResult.user.uid) {
+        filters.accessGranted = true;
+      }
     } else if (includeAll && userRole === 'admin') {
       // Admins with includeAll=true — list all letters (no uid/accessGranted filter)
     } else if (includeAll && userRole === 'manager') {

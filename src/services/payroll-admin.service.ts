@@ -621,6 +621,14 @@ export const payrollAdminService = {
             read: false,
             createdAt: Timestamp.now(),
             metadata: { slipId: slip.id || '', month, year },
+            actionUrl: '/salary-slip',
+            data: {
+              url: '/salary-slip',
+              type: 'salary-slip-generated',
+              slipId: slip.id || '',
+              month,
+              year,
+            },
           });
           console.log(`[PayrollAdminService] In-app notification created for employee ${slip.employeeId}`);
         } catch (notifError) {

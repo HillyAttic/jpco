@@ -18,14 +18,8 @@ import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
 import { FileText, Eye, Download } from 'lucide-react';
-import { RelievingLetterAccessGate } from '@/components/relieving-letter/RelievingLetterAccessGate';
-
 export default function RelievingLetterPage() {
-  return (
-    <RelievingLetterAccessGate>
-      <RelievingLetterContent />
-    </RelievingLetterAccessGate>
-  );
+  return <RelievingLetterContent />;
 }
 
 function RelievingLetterContent() {
@@ -72,7 +66,7 @@ function RelievingLetterContent() {
       if (data.length !== filteredData.length) {
         console.error(
           `[RelievingLetterPage] SECURITY VIOLATION: API returned ${data.length - filteredData.length} ` +
-          `letter(s) not belonging to user ${user.uid}`
+          `letter(s) that did not match the "own uid + access granted" contract for user ${user.uid}`
         );
       }
 

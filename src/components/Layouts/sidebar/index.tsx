@@ -28,6 +28,8 @@ export function Sidebar() {
   const [misConfigLoaded, setMisConfigLoaded] = useState(false);
   const [hasAccessibleSlips, setHasAccessibleSlips] = useState<boolean | null>(null);
   const [slipCheckDone, setSlipCheckDone] = useState(false);
+  const [hasAccessibleLetters, setHasAccessibleLetters] = useState<boolean | null>(null);
+  const [letterCheckDone, setLetterCheckDone] = useState(false);
 
   const toggleSection = (label: string) => {
     setCollapsedSections((prev) =>
@@ -69,13 +71,6 @@ export function Sidebar() {
   useEffect(() => {
     if (!user) return;
 
-    // Admins: always show the Salary Slip link — no listener needed
-    if (hasRole(['admin'])) {
-      setHasAccessibleSlips(true);
-      setSlipCheckDone(true);
-      return;
-    }
-
     setSlipCheckDone(false);
     setHasAccessibleSlips(false); // Default to hidden until listener confirms
 
@@ -101,7 +96,39 @@ export function Sidebar() {
     );
 
     return () => { unsubscribe(); };
-  }, [user, hasRole]);
+  }, [user]);
+
+  // Real-time listener for relieving letter access changes
+  // Hides/shows the Relieving Letter tab instantly when admin toggles per-employee access
+  useEffect(() => {
+    if (!user) return;
+
+    setLetterCheckDone(false);
+    setHasAccessibleLetters(false); // Default to hidden until listener confirms
+
+    const q = query(
+      collection(db, 'relieving-letters'),
+      where('employeeId', '==', user.uid),
+      where('accessGranted', '==', true),
+    );
+
+    const unsubscribe: Unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const count = snapshot.docs.length;
+        console.log(`[Sidebar] Relieving letter real-time: ${count} accessible letter(s)`);
+        setHasAccessibleLetters(count > 0);
+        setLetterCheckDone(true);
+      },
+      (error) => {
+        console.error('[Sidebar] Relieving letter listener error:', error);
+        setHasAccessibleLetters(false);
+        setLetterCheckDone(true);
+      },
+    );
+
+    return () => { unsubscribe(); };
+  }, [user]);
 
   useEffect(() => {
     // Keep collapsible open when its subpage is active
@@ -255,9 +282,11 @@ export function Sidebar() {
                 }
                 // Handle dynamic visibility for Salary Slip — hidden if user has no accessible slips
                 if (item.dynamicVisibility && item.url === '/salary-slip') {
-                  // Admins: always visible. Others: only visible when check is done AND has slips
-                  if (hasRole(['admin'])) return true;
                   return slipCheckDone && hasAccessibleSlips === true;
+                }
+                // Handle dynamic visibility for Relieving Letter — hidden if user has no accessible letters
+                if (item.dynamicVisibility && item.url === '/relieving-letter') {
+                  return letterCheckDone && hasAccessibleLetters === true;
                 }
                 // Filter out items that require specific roles
                 if (item.requiresRole) {

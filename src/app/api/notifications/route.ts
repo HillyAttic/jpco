@@ -2,6 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { ErrorResponses } from '@/lib/api-error-handler';
 
+// Known notification types → destination page.
+// Used as a fallback for notifications stored before actionUrl/data.url existed
+// (e.g. relieving letter / salary slip notifications created via Firestore directly).
+const NOTIFICATION_TYPE_URLS: Record<string, string> = {
+  'relieving-letter-access': '/relieving-letter',
+  'salary-slip-access': '/salary-slip',
+  'salary-slip-generated': '/salary-slip',
+};
+
+function resolveActionUrl(data: any): string {
+  const type = data?.type || data?.data?.type;
+  return (
+    data?.data?.url ||
+    data?.actionUrl ||
+    (type && NOTIFICATION_TYPE_URLS[type]) ||
+    '/notifications'
+  );
+}
+
 /**
  * GET /api/notifications?userId=xxx
  * Fetch notifications for a user (server-side, bypasses Firestore rules)
@@ -59,7 +78,7 @@ export async function GET(request: NextRequest) {
                 createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
                 data: data.data || {},
                 type: data.type || data.data?.type || 'general',
-                actionUrl: data.data?.url || data.actionUrl || '/notifications',
+                actionUrl: resolveActionUrl(data),
             };
         });
 
@@ -88,7 +107,7 @@ export async function GET(request: NextRequest) {
                         createdAt: data.createdAt?.toDate?.()?.toISOString() || new Date().toISOString(),
                         data: data.data || {},
                         type: data.type || data.data?.type || 'general',
-                        actionUrl: data.data?.url || data.actionUrl || '/notifications',
+                        actionUrl: resolveActionUrl(data),
                     };
                 });
 

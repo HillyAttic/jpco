@@ -1,6 +1,22 @@
 {
   "indexes": [
     {
+      "collectionGroup": "relieving-letters",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employeeId", "order": "ASCENDING" },
+        { "fieldPath": "accessGranted", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "salary-slips",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "employeeId", "order": "ASCENDING" },
+        { "fieldPath": "accessGranted", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "credential_records",
       "queryScope": "COLLECTION",
       "fields": [

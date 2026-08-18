@@ -43,8 +43,12 @@ export async function GET(
       }
     }
 
-    // Managers can only view letters for their assigned employees
-    if (authResult.user.claims.role === 'manager') {
+    // Managers can only view letters for their assigned employees —
+    // but always allow a manager to view their OWN letter (self-service)
+    if (
+      authResult.user.claims.role === 'manager' &&
+      letter.employeeId !== authResult.user.uid
+    ) {
       const { hasAccessToEmployee } = await import('@/lib/manager-access');
       if (!(await hasAccessToEmployee(authResult.user.uid, authResult.user.claims.role, letter.employeeId as string))) {
         return NextResponse.json({ error: 'Access denied' }, { status: 403 });
@@ -136,6 +140,41 @@ export async function DELETE(
 }
 
 /**
+ * Resolve a user's real Auth UID from a stored employeeId value.
+ *
+ * The letter's employeeId may be an employee number (e.g. "EMP001") rather than
+ * the Firestore user doc id (uid). Notifications and FCM tokens are keyed by the
+ * uid, so the actual user doc must be resolved before writing anything.
+ *
+ * Returns the users doc id (uid), or null if no matching user is found.
+ */
+async function resolveEmployeeUid(employeeId: string): Promise<string | null> {
+  if (!employeeId) return null;
+
+  // Case 1: employeeId is already the user doc id (uid)
+  const directDoc = await adminDb.collection('users').doc(employeeId).get();
+  if (directDoc.exists) return employeeId;
+
+  // Case 2: employeeId is the employee number — find the user doc by that field
+  const byEmployeeId = await adminDb
+    .collection('users')
+    .where('employeeId', '==', employeeId)
+    .limit(1)
+    .get();
+  if (!byEmployeeId.empty) return byEmployeeId.docs[0].id;
+
+  // Case 3: fall back to the stored uid field
+  const byUid = await adminDb
+    .collection('users')
+    .where('uid', '==', employeeId)
+    .limit(1)
+    .get();
+  if (!byUid.empty) return byUid.docs[0].id;
+
+  return null;
+}
+
+/**
  * PATCH /api/relieving-letters/[id]
  * Toggle access granted (admin only)
  * Sends notification to employee when accessGranted is set to true
@@ -185,47 +224,68 @@ export async function PATCH(
 
     // Send notification when toggling to true
     if (body.accessGranted && !previousAccessGranted) {
-      const employeeId = letterData.employeeId as string;
+      const storedEmployeeId = letterData.employeeId as string;
 
-      // Look up employee's FCM token
-      const userDoc = await adminDb.collection('users').doc(employeeId).get();
-      const userData = userDoc.data();
-      const fcmToken = userData?.fcmToken;
+      // Resolve the employee's real Auth UID. The letter's employeeId may be an
+      // employee number (e.g. "EMP001") instead of the user doc id (uid).
+      // Notifications and FCM tokens are keyed by uid, so we must resolve the
+      // actual user doc before writing anything.
+      const resolvedUid = await resolveEmployeeUid(storedEmployeeId);
 
-      // Send FCM push notification if token exists
-      if (fcmToken) {
-        try {
-          await adminMessaging.send({
-            token: fcmToken,
-            notification: {
-              title: 'Relieving Letter Available',
-              body: 'Your relieving letter has been made available. Check your dashboard to view and download it.',
-            },
-            data: {
-              type: 'relieving-letter',
-              letterId: id,
-              url: '/relieving-letter',
-            },
-          });
-          notificationSent = true;
-          console.log(`[API /api/relieving-letters/${id}] PATCH - FCM notification sent to employee ${employeeId}`);
-        } catch (fcmError) {
-          console.error(`[API /api/relieving-letters/${id}] PATCH - FCM notification failed:`, fcmError);
+      if (!resolvedUid) {
+        console.error(
+          `[API /api/relieving-letters/${id}] PATCH - Could not resolve user for employeeId "${storedEmployeeId}" — notification NOT sent`
+        );
+      } else {
+        // FCM tokens live in the fcmTokens collection (keyed by uid), NOT on the
+        // users doc. Read the token from there.
+        const tokenDoc = await adminDb.collection('fcmTokens').doc(resolvedUid).get();
+        const fcmToken = tokenDoc.exists
+          ? (tokenDoc.data()?.token as string | undefined)
+          : undefined;
+
+        // Send FCM push notification if token exists
+        if (fcmToken) {
+          try {
+            await adminMessaging.send({
+              token: fcmToken,
+              notification: {
+                title: 'Relieving Letter Available',
+                body: 'Your relieving letter has been made available. Check your dashboard to view and download it.',
+              },
+              data: {
+                type: 'relieving-letter',
+                letterId: id,
+                url: '/relieving-letter',
+              },
+            });
+            notificationSent = true;
+            console.log(`[API /api/relieving-letters/${id}] PATCH - FCM notification sent to employee ${resolvedUid}`);
+          } catch (fcmError) {
+            console.error(`[API /api/relieving-letters/${id}] PATCH - FCM notification failed:`, fcmError);
+          }
         }
-      }
 
-      // Always create in-app notification
-      await adminDb.collection('notifications').add({
-        userId: employeeId,
-        type: 'relieving-letter-access',
-        title: 'Relieving Letter Available',
-        message: 'Your relieving letter has been made available. Visit the Relieving Letter page to view and download it.',
-        read: false,
-        createdAt: Timestamp.now(),
-        metadata: { letterId: id },
-      });
-      notificationSent = true;
-      console.log(`[API /api/relieving-letters/${id}] PATCH - In-app notification created for employee ${employeeId}`);
+        // Always create in-app notification — keyed by the real uid so the
+        // employee's notification bell can find it
+        await adminDb.collection('notifications').add({
+          userId: resolvedUid,
+          type: 'relieving-letter-access',
+          title: 'Relieving Letter Available',
+          message: 'Your relieving letter has been made available. Visit the Relieving Letter page to view and download it.',
+          read: false,
+          createdAt: Timestamp.now(),
+          metadata: { letterId: id },
+          actionUrl: '/relieving-letter',
+          data: {
+            url: '/relieving-letter',
+            type: 'relieving-letter-access',
+            letterId: id,
+          },
+        });
+        notificationSent = true;
+        console.log(`[API /api/relieving-letters/${id}] PATCH - In-app notification created for employee ${resolvedUid}`);
+      }
     }
 
     console.log(`[API /api/relieving-letters/${id}] PATCH - Access updated to ${body.accessGranted}`);

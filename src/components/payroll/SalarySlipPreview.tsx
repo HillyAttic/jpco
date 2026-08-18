@@ -15,9 +15,11 @@ interface SalarySlipPreviewProps {
   template?: SalarySlipTemplate | null;
   /** When true, hides the Calculation Breakdown section (used for PDF generation) */
   forPDF?: boolean;
+  /** When true, hides the Calculation Breakdown section on screen (used on the self-service salary slip page) */
+  hideBreakdown?: boolean;
 }
 
-export function SalarySlipPreview({ slip, settings, template, forPDF = false }: SalarySlipPreviewProps) {
+export function SalarySlipPreview({ slip, settings, template, forPDF = false, hideBreakdown = false }: SalarySlipPreviewProps) {
   const [showSteps, setShowSteps] = useState(false);
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -260,8 +262,8 @@ export function SalarySlipPreview({ slip, settings, template, forPDF = false }: 
         </div>
       )}
 
-      {/* Step-by-Step Calculation Breakdown — hidden in PDF */}
-      {!forPDF && (
+      {/* Step-by-Step Calculation Breakdown — hidden in PDF and on the self-service page */}
+      {!forPDF && !hideBreakdown && (
         <div className="border-t border-gray-300 pt-3 sm:pt-4 mb-4 sm:mb-6">
           <button
             onClick={() => setShowSteps(!showSteps)}

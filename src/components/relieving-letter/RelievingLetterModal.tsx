@@ -141,7 +141,10 @@ export function RelievingLetterModal({
   const handleEmployeeSelect = (employeeId: string) => {
     const employee = employees.find(e => e.employeeId === employeeId || e.id === employeeId);
     if (employee) {
-      setValue('employeeId', employee.employeeId || employee.id);
+      // Store the Firestore user doc id (Auth UID), NOT the employee number.
+      // Notifications, FCM tokens, and the employee self-service query all key
+      // off the uid (see RelievingLetter type: employeeId = Firebase Auth UID).
+      setValue('employeeId', employee.id);
       setValue('employeeName', employee.name);
       setValue('employeeDesignation', employee.designation || '');
       setValue('employeeDepartment', employee.department || '');

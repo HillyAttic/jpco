@@ -37,8 +37,12 @@ export async function GET(
       }
     }
 
-    // Managers can only view slips for their assigned employees
-    if (authResult.user.claims.role === 'manager') {
+    // Managers can only view slips for their assigned employees —
+    // but always allow a manager to view their OWN slip (self-service)
+    if (
+      authResult.user.claims.role === 'manager' &&
+      slip.employeeId !== authResult.user.uid
+    ) {
       const { hasAccessToEmployee } = await import('@/lib/manager-access');
       if (!(await hasAccessToEmployee(authResult.user.uid, authResult.user.claims.role, slip.employeeId))) {
         return ErrorResponses.forbidden('You can only view slips for your assigned employees');
@@ -238,6 +242,14 @@ export async function PATCH(
         read: false,
         createdAt: Timestamp.now(),
         metadata: { slipId: id, month, year },
+        actionUrl: '/salary-slip',
+        data: {
+          url: '/salary-slip',
+          type: 'salary-slip-access',
+          slipId: id,
+          month,
+          year,
+        },
       });
       notificationSent = true;
       console.log(`[API /api/payroll/slips/${id}] PATCH - In-app notification created for employee ${employeeId}`);

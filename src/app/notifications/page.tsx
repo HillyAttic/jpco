@@ -25,12 +25,21 @@ interface Notification {
   body: string;
   read: boolean;
   createdAt: any;
+  type?: string;
   data?: {
     taskId?: string;
     url?: string;
     type?: string;
   };
 }
+
+// Map known notification types to their destination pages.
+// Used as a fallback for notifications stored before actionUrl/data.url existed.
+const NOTIFICATION_TYPE_URLS: Record<string, string> = {
+  'relieving-letter-access': '/relieving-letter',
+  'salary-slip-access': '/salary-slip',
+  'salary-slip-generated': '/salary-slip',
+};
 
 export default function NotificationsPage() {
   const router = useRouter();
@@ -211,12 +220,20 @@ export default function NotificationsPage() {
   const handleNotificationClick = (notification: Notification) => {
     markNotificationRead(notification.id);
 
-    if (notification.data?.url) {
+    // Prefer the explicit URL; if it's missing or just the default '/notifications'
+    // placeholder (legacy notifications stored without actionUrl/data.url), fall
+    // back to a known-type mapping so they still redirect to the right page.
+    const type = notification.type || notification.data?.type;
+    const storedUrl = notification.data?.url;
+    const typeUrl = NOTIFICATION_TYPE_URLS[type || ''];
+    const url = storedUrl && storedUrl !== '/notifications' ? storedUrl : typeUrl;
+
+    if (url) {
       // Set flag to prevent AuthWrapper from interfering
       sessionStorage.setItem('notificationNavigation', 'true');
 
       // Use router.push instead of window.location.href to avoid full page reload
-      router.push(notification.data.url);
+      router.push(url);
 
       // Clear flag after navigation completes
       setTimeout(() => {
