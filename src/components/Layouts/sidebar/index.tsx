@@ -4,7 +4,7 @@
 import { cn } from "@/lib/utils";
 import { useResponsive } from "@/hooks/use-responsive";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { NAV_DATA } from "./data";
 import { ArrowLeftIcon, ChevronUp } from "./icons";
@@ -17,7 +17,16 @@ import { collection, query, where, onSnapshot, Unsubscribe } from "firebase/fire
 
 export function Sidebar() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { setIsOpen, isOpen, isMobile, isTablet, isDesktop, toggleSidebar, variant } = useSidebarContext();
+
+  // Match on path + ?tab= so Leave/WFH/Delay approvals highlight independently
+  const isNavItemActive = (url: string) => {
+    const [path, query = ''] = url.split('?');
+    if (path !== pathname) return false;
+    const expected = new URLSearchParams(query).get('tab') ?? 'leave';
+    return expected === (searchParams.get('tab') ?? 'leave');
+  };
   const { device, isTouchDevice } = useResponsive();
   const { hasRole, user } = useAuthEnhanced();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
@@ -314,7 +323,7 @@ export function Sidebar() {
                               <div>
                                 <MenuItem
                                   isActive={filteredSubItems.some(
-                                    ({ url }: any) => url === pathname,
+                                    ({ url }: any) => isNavItemActive(url),
                                   )}
                                   onClick={() => toggleExpanded(item.title)}
                                   className={cn(
@@ -355,7 +364,7 @@ export function Sidebar() {
                                       <MenuItem
                                         as="link"
                                         href={subItem.url}
-                                        isActive={pathname === subItem.url}
+                                        isActive={isNavItemActive(subItem.url)}
                                         className={cn(
                                           // Touch-optimized sizing
                                           isTouchDevice && "min-h-[44px]"
@@ -383,7 +392,7 @@ export function Sidebar() {
                                   )}
                                   as="link"
                                   href={href}
-                                  isActive={pathname === href}
+                                  isActive={isNavItemActive(href)}
                                 >
                                   <item.icon
                                     className={cn(

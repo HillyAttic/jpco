@@ -1,12 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { LeaveRequest, LeaveStatus } from '@/types/leave.types';
 import { DelaySigninRequest } from '@/types/delay-signin.types';
 import { toast } from 'react-toastify';
 import { Clock, AlertTriangle } from 'lucide-react';
 
 export default function LeaveApprovalsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
   const [delayRequests, setDelayRequests] = useState<DelaySigninRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -19,13 +22,22 @@ export default function LeaveApprovalsPage() {
   const [activeTab, setActiveTab] = useState<'leave' | 'wfh' | 'delay-signin'>('leave');
   const [selectedDelayRequest, setSelectedDelayRequest] = useState<DelaySigninRequest | null>(null);
 
-  // Read tab from URL query param
+  // Keep active tab in sync with the ?tab= URL param (driven by sidebar links)
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tab = params.get('tab');
+    const tab = searchParams.get('tab');
     if (tab === 'wfh') setActiveTab('wfh');
-    if (tab === 'delay-signin') setActiveTab('delay-signin');
-  }, []);
+    else if (tab === 'delay-signin') setActiveTab('delay-signin');
+    else setActiveTab('leave');
+  }, [searchParams]);
+
+  const switchTab = (tab: 'leave' | 'wfh' | 'delay-signin') => {
+    setActiveTab(tab);
+    const params = new URLSearchParams(searchParams.toString());
+    if (tab === 'leave') params.delete('tab');
+    else params.set('tab', tab);
+    const qs = params.toString();
+    router.push(qs ? `/admin/leave-approvals?${qs}` : '/admin/leave-approvals');
+  };
 
   useEffect(() => {
     fetchRequests();
@@ -258,19 +270,21 @@ export default function LeaveApprovalsPage() {
     <div className="p-4 sm:p-6">
       <div className="mb-4 sm:mb-6">
         <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white">
-          {activeTab === 'wfh' ? 'WFH Approvals' : 'Leave Approvals'}
+          {activeTab === 'wfh' ? 'WFH Approvals' : activeTab === 'delay-signin' ? 'Delay Sign-In Approvals' : 'Leave Approvals'}
         </h1>
         <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
           {activeTab === 'wfh'
             ? 'Review and manage employee WFH requests'
-            : 'Review and manage employee leave requests'}
+            : activeTab === 'delay-signin'
+              ? 'Review and manage employee delay sign-in requests'
+              : 'Review and manage employee leave requests'}
         </p>
       </div>
 
       {/* Tab Switcher */}
       <div className="flex gap-2 mb-4">
         <button
-          onClick={() => setActiveTab('leave')}
+          onClick={() => switchTab('leave')}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             activeTab === 'leave'
               ? 'bg-blue-600 text-white'
@@ -280,7 +294,7 @@ export default function LeaveApprovalsPage() {
           Leave Requests
         </button>
         <button
-          onClick={() => setActiveTab('wfh')}
+          onClick={() => switchTab('wfh')}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
             activeTab === 'wfh'
               ? 'bg-blue-600 text-white'
@@ -290,7 +304,7 @@ export default function LeaveApprovalsPage() {
           WFH Requests
         </button>
         <button
-          onClick={() => setActiveTab('delay-signin')}
+          onClick={() => switchTab('delay-signin')}
           className={`px-4 py-2 rounded-lg font-medium transition-colors flex items-center gap-2 ${
             activeTab === 'delay-signin'
               ? 'bg-blue-600 text-white'

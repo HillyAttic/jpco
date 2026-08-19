@@ -1,6 +1,6 @@
 /**
  * Admin Attendance Settings Page
- * Admin page for configuring attendance policies and shift management
+ * Admin page for configuring shifts and employee assignments
  */
 
 'use client';
@@ -20,9 +20,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { authenticatedFetch } from '@/lib/api-client';
-import { AttendancePolicy, AttendancePolicyFormData, Shift, ShiftFormData } from '@/types/attendance.types';
+import { Shift, ShiftFormData } from '@/types/attendance.types';
 import {
-  Settings,
   Clock,
   Plus,
   Pencil,
@@ -32,17 +31,6 @@ import {
   X,
   Users,
 } from 'lucide-react';
-
-const DEFAULT_POLICY_FORM: AttendancePolicyFormData = {
-  name: '',
-  graceMinutes: 30,
-  maxMonthlyDelayRequests: 2,
-  geolocationRequired: true,
-  geolocationRadius: 100,
-  overtimeMultiplier: 1.5,
-  minDailyHours: 8,
-  maxDailyHours: 12,
-};
 
 const DEFAULT_SHIFT_FORM: ShiftFormData = {
   name: '',
@@ -57,14 +45,6 @@ const DEFAULT_SHIFT_FORM: ShiftFormData = {
 interface Employee { id: string; name: string; email: string; }
 
 export default function AdminAttendanceSettingsPage() {
-  // --- Policy state ---
-  const [policies, setPolicies] = useState<AttendancePolicy[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [showPolicyModal, setShowPolicyModal] = useState(false);
-  const [editingPolicy, setEditingPolicy] = useState<AttendancePolicy | null>(null);
-  const [formData, setFormData] = useState<AttendancePolicyFormData>(DEFAULT_POLICY_FORM);
-  const [saving, setSaving] = useState(false);
-
   // --- Shift state ---
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [shiftLoading, setShiftLoading] = useState(true);
@@ -78,87 +58,9 @@ export default function AdminAttendanceSettingsPage() {
 
   // --- Fetch on mount ---
   useEffect(() => {
-    fetchPolicies();
     fetchShifts();
     fetchEmployees();
   }, []);
-
-  // ==================== POLICY HANDLERS ====================
-
-  const fetchPolicies = async () => {
-    try {
-      setLoading(true);
-      const response = await authenticatedFetch('/api/attendance/policies');
-      if (!response.ok) throw new Error('Failed to fetch policies');
-      const data = await response.json();
-      setPolicies(data);
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to load attendance policies');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreatePolicy = () => {
-    setEditingPolicy(null);
-    setFormData(DEFAULT_POLICY_FORM);
-    setShowPolicyModal(true);
-  };
-
-  const handleEditPolicy = (policy: AttendancePolicy) => {
-    setEditingPolicy(policy);
-    setFormData({
-      name: policy.name,
-      graceMinutes: policy.graceMinutes,
-      maxMonthlyDelayRequests: policy.maxMonthlyDelayRequests,
-      geolocationRequired: policy.geolocationRequired,
-      geolocationRadius: policy.geolocationRadius,
-      overtimeMultiplier: policy.overtimeMultiplier,
-      minDailyHours: policy.minDailyHours,
-      maxDailyHours: policy.maxDailyHours,
-    });
-    setShowPolicyModal(true);
-  };
-
-  const handleSavePolicy = async () => {
-    try {
-      setSaving(true);
-      if (!formData.name.trim()) { toast.error('Policy name is required'); return; }
-      if (formData.graceMinutes < 0 || formData.graceMinutes > 60) { toast.error('Grace period must be between 0 and 60 minutes'); return; }
-      if (formData.maxMonthlyDelayRequests < 0 || formData.maxMonthlyDelayRequests > 31) { toast.error('Max monthly delays must be between 0 and 31'); return; }
-
-      let response;
-      if (editingPolicy) {
-        response = await authenticatedFetch(`/api/attendance/policies/${editingPolicy.id}`, {
-          method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData),
-        });
-      } else {
-        response = await authenticatedFetch('/api/attendance/policies', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(formData),
-        });
-      }
-      if (!response.ok) { const err = await response.json(); throw new Error(err.message || 'Failed to save policy'); }
-      toast.success(editingPolicy ? 'Policy updated' : 'Policy created');
-      setShowPolicyModal(false);
-      fetchPolicies();
-    } catch (error: any) {
-      toast.error(error.message || 'Failed to save policy');
-    } finally { setSaving(false); }
-  };
-
-  const handleDeletePolicy = async (policyId: string) => {
-    if (!confirm('Delete this policy?')) return;
-    try {
-      const r = await authenticatedFetch(`/api/attendance/policies/${policyId}`, { method: 'DELETE' });
-      if (!r.ok) throw new Error('Failed to delete');
-      toast.success('Policy deleted');
-      fetchPolicies();
-    } catch (error: any) { toast.error(error.message); }
-  };
-
-  const updateFormData = (field: keyof AttendancePolicyFormData, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-  };
 
   // ==================== SHIFT HANDLERS ====================
 
@@ -289,66 +191,19 @@ export default function AdminAttendanceSettingsPage() {
     emp.email.toLowerCase().includes(assignSearch.toLowerCase())
   );
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-      </div>
-    );
-  }
-
   return (
     <div className="max-w-6xl mx-auto p-4 sm:p-6">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">Attendance Settings</h1>
-        <p className="text-gray-500 dark:text-gray-400">Configure attendance policies, grace periods, and late detection rules</p>
+        <p className="text-gray-500 dark:text-gray-400">Configure shifts and employee assignments</p>
       </div>
 
-      <Tabs defaultValue="policies">
+      <Tabs defaultValue="shifts">
         <TabsList className="mb-6">
-          <TabsTrigger value="policies" className="flex items-center gap-2">
-            <Settings className="h-4 w-4" /> Attendance Policies
-          </TabsTrigger>
           <TabsTrigger value="shifts" className="flex items-center gap-2">
             <Clock className="h-4 w-4" /> Shift Configuration
           </TabsTrigger>
         </TabsList>
-
-        {/* ==================== POLICIES TAB ==================== */}
-        <TabsContent value="policies">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Attendance Policies</CardTitle>
-              <Button onClick={handleCreatePolicy} size="sm"><Plus className="h-4 w-4 mr-2" /> Add Policy</Button>
-            </CardHeader>
-            <CardContent>
-              {policies.length === 0 ? (
-                <div className="text-center py-8 text-gray-500">No policies configured. Create one to get started.</div>
-              ) : (
-                <div className="space-y-4">
-                  {policies.map((policy) => (
-                    <div key={policy.id} className="border rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h3 className="font-medium text-gray-900 dark:text-white">{policy.name}</h3>
-                          <div className="mt-2 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600 dark:text-gray-400">
-                            <div><span className="font-medium">Grace:</span> {policy.graceMinutes} min</div>
-                            <div><span className="font-medium">Max Delays:</span> {policy.maxMonthlyDelayRequests}/mo</div>
-                            <div><span className="font-medium">Geolocation:</span> {policy.geolocationRequired ? 'Required' : 'Optional'}</div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleEditPolicy(policy)}><Pencil className="h-4 w-4" /></Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDeletePolicy(policy.id)}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
 
         {/* ==================== SHIFTS TAB ==================== */}
         <TabsContent value="shifts">
@@ -396,80 +251,6 @@ export default function AdminAttendanceSettingsPage() {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* ==================== POLICY MODAL ==================== */}
-      <Dialog open={showPolicyModal} onOpenChange={setShowPolicyModal}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingPolicy ? 'Edit Policy' : 'Create Policy'}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-6 py-4">
-            <div className="space-y-4">
-              <h3 className="font-medium text-gray-900 dark:text-white">Basic Information</h3>
-              <div className="space-y-2">
-                <Label htmlFor="policy-name">Policy Name</Label>
-                <Input id="policy-name" value={formData.name} onChange={(e) => updateFormData('name', e.target.value)} placeholder="e.g., Default Policy" />
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h3 className="font-medium text-gray-900 dark:text-white">Late Detection & Delay Limits</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Grace Period (min)</Label>
-                  <Input type="number" min={0} max={60} value={formData.graceMinutes} onChange={(e) => updateFormData('graceMinutes', parseInt(e.target.value) || 0)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Max Monthly Delays</Label>
-                  <Input type="number" min={0} max={31} value={formData.maxMonthlyDelayRequests} onChange={(e) => updateFormData('maxMonthlyDelayRequests', parseInt(e.target.value) || 0)} />
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h3 className="font-medium text-gray-900 dark:text-white">Break & Working Hours</h3>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Min Daily Hours</Label>
-                  <Input type="number" min={0} max={24} step={0.5} value={formData.minDailyHours} onChange={(e) => updateFormData('minDailyHours', parseFloat(e.target.value) || 0)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Max Daily Hours</Label>
-                  <Input type="number" min={0} max={24} step={0.5} value={formData.maxDailyHours} onChange={(e) => updateFormData('maxDailyHours', parseFloat(e.target.value) || 0)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Overtime Multiplier</Label>
-                  <Input type="number" min={1} max={3} step={0.1} value={formData.overtimeMultiplier} onChange={(e) => updateFormData('overtimeMultiplier', parseFloat(e.target.value) || 1)} />
-                </div>
-              </div>
-            </div>
-            <div className="space-y-4">
-              <h3 className="font-medium text-gray-900 dark:text-white">Geolocation</h3>
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Require Geolocation</Label>
-                  <p className="text-xs text-gray-500">Employees must be within radius to clock in</p>
-                </div>
-                <Button type="button" variant={formData.geolocationRequired ? 'default' : 'outline'} size="sm"
-                  onClick={() => updateFormData('geolocationRequired', !formData.geolocationRequired)}>
-                  {formData.geolocationRequired ? 'Enabled' : 'Disabled'}
-                </Button>
-              </div>
-              {formData.geolocationRequired && (
-                <div className="space-y-2">
-                  <Label>Radius (meters)</Label>
-                  <Input type="number" min={0} max={10000} value={formData.geolocationRadius} onChange={(e) => updateFormData('geolocationRadius', parseInt(e.target.value) || 0)} />
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowPolicyModal(false)}><X className="h-4 w-4 mr-2" /> Cancel</Button>
-            <Button onClick={handleSavePolicy} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-              {editingPolicy ? 'Update' : 'Create'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* ==================== SHIFT MODAL ==================== */}
       <Dialog open={showShiftModal} onOpenChange={setShowShiftModal}>
