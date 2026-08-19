@@ -43,7 +43,7 @@ interface LeaveRequest {
 
 interface AttendanceAlert {
   id: string;
-  type: 'late' | 'missing-clockout' | 'excessive-break';
+  type: 'late' | 'missing-clockout';
   employeeId: string;
   timestamp: Date;
 }
@@ -578,74 +578,6 @@ describe('Feature: attendance-system, Property 46: Grace Period Application', ()
 });
 
 
-// ============================================================================
-// Property 47: Maximum Break Enforcement
-// Validates: Requirements 9.2
-// ============================================================================
-
-describe('Feature: attendance-system, Property 47: Maximum Break Enforcement', () => {
-  it('should send alerts when break exceeds configured maximum duration', () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 30, max: 120 }), // max break duration in minutes
-        fc.integer({ min: 10, max: 180 }), // actual break duration in minutes
-        (maxBreakMinutes, actualBreakMinutes) => {
-          const exceedsMax = actualBreakMinutes > maxBreakMinutes;
-          
-          if (exceedsMax) {
-            // Alert should be generated
-            const alert = {
-              type: 'excessive-break',
-              breakDuration: actualBreakMinutes,
-              maxAllowed: maxBreakMinutes,
-              alertSent: true,
-            };
-            
-            expect(alert.type).toBe('excessive-break');
-            expect(alert.breakDuration).toBeGreaterThan(alert.maxAllowed);
-            expect(alert.alertSent).toBe(true);
-          }
-        }
-      ),
-      { numRuns: 100 }
-    );
-  });
-});
-
-// ============================================================================
-// Property 49: Automatic Clock Out Time
-// Validates: Requirements 9.5
-// ============================================================================
-
-describe('Feature: attendance-system, Property 49: Automatic Clock Out Time', () => {
-  it('should automatically clock out employee at configured time', () => {
-    fc.assert(
-      fc.property(
-        generators.attendanceRecord(),
-        fc.date({ min: new Date('2024-01-01T23:59:00'), max: new Date('2024-01-01T23:59:59') }),
-        (record, autoClockOutTime) => {
-          // Assume record is still active
-          const activeRecord = { ...record, clockOut: undefined, status: 'active' as const };
-          
-          const currentTime = new Date(autoClockOutTime.getTime() + 1000); // 1 second after
-          
-          if (currentTime >= autoClockOutTime && !activeRecord.clockOut) {
-            // Should auto clock out
-            const updatedRecord = {
-              ...activeRecord,
-              clockOut: autoClockOutTime,
-              status: 'completed' as const,
-            };
-            
-            expect(updatedRecord.clockOut).toBeDefined();
-            expect(updatedRecord.status).toBe('completed');
-          }
-        }
-      ),
-      { numRuns: 100 }
-    );
-  });
-});
 
 // ============================================================================
 // Property 50: Policy Application to Future Records

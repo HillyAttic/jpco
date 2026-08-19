@@ -592,26 +592,6 @@ export const attendanceService = {
   },
 
   /**
-   * Auto clock out employees at midnight
-   */
-  async autoClockOut(autoClockOutTime: string = '23:59'): Promise<void> {
-    const [hours, minutes] = autoClockOutTime.split(':').map(Number);
-    const clockOutTime = new Date();
-    clockOutTime.setHours(hours, minutes, 59, 999);
-
-    const activeRecords = await attendanceFirebaseService.getAll({
-      filters: [{ field: 'status', operator: '==', value: 'active' }],
-    });
-
-    for (const record of activeRecords) {
-      await this.clockOut(record.id!, {
-        timestamp: clockOutTime,
-        notes: 'Auto clock out',
-      });
-    }
-  },
-
-  /**
    * Check if employee has already clocked in today (regardless of clock out status)
    */
   async hasClockedInToday(employeeId: string): Promise<boolean> {

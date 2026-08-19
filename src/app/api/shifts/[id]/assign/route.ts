@@ -21,16 +21,18 @@ export async function POST(
 
     const { id } = await params;
     const body = await request.json();
-    const { employeeId } = body;
+    const employeeIds: string[] = Array.isArray(body.employeeIds)
+      ? body.employeeIds
+      : body.employeeId ? [body.employeeId] : [];
 
-    if (!employeeId) {
+    if (employeeIds.length === 0) {
       return NextResponse.json(
         { error: 'Bad Request', message: 'Employee ID is required' },
         { status: 400 }
       );
     }
 
-    await shiftAdminService.assignShiftToEmployee(id, employeeId);
+    await shiftAdminService.assignEmployeesToShift(id, employeeIds);
 
     return NextResponse.json({ message: 'Shift assigned successfully' }, { status: 200 });
   } catch (error: any) {

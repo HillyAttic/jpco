@@ -14,8 +14,6 @@ const DEFAULT_POLICY = {
   name: 'Default Policy',
   graceMinutes: 30,
   maxMonthlyDelayRequests: 2,
-  maxBreakMinutes: 60,
-  autoClockOutTime: '18:30',
   geolocationRequired: true,
   geolocationRadius: 100,
   overtimeMultiplier: 1.5,
@@ -47,9 +45,11 @@ export const attendancePolicyAdminService = {
     const snapshot = await adminDb
       .collection(COLLECTION)
       .where('isActive', '==', true)
-      .orderBy('name', 'asc')
       .get();
-    return snapshot.docs.map((doc) => convertDoc(doc.data(), doc.id));
+    // ponytail: sort in memory (few docs) — swap for orderBy if attendance-policies grows + add composite index.
+    return snapshot.docs
+      .map((doc) => convertDoc(doc.data(), doc.id))
+      .sort((a, b) => a.name.localeCompare(b.name));
   },
 
   /**
@@ -69,12 +69,14 @@ export const attendancePolicyAdminService = {
     const snapshot = await adminDb
       .collection(COLLECTION)
       .where('isActive', '==', true)
-      .orderBy('createdAt', 'asc')
-      .limit(1)
       .get();
 
     if (!snapshot.empty) {
-      return convertDoc(snapshot.docs[0].data(), snapshot.docs[0].id);
+      // ponytail: sort in memory (few docs) — swap for orderBy + composite index if policies grow.
+      const active = snapshot.docs
+        .map((doc) => convertDoc(doc.data(), doc.id))
+        .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime());
+      return active[0];
     }
 
     // Auto-create default policy if none exists
@@ -98,8 +100,6 @@ export const attendancePolicyAdminService = {
     name: string;
     graceMinutes: number;
     maxMonthlyDelayRequests: number;
-    maxBreakMinutes: number;
-    autoClockOutTime: string;
     geolocationRequired: boolean;
     geolocationRadius: number;
     overtimeMultiplier: number;
@@ -136,8 +136,6 @@ export const attendancePolicyAdminService = {
     name: string;
     graceMinutes: number;
     maxMonthlyDelayRequests: number;
-    maxBreakMinutes: number;
-    autoClockOutTime: string;
     geolocationRequired: boolean;
     geolocationRadius: number;
     overtimeMultiplier: number;

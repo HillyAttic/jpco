@@ -699,6 +699,51 @@ img {
   background-color: #9ca3af;
 }
 
+/* ==================== DIALOG ANIMATIONS ====================
+   shadcn dialog classes assume tailwindcss-animate (not installed), so those
+   animate-in/zoom-in utilities are inert. Wire real keyframes via Radix
+   data-attributes instead — dependency-free. */
+.dialog-overlay[data-state='open'] {
+  animation: dialog-overlay-in 0.2s ease-out;
+}
+.dialog-overlay[data-state='closed'] {
+  animation: dialog-overlay-out 0.15s ease-in forwards;
+}
+.dialog-content[data-state='open'] {
+  animation: dialog-content-in 0.2s ease-out;
+}
+.dialog-content[data-state='closed'] {
+  animation: dialog-content-out 0.15s ease-in forwards;
+}
+
+@keyframes dialog-overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes dialog-overlay-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes dialog-content-in {
+  /* keep translate(-50%,-50%) — matches the tailwind centering utilities */
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+  to { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+@keyframes dialog-content-out {
+  from { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(0.95); }
+}
+
+/* Checkbox pop on toggle — add .animate-check to a checkbox */
+input[type='checkbox'].animate-check:checked {
+  animation: check-pop 0.18s ease;
+}
+@keyframes check-pop {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+
 .dark .custom-sidebar-scrollbar {
   scrollbar-color: #4b5563 transparent;
 }

@@ -331,14 +331,6 @@ export const attendancePolicySchema = z.object({
     .int('Grace minutes must be a whole number')
     .min(0, 'Grace minutes must be non-negative')
     .max(60, 'Grace minutes cannot exceed 60'),
-  maxBreakMinutes: z.number()
-    .int('Max break minutes must be a whole number')
-    .min(0, 'Max break minutes must be non-negative')
-    .max(480, 'Max break minutes cannot exceed 8 hours (480 minutes)'),
-  autoClockOutTime: z.string().regex(
-    /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/,
-    'Invalid time format. Use HH:mm format (e.g., 23:59)'
-  ),
   geolocationRequired: z.boolean(),
   geolocationRadius: z.number()
     .min(0, 'Geolocation radius must be non-negative')

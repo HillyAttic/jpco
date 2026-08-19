@@ -5,7 +5,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import { Timestamp } from 'firebase-admin/firestore';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 
 const COLLECTION = 'shifts';
 
@@ -30,9 +30,11 @@ export const shiftAdminService = {
         const snapshot = await adminDb
             .collection(COLLECTION)
             .where('isActive', '==', true)
-            .orderBy('name', 'asc')
             .get();
-        return snapshot.docs.map((doc) => convertDoc(doc.data(), doc.id));
+        // ponytail: sort in memory (few docs) — swap for orderBy + composite index if shifts grow.
+        return snapshot.docs
+            .map((doc) => convertDoc(doc.data(), doc.id))
+            .sort((a, b) => a.name.localeCompare(b.name));
     },
 
     async getShift(id: string) {
@@ -75,19 +77,27 @@ export const shiftAdminService = {
         return convertDoc(updated.data()!, id);
     },
 
-    async assignShiftToEmployee(shiftId: string, employeeId: string) {
-        const doc = await adminDb.collection(COLLECTION).doc(shiftId).get();
-        if (!doc.exists) throw new Error('Shift not found');
-
-        const shift = doc.data()!;
-        const assignedEmployees: string[] = shift.assignedEmployees || [];
-
-        if (assignedEmployees.includes(employeeId)) {
-            throw new Error('Employee is already assigned to this shift');
-        }
-
+    // ponytail: atomic arrayUnion/arrayRemove make assigns idempotent and race-free —
+    // swap to a batch write only if a single shift is ever assigned thousands of employees.
+    async assignEmployeesToShift(shiftId: string, employeeIds: string[]) {
+        if (!employeeIds.length) return;
         await adminDb.collection(COLLECTION).doc(shiftId).update({
-            assignedEmployees: [...assignedEmployees, employeeId],
+            assignedEmployees: FieldValue.arrayUnion(...employeeIds),
+            updatedAt: Timestamp.now(),
+        });
+    },
+
+    async unassignEmployeesFromShift(shiftId: string, employeeIds: string[]) {
+        if (!employeeIds.length) return;
+        await adminDb.collection(COLLECTION).doc(shiftId).update({
+            assignedEmployees: FieldValue.arrayRemove(...employeeIds),
+            updatedAt: Timestamp.now(),
+        });
+    },
+
+    async deleteShift(id: string) {
+        await adminDb.collection(COLLECTION).doc(id).update({
+            isActive: false,
             updatedAt: Timestamp.now(),
         });
     },
