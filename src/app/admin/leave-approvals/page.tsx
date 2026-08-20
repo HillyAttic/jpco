@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { LeaveRequest, LeaveStatus } from '@/types/leave.types';
 import { DelaySigninRequest } from '@/types/delay-signin.types';
 import { toast } from 'react-toastify';
-import { Clock, AlertTriangle } from 'lucide-react';
+import { Clock, AlertTriangle, Check, FileText, X } from 'lucide-react';
 
 export default function LeaveApprovalsPage() {
   const router = useRouter();
@@ -398,23 +398,26 @@ export default function LeaveApprovalsPage() {
                       </td>
                       <td className="px-6 py-4">
                         {request.status === 'pending' && (
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => handleApprove(request.id!)}
-                              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 border border-emerald-200 transition-colors whitespace-nowrap"
                             >
+                              <Check className="h-3.5 w-3.5" />
                               Approve
                             </button>
                             <button
                               onClick={() => openApproveModal(request)}
-                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors whitespace-nowrap"
                             >
+                              <FileText className="h-3.5 w-3.5" />
                               Approve with Reason
                             </button>
                             <button
                               onClick={() => openRejectModal(request)}
-                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 border border-red-200 transition-colors whitespace-nowrap"
                             >
+                              <X className="h-3.5 w-3.5" />
                               Reject
                             </button>
                           </div>
@@ -485,23 +488,26 @@ export default function LeaveApprovalsPage() {
 
                   {/* Actions or Approver */}
                   {request.status === 'pending' ? (
-                    <div className="flex flex-col gap-2 pt-2">
+                    <div className="grid grid-cols-3 gap-2 pt-2">
                       <button
                         onClick={() => handleApprove(request.id!)}
-                        className="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 border border-emerald-200 transition-colors"
                       >
+                        <Check className="h-4 w-4" />
                         Approve
                       </button>
                       <button
                         onClick={() => openApproveModal(request)}
-                        className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors"
                       >
-                        Approve with Reason
+                        <FileText className="h-4 w-4" />
+                        Note
                       </button>
                       <button
                         onClick={() => openRejectModal(request)}
-                        className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 border border-red-200 transition-colors"
                       >
+                        <X className="h-4 w-4" />
                         Reject
                       </button>
                     </div>
@@ -581,11 +587,12 @@ export default function LeaveApprovalsPage() {
                       </td>
                       <td className="px-6 py-4">
                         {request.status === 'pending' && (
-                          <div className="flex gap-2">
+                          <div className="flex items-center gap-1.5">
                             <button
                               onClick={() => handleDelayApprove(request.id!)}
-                              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 border border-emerald-200 transition-colors whitespace-nowrap"
                             >
+                              <Check className="h-3.5 w-3.5" />
                               Approve
                             </button>
                             <button
@@ -593,8 +600,9 @@ export default function LeaveApprovalsPage() {
                                 setSelectedDelayRequest(request);
                                 setShowApproveModal(true);
                               }}
-                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors whitespace-nowrap"
                             >
+                              <FileText className="h-3.5 w-3.5" />
                               Approve with Note
                             </button>
                             <button
@@ -602,8 +610,9 @@ export default function LeaveApprovalsPage() {
                                 setSelectedDelayRequest(request);
                                 setShowRejectModal(true);
                               }}
-                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 border border-red-200 transition-colors whitespace-nowrap"
                             >
+                              <X className="h-3.5 w-3.5" />
                               Reject
                             </button>
                           </div>
@@ -665,11 +674,12 @@ export default function LeaveApprovalsPage() {
                   </div>
 
                   {request.status === 'pending' ? (
-                    <div className="flex flex-col gap-2 pt-2">
+                    <div className="grid grid-cols-3 gap-2 pt-2">
                       <button
                         onClick={() => handleDelayApprove(request.id!)}
-                        className="w-full px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-emerald-50 text-emerald-700 text-sm font-medium rounded-lg hover:bg-emerald-100 border border-emerald-200 transition-colors"
                       >
+                        <Check className="h-4 w-4" />
                         Approve
                       </button>
                       <button
@@ -677,17 +687,19 @@ export default function LeaveApprovalsPage() {
                           setSelectedDelayRequest(request);
                           setShowApproveModal(true);
                         }}
-                        className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 text-blue-700 text-sm font-medium rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors"
                       >
-                        Approve with Note
+                        <FileText className="h-4 w-4" />
+                        Note
                       </button>
                       <button
                         onClick={() => {
                           setSelectedDelayRequest(request);
                           setShowRejectModal(true);
                         }}
-                        className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                        className="inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-lg hover:bg-red-100 border border-red-200 transition-colors"
                       >
+                        <X className="h-4 w-4" />
                         Reject
                       </button>
                     </div>
