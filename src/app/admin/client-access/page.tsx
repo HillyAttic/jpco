@@ -17,6 +17,7 @@ interface ClientAccessDoc {
   userName: string;
   userEmail: string;
   allowedClientIds: string[];
+  allClients?: boolean;
 }
 
 export default function ClientAccessPage() {
@@ -122,9 +123,14 @@ export default function ClientAccessPage() {
     return result;
   }, [clients, complianceFilter, searchQuery]);
 
+  const isAllClients = useMemo(
+    () => activeAccessDoc?.allClients || false,
+    [activeAccessDoc]
+  );
+
   const assignedCount = useMemo(
-    () => clients.filter((c) => c.id && allowedClientIds.has(c.id)).length,
-    [clients, allowedClientIds]
+    () => isAllClients ? clients.length : clients.filter((c) => c.id && allowedClientIds.has(c.id)).length,
+    [clients, allowedClientIds, isAllClients]
   );
 
   // Filter users based on search
@@ -181,6 +187,7 @@ export default function ClientAccessPage() {
           userName: user.displayName,
           userEmail: user.email,
           allowedClientIds: newIds,
+          allClients: isAllClients,
         }),
       });
       if (!response.ok) {
@@ -244,6 +251,7 @@ export default function ClientAccessPage() {
           userName: user.displayName,
           userEmail: user.email,
           allowedClientIds: merged,
+          allClients: isAllClients,
         }),
       });
       if (!response.ok) {
@@ -295,6 +303,7 @@ export default function ClientAccessPage() {
           userName: user.displayName,
           userEmail: user.email,
           allowedClientIds: remaining,
+          allClients: isAllClients,
         }),
       });
       if (!response.ok) {
@@ -311,6 +320,72 @@ export default function ClientAccessPage() {
       setAccessDocs((prev) =>
         prev.map((d) =>
           d.userId === activeUserId ? { ...d, allowedClientIds: currentIds } : d
+        )
+      );
+      toast.error('Failed to update access');
+    } finally {
+      setSavingUser(null);
+    }
+  };
+
+  // Toggle "Grant All Clients" flag
+  const toggleAllClients = async () => {
+    if (!activeUserId) return;
+    const user = users.find((u) => u.uid === activeUserId);
+    if (!user) return;
+
+    const currentIds = [...(activeAccessDoc?.allowedClientIds || [])];
+    const newAllClients = !isAllClients;
+
+    // Optimistic update
+    setAccessDocs((prev) => {
+      const existing = prev.find((d) => d.userId === activeUserId);
+      if (existing) {
+        return prev.map((d) =>
+          d.userId === activeUserId ? { ...d, allClients: newAllClients } : d
+        );
+      }
+      return [
+        ...prev,
+        {
+          id: 'temp',
+          userId: activeUserId,
+          userName: user.displayName,
+          userEmail: user.email,
+          allowedClientIds: currentIds,
+          allClients: newAllClients,
+        },
+      ];
+    });
+
+    setSavingUser(activeUserId);
+    try {
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch('/api/client-access', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: activeUserId,
+          userName: user.displayName,
+          userEmail: user.email,
+          allowedClientIds: currentIds,
+          allClients: newAllClients,
+        }),
+      });
+      if (!response.ok) {
+        setAccessDocs((prev) =>
+          prev.map((d) =>
+            d.userId === activeUserId ? { ...d, allClients: isAllClients } : d
+          )
+        );
+        toast.error('Failed to update access');
+      } else {
+        toast.success(newAllClients ? 'Access granted to all clients' : 'Reverted to per-client access');
+      }
+    } catch {
+      setAccessDocs((prev) =>
+        prev.map((d) =>
+          d.userId === activeUserId ? { ...d, allClients: isAllClients } : d
         )
       );
       toast.error('Failed to update access');
@@ -444,9 +519,23 @@ export default function ClientAccessPage() {
                   Toggle clients to grant or revoke access for this user. Only assigned clients
                   will be visible to them on the Clients page and in task modals.
                 </p>
-                <p className="text-sm font-medium text-purple-600 dark:text-purple-400 mt-1">
-                  {assignedCount} of {clients.length} clients assigned
-                </p>
+                <div className="flex items-center gap-4 mt-2 flex-wrap">
+                  <p className="text-sm font-medium text-purple-600 dark:text-purple-400">
+                    {assignedCount} of {clients.length} clients assigned
+                  </p>
+                  <button
+                    onClick={toggleAllClients}
+                    disabled={savingUser === activeUserId}
+                    className={`flex items-center gap-2 px-3 py-1.5 text-sm font-medium rounded-lg border transition-all disabled:opacity-60 ${
+                      isAllClients
+                        ? 'bg-purple-100 border-purple-400 text-purple-700 dark:bg-purple-900/30 dark:border-purple-600 dark:text-purple-300'
+                        : 'bg-white border-gray-300 text-gray-700 hover:border-purple-300 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-300 dark:hover:border-purple-600'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${isAllClients ? 'bg-purple-500' : 'bg-gray-400'}`} />
+                    {isAllClients ? 'All Clients (incl. future)' : 'Grant All Clients'}
+                  </button>
+                </div>
               </div>
 
               {/* Filters Row */}
@@ -531,7 +620,7 @@ export default function ClientAccessPage() {
                       </thead>
                       <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                         {filteredClients.map((client, idx) => {
-                          const hasAccess = client.id ? allowedClientIds.has(client.id) : false;
+                          const hasAccess = isAllClients || (client.id ? allowedClientIds.has(client.id) : false);
                           return (
                             <tr
                               key={client.id}

@@ -82,9 +82,14 @@ export async function GET(request: NextRequest) {
         // No access doc → user sees zero clients
         clients = [];
       } else {
-        const allowedIds: string[] = accessSnapshot.docs[0].data().allowedClientIds || [];
-        const allowedSet = new Set(allowedIds);
-        clients = clients.filter((c: any) => c.id && allowedSet.has(c.id));
+        const accessData = accessSnapshot.docs[0].data();
+        if (accessData.allClients) {
+          // allClients flag → user sees every client (no filtering)
+        } else {
+          const allowedIds: string[] = accessData.allowedClientIds || [];
+          const allowedSet = new Set(allowedIds);
+          clients = clients.filter((c: any) => c.id && allowedSet.has(c.id));
+        }
       }
     }
 

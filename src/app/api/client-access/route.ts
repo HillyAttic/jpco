@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 /**
  * POST /api/client-access
  * Create or update a user's allowed client list (admin only)
- * Body: { userId, userName, userEmail, allowedClientIds }
+ * Body: { userId, userName, userEmail, allowedClientIds, allClients? }
  */
 export async function POST(request: NextRequest) {
   try {
@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { userId, userName, userEmail, allowedClientIds } = body;
+    const { userId, userName, userEmail, allowedClientIds, allClients } = body;
 
     if (!userId || !Array.isArray(allowedClientIds)) {
       return ErrorResponses.badRequest('userId and allowedClientIds are required');
@@ -73,6 +73,7 @@ export async function POST(request: NextRequest) {
       userName: userName || '',
       userEmail: userEmail || '',
       allowedClientIds,
+      allClients: !!allClients,
       updatedAt: FieldValue.serverTimestamp(),
       updatedBy: authResult.user.uid,
     };
