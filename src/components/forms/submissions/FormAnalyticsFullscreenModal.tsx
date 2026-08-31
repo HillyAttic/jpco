@@ -94,7 +94,7 @@ function getChartOptions(question: DashboardQuestionChart): ApexOptions {
   };
 }
 
-function getDaywiseGroupVisitsOptions(data: Array<{ date: string; total: number }>): ApexOptions {
+function getDaywiseGroupVisitsOptions(data: Array<{ date: string; total: number }>, label: string): ApexOptions {
   return {
     chart: {
       type: 'bar',
@@ -114,13 +114,13 @@ function getDaywiseGroupVisitsOptions(data: Array<{ date: string; total: number 
       labels: { rotate: -30 },
     },
     yaxis: {
-      title: { text: 'Group visits' },
+      title: { text: label },
       labels: { formatter: (value: number) => String(Math.round(value)) },
     },
     grid: { strokeDashArray: 4 },
     tooltip: {
       y: {
-        formatter: (value: number) => `${value} group visits`,
+        formatter: (value: number) => `${value} ${label.toLowerCase()}`,
       },
     },
   };
@@ -146,8 +146,9 @@ export function BranchReportFullscreenModal({
   onPresetChange,
 }: BranchReportFullscreenModalProps) {
   const chartData = data?.daywiseGroupVisits || [];
-  const options = getDaywiseGroupVisitsOptions(chartData);
-  const series = [{ name: 'Group Visits', data: chartData.map((item) => item.total) }];
+  const daywiseLabel = data?.columns?.[0]?.label || 'Values';
+  const options = getDaywiseGroupVisitsOptions(chartData, daywiseLabel);
+  const series = [{ name: daywiseLabel, data: chartData.map((item) => item.total) }];
 
   return (
     <Dialog.Root open={isOpen} onOpenChange={onClose}>
@@ -160,7 +161,7 @@ export function BranchReportFullscreenModal({
                 BU-wise Collective Report
               </Dialog.Title>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {formTitle} • Daywise group visits
+                {formTitle} • Daywise {daywiseLabel.toLowerCase()}
               </p>
             </div>
             <Dialog.Close className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
@@ -193,7 +194,7 @@ export function BranchReportFullscreenModal({
               </div>
             ) : chartData.length === 0 ? (
               <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
-                No group visit data available for selected filter.
+                No data available for selected filter.
               </div>
             ) : (
               <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 sm:p-4 bg-gray-50 dark:bg-gray-800">
@@ -202,7 +203,7 @@ export function BranchReportFullscreenModal({
                     Daywise Visit Dashboard
                   </h3>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    X-axis: dates • Y-axis: collective group visits
+                    X-axis: dates • Y-axis: collective {daywiseLabel.toLowerCase()}
                   </p>
                 </div>
                 <Chart options={options} series={series} type="bar" height={420} />

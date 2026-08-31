@@ -76,12 +76,15 @@ export function groupSubmissionsByDay(
   });
 
   // Convert to labeled groups and sort by date (most recent first)
-  const sortedDays = Array.from(dayGroups.entries()).sort((a, b) => {
-    return new Date(b[0]).getTime() - new Date(a[0]).getTime();
-  });
+  // Parse dayKey as local date to avoid UTC midnight shift
+  const sortedDays = Array.from(dayGroups.entries())
+    .map(([key, subs]) => {
+      const [y, m, d] = key.split('-').map(Number);
+      return { key, subs, date: new Date(y, m - 1, d) };
+    })
+    .sort((a, b) => b.date.getTime() - a.date.getTime());
 
-  sortedDays.forEach(([dayKey, subs]) => {
-    const date = new Date(dayKey);
+  sortedDays.forEach(({ date, subs }) => {
     const label = getDayLabel(date);
     grouped.set(label, subs);
   });

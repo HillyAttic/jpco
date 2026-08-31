@@ -55,40 +55,26 @@ interface DashboardAnalyticsData {
   questionCharts: DashboardQuestionChart[];
 }
 
-interface BranchReportRow {
-  businessUnit: string;
-  name: string;
-  submissionCount: number;
-  submittedUserCount: number;
-  groupVisitsTotal: number;
-  borrowersCalledTotal: number;
-  borrowersVisitedInPersonTotal: number;
-  fdObservationYesCount: number;
-  fdObservationNoCount: number;
-  crbDiscrepancyYesCount: number;
-  crbDiscrepancyNoCount: number;
+interface BranchReportColumn {
+  id: string;
+  label: string;
+  type: 'number' | 'yesno';
+  align: 'right';
 }
 
 interface BranchReportData {
   formId: string;
   formTitle: string;
   dateRange: { start: string; end: string };
-  rows: BranchReportRow[];
-  totals: BranchReportRow & { businessUnitCount: number };
+  columns: BranchReportColumn[];
+  groupingField: string | null;
+  rows: Array<{ key: string; name: string; submissionCount: number; data: Record<string, number> }>;
+  totals: { submissionCount: number; data: Record<string, number> };
   daywiseGroupVisits: Array<{ date: string; total: number }>;
-  unresolvedLabels: string[];
 }
 
+
 const BUSINESS_UNIT_LABEL = 'name of business unit visited today';
-const REPORT_LABELS = {
-  businessUnit: 'Name of Business Unit Visited today.',
-  name: 'Name',
-  groupVisits: 'How many group visits were conducted today?',
-  borrowersCalled: 'How many borrowers were called today?',
-  borrowersVisited: 'How many borrowers were visited in person today?',
-  fdObservation: 'Has any observation related to FD creation been noted?',
-  crbDiscrepancy: 'Has any discrepancy been found in the CRB?',
-} as const;
 
 function toDate(value: Timestamp | { toDate?: () => Date } | string | Date | undefined): Date | null {
   if (!value) return null;
@@ -222,15 +208,6 @@ function getReportDateRange(startInput: string | null, endInput: string | null, 
   end.setHours(23, 59, 59, 999);
 
   return { start, end };
-}
-
-function normalizeLabel(label: string): string {
-  return label.trim().toLowerCase().replace(/\*+$/g, '').trim();
-}
-
-function findFieldByLabel(fields: FormField[], label: string): FormField | undefined {
-  const normalizedLabel = normalizeLabel(label);
-  return fields.find((field) => normalizeLabel(field.label) === normalizedLabel);
 }
 
 function toNumber(raw: any): number {
@@ -429,44 +406,47 @@ async function buildBranchReportAnalytics(
 
   const template = { id: templateDoc.id, ...templateDoc.data() } as FormTemplate;
   const fields = flattenFormFields(template.fields || []);
-  const fieldMap = {
-    businessUnit: findFieldByLabel(fields, REPORT_LABELS.businessUnit),
-    name: findFieldByLabel(fields, REPORT_LABELS.name),
-    groupVisits: findFieldByLabel(fields, REPORT_LABELS.groupVisits),
-    borrowersCalled: findFieldByLabel(fields, REPORT_LABELS.borrowersCalled),
-    borrowersVisited: findFieldByLabel(fields, REPORT_LABELS.borrowersVisited),
-    fdObservation: findFieldByLabel(fields, REPORT_LABELS.fdObservation),
-    crbDiscrepancy: findFieldByLabel(fields, REPORT_LABELS.crbDiscrepancy),
-  };
-
-  const unresolvedLabels = Object.entries(fieldMap)
-    .filter(([key, field]) => key !== 'name' && !field)
-    .map(([key]) => REPORT_LABELS[key as keyof typeof REPORT_LABELS]);
   const { start, end } = getReportDateRange(startInput, endInput, presetInput as ReportPreset | null);
 
-  if (!fieldMap.businessUnit) {
-    return {
-      formId,
-      formTitle: template.title,
-      dateRange: { start: formatDateInput(start), end: formatDateInput(end) },
-      rows: [],
-      totals: {
-        businessUnit: 'Total',
-        name: '',
-        businessUnitCount: 0,
-        submissionCount: 0,
-        submittedUserCount: 0,
-        groupVisitsTotal: 0,
-        borrowersCalledTotal: 0,
-        borrowersVisitedInPersonTotal: 0,
-        fdObservationYesCount: 0,
-        fdObservationNoCount: 0,
-        crbDiscrepancyYesCount: 0,
-        crbDiscrepancyNoCount: 0,
-      },
-      daywiseGroupVisits: [],
-      unresolvedLabels,
-    };
+  // Find grouping field: prefer "business unit" field, else first text-like field
+  const BUSINESS_UNIT_PATTERN = /business\s*unit/i;
+  let groupingField = fields.find((f) => BUSINESS_UNIT_PATTERN.test(f.label));
+  if (!groupingField) {
+    groupingField = fields.find((f) =>
+      !['number', 'file', 'section'].includes(f.type) && !/^(s\.?\s*no|serial|date|name)$/i.test(f.label.trim())
+    );
+  }
+
+  // Detect number and yes/no fields (exclude the grouping field)
+  const numberFields = fields.filter((f) => f.type === 'number' && f.id !== groupingField?.id);
+  const yesNoFields = fields.filter((f) => {
+    if (f.id === groupingField?.id) return false;
+    if (f.type === 'select' || f.type === 'radio') {
+      const opts = (f.options || []).map((o) => (typeof o === 'string' ? o : o.label || o.value || '').toLowerCase());
+      return opts.some((o) => /^(yes|no|y|n)$/.test(o));
+    }
+    if (f.type === 'checkbox') return true;
+    return false;
+  });
+
+  const columns: BranchReportColumn[] = [
+    ...numberFields.map((f) => ({ id: f.id, label: f.label, type: 'number' as const, align: 'right' as const })),
+    ...yesNoFields.map((f) => ({ id: f.id, label: f.label, type: 'yesno' as const, align: 'right' as const })),
+  ];
+
+  const emptyReturn: BranchReportData = {
+    formId,
+    formTitle: template.title,
+    dateRange: { start: formatDateInput(start), end: formatDateInput(end) },
+    columns,
+    groupingField: groupingField?.id || null,
+    rows: [],
+    totals: { submissionCount: 0, data: {} },
+    daywiseGroupVisits: [],
+  };
+
+  if (!groupingField) {
+    return emptyReturn;
   }
 
   const submissionsSnapshot = await adminDb
@@ -476,9 +456,10 @@ async function buildBranchReportAnalytics(
     .where('submittedAt', '<=', end)
     .get();
   const submissions = submissionsSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() })) as FormSubmission[];
-  const submitterIds = Array.from(new Set(submissions.map((submission) => submission.submittedBy).filter(Boolean))) as string[];
-  const submitterNames = new Map<string, string>();
 
+  // Resolve submitter names
+  const submitterIds = Array.from(new Set(submissions.map((s) => s.submittedBy).filter(Boolean))) as string[];
+  const submitterNames = new Map<string, string>();
   await Promise.all(
     submitterIds.map(async (uid) => {
       const userDoc = await adminDb.collection('users').doc(uid).get();
@@ -489,31 +470,31 @@ async function buildBranchReportAnalytics(
     })
   );
 
-  const rowMap = new Map<string, BranchReportRow & { names: Set<string>; submittedUsers: Set<string> }>();
+  const rowMap = new Map<string, { key: string; name: string; submissionCount: number; names: Set<string>; data: Record<string, number> }>();
   const daywiseGroupVisits = buildDateBuckets(start, end);
 
+  // Track which numeric field is used for the daywise chart (first number field, if any)
+  const daywiseFieldId = numberFields[0]?.id;
+
   submissions.forEach((submission) => {
-    const businessUnit = normalizeValue(submission.data?.[fieldMap.businessUnit!.id])[0] || 'Unknown BU';
-    const existing = rowMap.get(businessUnit) || {
-      businessUnit,
+    const groupingValue = normalizeValue(submission.data?.[groupingField!.id])[0] || 'Unknown';
+    const existing = rowMap.get(groupingValue) || {
+      key: groupingValue,
       name: '',
       submissionCount: 0,
-      submittedUserCount: 0,
-      groupVisitsTotal: 0,
-      borrowersCalledTotal: 0,
-      borrowersVisitedInPersonTotal: 0,
-      fdObservationYesCount: 0,
-      fdObservationNoCount: 0,
-      crbDiscrepancyYesCount: 0,
-      crbDiscrepancyNoCount: 0,
       names: new Set<string>(),
-      submittedUsers: new Set<string>(),
+      data: Object.fromEntries(columns.map((col) => [col.id, 0])),
     };
 
     existing.submissionCount += 1;
-    const names = fieldMap.name ? normalizeValue(submission.data?.[fieldMap.name.id]) : [];
-    if (names.length > 0) {
-      names.forEach((name) => existing.names.add(name));
+
+    // Resolve name
+    const names = normalizeValue(submission.data?.[groupingField!.id]);
+    // Try to find a "name" field in the form
+    const nameField = fields.find((f) => /^name$/i.test(f.label.trim()) && f.id !== groupingField!.id);
+    const nameValues = nameField ? normalizeValue(submission.data?.[nameField.id]) : [];
+    if (nameValues.length > 0) {
+      nameValues.forEach((n) => existing.names.add(n));
     } else if (submission.submitterName) {
       existing.names.add(submission.submitterName);
     } else if (submission.submittedBy && submitterNames.has(submission.submittedBy)) {
@@ -521,71 +502,64 @@ async function buildBranchReportAnalytics(
     } else if (submission.submitterEmail) {
       existing.names.add(submission.submitterEmail);
     }
-    if (submission.submittedBy) {
-      existing.submittedUsers.add(submission.submittedBy);
-    }
-    if (fieldMap.groupVisits) {
-      const groupVisits = toNumber(submission.data?.[fieldMap.groupVisits.id]);
-      existing.groupVisitsTotal += groupVisits;
-      const submittedAtDate = toDate(submission.submittedAt);
-      if (submittedAtDate) {
-        const dateKey = formatDateInput(submittedAtDate);
-        if (daywiseGroupVisits.has(dateKey)) {
-          daywiseGroupVisits.set(dateKey, (daywiseGroupVisits.get(dateKey) || 0) + groupVisits);
+
+    // Aggregate numeric fields
+    numberFields.forEach((field) => {
+      const val = toNumber(submission.data?.[field.id]);
+      existing.data[field.id] = (existing.data[field.id] || 0) + val;
+
+      // Daywise chart uses the first numeric field
+      if (field.id === daywiseFieldId) {
+        const submittedAtDate = toDate(submission.submittedAt);
+        if (submittedAtDate) {
+          const dateKey = formatDateInput(submittedAtDate);
+          if (daywiseGroupVisits.has(dateKey)) {
+            daywiseGroupVisits.set(dateKey, (daywiseGroupVisits.get(dateKey) || 0) + val);
+          }
         }
       }
-    }
-    if (fieldMap.borrowersCalled) {
-      existing.borrowersCalledTotal += toNumber(submission.data?.[fieldMap.borrowersCalled.id]);
-    }
-    if (fieldMap.borrowersVisited) {
-      existing.borrowersVisitedInPersonTotal += toNumber(submission.data?.[fieldMap.borrowersVisited.id]);
-    }
-    if (fieldMap.fdObservation) {
-      const value = submission.data?.[fieldMap.fdObservation.id];
-      if (isYes(value)) existing.fdObservationYesCount += 1;
-      if (isNo(value)) existing.fdObservationNoCount += 1;
-    }
-    if (fieldMap.crbDiscrepancy) {
-      const value = submission.data?.[fieldMap.crbDiscrepancy.id];
-      if (isYes(value)) existing.crbDiscrepancyYesCount += 1;
-      if (isNo(value)) existing.crbDiscrepancyNoCount += 1;
-    }
+    });
 
-    rowMap.set(businessUnit, existing);
+    // Aggregate yes/no fields
+    yesNoFields.forEach((field) => {
+      const value = submission.data?.[field.id];
+      if (isYes(value)) existing.data[`${field.id}_yes`] = (existing.data[`${field.id}_yes`] || 0) + 1;
+      if (isNo(value)) existing.data[`${field.id}_no`] = (existing.data[`${field.id}_no`] || 0) + 1;
+    });
+
+    rowMap.set(groupingValue, existing);
   });
 
   const rows = Array.from(rowMap.values())
-    .map(({ names, submittedUsers, ...row }) => ({
+    .map(({ names, ...row }) => ({
       ...row,
       name: Array.from(names).sort((a, b) => a.localeCompare(b)).join(', '),
-      submittedUserCount: submittedUsers.size,
     }))
-    .sort((a, b) => a.businessUnit.localeCompare(b.businessUnit));
-  const submittedUsers = new Set<string>();
-  rowMap.forEach((row) => row.submittedUsers.forEach((uid) => submittedUsers.add(uid)));
+    .sort((a, b) => a.key.localeCompare(b.key));
+
+  // Build totals
+  const totalsData: Record<string, number> = {};
+  columns.forEach((col) => {
+    if (col.type === 'number') {
+      totalsData[col.id] = rows.reduce((sum, row) => sum + (row.data[col.id] || 0), 0);
+    } else {
+      totalsData[`${col.id}_yes`] = rows.reduce((sum, row) => sum + (row.data[`${col.id}_yes`] || 0), 0);
+      totalsData[`${col.id}_no`] = rows.reduce((sum, row) => sum + (row.data[`${col.id}_no`] || 0), 0);
+    }
+  });
 
   return {
     formId,
     formTitle: template.title,
     dateRange: { start: formatDateInput(start), end: formatDateInput(end) },
+    columns,
+    groupingField: groupingField.id,
     rows,
     totals: {
-      businessUnit: 'Total',
-      name: '',
-      businessUnitCount: rows.length,
       submissionCount: rows.reduce((sum, row) => sum + row.submissionCount, 0),
-      submittedUserCount: submittedUsers.size,
-      groupVisitsTotal: rows.reduce((sum, row) => sum + row.groupVisitsTotal, 0),
-      borrowersCalledTotal: rows.reduce((sum, row) => sum + row.borrowersCalledTotal, 0),
-      borrowersVisitedInPersonTotal: rows.reduce((sum, row) => sum + row.borrowersVisitedInPersonTotal, 0),
-      fdObservationYesCount: rows.reduce((sum, row) => sum + row.fdObservationYesCount, 0),
-      fdObservationNoCount: rows.reduce((sum, row) => sum + row.fdObservationNoCount, 0),
-      crbDiscrepancyYesCount: rows.reduce((sum, row) => sum + row.crbDiscrepancyYesCount, 0),
-      crbDiscrepancyNoCount: rows.reduce((sum, row) => sum + row.crbDiscrepancyNoCount, 0),
+      data: totalsData,
     },
     daywiseGroupVisits: Array.from(daywiseGroupVisits.entries()).map(([date, total]) => ({ date, total })),
-    unresolvedLabels,
   };
 }
 
