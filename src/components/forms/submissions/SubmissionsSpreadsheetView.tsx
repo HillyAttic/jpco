@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo } from 'react';
 import type { FormSubmission, FormTemplate, FormField } from '@/types/form.types';
-import { flattenFormFields, getDailySubmissionSummary, groupSubmissionsByDay, formatCellValue } from '@/utils/submission-utils';
+import { flattenFormFields, groupSubmissionsByDay, formatCellValue } from '@/utils/submission-utils';
 import { format } from 'date-fns';
 import { Timestamp } from 'firebase/firestore';
 import { SpreadsheetExportModal } from './SpreadsheetExportModal';
@@ -528,11 +528,6 @@ export function SubmissionsSpreadsheetView({
           <div className="space-y-6 sm:space-y-8">
             {Array.from(groupedSubmissions.entries()).map(([dayLabel, daySubs]) => {
               const isExpanded = expandedDays.has(dayLabel);
-              const LEGACY_FORM_ID = 'dK0D8ziCvcROvPhFnx3k';
-              const useLegacyBadges = template.id === LEGACY_FORM_ID;
-              const summary = useLegacyBadges
-                ? getDailySubmissionSummary(flattenedFields, daySubs)
-                : [];
 
               return (
               <div key={dayLabel} className="space-y-3">
@@ -545,26 +540,18 @@ export function SubmissionsSpreadsheetView({
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex flex-wrap justify-end gap-2 text-xs sm:text-sm font-semibold text-blue-900">
-                        {useLegacyBadges ? (
-                          summary.map((item) => (
-                            <span key={item.key} className="rounded bg-white/70 px-2 py-1">
-                              {item.shortLabel}: {item.total}
+                        {daySummaryBadges.map((badge) => {
+                          const total = daySubs.reduce((sum, sub) => {
+                            const val = sub.data?.[badge.key];
+                            const num = typeof val === 'number' ? val : parseFloat(String(val || 0));
+                            return sum + (isNaN(num) ? 0 : num);
+                          }, 0);
+                          return (
+                            <span key={badge.key} className="rounded bg-white/70 px-2 py-1">
+                              {badge.shortLabel}: {total}
                             </span>
-                          ))
-                        ) : (
-                          daySummaryBadges.map((badge) => {
-                            const total = daySubs.reduce((sum, sub) => {
-                              const val = sub.data?.[badge.key];
-                              const num = typeof val === 'number' ? val : parseFloat(String(val || 0));
-                              return sum + (isNaN(num) ? 0 : num);
-                            }, 0);
-                            return (
-                              <span key={badge.key} className="rounded bg-white/70 px-2 py-1">
-                                {badge.shortLabel}: {total}
-                              </span>
-                            );
-                          })
-                        )}
+                          );
+                        })}
                       </div>
                       <button
                         type="button"
