@@ -223,6 +223,22 @@ export function SubmissionsSpreadsheetView({
     return format(date, 'MMM d, yyyy h:mm a');
   };
 
+  // Abbreviate field labels: "SECURED FILES" → "SF"
+  const abbreviateLabel = (label: string): string => {
+    const words = label.trim().split(/\s+/);
+    if (words.length <= 1) return label;
+    return (words[0][0] + words[words.length - 1][0]).toUpperCase();
+  };
+
+  // Day summary badges from numeric fields (abbreviated)
+  const daySummaryBadges = useMemo(() => {
+    return numericFields.map(field => ({
+      key: field.id,
+      shortLabel: abbreviateLabel(field.label),
+      label: field.label,
+    }));
+  }, [numericFields]);
+
   return (
     <div className="bg-white rounded-lg shadow">
       {/* Header */}
@@ -512,7 +528,11 @@ export function SubmissionsSpreadsheetView({
           <div className="space-y-6 sm:space-y-8">
             {Array.from(groupedSubmissions.entries()).map(([dayLabel, daySubs]) => {
               const isExpanded = expandedDays.has(dayLabel);
-              const summary = getDailySubmissionSummary(flattenedFields, daySubs);
+              const LEGACY_FORM_ID = 'dK0D8ziCvcROvPhFnx3k';
+              const useLegacyBadges = template.id === LEGACY_FORM_ID;
+              const summary = useLegacyBadges
+                ? getDailySubmissionSummary(flattenedFields, daySubs)
+                : [];
 
               return (
               <div key={dayLabel} className="space-y-3">
@@ -525,11 +545,26 @@ export function SubmissionsSpreadsheetView({
                     </div>
                     <div className="flex items-center gap-2">
                       <div className="flex flex-wrap justify-end gap-2 text-xs sm:text-sm font-semibold text-blue-900">
-                        {summary.map((item) => (
-                          <span key={item.key} className="rounded bg-white/70 px-2 py-1">
-                            {item.shortLabel}: {item.total}
-                          </span>
-                        ))}
+                        {useLegacyBadges ? (
+                          summary.map((item) => (
+                            <span key={item.key} className="rounded bg-white/70 px-2 py-1">
+                              {item.shortLabel}: {item.total}
+                            </span>
+                          ))
+                        ) : (
+                          daySummaryBadges.map((badge) => {
+                            const total = daySubs.reduce((sum, sub) => {
+                              const val = sub.data?.[badge.key];
+                              const num = typeof val === 'number' ? val : parseFloat(String(val || 0));
+                              return sum + (isNaN(num) ? 0 : num);
+                            }, 0);
+                            return (
+                              <span key={badge.key} className="rounded bg-white/70 px-2 py-1">
+                                {badge.shortLabel}: {total}
+                              </span>
+                            );
+                          })
+                        )}
                       </div>
                       <button
                         type="button"
