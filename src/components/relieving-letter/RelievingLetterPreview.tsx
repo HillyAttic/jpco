@@ -69,8 +69,8 @@ export function RelievingLetterPreview({ letter }: RelievingLetterPreviewProps) 
           This is also to confirm that Mr./Ms. <strong>{letter.employeeName}</strong> has been
           relieved from the services of <strong>{letter.companyName}</strong> with effect from{' '}
           {formatDate(letter.dateOfLeaving)} after completing all required formalities. At the time
-          of leaving, there were no outstanding obligations to the company to the best of our
-          knowledge.
+          of leaving, there were no outstanding obligations, and there are no dues pending from our
+          end.
         </p>
 
         <p>
