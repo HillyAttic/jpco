@@ -1,7 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useSortable } from '@dnd-kit/sortable';
+import React, { useState, useCallback, useMemo } from 'react';
+import { DndContext, DragEndEvent, closestCenter } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Copy, Trash2, GripVertical, ChevronDown, Plus } from 'lucide-react';
 import type { FormField, FormFieldType } from '@/types/form.types';
@@ -55,6 +56,26 @@ export function SectionCard({
 
   const [isExpanded, setIsExpanded] = useState(true);
   const [showAddMenu, setShowAddMenu] = useState(false);
+
+  const nestedFieldIds = useMemo(
+    () => nestedFields.map(f => f.id),
+    [nestedFields]
+  );
+
+  const handleNestedDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const oldIndex = nestedFields.findIndex(f => f.id === active.id);
+    const newIndex = nestedFields.findIndex(f => f.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = [...nestedFields];
+    const [moved] = reordered.splice(oldIndex, 1);
+    reordered.splice(newIndex, 0, moved);
+    reordered.forEach((f, i) => { f.order = i; });
+    onUpdate({ fields: reordered });
+  }, [nestedFields, onUpdate]);
 
   const handleDelete = () => {
     if (confirm('Delete this section and all questions within it?')) {
@@ -147,24 +168,34 @@ export function SectionCard({
                 <p className="text-sm">No questions in this section yet</p>
               </div>
             ) : (
-              nestedFields.map((nestedField, nestedIndex) => (
-                <QuestionCard
-                  key={nestedField.id}
-                  field={nestedField}
-                  index={nestedIndex}
-                  isSelected={selectedFieldId === nestedField.id}
-                  onUpdate={(updates) =>
-                    onUpdateNestedField(field.id, nestedField.id, updates)
-                  }
-                  onDelete={() =>
-                    onDeleteNestedField(field.id, nestedField.id)
-                  }
-                  onDuplicate={() =>
-                    onDuplicateNestedField(field.id, nestedField.id)
-                  }
-                  onFocus={() => onSelectField(nestedField.id)}
-                />
-              ))
+              <DndContext
+                collisionDetection={closestCenter}
+                onDragEnd={handleNestedDragEnd}
+              >
+                <SortableContext
+                  items={nestedFieldIds}
+                  strategy={verticalListSortingStrategy}
+                >
+                  {nestedFields.map((nestedField, nestedIndex) => (
+                    <QuestionCard
+                      key={nestedField.id}
+                      field={nestedField}
+                      index={nestedIndex}
+                      isSelected={selectedFieldId === nestedField.id}
+                      onUpdate={(updates) =>
+                        onUpdateNestedField(field.id, nestedField.id, updates)
+                      }
+                      onDelete={() =>
+                        onDeleteNestedField(field.id, nestedField.id)
+                      }
+                      onDuplicate={() =>
+                        onDuplicateNestedField(field.id, nestedField.id)
+                      }
+                      onFocus={() => onSelectField(nestedField.id)}
+                    />
+                  ))}
+                </SortableContext>
+              </DndContext>
             )}
 
             {/* Add Question Button */}

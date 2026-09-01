@@ -247,6 +247,8 @@ export function GoogleFormsBuilder({
         const newFields = [...prev.fields];
         const [movedField] = newFields.splice(oldIndex, 1);
         newFields.splice(newIndex, 0, movedField);
+        // ponytail: sync order property so FormRenderer.sort() stays consistent
+        newFields.forEach((field, index) => { field.order = index; });
         return { ...prev, fields: newFields };
       }
 
