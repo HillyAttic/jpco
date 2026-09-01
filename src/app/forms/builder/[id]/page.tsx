@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   DndContext,
   DragOverlay,
-  closestCenter,
+  pointerWithin,
   PointerSensor,
   useSensor,
   useSensors,
@@ -301,39 +301,69 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
     }
 
     // Reordering existing fields within canvas
-    if (active.data.current?.type === 'field' && over.data.current?.type === 'field') {
+    if (active.data.current?.type === 'field') {
       if (active.id === over.id) return;
 
-      // Check if both fields are nested inside the same section
+      // Resolve over target: if it's a nested field, find its parent section
+      let resolvedOverId = over.id;
+      if (over.data.current?.type === 'field') {
+        // Check if over target is nested inside a section
+        for (const f of template.fields) {
+          if (f.type === 'section' && f.fields) {
+            if (f.fields.some(nf => nf.id === over.id)) {
+              resolvedOverId = f.id; // Use the section as the reorder target
+              break;
+            }
+          }
+        }
+      }
+
+      // Check if active is nested inside a section
       let activeSectionIndex = -1;
-      let overSectionIndex = -1;
       template.fields.forEach((f, si) => {
         if (f.type === 'section' && f.fields) {
           if (f.fields.some(nf => nf.id === active.id)) activeSectionIndex = si;
-          if (f.fields.some(nf => nf.id === over.id)) overSectionIndex = si;
         }
       });
 
-      if (activeSectionIndex !== -1 && activeSectionIndex === overSectionIndex) {
-        // Reorder within section
-        const section = template.fields[activeSectionIndex];
-        const sectionFields = [...(section.fields || [])];
-        const oldIndex = sectionFields.findIndex((f) => f.id === active.id);
-        const newIndex = sectionFields.findIndex((f) => f.id === over.id);
+      // Check if resolved over is a section
+      const overIsSection = template.fields.some(f => f.id === resolvedOverId && f.type === 'section');
 
-        if (oldIndex !== -1 && newIndex !== -1) {
-          const [movedField] = sectionFields.splice(oldIndex, 1);
-          sectionFields.splice(newIndex, 0, movedField);
-          sectionFields.forEach((field, index) => { field.order = index; });
+      if (activeSectionIndex !== -1 && overIsSection) {
+        // Active is nested, over is a section — find which section
+        let overSectionIndex = template.fields.findIndex(f => f.id === resolvedOverId);
+        if (overSectionIndex === -1) {
+          // resolvedOverId might be a nested field — find its parent
+          template.fields.forEach((f, si) => {
+            if (f.type === 'section' && f.fields) {
+              if (f.fields.some(nf => nf.id === resolvedOverId)) overSectionIndex = si;
+            }
+          });
+        }
 
-          const updatedFields = [...template.fields];
-          updatedFields[activeSectionIndex] = { ...section, fields: sectionFields };
-          setTemplate({ ...template, fields: updatedFields });
+        if (activeSectionIndex !== -1 && overSectionIndex !== -1) {
+          if (activeSectionIndex === overSectionIndex) {
+            // Reorder within same section
+            const section = template.fields[activeSectionIndex];
+            const sectionFields = [...(section.fields || [])];
+            const oldIndex = sectionFields.findIndex((f) => f.id === active.id);
+            // Find the position to insert at (before the over section's first field, or at end)
+            const insertIndex = sectionFields.length;
+            if (oldIndex !== -1) {
+              const [movedField] = sectionFields.splice(oldIndex, 1);
+              sectionFields.splice(insertIndex > oldIndex ? insertIndex - 1 : insertIndex, 0, movedField);
+              sectionFields.forEach((field, index) => { field.order = index; });
+              const updatedFields = [...template.fields];
+              updatedFields[activeSectionIndex] = { ...section, fields: sectionFields };
+              setTemplate({ ...template, fields: updatedFields });
+            }
+          }
+          // Cross-section nested field moves are complex — skip for now
         }
       } else {
-        // Reorder top-level fields
+        // Both are top-level fields (or active is top-level)
         const oldIndex = template.fields.findIndex((f) => f.id === active.id);
-        const newIndex = template.fields.findIndex((f) => f.id === over.id);
+        const newIndex = template.fields.findIndex((f) => f.id === resolvedOverId);
 
         if (oldIndex !== -1 && newIndex !== -1) {
           const reorderedFields = [...template.fields];
@@ -478,7 +508,7 @@ export default function FormBuilderEditorPage({ params }: { params: Promise<{ id
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
