@@ -53,10 +53,22 @@ export const GET = withAuth(
 
       // Check if user has access
       const user = request.user!;
-      const hasAccess = formTemplateService.canUserAccess(template, {
+      let hasAccess = formTemplateService.canUserAccess(template, {
         uid: user.uid,
         role: user.claims.role,
       });
+
+      // Also check MIS config assignment — MIS-assigned users can always fetch the template
+      if (!hasAccess) {
+        try {
+          const { misConfigService } = await import('@/services/mis-config.service');
+          const assignedForms = await misConfigService.getUserAssignedForms(user.uid);
+          hasAccess = assignedForms.some(m => m.formId === id);
+        } catch {
+          // MIS check failure is non-blocking
+        }
+      }
+
       console.log('[Forms API] Access check result:', hasAccess);
 
       if (!hasAccess) {
