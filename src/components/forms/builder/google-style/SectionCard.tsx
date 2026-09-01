@@ -57,6 +57,14 @@ export function SectionCard({
   const [isExpanded, setIsExpanded] = useState(true);
   const [showAddMenu, setShowAddMenu] = useState(false);
 
+  const handleDelete = () => {
+    if (confirm('Delete this section and all questions within it?')) {
+      onDelete();
+    }
+  };
+
+  const nestedFields = field.fields || [];
+
   const nestedFieldIds = useMemo(
     () => nestedFields.map(f => f.id),
     [nestedFields]
@@ -76,14 +84,6 @@ export function SectionCard({
     reordered.forEach((f, i) => { f.order = i; });
     onUpdate({ fields: reordered });
   }, [nestedFields, onUpdate]);
-
-  const handleDelete = () => {
-    if (confirm('Delete this section and all questions within it?')) {
-      onDelete();
-    }
-  };
-
-  const nestedFields = field.fields || [];
 
   return (
     <div
