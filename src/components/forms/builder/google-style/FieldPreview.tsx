@@ -77,6 +77,19 @@ export function FieldPreview({ field }: FieldPreviewProps) {
         />
       );
 
+    case 'month':
+      return (
+        <select
+          disabled
+          className="w-full px-0 py-2 text-sm border-b border-gray-300 bg-transparent text-gray-400 disabled:cursor-default appearance-none"
+        >
+          <option>Select month</option>
+          {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m) => (
+            <option key={m} disabled>{m}</option>
+          ))}
+        </select>
+      );
+
     case 'select':
       return (
         <select

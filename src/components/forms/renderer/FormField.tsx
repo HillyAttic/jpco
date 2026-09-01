@@ -88,6 +88,19 @@ export function FormField({ field, register, error, setValue, watch }: FormField
           />
         );
 
+      case 'month':
+        return (
+          <select
+            {...register(field.id)}
+            className={`${baseClasses} ${errorClasses}`}
+          >
+            <option value="">Select month</option>
+            {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m) => (
+              <option key={m} value={m}>{m}</option>
+            ))}
+          </select>
+        );
+
       case 'select':
         return (
           <SearchableSelect

@@ -16,6 +16,7 @@ export type FormFieldType =
   | 'radio'
   | 'checkbox'
   | 'file'
+  | 'month'
   | 'section';
 
 /**

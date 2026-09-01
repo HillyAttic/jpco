@@ -185,7 +185,7 @@ export function SectionCard({
                   {/* Question Type Menu */}
                   {showAddMenu && (
                     <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-[10001] p-2">
-                      {(['text', 'textarea', 'email', 'phone', 'number', 'date', 'time', 'select', 'radio', 'checkbox', 'multiselect', 'file'] as FormFieldType[]).map((type) => (
+                      {(['text', 'textarea', 'email', 'phone', 'number', 'date', 'time', 'month', 'select', 'radio', 'checkbox', 'multiselect', 'file'] as FormFieldType[]).map((type) => (
                         <button
                           key={type}
                           onClick={(e) => {

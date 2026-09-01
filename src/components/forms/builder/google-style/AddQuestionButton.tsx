@@ -18,6 +18,7 @@ const QUESTION_TYPES: Array<{ type: FormFieldType; label: string }> = [
   { type: 'checkbox', label: 'Checkboxes' },
   { type: 'select', label: 'Dropdown' },
   { type: 'date', label: 'Date' },
+  { type: 'month', label: 'Select Month' },
   { type: 'time', label: 'Time' },
   { type: 'number', label: 'Number' },
   { type: 'email', label: 'Email' },

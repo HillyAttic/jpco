@@ -16,6 +16,7 @@ const FIELD_TYPES: Array<{ type: FormFieldType; label: string }> = [
   { type: 'email', label: 'Email' },
   { type: 'phone', label: 'Phone' },
   { type: 'date', label: 'Date' },
+  { type: 'month', label: 'Select Month' },
   { type: 'time', label: 'Time' },
   { type: 'select', label: 'Dropdown' },
   { type: 'radio', label: 'Multiple choice' },

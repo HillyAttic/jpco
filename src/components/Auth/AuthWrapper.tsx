@@ -23,9 +23,7 @@ const authRoutes = [
 ];
 
 // Routes that should render without header (but keep sidebar)
-const noHeaderRoutes = [
-  '/forms/builder',
-];
+const noHeaderRoutes: string[] = [];
 
 export const AuthWrapper: React.FC<AuthWrapperProps> = ({ children }) => {
   const { user, loading } = useEnhancedAuth();

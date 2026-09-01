@@ -125,6 +125,13 @@ export function generateFormSchema(fields: FormField[]): z.ZodObject<any> {
           );
         break;
 
+      case 'month':
+        fieldSchema = z.string();
+        if (field.required) {
+          fieldSchema = (fieldSchema as z.ZodString).min(1, `${field.label} is required`);
+        }
+        break;
+
       case 'select':
       case 'radio':
         if (field.options && field.options.length > 0) {
