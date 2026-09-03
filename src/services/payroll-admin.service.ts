@@ -277,11 +277,15 @@ export const payrollAdminService = {
         .where('clockIn', '<=', Timestamp.fromDate(monthEnd))
         .get();
 
-      // Fetch approved leave requests (filtered by month in the loop below)
+      // Fetch approved leave requests that overlap with this month.
+      // Use a single range filter at the query level (Firestore allows only
+      // one range inequality per query), then the per-day loop below
+      // further restricts to dates within the target month.
       const leaveSnapshot = await adminDb
         .collection('leave-requests')
         .where('employeeId', '==', employeeId)
         .where('status', '==', 'approved')
+        .where('startDate', '<=', Timestamp.fromDate(monthEnd))
         .get();
 
       // Fetch holidays for the month
