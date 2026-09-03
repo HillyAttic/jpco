@@ -484,6 +484,9 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         slip.salaryBreakup = saved.salaryBreakup;
         slip.doj = saved.doj;
         slip.pan = saved.pan;
+        // Override stale attendanceBreakdown from saved slip with live calculation
+        // (saved slips may have been generated before Sundays were added to holiday count)
+        slip.attendanceBreakdown = employee.calculation.attendanceBreakdown;
       }
     } catch (error) {
       console.error('Failed to check for existing slip:', error);

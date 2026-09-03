@@ -200,22 +200,50 @@ export default function SalarySlipPage() {
     }
   };
 
-  const handleViewSlip = (slip: EmployeeSalary) => {
-    if (!slip.pan || slip.pan.trim() === '') {
+  /**
+   * Fetch live attendance data for a slip and merge it in.
+   * This replaces stale snapshotted attendanceBreakdown (e.g. holiday count
+   * may differ if Sundays were added to the holiday logic after the slip was generated).
+   */
+  const enrichWithFreshAttendance = async (slip: EmployeeSalary): Promise<EmployeeSalary> => {
+    try {
+      const res = await authenticatedFetch('/api/payroll/my-calculation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ month: slip.month, year: slip.year }),
+      });
+      if (res.ok) {
+        const calc = await res.json();
+        if (calc?.attendanceBreakdown) {
+          return { ...slip, attendanceBreakdown: calc.attendanceBreakdown };
+        }
+      }
+    } catch (e) {
+      console.warn('[SalarySlipPage] Could not fetch fresh attendance, using saved data:', e);
+    }
+    return slip;
+  };
+
+  const handleViewSlip = async (slip: EmployeeSalary) => {
+    const enriched = await enrichWithFreshAttendance(slip);
+
+    if (!enriched.pan || enriched.pan.trim() === '') {
       setPendingAction('view');
-      setPendingSlip(slip);
+      setPendingSlip(enriched);
       setPanInput('');
       setPanError('');
       setShowPanDialog(true);
     } else {
-      setSelectedSlip(slip);
+      setSelectedSlip(enriched);
     }
   };
 
   const handleDownloadPDF = async (slip: EmployeeSalary) => {
-    if (!slip.pan || slip.pan.trim() === '') {
+    const enriched = await enrichWithFreshAttendance(slip);
+
+    if (!enriched.pan || enriched.pan.trim() === '') {
       setPendingAction('download');
-      setPendingSlip(slip);
+      setPendingSlip(enriched);
       setPanInput('');
       setPanError('');
       setShowPanDialog(true);
@@ -236,7 +264,7 @@ export default function SalarySlipPage() {
       return;
     }
     try {
-      await generateSalarySlipPDF(slip, currentSettings, template);
+      await generateSalarySlipPDF(enriched, currentSettings, template);
       toast.success('PDF downloaded successfully');
     } catch (error) {
       toast.error('Failed to generate PDF');
