@@ -44,15 +44,16 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 
 // Initialize Firestore with persistent local cache for offline support.
-// Uses the default WebSocket/gRPC transport for fastest real-time performance.
-// The SDK will auto-fallback to long-polling if WebSocket is blocked.
-// NOTE: experimentalForceLongPolling was REMOVED — it was causing extreme
-// slowness on mobile devices by forcing repeated HTTP round-trips instead
-// of maintaining a fast persistent WebSocket connection.
+// Uses the default WebSocket/gRPC transport (fast QUIC) with automatic
+// fallback to long-polling when the QUIC connection is unstable.
+// NOTE: experimentalForceLongPolling was REMOVED — it caused extreme
+// slowness on mobile by forcing repeated HTTP round-trips. The auto-detect
+// variant keeps WebSocket/QUIC when healthy and falls back gracefully.
 export const db = initializeFirestore(app, {
   localCache: persistentLocalCache({
     tabManager: persistentMultipleTabManager(),
   }),
+  experimentalAutoDetectLongPolling: true,
 });
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();

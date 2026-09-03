@@ -769,19 +769,39 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       toast.warn(`${selectedWithoutCalculation.length} employee(s) enabled but missing calculations: ${names}. Their slips will NOT be generated.`);
     }
 
-    if (!confirm(`Generate salary slips for ${selectedEmployees.length} employee(s)?`)) {
+    // Filter out employees who already have a saved slip for this period
+    const employeesWithoutSlips = selectedEmployees.filter(emp => !emp.slipId);
+    const employeesWithExistingSlips = selectedEmployees.filter(emp => emp.slipId);
+
+    if (employeesWithoutSlips.length === 0 && employeesWithExistingSlips.length > 0) {
+      toast.warn('All selected employees already have salary slips for this period. Clean up existing slips first.');
       return;
+    }
+
+    if (employeesWithoutSlips.length === 0) {
+      toast.error('Please enable access for at least one employee without an existing slip');
+      return;
+    }
+
+    if (employeesWithExistingSlips.length > 0) {
+      if (!confirm(`Generate slips for ${employeesWithoutSlips.length} employee(s)? ${employeesWithExistingSlips.length} employee(s) already have slips and will be skipped.`)) {
+        return;
+      }
+    } else {
+      if (!confirm(`Generate salary slips for ${employeesWithoutSlips.length} employee(s)?`)) {
+        return;
+      }
     }
 
     setGenerating(true);
     try {
-      const employeeIds = selectedEmployees.map(emp => emp.id);
+      const employeeIds = employeesWithoutSlips.map(emp => emp.id);
       const accessMap: Record<string, boolean> = {};
       employees.forEach(emp => {
         accessMap[emp.id] = emp.selected;
       });
 
-      console.log('[GenerateSlipsPanel] Generating slips for employeeIds:', employeeIds);
+      console.log('[GenerateSlipsPanel] Generating slips for employeeIds:', employeeIds, `(filtered out ${employeesWithExistingSlips.length} with existing slips)`);
       console.log('[GenerateSlipsPanel] accessMap:', JSON.stringify(accessMap));
 
       const response = await authenticatedFetch('/api/payroll/generate', {
@@ -793,7 +813,15 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       if (response.ok) {
         const data = await response.json();
         const slips = data.slips;
-        toast.success(`Successfully generated ${slips.length} salary slip(s)`);
+
+        if (slips.length === 0 && employeeIds.length > 0) {
+          toast.warn('No new slips generated — slips already exist for this period. Clean up existing slips first.');
+        } else if (slips.length < employeeIds.length) {
+          const skipped = employeeIds.length - slips.length;
+          toast.success(`Generated ${slips.length} slip(s). ${skipped} already existed and were skipped.`);
+        } else {
+          toast.success(`Successfully generated ${slips.length} salary slip(s)`);
+        }
         onGenerationComplete?.();
         setEmployees(prev => prev.map(emp => ({ ...emp, selected: false })));
       } else {
