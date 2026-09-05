@@ -17,12 +17,12 @@ export function FormSettingsPanel({
   onUpdateAccessControl,
 }: FormSettingsPanelProps) {
   return (
-    <div className="bg-white rounded-lg shadow-md p-6 space-y-6">
-      <h3 className="text-lg font-semibold text-gray-900">Form Settings</h3>
+    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 space-y-6">
+      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Form Settings</h3>
 
       {/* Submit Button Text */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Submit Button Text
         </label>
         <input
@@ -31,14 +31,14 @@ export function FormSettingsPanel({
           onChange={(e) =>
             onUpdateSettings({ ...settings, submitButtonText: e.target.value })
           }
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           placeholder="Submit"
         />
       </div>
 
       {/* Success Message */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
           Success Message
         </label>
         <textarea
@@ -47,7 +47,7 @@ export function FormSettingsPanel({
             onUpdateSettings({ ...settings, successMessage: e.target.value })
           }
           rows={3}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
           placeholder="Thank you for your submission!"
         />
       </div>
@@ -66,19 +66,19 @@ export function FormSettingsPanel({
           }
           className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
         />
-        <label htmlFor="allowMultiple" className="ml-2 text-sm text-gray-700">
+        <label htmlFor="allowMultiple" className="ml-2 text-sm text-gray-700 dark:text-gray-300">
           Allow multiple submissions per user
         </label>
       </div>
 
       {/* Access Control */}
-      <div className="pt-6 border-t">
-        <h4 className="text-sm font-semibold text-gray-900 mb-4">Access Control</h4>
+      <div className="pt-6 border-t dark:border-gray-600">
+        <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Access Control</h4>
 
         <div className="space-y-4">
           {/* Access Type */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Who can submit this form?
             </label>
             <select
@@ -89,7 +89,7 @@ export function FormSettingsPanel({
                   type: e.target.value as any,
                 })
               }
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
             >
               <option value="public">Anyone (Public)</option>
               <option value="authenticated">Any logged-in user</option>
@@ -99,9 +99,9 @@ export function FormSettingsPanel({
 
           {/* Restricted Access Options */}
           {accessControl.type === 'restricted' && (
-            <div className="space-y-4 pl-4 border-l-2 border-blue-500">
+            <div className="space-y-4 pl-4 border-l-2 border-blue-500 dark:border-blue-400">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Allowed Roles
                 </label>
                 <div className="space-y-2">
@@ -126,7 +126,7 @@ export function FormSettingsPanel({
                         }}
                         className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
                       />
-                      <span className="ml-2 text-sm text-gray-700 capitalize">
+                      <span className="ml-2 text-sm text-gray-700 dark:text-gray-300 capitalize">
                         {role}
                       </span>
                     </label>
@@ -135,7 +135,7 @@ export function FormSettingsPanel({
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Allowed User IDs
                 </label>
                 <textarea
@@ -150,10 +150,10 @@ export function FormSettingsPanel({
                     })
                   }
                   rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Enter user IDs (one per line)"
                 />
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                   One user ID per line
                 </p>
               </div>

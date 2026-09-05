@@ -15,7 +15,7 @@ export function FieldPreview({ field }: FieldPreviewProps) {
           type="text"
           disabled
           placeholder={field.placeholder || 'Short answer text'}
-          className="w-full px-0 py-2 text-sm border-b border-gray-300 bg-transparent text-gray-400 placeholder-gray-400 disabled:cursor-default"
+          className="w-full px-0 py-2 text-sm border-b border-gray-300 dark:border-gray-600 bg-transparent text-gray-400 dark:text-gray-500 placeholder-gray-400 dark:placeholder-gray-500 disabled:cursor-default"
         />
       );
 
@@ -24,7 +24,7 @@ export function FieldPreview({ field }: FieldPreviewProps) {
         <textarea
           disabled
           placeholder={field.placeholder || 'Long answer text'}
-          className="w-full px-0 py-2 text-sm border-b border-gray-300 bg-transparent text-gray-400 placeholder-gray-400 disabled:cursor-default resize-none"
+          className="w-full px-0 py-2 text-sm border-b border-gray-300 dark:border-gray-600 bg-transparent text-gray-400 dark:text-gray-500 placeholder-gray-400 dark:placeholder-gray-500 disabled:cursor-default resize-none"
           rows={3}
         />
       );
@@ -35,7 +35,7 @@ export function FieldPreview({ field }: FieldPreviewProps) {
           type="number"
           disabled
           placeholder={field.placeholder || '0'}
-          className="w-full px-0 py-2 text-sm border-b border-gray-300 bg-transparent text-gray-400 placeholder-gray-400 disabled:cursor-default"
+          className="w-full px-0 py-2 text-sm border-b border-gray-300 dark:border-gray-600 bg-transparent text-gray-400 dark:text-gray-500 placeholder-gray-400 dark:placeholder-gray-500 disabled:cursor-default"
         />
       );
 
@@ -45,7 +45,7 @@ export function FieldPreview({ field }: FieldPreviewProps) {
           type="email"
           disabled
           placeholder={field.placeholder || 'your@email.com'}
-          className="w-full px-0 py-2 text-sm border-b border-gray-300 bg-transparent text-gray-400 placeholder-gray-400 disabled:cursor-default"
+          className="w-full px-0 py-2 text-sm border-b border-gray-300 dark:border-gray-600 bg-transparent text-gray-400 dark:text-gray-500 placeholder-gray-400 dark:placeholder-gray-500 disabled:cursor-default"
         />
       );
 
@@ -55,7 +55,7 @@ export function FieldPreview({ field }: FieldPreviewProps) {
           type="tel"
           disabled
           placeholder={field.placeholder || '+1 (555) 000-0000'}
-          className="w-full px-0 py-2 text-sm border-b border-gray-300 bg-transparent text-gray-400 placeholder-gray-400 disabled:cursor-default"
+          className="w-full px-0 py-2 text-sm border-b border-gray-300 dark:border-gray-600 bg-transparent text-gray-400 dark:text-gray-500 placeholder-gray-400 dark:placeholder-gray-500 disabled:cursor-default"
         />
       );
 
@@ -81,7 +81,7 @@ export function FieldPreview({ field }: FieldPreviewProps) {
       return (
         <select
           disabled
-          className="w-full px-0 py-2 text-sm border-b border-gray-300 bg-transparent text-gray-400 disabled:cursor-default appearance-none"
+          className="w-full px-0 py-2 text-sm border-b border-gray-300 dark:border-gray-600 bg-transparent text-gray-400 dark:text-gray-500 disabled:cursor-default appearance-none"
         >
           <option>Select month</option>
           {['January','February','March','April','May','June','July','August','September','October','November','December'].map((m) => (
@@ -94,7 +94,7 @@ export function FieldPreview({ field }: FieldPreviewProps) {
       return (
         <select
           disabled
-          className="w-full px-0 py-2 text-sm border-b border-gray-300 bg-transparent text-gray-400 disabled:cursor-default appearance-none"
+          className="w-full px-0 py-2 text-sm border-b border-gray-300 dark:border-gray-600 bg-transparent text-gray-400 dark:text-gray-500 disabled:cursor-default appearance-none"
         >
           <option>Choose an option</option>
           {(field.options || []).map((opt, idx) => (
@@ -109,7 +109,7 @@ export function FieldPreview({ field }: FieldPreviewProps) {
       return (
         <div className="space-y-2">
           {(field.options || []).map((opt, idx) => (
-            <label key={idx} className="flex items-center space-x-2 text-sm text-gray-400">
+            <label key={idx} className="flex items-center space-x-2 text-sm text-gray-400 dark:text-gray-500">
               <input type="radio" disabled className="w-4 h-4" />
               <span>{typeof opt === 'string' ? opt : opt.label || opt.value}</span>
             </label>
@@ -121,7 +121,7 @@ export function FieldPreview({ field }: FieldPreviewProps) {
       return (
         <div className="space-y-2">
           {(field.options || []).map((opt, idx) => (
-            <label key={idx} className="flex items-center space-x-2 text-sm text-gray-400">
+            <label key={idx} className="flex items-center space-x-2 text-sm text-gray-400 dark:text-gray-500">
               <input type="checkbox" disabled className="w-4 h-4" />
               <span>{typeof opt === 'string' ? opt : opt.label || opt.value}</span>
             </label>
@@ -149,13 +149,13 @@ export function FieldPreview({ field }: FieldPreviewProps) {
         <input
           type="file"
           disabled
-          className="w-full px-0 py-2 text-sm text-gray-400 disabled:cursor-default"
+          className="w-full px-0 py-2 text-sm text-gray-400 dark:text-gray-500 disabled:cursor-default"
         />
       );
 
     case 'section':
       return (
-        <div className="text-sm text-gray-500 italic">
+        <div className="text-sm text-gray-500 dark:text-gray-400 italic">
           {field.description || 'Section description'}
         </div>
       );

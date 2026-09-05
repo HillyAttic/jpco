@@ -45,11 +45,11 @@ export function OptionsEditor({
   };
 
   return (
-    <div className="space-y-3 mt-4 pt-4 border-t border-gray-100">
+    <div className="space-y-3 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
       {options.map((option, idx) => (
         <div key={idx} className="flex items-center space-x-3">
           {/* Option indicator */}
-          <span className="text-gray-400 flex-shrink-0 text-sm font-medium">
+          <span className="text-gray-400 dark:text-gray-500 flex-shrink-0 text-sm font-medium">
             {getIndicator()}
           </span>
 
@@ -59,9 +59,10 @@ export function OptionsEditor({
             value={typeof option === 'string' ? option : option.label || option.value}
             onChange={(e) => updateOption(idx, e.target.value)}
             className="
-              flex-1 px-2 py-1 text-sm border-b border-gray-200
+              flex-1 px-2 py-1 text-sm border-b border-gray-200 dark:border-gray-600
               focus:border-purple-600 focus:outline-none
-              placeholder-gray-400
+              placeholder-gray-400 dark:placeholder-gray-500
+              bg-transparent text-gray-900 dark:text-white
             "
             placeholder={`Option ${idx + 1}`}
           />
@@ -70,7 +71,7 @@ export function OptionsEditor({
           <button
             onClick={() => removeOption(idx)}
             className="
-              text-gray-400 hover:text-red-600 flex-shrink-0
+              text-gray-400 dark:text-gray-500 hover:text-red-600 dark:hover:text-red-400 flex-shrink-0
               transition-colors p-1
             "
             title="Remove option"
@@ -84,7 +85,7 @@ export function OptionsEditor({
       <button
         onClick={addOption}
         className="
-          text-sm text-purple-600 hover:text-purple-700
+          text-sm text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300
           flex items-center space-x-1 mt-2 transition-colors
         "
       >

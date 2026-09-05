@@ -82,7 +82,7 @@ export function TaskDistributionChart({
 
           {/* Legend */}
           <div className="w-full space-y-2">
-            <div className="flex items-center justify-between p-2 bg-green-50 rounded">
+            <div className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-900/30 rounded">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Completed</span>
@@ -92,7 +92,7 @@ export function TaskDistributionChart({
               </span>
             </div>
             
-            <div className="flex items-center justify-between p-2 bg-orange-50 rounded">
+            <div className="flex items-center justify-between p-2 bg-orange-50 dark:bg-orange-900/30 rounded">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-orange-500"></div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">In Progress</span>
@@ -102,7 +102,7 @@ export function TaskDistributionChart({
               </span>
             </div>
             
-            <div className="flex items-center justify-between p-2 bg-red-50 rounded">
+            <div className="flex items-center justify-between p-2 bg-red-50 dark:bg-red-900/30 rounded">
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-red-500"></div>
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">To Do</span>

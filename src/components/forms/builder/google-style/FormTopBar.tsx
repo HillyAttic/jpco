@@ -12,7 +12,6 @@ interface FormTopBarProps {
   onPreviewClick: () => void;
   onPublishClick?: () => void;
   onClose: () => void;
-  onToggleStyle?: () => void;
 }
 
 export function FormTopBar({
@@ -24,7 +23,6 @@ export function FormTopBar({
   onPreviewClick,
   onPublishClick,
   onClose,
-  onToggleStyle,
 }: FormTopBarProps) {
   const formatLastSaved = (date: Date | null) => {
     if (!date) return 'Saving...';
@@ -38,12 +36,12 @@ export function FormTopBar({
   };
 
   return (
-    <div className="bg-white shadow-sm sticky top-0 z-30">
+    <div className="bg-white dark:bg-gray-800 shadow-sm sticky top-0 z-30">
       <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2">
         {/* Back Button */}
         <button
           onClick={onClose}
-          className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors flex-shrink-0"
+          className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors flex-shrink-0"
           title="Back to forms"
         >
           <ArrowLeft size={20} />
@@ -59,11 +57,11 @@ export function FormTopBar({
             <rect x="15" y="32" width="10" height="2" rx="1" fill="white"/>
           </svg>
           <div className="flex flex-col min-w-0">
-            <div className="font-medium text-gray-800 text-sm sm:text-base leading-tight truncate">
+            <div className="font-medium text-gray-800 dark:text-white text-sm sm:text-base leading-tight truncate">
               {title || 'Untitled form'}
             </div>
             <div className="flex items-center gap-1 mt-0.5">
-              <span className="text-xs text-gray-400 truncate">
+              <span className="text-xs text-gray-400 dark:text-gray-500 truncate">
                 {isSaving ? 'Saving...' : `Saved ${formatLastSaved(lastSaved)}`}
               </span>
             </div>
@@ -76,7 +74,7 @@ export function FormTopBar({
         <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
           <button
             onClick={onPreviewClick}
-            className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
             title="Preview"
           >
             <Eye size={18} />
@@ -84,21 +82,11 @@ export function FormTopBar({
 
           <button
             onClick={onSettingsClick}
-            className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+            className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
             title="Settings"
           >
             <Settings size={18} />
           </button>
-
-          {onToggleStyle && (
-            <button
-              onClick={onToggleStyle}
-              className="px-2.5 sm:px-4 py-2 rounded-lg font-medium text-xs sm:text-sm transition-colors border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 whitespace-nowrap"
-              title="Switch to classic builder"
-            >
-              Classic Style
-            </button>
-          )}
 
           {onPublishClick && (
             <button

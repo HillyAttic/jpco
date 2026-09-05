@@ -90,10 +90,10 @@ export function SectionCard({
       ref={setNodeRef}
       style={style}
       className={`
-        bg-white rounded-lg border transition-all duration-150
+        bg-white dark:bg-gray-800 rounded-lg border transition-all duration-150
         ${isSelected
-          ? 'border-blue-400 shadow-md border-l-4 border-l-[#673ab7]'
-          : 'border-gray-200 hover:border-gray-300 shadow-sm'
+          ? 'border-blue-400 dark:border-blue-500 shadow-md border-l-4 border-l-[#673ab7]'
+          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm'
         }
         ${isDragging ? 'opacity-50' : ''}
       `}
@@ -102,7 +102,7 @@ export function SectionCard({
       <div
         {...attributes}
         {...listeners}
-        className="flex justify-center py-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing"
+        className="flex justify-center py-1 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 cursor-grab active:cursor-grabbing"
       >
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <circle cx="7" cy="8" r="1.5" />
@@ -118,7 +118,7 @@ export function SectionCard({
               e.stopPropagation();
               setIsExpanded(!isExpanded);
             }}
-            className="mt-1 text-gray-400 hover:text-gray-600 flex-shrink-0"
+            className="mt-1 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 flex-shrink-0"
           >
             <ChevronDown
               size={20}
@@ -133,10 +133,10 @@ export function SectionCard({
               onChange={(e) => onUpdate({ label: e.target.value })}
               onClick={(e) => e.stopPropagation()}
               placeholder="Section title"
-              className="flex-1 text-lg font-semibold border-b-2 border-blue-500 focus:outline-none bg-transparent py-1"
+              className="flex-1 text-lg font-semibold border-b-2 border-blue-500 focus:outline-none bg-transparent py-1 text-gray-900 dark:text-white"
             />
           ) : (
-            <span className="flex-1 text-lg font-semibold text-gray-800">
+            <span className="flex-1 text-lg font-semibold text-gray-800 dark:text-white">
               {field.label || 'Section title'}
             </span>
           )}
@@ -150,21 +150,21 @@ export function SectionCard({
             onChange={(e) => onUpdate({ description: e.target.value })}
             onClick={(e) => e.stopPropagation()}
             placeholder="Section description (optional)"
-            className="mt-2 w-full border-b border-gray-300 focus:border-blue-500 outline-none text-sm py-0.5 bg-transparent text-gray-500"
+            className="mt-2 w-full border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 outline-none text-sm py-0.5 bg-transparent text-gray-500 dark:text-gray-400"
           />
         )}
         {!isSelected && field.description && (
-          <p className="text-sm text-gray-500 mt-1">{field.description}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">{field.description}</p>
         )}
 
         {/* Divider */}
-        <div className="h-px bg-gray-200 w-full my-3" />
+        <div className="h-px bg-gray-200 dark:bg-gray-600 w-full my-3" />
 
         {/* Nested Questions */}
         {isExpanded && (
           <div className="space-y-3 ml-2">
             {nestedFields.length === 0 ? (
-              <div className="text-center py-6 text-gray-400">
+              <div className="text-center py-6 text-gray-400 dark:text-gray-500">
                 <p className="text-sm">No questions in this section yet</p>
               </div>
             ) : (
@@ -207,7 +207,7 @@ export function SectionCard({
                       e.stopPropagation();
                       setShowAddMenu(!showAddMenu);
                     }}
-                    className="w-full py-2 px-3 rounded border-2 border-dashed border-gray-300 hover:border-[#673ab7] text-gray-600 hover:text-[#673ab7] transition-colors flex items-center justify-center gap-2 text-sm font-medium"
+                    className="w-full py-2 px-3 rounded border-2 border-dashed border-gray-300 dark:border-gray-600 hover:border-[#673ab7] text-gray-600 dark:text-gray-400 hover:text-[#673ab7] transition-colors flex items-center justify-center gap-2 text-sm font-medium"
                   >
                     <Plus size={18} />
                     Add question to section
@@ -215,7 +215,7 @@ export function SectionCard({
 
                   {/* Question Type Menu */}
                   {showAddMenu && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-lg shadow-xl z-[10001] p-2">
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-[10001] p-2">
                       {(['text', 'textarea', 'email', 'phone', 'number', 'date', 'time', 'month', 'select', 'radio', 'checkbox', 'multiselect', 'file'] as FormFieldType[]).map((type) => (
                         <button
                           key={type}
@@ -224,7 +224,7 @@ export function SectionCard({
                             onAddNestedField(field.id, type);
                             setShowAddMenu(false);
                           }}
-                          className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm text-gray-700 capitalize"
+                          className="w-full text-left px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded text-sm text-gray-700 dark:text-gray-300 capitalize"
                         >
                           {type}
                         </button>
@@ -247,13 +247,13 @@ export function SectionCard({
 
         {/* Footer Actions - only show when selected */}
         {isSelected && (
-          <div className="flex items-center justify-end gap-1 mt-5 pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-end gap-1 mt-5 pt-3 border-t border-gray-100 dark:border-gray-700">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onDuplicate();
               }}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
               title="Duplicate"
             >
               <Copy size={20} />
@@ -263,7 +263,7 @@ export function SectionCard({
                 e.stopPropagation();
                 handleDelete();
               }}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
               title="Delete"
             >
               <Trash2 size={20} />

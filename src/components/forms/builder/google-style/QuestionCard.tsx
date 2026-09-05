@@ -56,10 +56,10 @@ export function QuestionCard({
       ref={setNodeRef}
       style={style}
       className={`
-        bg-white rounded-lg border transition-all duration-150 cursor-pointer
+        bg-white dark:bg-gray-800 rounded-lg border transition-all duration-150 cursor-pointer
         ${isSelected
-          ? 'border-blue-400 shadow-md border-l-4 border-l-[#673ab7]'
-          : 'border-gray-200 hover:border-gray-300 shadow-sm'
+          ? 'border-blue-400 dark:border-blue-500 shadow-md border-l-4 border-l-[#673ab7]'
+          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600 shadow-sm'
         }
         ${isDragging ? 'opacity-50' : ''}
       `}
@@ -69,7 +69,7 @@ export function QuestionCard({
       <div
         {...attributes}
         {...listeners}
-        className="flex justify-center py-1 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing"
+        className="flex justify-center py-1 text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-400 cursor-grab active:cursor-grabbing"
       >
         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
           <circle cx="7" cy="8" r="1.5" />
@@ -91,7 +91,7 @@ export function QuestionCard({
                 className="flex-1 text-base font-medium border-b-2 border-blue-500 focus:outline-none bg-transparent py-1"
               />
             ) : (
-              <span className="flex-1 text-base font-medium text-gray-800">
+              <span className="flex-1 text-base font-medium text-gray-800 dark:text-white">
                 {field.label || 'Section title'}
               </span>
             )
@@ -102,10 +102,10 @@ export function QuestionCard({
               onChange={(e) => onUpdate({ label: e.target.value })}
               onClick={(e) => e.stopPropagation()}
               placeholder="Question"
-              className="flex-1 text-base bg-gray-50 border-0 border-b-2 border-blue-400 focus:outline-none px-3 py-2 rounded-t"
+              className="flex-1 text-base bg-gray-50 dark:bg-gray-700 border-0 border-b-2 border-blue-400 focus:outline-none px-3 py-2 rounded-t text-gray-900 dark:text-white"
             />
           ) : (
-            <span className="flex-1 text-sm font-medium text-gray-800 py-1">
+            <span className="flex-1 text-sm font-medium text-gray-800 dark:text-white py-1">
               {field.label || 'Question'}
               {field.required && <span className="text-red-500 ml-1">*</span>}
             </span>
@@ -129,11 +129,11 @@ export function QuestionCard({
             onChange={(e) => onUpdate({ helpText: e.target.value })}
             onClick={(e) => e.stopPropagation()}
             placeholder="Description (optional)"
-            className="w-full text-sm text-gray-500 border-0 border-b border-gray-200 focus:border-blue-400 focus:outline-none py-1 mt-2 bg-transparent"
+            className="w-full text-sm text-gray-500 dark:text-gray-400 border-0 border-b border-gray-200 dark:border-gray-600 focus:border-blue-400 focus:outline-none py-1 mt-2 bg-transparent"
           />
         )}
         {!isSelected && field.helpText && (
-          <p className="text-sm text-gray-500 mt-0.5">{field.helpText}</p>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">{field.helpText}</p>
         )}
 
         {/* Answer Area */}
@@ -157,7 +157,7 @@ export function QuestionCard({
         {/* Section-specific content */}
         {field.type === 'section' && (
           <div className="mt-2">
-            <div className="h-px bg-gray-300 w-full" />
+            <div className="h-px bg-gray-300 dark:bg-gray-600 w-full" />
             {isSelected && (
               <input
                 type="text"
@@ -165,7 +165,7 @@ export function QuestionCard({
                 onChange={(e) => onUpdate({ description: e.target.value })}
                 onClick={(e) => e.stopPropagation()}
                 placeholder="Section description (optional)"
-                className="mt-2 w-full border-b border-gray-300 focus:border-blue-500 outline-none text-sm py-0.5 bg-transparent text-gray-500"
+                className="mt-2 w-full border-b border-gray-300 dark:border-gray-600 focus:border-blue-500 outline-none text-sm py-0.5 bg-transparent text-gray-500 dark:text-gray-400"
               />
             )}
           </div>
@@ -173,13 +173,13 @@ export function QuestionCard({
 
         {/* Footer Actions - only show when selected */}
         {isSelected && (
-          <div className="flex items-center justify-end gap-1 mt-5 pt-3 border-t border-gray-100">
+          <div className="flex items-center justify-end gap-1 mt-5 pt-3 border-t border-gray-100 dark:border-gray-700">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onDuplicate();
               }}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
               title="Duplicate"
             >
               <Copy size={20} />
@@ -189,13 +189,13 @@ export function QuestionCard({
                 e.stopPropagation();
                 handleDelete();
               }}
-              className="p-2 rounded-full hover:bg-gray-100 text-gray-600 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-600 dark:text-gray-400 transition-colors"
               title="Delete"
             >
               <Trash2 size={20} />
             </button>
-            <div className="w-px h-6 bg-gray-200 mx-1" />
-            <span className="text-sm text-gray-600">Required</span>
+            <div className="w-px h-6 bg-gray-200 dark:bg-gray-600 mx-1" />
+            <span className="text-sm text-gray-600 dark:text-gray-400">Required</span>
             <button
               onClick={(e) => {
                 e.stopPropagation();

@@ -21,7 +21,6 @@ interface GoogleFormsBuilderProps {
   onPublish?: (form: FormTemplate) => Promise<void>;
   onClose: () => void;
   onPreview: () => void;
-  onToggleStyle?: () => void;
 }
 
 type Tab = 'questions' | 'responses' | 'settings';
@@ -32,7 +31,6 @@ export function GoogleFormsBuilder({
   onPublish,
   onClose,
   onPreview,
-  onToggleStyle,
 }: GoogleFormsBuilderProps) {
   const [formData, setFormData] = useState<FormTemplate>(form);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
@@ -316,7 +314,7 @@ export function GoogleFormsBuilder({
   }, [formData, onPublish]);
 
   return (
-    <div className="min-h-screen bg-[#f0ebf8] flex flex-col">
+    <div className="min-h-screen bg-[#f0ebf8] dark:bg-gray-900 flex flex-col">
       {/* Top Navigation */}
       <FormTopBar
         title={formData.title}
@@ -327,11 +325,10 @@ export function GoogleFormsBuilder({
         onPreviewClick={onPreview}
         onPublishClick={onPublish ? handlePublish : undefined}
         onClose={onClose}
-        onToggleStyle={onToggleStyle}
       />
 
       {/* Tab Bar */}
-      <div className="bg-white border-b border-gray-100 sticky top-16 z-20">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-100 dark:border-gray-700 sticky top-16 z-20">
         <div className="max-w-3xl mx-auto px-4">
           <div className="flex gap-0">
             {(['questions', 'responses', 'settings'] as Tab[]).map((tab) => (
@@ -341,7 +338,7 @@ export function GoogleFormsBuilder({
                 className={`px-6 py-3 text-sm font-medium capitalize border-b-2 transition-colors ${
                   activeTab === tab
                     ? 'border-[#673ab7] text-[#673ab7]'
-                    : 'border-transparent text-gray-600 hover:text-gray-800'
+                    : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200'
                 }`}
               >
                 {tab === 'responses' ? `Responses (${responseCount})` : tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -427,11 +424,11 @@ export function GoogleFormsBuilder({
         )}
 
         {activeTab === 'settings' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
             <div className="px-6 py-6 space-y-6">
               {/* Submit Button Text */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Submit button text
                 </label>
                 <input
@@ -441,14 +438,14 @@ export function GoogleFormsBuilder({
                     ...prev,
                     settings: { ...prev.settings, submitButtonText: e.target.value }
                   }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Submit"
                 />
               </div>
 
               {/* Success Message */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Success message
                 </label>
                 <textarea
@@ -457,7 +454,7 @@ export function GoogleFormsBuilder({
                     ...prev,
                     settings: { ...prev.settings, successMessage: e.target.value }
                   }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm resize-none"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm resize-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                   placeholder="Thank you for your response"
                   rows={3}
                 />
@@ -475,21 +472,21 @@ export function GoogleFormsBuilder({
                   }))}
                   className="w-4 h-4 text-purple-600 rounded focus:ring-purple-500"
                 />
-                <label htmlFor="allowMultiple" className="text-sm font-medium text-gray-700">
+                <label htmlFor="allowMultiple" className="text-sm font-medium text-gray-700 dark:text-gray-300">
                   Allow multiple submissions
                 </label>
               </div>
 
               {/* Divider */}
-              <div className="border-t border-gray-200" />
+              <div className="border-t border-gray-200 dark:border-gray-600" />
 
               {/* Access Control */}
               <div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Access control</h3>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Access control</h3>
 
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Who can access this form?
                     </label>
                     <select
@@ -498,7 +495,7 @@ export function GoogleFormsBuilder({
                         ...prev,
                         accessControl: { ...prev.accessControl, type: e.target.value as any }
                       }))}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     >
                       <option value="public">Public</option>
                       <option value="authenticated">Authenticated users only</option>

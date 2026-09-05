@@ -44,7 +44,7 @@ export function FormPreview({ template, onClose }: FormPreviewProps) {
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        className="bg-white dark:bg-gray-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -69,7 +69,7 @@ export function FormPreview({ template, onClose }: FormPreviewProps) {
 
         {/* Preview Content */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-140px)] custom-scrollbar">
-          <div className="bg-gradient-to-br from-gray-50 to-blue-50 rounded-xl p-8 border border-gray-200">
+          <div className="bg-gradient-to-br from-gray-50 to-blue-50 dark:from-gray-700 dark:to-gray-600 rounded-xl p-8 border border-gray-200 dark:border-gray-600">
             <FormRenderer
               template={template}
               onSuccess={() => {
@@ -83,9 +83,9 @@ export function FormPreview({ template, onClose }: FormPreviewProps) {
         </div>
 
         {/* Footer */}
-        <div className="sticky bottom-0 bg-gradient-to-r from-gray-50 to-blue-50 border-t border-gray-200 px-6 py-4 shadow-inner">
-          <div className="flex items-center justify-center space-x-2 text-sm text-gray-600">
-            <svg className="w-5 h-5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="sticky bottom-0 bg-gradient-to-r from-gray-50 to-blue-50 dark:from-gray-700 dark:to-gray-600 border-t border-gray-200 dark:border-gray-600 px-6 py-4 shadow-inner">
+          <div className="flex items-center justify-center space-x-2 text-sm text-gray-600 dark:text-gray-300">
+            <svg className="w-5 h-5 text-blue-500 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="font-medium">This is a preview. Form submissions are disabled in preview mode.</span>

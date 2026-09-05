@@ -164,17 +164,17 @@ function SortableFieldItem({
           onClick={onClick}
           className={`relative overflow-hidden border-2 border-dashed rounded-lg transition-all cursor-pointer ${
             isSelected
-              ? 'bg-slate-50 border-slate-400 shadow-lg'
-              : 'bg-slate-50/50 border-slate-300 hover:border-slate-400 hover:shadow-md'
+              ? 'bg-slate-50 dark:bg-slate-800 border-slate-400 dark:border-slate-500 shadow-lg'
+              : 'bg-slate-50/50 dark:bg-slate-800/50 border-slate-300 dark:border-slate-600 hover:border-slate-400 dark:hover:border-slate-500 hover:shadow-md'
           }`}
         >
           {/* Drag Handle */}
           <div
             {...attributes}
             {...listeners}
-            className="hidden sm:flex absolute left-0 top-0 bottom-0 w-10 items-center justify-center cursor-grab active:cursor-grabbing border-r border-slate-300 transition-colors hover:bg-slate-100"
+            className="hidden sm:flex absolute left-0 top-0 bottom-0 w-10 items-center justify-center cursor-grab active:cursor-grabbing border-r border-slate-300 dark:border-slate-600 transition-colors hover:bg-slate-100 dark:hover:bg-slate-700"
           >
-            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <svg className="w-4 h-4 text-slate-400 dark:text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
             </svg>
           </div>
@@ -186,19 +186,19 @@ function SortableFieldItem({
                   <div className="flex-shrink-0 w-8 h-8 rounded-md bg-indigo-600 flex items-center justify-center text-white shadow-sm">
                     {getFieldIcon(field.type)}
                   </div>
-                  <span className={`font-bold text-base ${isSelected ? 'text-indigo-700' : 'text-gray-900'}`}>
+                  <span className={`font-bold text-base ${isSelected ? 'text-indigo-700 dark:text-indigo-400' : 'text-gray-900 dark:text-white'}`}>
                     {field.label}
                   </span>
                 </div>
 
                 {field.description && (
-                  <p className={`text-sm mt-2 ${isSelected ? 'text-gray-600' : 'text-gray-500'}`}>
+                  <p className={`text-sm mt-2 ${isSelected ? 'text-gray-600 dark:text-gray-400' : 'text-gray-500 dark:text-gray-400'}`}>
                     {field.description}
                   </p>
                 )}
 
                 <div className="flex items-center space-x-2 mt-2">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 text-indigo-700 border border-indigo-200">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-700">
                     Section Header
                   </span>
                 </div>
@@ -222,7 +222,7 @@ function SortableFieldItem({
           <div
             ref={setSectionDropRef}
             className={`px-4 pb-4 min-h-[100px] transition-all ${
-              isSectionOver ? 'bg-indigo-100/50 border-t-2 border-indigo-400' : 'border-t border-slate-200'
+              isSectionOver ? 'bg-indigo-100/50 dark:bg-indigo-900/20 border-t-2 border-indigo-400 dark:border-indigo-500' : 'border-t border-slate-200 dark:border-slate-600'
             }`}
           >
             {field.fields && field.fields.length > 0 ? (
@@ -261,11 +261,11 @@ function SortableFieldItem({
               </SortableContext>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center">
-                <svg className="w-12 h-12 text-slate-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="w-12 h-12 text-slate-300 dark:text-slate-600 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                <p className="text-sm text-slate-500 font-medium">Drop fields here</p>
-                <p className="text-xs text-slate-400 mt-1">Drag fields from the palette into this section</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Drop fields here</p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">Drag fields from the palette into this section</p>
               </div>
             )}
           </div>
@@ -291,19 +291,19 @@ function SortableFieldItem({
           }
           onClick(e);
         }}
-        className={`relative overflow-hidden border border-gray-200 rounded-lg transition-all cursor-pointer ${
+        className={`relative overflow-hidden border border-gray-200 dark:border-gray-600 rounded-lg transition-all cursor-pointer ${
           isSelected
-            ? 'bg-indigo-50 border-indigo-300 shadow-lg'
-            : 'bg-white hover:border-gray-300 hover:shadow-md'
+            ? 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-300 dark:border-indigo-600 shadow-lg'
+            : 'bg-white dark:bg-gray-800 hover:border-gray-300 dark:hover:border-gray-500 hover:shadow-md'
         }`}
       >
         {/* Drag Handle */}
         <div
           {...attributes}
           {...listeners}
-          className="hidden sm:flex absolute left-0 top-0 bottom-0 w-10 items-center justify-center cursor-grab active:cursor-grabbing border-r border-gray-200 transition-colors hover:bg-gray-50"
+          className="hidden sm:flex absolute left-0 top-0 bottom-0 w-10 items-center justify-center cursor-grab active:cursor-grabbing border-r border-gray-200 dark:border-gray-600 transition-colors hover:bg-gray-50 dark:hover:bg-gray-700"
         >
-          <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <svg className="w-4 h-4 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M4 8h16M4 16h16" />
           </svg>
         </div>
@@ -318,7 +318,7 @@ function SortableFieldItem({
                 >
                   {getFieldIcon(field.type)}
                 </div>
-                <span className={`font-semibold text-sm leading-tight break-words ${isSelected ? 'text-indigo-700' : 'text-gray-900'}`}>
+                <span className={`font-semibold text-sm leading-tight break-words ${isSelected ? 'text-indigo-700 dark:text-indigo-400' : 'text-gray-900 dark:text-white'}`}>
                   {field.label}
                 </span>
                 {field.required && (
@@ -327,19 +327,19 @@ function SortableFieldItem({
               </div>
 
               <div className="flex items-center flex-wrap gap-2 mt-2">
-                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700 border border-blue-200">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-700">
                   {field.type}
                 </span>
                 {field.validation?.min !== undefined && (
-                  <span className="text-xs text-gray-500">Min: {field.validation.min}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Min: {field.validation.min}</span>
                 )}
                 {field.validation?.max !== undefined && (
-                  <span className="text-xs text-gray-500">Max: {field.validation.max}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">Max: {field.validation.max}</span>
                 )}
               </div>
 
               {field.helpText && (
-                <p className={`text-xs sm:text-sm mt-2 line-clamp-2 ${isSelected ? 'text-gray-700' : 'text-gray-500'}`}>
+                <p className={`text-xs sm:text-sm mt-2 line-clamp-2 ${isSelected ? 'text-gray-700 dark:text-gray-300' : 'text-gray-500 dark:text-gray-400'}`}>
                   {field.helpText}
                 </p>
               )}
@@ -480,7 +480,7 @@ export function FormBuilderCanvas({
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm"
+          className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl overflow-hidden shadow-sm"
         >
           <div className="bg-indigo-500 px-4 sm:px-6 py-3 sm:py-4 border-b border-indigo-600">
             <h3 className="text-lg sm:text-xl font-semibold text-white flex items-center">
@@ -497,7 +497,7 @@ export function FormBuilderCanvas({
           <div
             ref={setCanvasRef}
             className={`p-4 sm:p-6 min-h-[500px] transition-all ${
-              isOver ? 'bg-indigo-50/50' : 'bg-gray-50/30'
+              isOver ? 'bg-indigo-50/50 dark:bg-indigo-900/10' : 'bg-gray-50/30 dark:bg-gray-900/30'
             }`}
           >
             {sortedFields.length === 0 ? (
@@ -507,18 +507,18 @@ export function FormBuilderCanvas({
                 className="flex flex-col items-center justify-center h-[400px] text-center"
               >
                 <motion.div
-                  className="w-24 h-24 bg-indigo-100 rounded-2xl flex items-center justify-center mb-6 border border-indigo-200"
+                  className="w-24 h-24 bg-indigo-100 dark:bg-indigo-900/30 rounded-2xl flex items-center justify-center mb-6 border border-indigo-200 dark:border-indigo-700"
                   animate={{ y: [0, -8, 0] }}
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 >
-                  <svg className="w-12 h-12 text-indigo-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <svg className="w-12 h-12 text-indigo-400 dark:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </motion.div>
-                <h4 className="text-2xl font-semibold text-gray-900 mb-2">
+                <h4 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
                   Drop fields here
                 </h4>
-                <p className="text-gray-500 max-w-sm">
+                <p className="text-gray-500 dark:text-gray-400 max-w-sm">
                   Drag components from the palette to build your form
                 </p>
               </motion.div>
@@ -576,15 +576,15 @@ export function FormBuilderCanvas({
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: 20 }}
-              className="bg-white border border-gray-200 rounded-xl p-8 text-center shadow-sm"
+              className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-8 text-center shadow-sm"
             >
-              <div className="w-20 h-20 bg-gray-100 rounded-xl flex items-center justify-center mx-auto mb-4 border border-gray-300">
-                <svg className="w-10 h-10 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="w-20 h-20 bg-gray-100 dark:bg-gray-700 rounded-xl flex items-center justify-center mx-auto mb-4 border border-gray-300 dark:border-gray-600">
+                <svg className="w-10 h-10 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
               </div>
-              <p className="text-gray-900 font-semibold text-lg mb-1">No selection</p>
-              <p className="text-gray-500 text-sm">Click a field to edit its properties</p>
+              <p className="text-gray-900 dark:text-white font-semibold text-lg mb-1">No selection</p>
+              <p className="text-gray-500 dark:text-gray-400 text-sm">Click a field to edit its properties</p>
             </motion.div>
           )}
         </AnimatePresence>

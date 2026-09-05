@@ -17,7 +17,7 @@ export function FormHeaderCard({
 }: FormHeaderCardProps) {
   return (
     <div
-      className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200"
+      className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden border border-gray-200 dark:border-gray-700"
       style={{ borderTop: '10px solid #673ab7' }}
     >
       <div className="p-6">
@@ -27,7 +27,7 @@ export function FormHeaderCard({
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Form title"
-          className="w-full text-3xl font-medium text-gray-800 border-b-2 border-transparent focus:border-blue-400 outline-none pb-1 bg-transparent"
+          className="w-full text-3xl font-medium text-gray-800 dark:text-white border-b-2 border-transparent focus:border-blue-400 outline-none pb-1 bg-transparent"
         />
 
         {/* Description */}
@@ -36,7 +36,7 @@ export function FormHeaderCard({
           value={description}
           onChange={(e) => onDescriptionChange(e.target.value)}
           placeholder="Form description"
-          className="w-full text-sm text-gray-600 mt-3 border-b border-transparent focus:border-blue-400 outline-none pb-1 bg-transparent"
+          className="w-full text-sm text-gray-600 dark:text-gray-400 mt-3 border-b border-transparent focus:border-blue-400 outline-none pb-1 bg-transparent"
         />
       </div>
     </div>
