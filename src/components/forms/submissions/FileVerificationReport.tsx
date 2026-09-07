@@ -709,6 +709,25 @@ export function FileVerificationReport({
                                 </div>
                               </div>
 
+                              {/* Extra fields (like Month) - shown first to match form order */}
+                              {extraFields.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  {extraFields.map((ef) => (
+                                    <div
+                                      key={ef.fieldId}
+                                      className="bg-gray-50 rounded-lg p-3"
+                                    >
+                                      <div className="text-xs font-medium text-gray-500 mb-1">
+                                        {ef.label}
+                                      </div>
+                                      <div className="text-sm text-gray-900">
+                                        {getExtraFieldValue(submission, ef.fieldId)}
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
                               {/* Category values */}
                               <div className="grid grid-cols-2 gap-2">
                                 {categories.map((cat) => (
@@ -733,23 +752,6 @@ export function FileVerificationReport({
                                   <div className="text-sm text-gray-900">
                                     {getRemarkValue(submission)}
                                   </div>
-                                </div>
-                              )}
-                              {extraFields.length > 0 && (
-                                <div className="mt-3 space-y-2">
-                                  {extraFields.map((ef) => (
-                                    <div
-                                      key={ef.fieldId}
-                                      className="bg-gray-50 rounded-lg p-3"
-                                    >
-                                      <div className="text-xs font-medium text-gray-500 mb-1">
-                                        {ef.label}
-                                      </div>
-                                      <div className="text-sm text-gray-900">
-                                        {getExtraFieldValue(submission, ef.fieldId)}
-                                      </div>
-                                    </div>
-                                  ))}
                                 </div>
                               )}
 
