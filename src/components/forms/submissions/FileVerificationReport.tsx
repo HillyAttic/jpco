@@ -21,6 +21,11 @@ interface CategoryField {
   shortLabel: string;
 }
 
+interface ExtraField {
+  fieldId: string;
+  label: string;
+}
+
 interface CategoryTotals {
   [key: string]: number;
 }
@@ -41,13 +46,16 @@ export function isFileVerificationForm(template: FormTemplate | null): boolean {
  * Extract category fields from a form template.
  * Looks for number-type fields with labels containing LAP, UBL, SCF, CF, CIF,
  * and any other field labeled "Remark" (case-insensitive).
+ * Also extracts extra fields (non-category, non-remark) for display.
  */
 function extractCategoryFields(fields: FormField[]): {
   categories: CategoryField[];
   remarkField: CategoryField | null;
+  extraFields: ExtraField[];
 } {
   const categories: CategoryField[] = [];
   let remarkField: CategoryField | null = null;
+  const extraFields: ExtraField[] = [];
 
   // Define the category patterns we care about
   const categoryPatterns: Array<{ pattern: RegExp; shortLabel: string }> = [
@@ -59,6 +67,7 @@ function extractCategoryFields(fields: FormField[]): {
   ];
 
   const matchedPatterns = new Set<string>();
+  const categoryFieldIds = new Set<string>();
 
   fields.forEach((field) => {
     // Check if this is a remark field (can be text or number type)
@@ -69,24 +78,26 @@ function extractCategoryFields(fields: FormField[]): {
         label: field.label,
         shortLabel: 'Remark',
       };
+      return;
     }
 
     // Category fields must be number type
-    if (field.type !== 'number') return;
+    if (field.type === 'number') {
+      const label = field.label;
 
-    const label = field.label;
-
-    // Check each category pattern
-    for (const { pattern, shortLabel } of categoryPatterns) {
-      if (pattern.test(label) && !matchedPatterns.has(shortLabel)) {
-        categories.push({
-          key: shortLabel.toLowerCase(),
-          fieldId: field.id,
-          label,
-          shortLabel,
-        });
-        matchedPatterns.add(shortLabel);
-        break;
+      // Check each category pattern
+      for (const { pattern, shortLabel } of categoryPatterns) {
+        if (pattern.test(label) && !matchedPatterns.has(shortLabel)) {
+          categories.push({
+            key: shortLabel.toLowerCase(),
+            fieldId: field.id,
+            label,
+            shortLabel,
+          });
+          matchedPatterns.add(shortLabel);
+          categoryFieldIds.add(field.id);
+          break;
+        }
       }
     }
   });
@@ -97,7 +108,20 @@ function extractCategoryFields(fields: FormField[]): {
     (a, b) => order.indexOf(a.shortLabel) - order.indexOf(b.shortLabel)
   );
 
-  return { categories, remarkField };
+  // Collect extra fields (non-category, non-remark fields)
+  fields.forEach((field) => {
+    if (
+      !categoryFieldIds.has(field.id) &&
+      field.id !== remarkField?.fieldId
+    ) {
+      extraFields.push({
+        fieldId: field.id,
+        label: field.label,
+      });
+    }
+  });
+
+  return { categories, remarkField, extraFields };
 }
 
 /**
@@ -132,7 +156,7 @@ export function FileVerificationReport({
   );
 
   // Extract category fields from the template
-  const { categories, remarkField } = useMemo(
+  const { categories, remarkField, extraFields } = useMemo(
     () => extractCategoryFields(flattenedFields),
     [flattenedFields]
   );
@@ -288,6 +312,12 @@ export function FileVerificationReport({
   const getRemarkValue = (submission: FormSubmission): string => {
     if (!remarkField) return '-';
     const raw = submission.data?.[remarkField.fieldId];
+    if (raw === null || raw === undefined || raw === '') return '-';
+    return String(raw);
+  };
+
+  const getExtraFieldValue = (submission: FormSubmission, fieldId: string): string => {
+    const raw = submission.data?.[fieldId];
     if (raw === null || raw === undefined || raw === '') return '-';
     return String(raw);
   };
@@ -497,6 +527,14 @@ export function FileVerificationReport({
                                   <th className="sticky left-[300px] z-20 bg-gray-100 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-300 min-w-[160px]">
                                     Date &amp; Time
                                   </th>
+                                  {extraFields.map((ef) => (
+                                    <th
+                                      key={ef.fieldId}
+                                      className="bg-gray-100 px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider border-r border-gray-300 min-w-[120px]"
+                                    >
+                                      {ef.label}
+                                    </th>
+                                  ))}
                                   {categories.map((cat) => (
                                     <th
                                       key={cat.key}
@@ -551,6 +589,19 @@ export function FileVerificationReport({
                                         submission.submittedAt
                                       )}
                                     </td>
+                                    {extraFields.map((ef) => (
+                                      <td
+                                        key={ef.fieldId}
+                                        className="px-4 py-3 text-sm text-gray-900 border-r border-gray-200"
+                                      >
+                                        <div
+                                          className="truncate max-w-[150px]"
+                                          title={String(submission.data?.[ef.fieldId] ?? '-')}
+                                        >
+                                          {submission.data?.[ef.fieldId] ?? '-'}
+                                        </div>
+                                      </td>
+                                    ))}
                                     {categories.map((cat) => (
                                       <td
                                         key={cat.key}
@@ -593,6 +644,14 @@ export function FileVerificationReport({
                                   >
                                     Daily Total
                                   </td>
+                                  {extraFields.map((ef) => (
+                                    <td
+                                      key={ef.fieldId}
+                                      className="px-4 py-2 text-sm text-blue-900 border-r border-gray-200"
+                                    >
+                                      —
+                                    </td>
+                                  ))}
                                   {categories.map((cat) => (
                                     <td
                                       key={cat.key}
@@ -674,6 +733,23 @@ export function FileVerificationReport({
                                   <div className="text-sm text-gray-900">
                                     {getRemarkValue(submission)}
                                   </div>
+                                </div>
+                              )}
+                              {extraFields.length > 0 && (
+                                <div className="mt-3 space-y-2">
+                                  {extraFields.map((ef) => (
+                                    <div
+                                      key={ef.fieldId}
+                                      className="bg-gray-50 rounded-lg p-3"
+                                    >
+                                      <div className="text-xs font-medium text-gray-500 mb-1">
+                                        {ef.label}
+                                      </div>
+                                      <div className="text-sm text-gray-900">
+                                        {getExtraFieldValue(submission, ef.fieldId)}
+                                      </div>
+                                    </div>
+                                  ))}
                                 </div>
                               )}
 
