@@ -302,6 +302,14 @@ export function FileVerificationReport({
     return format(date, 'MMM d, yyyy h:mm a');
   };
 
+  const formatSubmittedAtCompact = (submittedAt: Timestamp | string): string => {
+    const date =
+      typeof submittedAt === 'string'
+        ? new Date(submittedAt)
+        : submittedAt.toDate();
+    return format(date, 'MMM d, h:mm a');
+  };
+
   const getValue = (submission: FormSubmission, fieldId: string): string => {
     const raw = submission.data?.[fieldId];
     if (raw === null || raw === undefined || raw === '') return '-';
@@ -458,22 +466,22 @@ export function FileVerificationReport({
                   <div key={dayLabel} className="space-y-3">
                     {/* Day Header */}
                     <div className="bg-blue-100 border border-blue-200 rounded-lg px-3 sm:px-4 py-2 sm:py-3">
-                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 sm:gap-3">
+                      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
                         <div>
-                          <h3 className="text-base sm:text-lg font-semibold text-blue-900">
+                          <h3 className="text-sm sm:text-base font-semibold text-blue-900">
                             {dayLabel}
                           </h3>
-                          <p className="text-xs sm:text-sm text-blue-700">
+                          <p className="text-xs text-blue-700">
                             {daySubs.length} submission(s)
                           </p>
                         </div>
                         <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
                           {/* Daily category totals */}
-                          <div className="flex flex-wrap justify-end gap-1.5 sm:gap-2 text-xs sm:text-sm font-semibold text-blue-900">
+                          <div className="flex flex-nowrap justify-end gap-1 sm:gap-1.5 text-[10px] sm:text-xs font-semibold text-blue-900">
                             {categories.map((cat) => (
                               <span
                                 key={cat.key}
-                                className="rounded bg-white/70 px-1.5 sm:px-2 py-0.5 sm:py-1"
+                                className="rounded bg-white/70 px-1.5 sm:px-2 py-0.5 whitespace-nowrap"
                               >
                                 {cat.shortLabel}: {totals[cat.key] ?? 0}
                               </span>
@@ -681,88 +689,93 @@ export function FileVerificationReport({
                           {daySubs.map((submission) => (
                             <div
                               key={submission.id}
-                              className="border border-gray-200 rounded-lg p-4 bg-white"
+                              className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden"
                             >
-                              {/* Submitter Info */}
-                              <div className="mb-3 pb-3 border-b border-gray-200">
-                                <div className="text-sm font-semibold text-gray-900">
-                                  {submission.submitterName || 'Anonymous'}
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1">
-                                  {submission.submitterEmail || 'No email'}
-                                </div>
-                                <div className="text-xs text-gray-500 mt-1 flex items-center">
-                                  <svg
-                                    className="w-3 h-3 mr-1"
-                                    fill="none"
-                                    viewBox="0 0 24 24"
-                                    stroke="currentColor"
-                                  >
-                                    <path
-                                      strokeLinecap="round"
-                                      strokeLinejoin="round"
-                                      strokeWidth={2}
-                                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                                    />
-                                  </svg>
-                                  {formatSubmittedAt(submission.submittedAt)}
+                              {/* Submitter Info Header */}
+                              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 border-b border-gray-200">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center space-x-3 min-w-0 flex-1">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                                      <span className="text-sm font-semibold text-blue-700">
+                                        {(submission.submitterName || 'A').charAt(0).toUpperCase()}
+                                      </span>
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="text-sm font-semibold text-gray-900 truncate">
+                                        {submission.submitterName || 'Anonymous'}
+                                      </div>
+                                      <div className="text-xs text-gray-500 truncate">
+                                        {submission.submitterEmail || 'No email'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex-shrink-0 ml-3">
+                                    <div className="text-xs text-gray-500 whitespace-nowrap">
+                                      {formatSubmittedAtCompact(submission.submittedAt)}
+                                    </div>
+                                  </div>
                                 </div>
                               </div>
 
-                              {/* Extra fields (like Month) - shown first to match form order */}
-                              {extraFields.length > 0 && (
-                                <div className="mt-3 space-y-2">
-                                  {extraFields.map((ef) => (
+                              {/* Content */}
+                              <div className="p-4 space-y-4">
+                                {/* Extra fields (like Month) - shown first to match form order */}
+                                {extraFields.length > 0 && (
+                                  <div className="space-y-2">
+                                    {extraFields.map((ef) => (
+                                      <div
+                                        key={ef.fieldId}
+                                        className="flex items-center justify-between bg-blue-50 rounded-lg px-4 py-2.5"
+                                      >
+                                        <span className="text-sm font-medium text-blue-700">
+                                          {ef.label}
+                                        </span>
+                                        <span className="text-sm font-semibold text-blue-900">
+                                          {getExtraFieldValue(submission, ef.fieldId)}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Category values - improved grid */}
+                                <div className="grid grid-cols-3 gap-2">
+                                  {categories.map((cat) => (
                                     <div
-                                      key={ef.fieldId}
-                                      className="bg-gray-50 rounded-lg p-3"
+                                      key={cat.key}
+                                      className="flex flex-col items-center justify-center bg-gray-50 rounded-lg p-3 border border-gray-100"
                                     >
-                                      <div className="text-xs font-medium text-gray-500 mb-1">
-                                        {ef.label}
-                                      </div>
-                                      <div className="text-sm text-gray-900">
-                                        {getExtraFieldValue(submission, ef.fieldId)}
-                                      </div>
+                                      <span className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">
+                                        {cat.shortLabel}
+                                      </span>
+                                      <span className="text-lg font-bold text-gray-900 mt-0.5">
+                                        {getValue(submission, cat.fieldId)}
+                                      </span>
                                     </div>
                                   ))}
                                 </div>
-                              )}
 
-                              {/* Category values */}
-                              <div className="grid grid-cols-2 gap-2">
-                                {categories.map((cat) => (
-                                  <div
-                                    key={cat.key}
-                                    className="flex flex-col items-center bg-gray-50 rounded-lg p-2"
-                                  >
-                                    <span className="text-xs font-medium text-gray-500">
-                                      {cat.shortLabel}
-                                    </span>
-                                    <span className="text-sm font-bold text-gray-900 mt-0.5">
-                                      {getValue(submission, cat.fieldId)}
-                                    </span>
+                                {/* Remark */}
+                                {remarkField && (
+                                  <div className="bg-amber-50 rounded-lg p-3 border border-amber-100">
+                                    <div className="text-xs font-medium text-amber-600 mb-1 uppercase tracking-wider">
+                                      {remarkField.shortLabel || remarkField.label}
+                                    </div>
+                                    <div className="text-sm text-gray-900">
+                                      {getRemarkValue(submission)}
+                                    </div>
                                   </div>
-                                ))}
+                                )}
                               </div>
-                              {remarkField && (
-                                <div className="mt-3 bg-gray-50 rounded-lg p-3">
-                                  <div className="text-xs font-medium text-gray-500 mb-1">
-                                    {remarkField.shortLabel || remarkField.label}
-                                  </div>
-                                  <div className="text-sm text-gray-900">
-                                    {getRemarkValue(submission)}
-                                  </div>
-                                </div>
-                              )}
 
                               {/* Actions */}
                               {onDelete && (
-                                <div className="mt-4 pt-3 border-t border-gray-200">
+                                <div className="px-4 pb-4">
                                   <button
                                     onClick={() =>
                                       handleDelete(submission.id)
                                     }
-                                    className="w-full px-3 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
+                                    className="w-full px-4 py-2.5 bg-red-50 text-red-600 text-sm font-medium rounded-lg hover:bg-red-100 transition-colors border border-red-200"
                                   >
                                     Delete Submission
                                   </button>
