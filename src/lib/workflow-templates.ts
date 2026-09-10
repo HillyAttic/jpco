@@ -143,18 +143,20 @@ export function getReportTypes(task: RecurringTask): ReportTypeConfig[] {
   return types;
 }
 
-/** Get a specific report type config by its ID from a task. */
+/** Get a specific report type config by its ID from a task (case-insensitive). */
 export function getReportTypeById(task: RecurringTask, typeId: string): ReportTypeConfig | undefined {
-  return getReportTypes(task).find(rt => rt.id === typeId);
+  const lower = typeId.toLowerCase();
+  return getReportTypes(task).find(rt => rt.id.toLowerCase() === lower);
 }
 
 /** Get the workflow steps for a specific report type from a task. */
 export function getStepsForReportType(task: RecurringTask, typeId: string): WorkflowStep[] {
   const reportType = getReportTypeById(task, typeId);
   if (reportType) return reportType.steps;
-  // Legacy fallback
-  if (typeId === 'tar') return task.tarSteps || [];
-  if (typeId === 'stat') return task.statSteps || [];
+  // Legacy fallback (case-insensitive)
+  const lower = typeId.toLowerCase();
+  if (lower === 'tar') return task.tarSteps || [];
+  if (lower === 'stat') return task.statSteps || [];
   return [];
 }
 

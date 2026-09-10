@@ -41,7 +41,7 @@ export function WorkflowGridModal({
     // Dynamic mode: entriesByType provided
     const reportTypes = getReportTypes(task);
     Object.entries(entriesByType).forEach(([typeId, entries]) => {
-      const rt = reportTypes.find(r => r.id === typeId);
+      const rt = reportTypes.find(r => r.id.toLowerCase() === typeId.toLowerCase());
       effectiveEntriesByType[typeId] = { entries, reportType: rt };
     });
   } else {
