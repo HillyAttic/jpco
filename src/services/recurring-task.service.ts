@@ -37,7 +37,18 @@ export interface ClientWorkflowProgress {
   completedBy?: string; // user UID
 }
 
-export type WorkflowType = 'TAR' | 'STAT';
+export type WorkflowType = string;
+
+/** Dynamic report type configuration stored on each RecurringTask */
+export interface ReportTypeConfig {
+  id: string;           // Unique stable ID (e.g., 'tar', 'stat', 'custom-1')
+  name: string;         // Display name (e.g., "TAR Reports")
+  badgeLabel: string;   // Badge text (e.g., "TAX")
+  badgeClass: string;   // Tailwind badge classes
+  description: string;  // Short description (e.g., "Tax Audit Report")
+  enabled: boolean;     // Whether active
+  steps: WorkflowStep[]; // Workflow step definitions
+}
 
 export interface RecurringTask {
   id?: string;
@@ -61,6 +72,8 @@ export interface RecurringTask {
   statEnabled?: boolean; // Whether STAT (Statutory Audit) workflow is enabled
   tarSteps?: WorkflowStep[]; // TAR workflow step definitions (7 steps)
   statSteps?: WorkflowStep[]; // STAT workflow step definitions (10 steps)
+  /** Dynamic report type configurations (overrides legacy tarEnabled/statEnabled when present) */
+  reportTypes?: ReportTypeConfig[];
   /** Per-client progress: clientId -> { completedStepIds, completedAt, completedBy } */
   clientProgress?: Record<string, ClientWorkflowProgress>;
   /** Compliance filter for dynamic client tracking (e.g. 'taxAudit', 'itr', 'statutoryAudit') */

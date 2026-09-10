@@ -56,6 +56,22 @@ const createRecurringTaskSchema = z.object({
     completedAt: z.union([z.string(), z.date()]).optional(),
     completedBy: z.string().optional(),
   })).optional(),
+  reportTypes: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    badgeLabel: z.string(),
+    badgeClass: z.string(),
+    description: z.string(),
+    enabled: z.boolean(),
+    steps: z.array(z.object({
+      id: z.string(),
+      name: z.string(),
+      shortName: z.string(),
+      completed: z.boolean(),
+      completedAt: z.union([z.string(), z.date()]).optional(),
+      completedBy: z.string().optional(),
+    })),
+  })).optional(),
 });
 
 /**

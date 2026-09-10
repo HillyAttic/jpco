@@ -3,7 +3,7 @@
  * Defines TAR and STAT workflow steps
  */
 
-import { WorkflowStep, WorkflowType } from '@/services/recurring-task.service';
+import { WorkflowStep, WorkflowType, RecurringTask, ReportTypeConfig } from '@/services/recurring-task.service';
 
 export interface WorkflowTemplate {
   type: WorkflowType;
@@ -91,4 +91,93 @@ export function calculateWorkflowProgress(steps: WorkflowStep[]): {
 // Get next incomplete step
 export function getNextStep(steps: WorkflowStep[]): WorkflowStep | null {
   return steps.find((s) => !s.completed) || null;
+}
+
+// ── Dynamic report type helpers ───────────────────────────────────────
+
+/** Badge color presets for the ReportTypeEditor */
+export const BADGE_PRESETS = [
+  { label: 'Purple', class: 'bg-purple-100 text-purple-700 hover:bg-purple-100' },
+  { label: 'Teal', class: 'bg-teal-100 text-teal-700 hover:bg-teal-100' },
+  { label: 'Blue', class: 'bg-blue-100 text-blue-700 hover:bg-blue-100' },
+  { label: 'Green', class: 'bg-green-100 text-green-700 hover:bg-green-100' },
+  { label: 'Orange', class: 'bg-orange-100 text-orange-700 hover:bg-orange-100' },
+  { label: 'Red', class: 'bg-red-100 text-red-700 hover:bg-red-100' },
+  { label: 'Pink', class: 'bg-pink-100 text-pink-700 hover:bg-pink-100' },
+  { label: 'Amber', class: 'bg-amber-100 text-amber-700 hover:bg-amber-100' },
+];
+
+/**
+ * Get the effective report types for a task.
+ * If reportTypes is set and non-empty, use it.
+ * Otherwise, synthesize from legacy tarEnabled/statEnabled fields.
+ */
+export function getReportTypes(task: RecurringTask): ReportTypeConfig[] {
+  if (task.reportTypes && task.reportTypes.length > 0) {
+    return task.reportTypes;
+  }
+  // Fallback: synthesize from legacy fields
+  const types: ReportTypeConfig[] = [];
+  if (task.tarEnabled) {
+    types.push({
+      id: 'tar',
+      name: 'TAR Reports',
+      badgeLabel: 'TAX',
+      badgeClass: TAR_TEMPLATE.badgeClass,
+      description: TAR_TEMPLATE.label,
+      enabled: true,
+      steps: task.tarSteps || initializeWorkflowSteps('TAR'),
+    });
+  }
+  if (task.statEnabled) {
+    types.push({
+      id: 'stat',
+      name: 'Statutory Reports',
+      badgeLabel: 'STAT',
+      badgeClass: STAT_TEMPLATE.badgeClass,
+      description: STAT_TEMPLATE.label,
+      enabled: true,
+      steps: task.statSteps || initializeWorkflowSteps('STAT'),
+    });
+  }
+  return types;
+}
+
+/** Get a specific report type config by its ID from a task. */
+export function getReportTypeById(task: RecurringTask, typeId: string): ReportTypeConfig | undefined {
+  return getReportTypes(task).find(rt => rt.id === typeId);
+}
+
+/** Get the workflow steps for a specific report type from a task. */
+export function getStepsForReportType(task: RecurringTask, typeId: string): WorkflowStep[] {
+  const reportType = getReportTypeById(task, typeId);
+  if (reportType) return reportType.steps;
+  // Legacy fallback
+  if (typeId === 'tar') return task.tarSteps || [];
+  if (typeId === 'stat') return task.statSteps || [];
+  return [];
+}
+
+/**
+ * Get template-like info for any report type (including custom ones).
+ * Returns the ReportTypeConfig if found, otherwise falls back to static template.
+ */
+export function getReportTypeDisplay(task: RecurringTask, typeId: string): { label: string; badgeClass: string; badgeLabel: string; steps: { name: string; shortName: string }[] } {
+  const reportType = getReportTypeById(task, typeId);
+  if (reportType) {
+    return {
+      label: reportType.description,
+      badgeClass: reportType.badgeClass,
+      badgeLabel: reportType.badgeLabel,
+      steps: reportType.steps,
+    };
+  }
+  // Legacy fallback
+  const template = getWorkflowTemplate(typeId as WorkflowType);
+  return {
+    label: template.label,
+    badgeClass: template.badgeClass,
+    badgeLabel: typeId.toUpperCase(),
+    steps: template.steps,
+  };
 }

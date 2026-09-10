@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { RecurringTask, WorkflowStep, WorkflowType, TeamMemberMapping, getClientCompletedStepIds, getClientProgressSummary } from '@/services/recurring-task.service';
 import { Client } from '@/services/client.service';
-import { getWorkflowTemplate } from '@/lib/workflow-templates';
+import { getWorkflowTemplate, getReportTypeById, getStepsForReportType } from '@/lib/workflow-templates';
 import { TeamMemberMappingDialog } from '@/components/recurring-tasks/TeamMemberMappingDialog';
 import { authenticatedFetch } from '@/lib/api-client';
 import { toast } from 'react-toastify';
@@ -89,7 +89,9 @@ export function WorkflowTaskDetailModal({
     }
   };
 
-  const template = getWorkflowTemplate(workflowType);
+  // Get template from task's report types, falling back to static template
+  const reportTypeConfig = getReportTypeById(task, workflowType);
+  const template = reportTypeConfig || getWorkflowTemplate(workflowType);
 
   // Build a client ID → name lookup
   const clientMap = useMemo(() => {
@@ -237,7 +239,7 @@ export function WorkflowTaskDetailModal({
     const headers = ['Client', 'Allocated', 'Status', ...template.steps.map((s) => s.shortName), 'Progress'];
     const rows = filteredRows.map((row) => {
       const completedStepIds = getClientCompletedStepIds(task, row.clientId, workflowType);
-      const steps = workflowType === 'TAR' ? task.tarSteps : task.statSteps;
+      const steps = getStepsForReportType(task, workflowType);
       const progress = getClientProgressSummary(task, row.clientId, workflowType);
       return [
         row.clientName,
@@ -267,7 +269,7 @@ export function WorkflowTaskDetailModal({
     return () => window.removeEventListener('keydown', handleEsc);
   }, [onClose]);
 
-  const steps = workflowType === 'TAR' ? task.tarSteps : task.statSteps;
+  const steps = getStepsForReportType(task, workflowType);
 
   return (
     <div className={`fixed inset-0 z-50 flex flex-col ${isFullscreen ? 'items-stretch justify-stretch p-0' : 'sm:items-center sm:justify-center sm:p-4'}`}>
@@ -439,14 +441,14 @@ export function WorkflowTaskDetailModal({
                               className={`inline-flex items-center justify-center w-6 h-6 rounded-full transition-colors ${
                                 done
                                   ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                  : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600'
+                                  : 'bg-red-50 text-red-400 dark:bg-red-900/20 dark:text-red-400'
                               }`}
                               title={`${step.name} — ${done ? 'Completed' : 'Incomplete'}`}
                             >
                               {done ? (
-                                <CheckCircle2 className="h-3.5 w-3.5" />
+                                <CheckCircle2 className="h-4 w-4" />
                               ) : (
-                                <XCircle className="h-3.5 w-3.5" />
+                                <XCircle className="h-4 w-4" />
                               )}
                             </span>
                           </td>
@@ -523,10 +525,10 @@ export function WorkflowTaskDetailModal({
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${
                               done
                                 ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                                : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500'
+                                : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'
                             }`}
                           >
-                            {done ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                            {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
                             {step.shortName}
                           </span>
                         );
@@ -568,7 +570,7 @@ export function WorkflowTaskDetailModal({
             <span className="text-gray-600 dark:text-gray-400">Completed</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <XCircle className="w-3.5 h-3.5 text-gray-400" />
+            <XCircle className="w-3.5 h-3.5 text-red-400" />
             <span className="text-gray-600 dark:text-gray-400">Incomplete</span>
           </div>
         </div>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { RecurringTask, TeamMemberMapping } from '@/services/recurring-task.service';
+import { RecurringTask, TeamMemberMapping, ReportTypeConfig } from '@/services/recurring-task.service';
 import { Team, teamService } from '@/services/team.service';
 import { Category, categoryService } from '@/services/category.service';
 import { Client } from '@/services/client.service';
@@ -20,10 +20,11 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import Select from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserGroupIcon, PencilIcon } from '@heroicons/react/24/outline';
 import { TeamMemberMappingDialog } from './TeamMemberMappingDialog';
+import { ReportTypeEditor } from './ReportTypeEditor';
 import { useModal } from '@/contexts/modal-context';
-import { TAR_TEMPLATE, STAT_TEMPLATE, initializeWorkflowSteps } from '@/lib/workflow-templates';
+import { TAR_TEMPLATE, STAT_TEMPLATE, initializeWorkflowSteps, getReportTypes } from '@/lib/workflow-templates';
 
 // Form-specific schema matching the design requirements
 // Requirement 3.2, 3.8
@@ -90,6 +91,8 @@ export function RecurringTaskModal({
   const [tarEnabled, setTarEnabled] = useState(false);
   const [statEnabled, setStatEnabled] = useState(false);
   const [showUnassignedClients, setShowUnassignedClients] = useState(false);
+  const [showReportTypeEditor, setShowReportTypeEditor] = useState(false);
+  const [effectiveReportTypes, setEffectiveReportTypes] = useState<ReportTypeConfig[]>([]);
   const [dynamicClientStats, setDynamicClientStats] = useState<{
     totalCount: number;
     mappedCount: number;
@@ -385,6 +388,9 @@ export function RecurringTaskModal({
       setStatEnabled(task.statEnabled || false);
       setShowUnassignedClients(task.showUnassignedClients || false);
 
+      // Initialize effective report types from task
+      setEffectiveReportTypes(getReportTypes(task));
+
       // Set selected clients for display
       if (task.contactIds && task.contactIds.length > 0) {
         const taskClients = clients.filter(client => 
@@ -435,6 +441,27 @@ export function RecurringTaskModal({
       setTarEnabled(false);
       setStatEnabled(false);
       setDynamicClientStats(null);
+      // Initialize default report types for new tasks
+      setEffectiveReportTypes([
+        {
+          id: 'tar',
+          name: 'TAR Reports',
+          badgeLabel: 'TAX',
+          badgeClass: TAR_TEMPLATE.badgeClass,
+          description: TAR_TEMPLATE.label,
+          enabled: false,
+          steps: initializeWorkflowSteps('TAR'),
+        },
+        {
+          id: 'stat',
+          name: 'Statutory Reports',
+          badgeLabel: 'STAT',
+          badgeClass: STAT_TEMPLATE.badgeClass,
+          description: STAT_TEMPLATE.label,
+          enabled: false,
+          steps: initializeWorkflowSteps('STAT'),
+        },
+      ]);
     }
   }, [task, reset, clients]);
 
@@ -443,39 +470,17 @@ export function RecurringTaskModal({
       console.log('📋 [RecurringTaskModal] Form data before submission:', data);
       console.log('🗺️ [RecurringTaskModal] Team member mappings state:', teamMemberMappings);
 
-      // Include team member mappings and TAR/STAT settings in the submission
-      // Preserve existing workflow steps if task already has them, otherwise initialize new ones
-      let tarSteps = undefined;
-      let statSteps = undefined;
-
-      if (tarEnabled) {
-        // Preserve existing TAR steps if task already has them
-        if (task?.tarSteps && task.tarSteps.length > 0) {
-          tarSteps = task.tarSteps;
-          console.log('📋 [RecurringTaskModal] Preserving existing TAR steps:', tarSteps.length);
-        } else {
-          tarSteps = initializeWorkflowSteps('TAR');
-          console.log('📋 [RecurringTaskModal] Initializing new TAR steps:', tarSteps.length);
-        }
-      }
-
-      if (statEnabled) {
-        // Preserve existing STAT steps if task already has them
-        if (task?.statSteps && task.statSteps.length > 0) {
-          statSteps = task.statSteps;
-          console.log('📋 [RecurringTaskModal] Preserving existing STAT steps:', statSteps.length);
-        } else {
-          statSteps = initializeWorkflowSteps('STAT');
-          console.log('📋 [RecurringTaskModal] Initializing new STAT steps:', statSteps.length);
-        }
-      }
-
+      // Build reportTypes for submission (use effectiveReportTypes from editor)
+      const enabledReportTypes = effectiveReportTypes.filter(rt => rt.enabled);
       const submissionData = {
         ...data,
-        tarEnabled,
-        statEnabled,
-        tarSteps,
-        statSteps,
+        // Dynamic report types
+        reportTypes: effectiveReportTypes.length > 0 ? effectiveReportTypes : undefined,
+        // Backward compat: derive legacy fields from effectiveReportTypes
+        tarEnabled: enabledReportTypes.some(rt => rt.id === 'tar'),
+        statEnabled: enabledReportTypes.some(rt => rt.id === 'stat'),
+        tarSteps: effectiveReportTypes.find(rt => rt.id === 'tar')?.steps,
+        statSteps: effectiveReportTypes.find(rt => rt.id === 'stat')?.steps,
         teamMemberMappings: teamMemberMappings.length > 0 ? teamMemberMappings : undefined,
         clientFilter: data.clientFilter || undefined,
         showUnassignedClients: showUnassignedClients,
@@ -506,6 +511,7 @@ export function RecurringTaskModal({
     setStatEnabled(false);
     setShowUnassignedClients(false);
     setDynamicClientStats(null);
+    setEffectiveReportTypes([]);
     onClose();
   };
 
@@ -1007,58 +1013,61 @@ export function RecurringTaskModal({
             </label>
           </div>
 
-          {/* TAR/STAT Workflow Toggles */}
+          {/* Report Types — Dynamic */}
           <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
-            <div>
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Report Types</h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Enable workflow tracking for compliance reports</p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Report Types</h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400">Enable workflow tracking for compliance reports</p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowReportTypeEditor(true)}
+                className="h-7 px-2 text-xs"
+              >
+                <PencilIcon className="h-3 w-3 mr-1" />
+                Edit
+              </Button>
             </div>
 
-            {/* TAR Toggle */}
-            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="tarEnabled" className="font-medium text-gray-900 dark:text-white cursor-pointer">
-                    TAR Reports
-                  </Label>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
-                    TAX
-                  </span>
+            {/* Dynamic toggle cards from effectiveReportTypes */}
+            {effectiveReportTypes.map((rt) => (
+              <div key={rt.id} className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <Label className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                      {rt.name}
+                    </Label>
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${rt.badgeClass}`}>
+                      {rt.badgeLabel}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                    {rt.description} · {rt.steps.length} steps
+                  </p>
                 </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  Tax Audit Report · {TAR_TEMPLATE.steps.length} steps
-                </p>
+                <Switch
+                  checked={rt.enabled}
+                  onCheckedChange={(checked) => {
+                    setEffectiveReportTypes(prev =>
+                      prev.map(r => r.id === rt.id ? { ...r, enabled: checked } : r)
+                    );
+                    // Keep legacy state in sync for backward compat
+                    if (rt.id === 'tar') setTarEnabled(checked);
+                    if (rt.id === 'stat') setStatEnabled(checked);
+                  }}
+                  disabled={isLoading}
+                />
               </div>
-              <Switch
-                id="tarEnabled"
-                checked={tarEnabled}
-                onCheckedChange={setTarEnabled}
-                disabled={isLoading}
-              />
-            </div>
+            ))}
 
-            {/* STAT Toggle */}
-            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg">
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
-                  <Label htmlFor="statEnabled" className="font-medium text-gray-900 dark:text-white cursor-pointer">
-                    Statutory Reports
-                  </Label>
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700">
-                    STAT
-                  </span>
-                </div>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                  Statutory Audit · {STAT_TEMPLATE.steps.length} steps
-                </p>
-              </div>
-              <Switch
-                id="statEnabled"
-                checked={statEnabled}
-                onCheckedChange={setStatEnabled}
-                disabled={isLoading}
-              />
-            </div>
+            {effectiveReportTypes.length === 0 && (
+              <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                No report types configured. Click "Edit" to add one.
+              </p>
+            )}
           </div>
 
           <DialogFooter>
@@ -1089,6 +1098,19 @@ export function RecurringTaskModal({
           }}
           initialMappings={teamMemberMappings}
           defaultClientFilter={watch('clientFilter') || 'all'}
+        />
+
+        {/* Report Type Editor Dialog */}
+        <ReportTypeEditor
+          isOpen={showReportTypeEditor}
+          onClose={() => setShowReportTypeEditor(false)}
+          reportTypes={effectiveReportTypes}
+          onSave={(updated) => {
+            setEffectiveReportTypes(updated);
+            // Keep legacy state in sync
+            setTarEnabled(updated.some(rt => rt.id === 'tar' && rt.enabled));
+            setStatEnabled(updated.some(rt => rt.id === 'stat' && rt.enabled));
+          }}
         />
       </DialogContent>
     </Dialog>

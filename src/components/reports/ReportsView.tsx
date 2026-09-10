@@ -9,7 +9,7 @@ import { useModal } from '@/contexts/modal-context';
 import { exportToPDF, exportToExcel, exportSummaryToPDF, exportSummaryToExcel } from '@/utils/report-export.utils';
 import { auth } from '@/lib/firebase';
 import { generateMonths, buildCompletionData, getCompletionStatus, calculateCompletionRate } from '@/utils/report-utils';
-import { initializeWorkflowSteps } from '@/lib/workflow-templates';
+import { initializeWorkflowSteps, getReportTypes } from '@/lib/workflow-templates';
 import { TaskReportModal } from '@/components/reports/TaskReportModal';
 import { WorkflowTaskDetailModal } from '@/components/reports/WorkflowTaskDetailModal';
 import { WorkflowReportsTable } from '@/components/reports/WorkflowReportsTable';
@@ -94,9 +94,15 @@ export function ReportsView() {
   const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
   const [selectedMonth, setSelectedMonth] = useState('all');
 
-  // Filter tasks with TAR/STAT enabled (must be before any conditional returns)
-  const tarTasks = useMemo(() => tasks.filter(t => t.tarEnabled), [tasks]);
-  const statTasks = useMemo(() => tasks.filter(t => t.statEnabled), [tasks]);
+  // Filter tasks with workflow types enabled (supports both legacy and dynamic report types)
+  const tarTasks = useMemo(() => tasks.filter(t => {
+    const reportTypes = getReportTypes(t);
+    return reportTypes.some(rt => rt.id === 'tar' && rt.enabled);
+  }), [tasks]);
+  const statTasks = useMemo(() => tasks.filter(t => {
+    const reportTypes = getReportTypes(t);
+    return reportTypes.some(rt => rt.id === 'stat' && rt.enabled);
+  }), [tasks]);
 
   useEffect(() => {
     loadData();
@@ -296,11 +302,11 @@ export function ReportsView() {
 
   const handleTaskClick = (task: RecurringTask) => {
     setSelectedTask(task);
-    // Determine if this is a TAR or STAT task for the detail modal
-    if (task.tarEnabled) {
-      setSelectedWorkflowType('TAR');
-    } else if (task.statEnabled) {
-      setSelectedWorkflowType('STAT');
+    // Determine the first enabled workflow type for the detail modal
+    const reportTypes = getReportTypes(task);
+    const firstEnabled = reportTypes.find(rt => rt.enabled);
+    if (firstEnabled) {
+      setSelectedWorkflowType(firstEnabled.id as WorkflowType);
     } else {
       setSelectedWorkflowType(null);
     }

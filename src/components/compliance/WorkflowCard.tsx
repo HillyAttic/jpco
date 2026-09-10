@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { WorkflowStep, WorkflowType } from '@/services/recurring-task.service';
+import { WorkflowStep, WorkflowType, ReportTypeConfig } from '@/services/recurring-task.service';
 import { calculateWorkflowProgress, getNextStep, getWorkflowTemplate } from '@/lib/workflow-templates';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
@@ -20,6 +20,7 @@ interface WorkflowCardProps {
   clientName?: string;
   clientId?: string;
   assignee?: string;
+  reportTypeConfig?: ReportTypeConfig; // Dynamic report type config for badge display
 }
 
 export function WorkflowCard({
@@ -33,8 +34,10 @@ export function WorkflowCard({
   clientName,
   clientId,
   assignee,
+  reportTypeConfig,
 }: WorkflowCardProps) {
-  const template = getWorkflowTemplate(workflowType);
+  // Use dynamic reportTypeConfig if provided, otherwise fall back to static template
+  const template = reportTypeConfig || getWorkflowTemplate(workflowType);
 
   // Build a virtual steps array for the progress calculator using per-client completion
   const virtualSteps: WorkflowStep[] = steps.map((s) => ({
@@ -108,7 +111,7 @@ export function WorkflowCard({
           </span>
         </div>
         <Badge className={`mt-1 ${template.badgeClass}`}>
-          {template.label}
+          {'badgeLabel' in template ? template.badgeLabel : template.label}
         </Badge>
       </CardHeader>
 

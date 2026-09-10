@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { WorkflowStep, WorkflowType } from '@/services/recurring-task.service';
+import { WorkflowStep, WorkflowType, ReportTypeConfig } from '@/services/recurring-task.service';
 import { calculateWorkflowProgress, getNextStep, getWorkflowTemplate } from '@/lib/workflow-templates';
 import { authenticatedFetch } from '@/lib/api-client';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +25,7 @@ interface WorkflowDrawerProps {
   clientName?: string;
   onStepToggle: (stepId: string, completed: boolean, clientId?: string) => Promise<void>;
   onMarkAllComplete?: (clientId?: string) => Promise<void>;
+  reportTypeConfig?: ReportTypeConfig; // Dynamic report type config for badge display
 }
 
 export function WorkflowDrawer({
@@ -40,12 +41,14 @@ export function WorkflowDrawer({
   clientName,
   onStepToggle,
   onMarkAllComplete,
+  reportTypeConfig,
 }: WorkflowDrawerProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
   const fetchedRef = useRef(false);
 
-  const template = getWorkflowTemplate(workflowType);
+  // Use dynamic reportTypeConfig if provided, otherwise fall back to static template
+  const template = reportTypeConfig || getWorkflowTemplate(workflowType);
 
   // Resolve UIDs to display names for completed steps
   useEffect(() => {
@@ -151,7 +154,7 @@ export function WorkflowDrawer({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1.5">
                 <Badge className={template.badgeClass}>
-                  {template.label}
+                  {'badgeLabel' in template ? template.badgeLabel : template.label}
                 </Badge>
                 <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${
                   progress.status === 'completed'
@@ -175,7 +178,7 @@ export function WorkflowDrawer({
                 <>
                   <h2 className="text-lg font-bold text-gray-900 leading-tight">{taskTitle}</h2>
                   <p className="text-xs text-gray-500 mt-1">
-                    {template.fullName}
+                    {'fullName' in template ? template.fullName : template.description}
                     {assignee ? <> · Assigned to <span className="font-semibold">{assignee}</span></> : <> · <span className="text-gray-400">Unassigned</span></>}
                   </p>
                 </>

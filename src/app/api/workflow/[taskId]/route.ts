@@ -8,14 +8,14 @@ import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 // Validation schema for updating a single workflow step
 const updateStepSchema = z.object({
   stepId: z.string(),
-  workflowType: z.enum(['TAR', 'STAT']),
+  workflowType: z.string(), // Now dynamic: 'tar', 'stat', or custom report type ID
   completed: z.boolean(),
   clientId: z.string().optional(), // per-client progress
 });
 
 // Validation schema for initializing workflow
 const initializeWorkflowSchema = z.object({
-  workflowType: z.enum(['TAR', 'STAT']),
+  workflowType: z.string(), // Now dynamic
 });
 
 /**
@@ -50,12 +50,17 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     // Return requested workflow or both
     const response: any = {};
 
-    if (!workflowType || workflowType === 'TAR') {
+    // Always return reportTypes if present (dynamic report types)
+    if (task.reportTypes && task.reportTypes.length > 0) {
+      response.reportTypes = task.reportTypes;
+    }
+
+    if (!workflowType || workflowType === 'tar' || workflowType === 'TAR') {
       response.tarEnabled = task.tarEnabled || false;
       response.tarSteps = task.tarSteps || [];
     }
 
-    if (!workflowType || workflowType === 'STAT') {
+    if (!workflowType || workflowType === 'stat' || workflowType === 'STAT') {
       response.statEnabled = task.statEnabled || false;
       response.statSteps = task.statSteps || [];
     }
@@ -106,8 +111,23 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return ErrorResponses.notFound('Recurring task');
     }
 
-    const stepsField = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
-    const steps = task[stepsField] || [];
+    // Resolve steps: check reportTypes first, then legacy fields
+    let steps: WorkflowStep[] = [];
+    let stepsField: string | null = null;
+
+    if (task.reportTypes && task.reportTypes.length > 0) {
+      const reportType = task.reportTypes.find(rt => rt.id === workflowType);
+      if (reportType) {
+        steps = reportType.steps;
+      }
+    }
+    // Fallback to legacy fields
+    if (steps.length === 0) {
+      stepsField = workflowType === 'tar' ? 'tarSteps' : workflowType === 'stat' ? 'statSteps' : null;
+      if (stepsField) {
+        steps = (task as any)[stepsField] || [];
+      }
+    }
 
     // Build updated clientProgress
     const clientProgress = { ...(task.clientProgress || {}) };
@@ -160,10 +180,24 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         }
       });
 
-      await recurringTaskAdminService.update(taskId, {
-        [stepsField]: updatedSteps,
-        clientProgress,
-      } as any);
+      // Build update payload: write to reportTypes or legacy field
+      const updatePayload: Record<string, any> = { clientProgress };
+
+      if (task.reportTypes && task.reportTypes.length > 0) {
+        // Update steps inside reportTypes array
+        const updatedReportTypes = task.reportTypes.map(rt => {
+          if (rt.id === workflowType) {
+            return { ...rt, steps: updatedSteps };
+          }
+          return rt;
+        });
+        updatePayload.reportTypes = updatedReportTypes;
+      } else if (stepsField) {
+        // Legacy field update
+        updatePayload[stepsField] = updatedSteps;
+      }
+
+      await recurringTaskAdminService.update(taskId, updatePayload as any);
 
       return NextResponse.json({ success: true, steps: updatedSteps, clientProgress }, { status: 200 });
     }

@@ -3,7 +3,7 @@
 import React, { useState, useMemo } from 'react';
 import { RecurringTask, WorkflowStep, WorkflowType, TeamMemberMapping, getClientCompletedStepIds, getClientProgressSummary } from '@/services/recurring-task.service';
 import { Client } from '@/services/client.service';
-import { calculateWorkflowProgress, getWorkflowTemplate } from '@/lib/workflow-templates';
+import { calculateWorkflowProgress, getWorkflowTemplate, getReportTypeById, getStepsForReportType } from '@/lib/workflow-templates';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
@@ -69,7 +69,10 @@ export function WorkflowReportsTable({
     }
   };
 
-  const template = getWorkflowTemplate(workflowType);
+  // Get template from first task's report types, falling back to static template
+  const firstTask = tasks[0];
+  const reportTypeConfig = firstTask ? getReportTypeById(firstTask, workflowType) : undefined;
+  const template = reportTypeConfig || getWorkflowTemplate(workflowType);
 
   // Build a client ID → name lookup
   const clientMap = useMemo(() => {
@@ -205,7 +208,7 @@ export function WorkflowReportsTable({
     const headers = ['Client', 'Allocated', 'Status', ...template.steps.map((s) => s.shortName), 'Progress'];
     const rows = filteredRows.map((row) => {
       const completedStepIds = getClientCompletedStepIds(row.task, row.clientId, workflowType);
-      const steps = workflowType === 'TAR' ? row.task.tarSteps : row.task.statSteps;
+      const steps = getStepsForReportType(row.task, workflowType);
       const progress = getClientProgressSummary(row.task, row.clientId, workflowType);
       return [
         row.clientName,
@@ -226,7 +229,7 @@ export function WorkflowReportsTable({
     URL.revokeObjectURL(url);
   };
 
-  const steps = workflowType === 'TAR' ? tasks[0]?.tarSteps : tasks[0]?.statSteps;
+  const steps = tasks[0] ? getStepsForReportType(tasks[0], workflowType) : [];
 
   return (
     <div className="space-y-5">
@@ -355,7 +358,7 @@ export function WorkflowReportsTable({
                             className={`inline-flex items-center justify-center w-6 h-6 rounded-full transition-colors ${
                               done
                                 ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                                : 'bg-gray-100 text-gray-400 dark:bg-gray-800 dark:text-gray-600'
+                                : 'bg-red-50 text-red-400 dark:bg-red-900/20 dark:text-red-400'
                             }`}
                             title={`${step.name} — ${done ? 'Completed' : 'Incomplete'}`}
                           >
@@ -436,7 +439,7 @@ export function WorkflowReportsTable({
                         className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium ${
                           done
                             ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                            : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-500'
+                            : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'
                         }`}
                       >
                         {done ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
@@ -480,7 +483,7 @@ export function WorkflowReportsTable({
           <span>Completed</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <XCircle className="w-3.5 h-3.5 text-gray-400" />
+          <XCircle className="w-3.5 h-3.5 text-red-400" />
           <span>Incomplete</span>
         </div>
       </div>

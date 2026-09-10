@@ -56,6 +56,15 @@ const updateRecurringTaskSchema = z.object({
   showUnassignedClients: z.boolean().optional(),
   tarSteps: z.array(workflowStepSchema).optional(),
   statSteps: z.array(workflowStepSchema).optional(),
+  reportTypes: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    badgeLabel: z.string(),
+    badgeClass: z.string(),
+    description: z.string(),
+    enabled: z.boolean(),
+    steps: z.array(workflowStepSchema),
+  })).optional(),
 });
 
 /**

@@ -18,7 +18,7 @@ import { PlusCircleIcon, DevicePhoneMobileIcon, ComputerDesktopIcon } from '@her
 import { TaskCreationModal } from '@/components/task-creation-modal';
 import { WorkflowDrawer } from '@/components/compliance/WorkflowDrawer';
 import { WorkflowGridModal } from '@/components/compliance/WorkflowGridModal';
-import { initializeWorkflowSteps, getWorkflowTemplate } from '@/lib/workflow-templates';
+import { initializeWorkflowSteps, getWorkflowTemplate, getReportTypes, getStepsForReportType } from '@/lib/workflow-templates';
 import { auth } from '@/lib/firebase';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { authenticatedFetch } from '@/lib/api-client';
@@ -187,12 +187,14 @@ export default function CalendarPage() {
     return client?.clientName || 'Unassigned';
   };
 
-  // Group TAR-enabled tasks by client
+  // Group TAR-enabled tasks by client (supports dynamic report types)
   const tarClientGroups = React.useMemo((): ClientWorkflowEntry[] => {
     const entries: ClientWorkflowEntry[] = [];
 
     recurringTasks.forEach(task => {
-      if (!task.tarEnabled) return;
+      const reportTypes = getReportTypes(task);
+      const tarEnabled = reportTypes.some(rt => rt.id === 'tar' && rt.enabled);
+      if (!tarEnabled) return;
       const clientIds = getClientIdsForTask(task);
       const names = clientIds.length > 0
         ? [...new Set(clientIds.map(id => getClientName(id)))]
@@ -214,12 +216,14 @@ export default function CalendarPage() {
     return entries;
   }, [recurringTasks, clients, isAdmin]);
 
-  // Group STAT-enabled tasks by client
+  // Group STAT-enabled tasks by client (supports dynamic report types)
   const statClientGroups = React.useMemo((): ClientWorkflowEntry[] => {
     const entries: ClientWorkflowEntry[] = [];
 
     recurringTasks.forEach(task => {
-      if (!task.statEnabled) return;
+      const reportTypes = getReportTypes(task);
+      const statEnabled = reportTypes.some(rt => rt.id === 'stat' && rt.enabled);
+      if (!statEnabled) return;
       const clientIds = getClientIdsForTask(task);
       const names = clientIds.length > 0
         ? [...new Set(clientIds.map(id => getClientName(id)))]
@@ -324,12 +328,12 @@ export default function CalendarPage() {
     clientName?: string,
   ) => {
     let enrichedTask = { ...task };
-    const stepsField = type === 'TAR' ? 'tarSteps' : 'statSteps';
-    const enabledField = type === 'TAR' ? 'tarEnabled' : 'statEnabled';
+    const steps = getStepsForReportType(task, type);
 
-    if (task[enabledField] && (!task[stepsField] || (task[stepsField] as WorkflowStep[]).length === 0)) {
-      const steps = initializeWorkflowSteps(type);
-      enrichedTask = { ...enrichedTask, [stepsField]: steps };
+    if (steps.length === 0) {
+      // Initialize steps if none exist
+      const newSteps = initializeWorkflowSteps(type as 'TAR' | 'STAT');
+      enrichedTask = { ...enrichedTask, [type === 'tar' || type === 'TAR' ? 'tarSteps' : 'statSteps']: newSteps };
 
       if (task.id) {
         authenticatedFetch(`/api/workflow/${task.id}`, {
@@ -359,14 +363,14 @@ export default function CalendarPage() {
   const handleStepToggle = async (stepId: string, completed: boolean, clientId?: string) => {
     if (!selectedWorkflowTask?.id) return;
 
-    const stepsField = selectedWorkflowType === 'TAR' ? 'tarSteps' : 'statSteps';
+    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
 
     // Update clientProgress in local state
     const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
     const existing = updatedClientProgress[clientId || '']
       ? { ...updatedClientProgress[clientId || ''] }
       : {
-          completedStepIds: (selectedWorkflowTask[stepsField] as WorkflowStep[] || [])
+          completedStepIds: allSteps
             .filter((s) => s.completed)
             .map((s) => s.id),
         };
@@ -412,8 +416,7 @@ export default function CalendarPage() {
   const handleMarkAllComplete = async (clientId?: string) => {
     if (!selectedWorkflowTask?.id) return;
 
-    const stepsField = selectedWorkflowType === 'TAR' ? 'tarSteps' : 'statSteps';
-    const allSteps = (selectedWorkflowTask[stepsField] as WorkflowStep[]) || [];
+    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
 
     const allStepIds = allSteps.map((s) => s.id);
 
@@ -539,7 +542,7 @@ export default function CalendarPage() {
           taskId={selectedWorkflowTask.id!}
           taskTitle={selectedWorkflowTask.title}
           workflowType={selectedWorkflowType}
-          steps={selectedWorkflowType === 'TAR' ? (selectedWorkflowTask.tarSteps || []) : (selectedWorkflowTask.statSteps || [])}
+          steps={getStepsForReportType(selectedWorkflowTask, selectedWorkflowType)}
           completedStepIds={
             selectedClientId
               ? getClientCompletedStepIds(selectedWorkflowTask, selectedClientId, selectedWorkflowType)
