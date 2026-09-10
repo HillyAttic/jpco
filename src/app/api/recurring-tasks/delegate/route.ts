@@ -152,6 +152,28 @@ export async function POST(request: NextRequest) {
       updatedAt: new Date(),
     });
 
+    // Send notification to the delegatee
+    try {
+      const { sendNotification } = await import('@/lib/notifications/send-notification');
+      const clientLabel = delegatedClientIds.length > 0
+        ? ` for ${delegatedClientIds.length} client${delegatedClientIds.length > 1 ? 's' : ''}`
+        : '';
+      await sendNotification({
+        userIds: [delegateToUserId],
+        title: 'Task Delegated to You',
+        body: `${delegatedByUserName} delegated a recurring task to you${clientLabel}: ${taskData.title}`,
+        data: {
+          url: '/tasks/recurring',
+          type: 'recurring_task_delegated',
+          taskId,
+        },
+      });
+      console.log(`[Delegate API] ✅ Notification sent to ${delegateToUserName} (${delegateToUserId})`);
+    } catch (notifError) {
+      console.error('[Delegate API] Failed to send notification:', notifError);
+      // Don't fail the delegation if notification fails
+    }
+
     return NextResponse.json(
       {
         message: 'Task delegated successfully',
