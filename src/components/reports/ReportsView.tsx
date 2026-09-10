@@ -78,6 +78,17 @@ export function ReportsView() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { openModal: openGlobalModal, closeModal: closeGlobalModal } = useModal();
 
+  // Dynamic client stats for tasks with clientFilter
+  const [dynamicStatsMap, setDynamicStatsMap] = useState<Map<string, {
+    totalCount: number;
+    mappedCount: number;
+    unassignedCount: number;
+  }>>(new Map());
+
+  // Unassigned clients toggle state per task
+  const [unassignedClientsMap, setUnassignedClientsMap] = useState<Map<string, string[]>>(new Map());
+  const [showUnassignedToggle, setShowUnassignedToggle] = useState<Map<string, boolean>>(new Map());
+
   // FY and month filter state
   const financialYears = generateFinancialYears();
   const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
@@ -179,11 +190,107 @@ export function ReportsView() {
       );
       setCompletions(completionsMap);
 
+      // Fetch dynamic client stats for tasks with clientFilter
+      const dynamicStats = new Map<string, { totalCount: number; mappedCount: number; unassignedCount: number }>();
+      await Promise.all(
+        initializedTasks
+          .filter((task: RecurringTask) => task.clientFilter && task.clientFilter !== 'all' && task.id)
+          .map(async (task: RecurringTask) => {
+            try {
+              const statsResponse = await fetch(`/api/recurring-tasks/${task.id}/unassigned-clients`, { headers });
+              if (statsResponse.ok) {
+                const data = await statsResponse.json();
+                dynamicStats.set(task.id!, {
+                  totalCount: data.totalCount,
+                  mappedCount: data.mappedCount,
+                  unassignedCount: data.unassignedCount,
+                });
+              }
+            } catch (err) {
+              console.error(`Failed to fetch dynamic stats for task ${task.id}:`, err);
+            }
+          })
+      );
+      setDynamicStatsMap(dynamicStats);
+
+      // Fetch unassigned client IDs for tasks with showUnassignedClients enabled
+      const unassignedMap = new Map<string, string[]>();
+      await Promise.all(
+        initializedTasks
+          .filter((task: RecurringTask) => task.showUnassignedClients && task.clientFilter && task.clientFilter !== 'all' && task.id)
+          .map(async (task: RecurringTask) => {
+            try {
+              const resp = await fetch(`/api/recurring-tasks/${task.id}/unassigned-clients?clientFilter=${encodeURIComponent(task.clientFilter!)}`, { headers });
+              if (resp.ok) {
+                const data = await resp.json();
+                unassignedMap.set(task.id!, data.unassignedClientIds || []);
+              }
+            } catch (err) {
+              console.error(`Failed to fetch unassigned clients for task ${task.id}:`, err);
+            }
+          })
+      );
+      setUnassignedClientsMap(unassignedMap);
+      setShowUnassignedToggle(prev => {
+        const next = new Map(prev);
+        initializedTasks
+          .filter((task: RecurringTask) => task.showUnassignedClients && task.clientFilter && task.clientFilter !== 'all' && task.id)
+          .forEach((task: RecurringTask) => next.set(task.id!, true));
+        return next;
+      });
+
       console.log('Reports: All data loaded successfully');
     } catch (error) {
       console.error('Error loading reports data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Fetch unassigned client IDs for a task with clientFilter
+  const fetchUnassignedClients = async (taskId: string, clientFilter: string) => {
+    try {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const token = await user.getIdToken();
+      const response = await fetch(
+        `/api/recurring-tasks/${taskId}/unassigned-clients?clientFilter=${encodeURIComponent(clientFilter)}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setUnassignedClientsMap(prev => new Map(prev).set(taskId, data.unassignedClientIds || []));
+      }
+    } catch (err) {
+      console.error(`Failed to fetch unassigned clients for task ${taskId}:`, err);
+    }
+  };
+
+  // Toggle showUnassignedClients for a task
+  const handleToggleUnassigned = async (task: RecurringTask, show: boolean) => {
+    setShowUnassignedToggle(prev => new Map(prev).set(task.id || '', show));
+
+    // Persist to Firestore
+    try {
+      const user = auth.currentUser;
+      if (!user || !task.id) return;
+
+      const token = await user.getIdToken();
+      await fetch(`/api/recurring-tasks/${task.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ showUnassignedClients: show }),
+      });
+
+      // Update local task state
+      setSelectedTask(prev => prev ? { ...prev, showUnassignedClients: show } : null);
+    } catch (err) {
+      console.error('Failed to save showUnassignedClients:', err);
     }
   };
 
@@ -196,6 +303,15 @@ export function ReportsView() {
       setSelectedWorkflowType('STAT');
     } else {
       setSelectedWorkflowType(null);
+    }
+    // Initialize toggle state from task's stored preference
+    const hasDynamicFilter = !!task.clientFilter && task.clientFilter !== 'all';
+    if (hasDynamicFilter) {
+      setShowUnassignedToggle(prev => new Map(prev).set(task.id || '', task.showUnassignedClients || false));
+      // Fetch unassigned clients if toggle is ON
+      if (task.showUnassignedClients && task.id) {
+        fetchUnassignedClients(task.id, task.clientFilter!);
+      }
     }
     setIsModalOpen(true);
     openGlobalModal(); // Notify global context to hide header
@@ -366,19 +482,36 @@ export function ReportsView() {
                     mapping.clientIds.forEach(clientId => mappedClientIds.add(clientId));
                   });
                 }
-                const unassignedCount = hasTeamMemberMapping
-                  ? taskClients.filter(c => c.id && !mappedClientIds.has(c.id)).length
-                  : 0;
+
+                // Use dynamic stats if available, otherwise fall back to static
+                const hasDynamicFilter = !!task.clientFilter && task.clientFilter !== 'all';
+                const dynamicStats = hasDynamicFilter ? dynamicStatsMap.get(task.id || '') : null;
+
+                let unassignedCount: number;
+                let mappedCount: number;
+                let displayClientCount: number;
+
+                if (dynamicStats) {
+                  // Dynamic mode: use API-calculated counts
+                  displayClientCount = dynamicStats.totalCount;
+                  mappedCount = dynamicStats.mappedCount;
+                  unassignedCount = dynamicStats.unassignedCount;
+                } else {
+                  // Static mode: existing logic
+                  unassignedCount = hasTeamMemberMapping
+                    ? taskClients.filter(c => c.id && !mappedClientIds.has(c.id)).length
+                    : 0;
+                  mappedCount = hasTeamMemberMapping
+                    ? task.teamMemberMappings!.reduce((sum, m) => sum + m.clientIds.length, 0)
+                    : 0;
+                  displayClientCount = taskClients.length;
+                }
 
                 const taskCompletions = completions.get(task.id || '') || [];
                 // Calculate completion rate for the selected period
                 const dueMonth = getTaskDueMonth(task);
                 const monthKey = getMonthKeyForPeriod(selectedFY, selectedMonth, task.recurrencePattern, dueMonth);
-                const completionRate = calculateCompletionRate(task, taskClients.length, taskCompletions, monthKey);
-
-                const mappedCount = hasTeamMemberMapping
-                  ? task.teamMemberMappings!.reduce((sum, m) => sum + m.clientIds.length, 0)
-                  : 0;
+                const completionRate = calculateCompletionRate(task, displayClientCount, taskCompletions, monthKey);
 
                 return (
                   <tr key={task.id} className="hover:bg-gray-50 dark:bg-gray-800">
@@ -409,7 +542,7 @@ export function ReportsView() {
                             {hasTeamMemberMapping ? (
                               <span>{mappedCount} mapped{unassignedCount > 0 ? ` + ${unassignedCount} unasn.` : ''}</span>
                             ) : (
-                              <span>{taskClients.length} clients</span>
+                              <span>{displayClientCount} clients</span>
                             )}
                           </span>
                         </div>
@@ -421,12 +554,17 @@ export function ReportsView() {
                       </span>
                     </td>
                     <td className="hidden lg:table-cell px-3 sm:px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                      {hasDynamicFilter && (
+                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-100 text-teal-800 mr-1.5" title="Total clients calculated dynamically from compliance filter">
+                          Dynamic
+                        </span>
+                      )}
                       {hasTeamMemberMapping ? (
                         <span title={`${task.teamMemberMappings!.length} team member(s) assigned${unassignedCount > 0 ? `, ${unassignedCount} unassigned` : ''}`}>
                           {mappedCount} (mapped){unassignedCount > 0 ? ` + ${unassignedCount} (unassigned)` : ''}
                         </span>
                       ) : (
-                        taskClients.length
+                        displayClientCount
                       )}
                     </td>
                     <td className="px-3 sm:px-6 py-4 whitespace-nowrap">
@@ -467,6 +605,8 @@ export function ReportsView() {
             clients={clients}
             workflowType={selectedWorkflowType}
             onClose={closeModal}
+            showUnassignedClients={showUnassignedToggle.get(selectedTask.id || '') ?? selectedTask.showUnassignedClients ?? false}
+            unassignedClientIds={unassignedClientsMap.get(selectedTask.id || '') || []}
           />
         ) : (
           <TaskReportModal
@@ -487,10 +627,21 @@ export function ReportsView() {
                 selectedTask.contactIds.forEach(clientId => allClientIds.add(clientId));
               }
 
+              // If showUnassignedClients is ON and we have unassigned client IDs, include them
+              const taskId = selectedTask.id || '';
+              const showUnassigned = showUnassignedToggle.get(taskId) || selectedTask.showUnassignedClients;
+              if (showUnassigned && unassignedClientsMap.has(taskId)) {
+                unassignedClientsMap.get(taskId)!.forEach(clientId => allClientIds.add(clientId));
+              }
+
               return clients.filter(c => c.id && allClientIds.has(c.id));
             })()}
             completions={completions.get(selectedTask.id || '') || []}
             onClose={closeModal}
+            showUnassignedClients={showUnassignedToggle.get(selectedTask.id || '') ?? selectedTask.showUnassignedClients ?? false}
+            onToggleUnassigned={(show) => handleToggleUnassigned(selectedTask, show)}
+            unassignedClientIds={unassignedClientsMap.get(selectedTask.id || '') || []}
+            onFetchUnassigned={(filter) => selectedTask.id && fetchUnassignedClients(selectedTask.id, filter)}
           />
         )
       )}

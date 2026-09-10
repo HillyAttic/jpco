@@ -14,6 +14,8 @@ interface TeamMemberMappingDialogProps {
   onClose: () => void;
   onSave: (mappings: TeamMemberMapping[]) => void;
   initialMappings?: TeamMemberMapping[];
+  /** Pre-select a compliance filter when the dialog opens (e.g. task's clientFilter) */
+  defaultClientFilter?: string;
 }
 
 const COMPLIANCE_FILTERS = [
@@ -40,6 +42,7 @@ export function TeamMemberMappingDialog({
   onClose,
   onSave,
   initialMappings = [],
+  defaultClientFilter = 'all',
 }: TeamMemberMappingDialogProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -89,16 +92,15 @@ export function TeamMemberMappingDialog({
       setSelectedUserId('');
       setPendingClientIds([]);
       setClientSearch('');
-      setComplianceFilter('all');
+      setComplianceFilter(defaultClientFilter);
       lastSelectedIndexRef.current = null;
     }
-  }, [isOpen, initialMappings]);
+  }, [isOpen, initialMappings, defaultClientFilter]);
 
-  // Reset pending selection when user changes
+  // Reset pending selection when user changes (keep compliance filter from task)
   useEffect(() => {
     setPendingClientIds([]);
     setClientSearch('');
-    setComplianceFilter('all');
     lastSelectedIndexRef.current = null;
   }, [selectedUserId]);
 

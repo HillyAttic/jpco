@@ -166,6 +166,8 @@ export default function RecurringTasksPage() {
         statEnabled: data.statEnabled || false, // Include STAT workflow toggle
         tarSteps: data.tarSteps, // Include initialized TAR workflow steps
         statSteps: data.statSteps, // Include initialized STAT workflow steps
+        clientFilter: data.clientFilter, // Include client filter for dynamic client tracking
+        showUnassignedClients: data.showUnassignedClients, // Include show unassigned clients toggle
       };
 
       console.log('📤 [Recurring Tasks Page] Sending task data to API:', taskData);

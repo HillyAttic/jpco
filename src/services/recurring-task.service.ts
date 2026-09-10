@@ -63,6 +63,10 @@ export interface RecurringTask {
   statSteps?: WorkflowStep[]; // STAT workflow step definitions (10 steps)
   /** Per-client progress: clientId -> { completedStepIds, completedAt, completedBy } */
   clientProgress?: Record<string, ClientWorkflowProgress>;
+  /** Compliance filter for dynamic client tracking (e.g. 'taxAudit', 'itr', 'statutoryAudit') */
+  clientFilter?: 'all' | 'roc' | 'gstr1' | 'gst3b' | 'iff' | 'itr' | 'itrAudit' | 'taxAudit' | 'accounting' | 'clientVisit' | 'bank' | 'tcs' | 'tds' | 'statutoryAudit';
+  /** Whether to show unassigned clients in the reports modal */
+  showUnassignedClients?: boolean;
   createdBy?: string; // User ID of the creator
   createdAt?: Date;
   updatedAt?: Date;

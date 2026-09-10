@@ -34,6 +34,12 @@ const createRecurringTaskSchema = z.object({
   requiresRemark: z.boolean().optional(),
   tarEnabled: z.boolean().optional(),
   statEnabled: z.boolean().optional(),
+  clientFilter: z.enum([
+    'all', 'roc', 'gstr1', 'gst3b', 'iff', 'itr',
+    'itrAudit', 'taxAudit', 'accounting', 'clientVisit',
+    'bank', 'tcs', 'tds', 'statutoryAudit'
+  ]).optional(),
+  showUnassignedClients: z.boolean().optional(),
   tarSteps: z.array(z.object({
     id: z.string(),
     name: z.string(),

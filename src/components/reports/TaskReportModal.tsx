@@ -14,6 +14,10 @@ export interface TaskReportModalProps {
   clients: Client[];
   completions: ClientTaskCompletion[];
   onClose: () => void;
+  showUnassignedClients?: boolean;
+  onToggleUnassigned?: (show: boolean) => void;
+  unassignedClientIds?: string[];
+  onFetchUnassigned?: (filter: string) => void;
 }
 
 interface TeamMemberReport {
@@ -382,7 +386,7 @@ function LegendFooter() {
 
 const UNASSIGNED_KEY = '__unassigned__';
 
-function TeamMemberReportModal({ task, clients, completions, onClose }: TaskReportModalProps) {
+function TeamMemberReportModal({ task, clients, completions, onClose, showUnassignedClients, onToggleUnassigned, unassignedClientIds, onFetchUnassigned }: TaskReportModalProps) {
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showExportDialog, setShowExportDialog] = useState(false);
@@ -505,6 +509,25 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Show Unassigned Clients Toggle */}
+              {task.clientFilter && task.clientFilter !== 'all' && onToggleUnassigned && (
+                <label className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showUnassignedClients || false}
+                    onChange={(e) => {
+                      onToggleUnassigned(e.target.checked);
+                      if (e.target.checked && task.clientFilter && onFetchUnassigned) {
+                        onFetchUnassigned(task.clientFilter);
+                      }
+                    }}
+                    className="w-4 h-4 text-orange-600 bg-white border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className="text-xs font-medium text-orange-700 dark:text-orange-300 whitespace-nowrap">
+                    Show Unassigned
+                  </span>
+                </label>
+              )}
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
@@ -686,11 +709,22 @@ function TeamMemberReportModal({ task, clients, completions, onClose }: TaskRepo
 
 // ---------- Regular Task Report Modal ----------
 
-export function TaskReportModal({ task, clients, completions, onClose }: TaskReportModalProps) {
+export function TaskReportModal({ task, clients, completions, onClose, showUnassignedClients, onToggleUnassigned, unassignedClientIds, onFetchUnassigned }: TaskReportModalProps) {
   const hasTeamMemberMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
 
   if (hasTeamMemberMapping) {
-    return <TeamMemberReportModal task={task} clients={clients} completions={completions} onClose={onClose} />;
+    return (
+      <TeamMemberReportModal
+        task={task}
+        clients={clients}
+        completions={completions}
+        onClose={onClose}
+        showUnassignedClients={showUnassignedClients}
+        onToggleUnassigned={onToggleUnassigned}
+        unassignedClientIds={unassignedClientIds}
+        onFetchUnassigned={onFetchUnassigned}
+      />
+    );
   }
 
   return (
@@ -699,11 +733,15 @@ export function TaskReportModal({ task, clients, completions, onClose }: TaskRep
       clients={clients}
       completions={completions}
       onClose={onClose}
+      showUnassignedClients={showUnassignedClients}
+      onToggleUnassigned={onToggleUnassigned}
+      unassignedClientIds={unassignedClientIds}
+      onFetchUnassigned={onFetchUnassigned}
     />
   );
 }
 
-function RegularTaskReportModal({ task, clients, completions, onClose }: TaskReportModalProps) {
+function RegularTaskReportModal({ task, clients, completions, onClose, showUnassignedClients, onToggleUnassigned, unassignedClientIds, onFetchUnassigned }: TaskReportModalProps) {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -753,6 +791,25 @@ function RegularTaskReportModal({ task, clients, completions, onClose }: TaskRep
               </p>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              {/* Show Unassigned Clients Toggle */}
+              {task.clientFilter && task.clientFilter !== 'all' && onToggleUnassigned && (
+                <label className="flex items-center gap-2 px-3 py-1.5 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={showUnassignedClients || false}
+                    onChange={(e) => {
+                      onToggleUnassigned(e.target.checked);
+                      if (e.target.checked && task.clientFilter && onFetchUnassigned) {
+                        onFetchUnassigned(task.clientFilter);
+                      }
+                    }}
+                    className="w-4 h-4 text-orange-600 bg-white border-gray-300 rounded focus:ring-orange-500"
+                  />
+                  <span className="text-xs font-medium text-orange-700 dark:text-orange-300 whitespace-nowrap">
+                    Show Unassigned
+                  </span>
+                </label>
+              )}
               <button
                 onClick={() => setIsFullscreen(!isFullscreen)}
                 className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"

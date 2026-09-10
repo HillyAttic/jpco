@@ -203,6 +203,7 @@ export function WorkflowGridModal({
           onClose={() => { setMappingDialogOpen(false); setMappingTask(null); }}
           onSave={handleMappingSave}
           initialMappings={mappingTask.teamMemberMappings || []}
+          defaultClientFilter={mappingTask.clientFilter || 'all'}
         />
       )}
     </div>,

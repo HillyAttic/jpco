@@ -35,6 +35,8 @@ interface WorkflowTaskDetailModalProps {
   clients: Client[];
   workflowType: WorkflowType;
   onClose: () => void;
+  showUnassignedClients?: boolean;
+  unassignedClientIds?: string[];
 }
 
 export function WorkflowTaskDetailModal({
@@ -42,6 +44,8 @@ export function WorkflowTaskDetailModal({
   clients,
   workflowType,
   onClose,
+  showUnassignedClients = false,
+  unassignedClientIds = [],
 }: WorkflowTaskDetailModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -135,8 +139,22 @@ export function WorkflowTaskDetailModal({
       });
     }
 
+    // Include unassigned clients from dynamic filter if toggle is ON
+    if (showUnassignedClients && unassignedClientIds.length > 0) {
+      const existingClientIds = new Set(rows.map(r => r.clientId));
+      unassignedClientIds.forEach((clientId) => {
+        if (!existingClientIds.has(clientId)) {
+          rows.push({
+            clientName: clientMap.get(clientId) || clientId,
+            clientId,
+            assignee: 'Unassigned',
+          });
+        }
+      });
+    }
+
     return rows;
-  }, [task, clientMap, localTasks]);
+  }, [task, clientMap, localTasks, showUnassignedClients, unassignedClientIds]);
 
   // Get unique assignees
   const assignees = useMemo(() => {
@@ -169,10 +187,17 @@ export function WorkflowTaskDetailModal({
     let inProgress = 0;
     let pending = 0;
     let totalPercentage = 0;
+    let assigned = 0;
+    let unassigned = 0;
 
     allRows.forEach((row) => {
       const progress = getClientProgressSummary(task, row.clientId, workflowType);
       totalPercentage += progress.percentage;
+      if (row.assignee === 'Unassigned') {
+        unassigned++;
+      } else {
+        assigned++;
+      }
       switch (progress.status) {
         case 'completed':
           completed++;
@@ -193,6 +218,8 @@ export function WorkflowTaskDetailModal({
       inProgress,
       pending,
       avgCompletion,
+      assigned,
+      unassigned,
     };
   }, [allRows, task, workflowType]);
 
@@ -282,9 +309,11 @@ export function WorkflowTaskDetailModal({
           </div>
 
           {/* ── Stats cards ──────────────────────────────────── */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 mt-4">
-            <StatCard label="Total Clients" value={stats.totalClients} color="text-gray-900 dark:text-white" />
-            <StatCard label="Completed" value={stats.completed} color="text-green-600" />
+          <div className="grid grid-cols-7 gap-2 mt-4">
+            <StatCard label="Total" value={stats.totalClients} color="text-gray-900 dark:text-white" />
+            <StatCard label="Assigned" value={stats.assigned} color="text-purple-600" />
+            <StatCard label="Unassigned" value={stats.unassigned} color="text-orange-600" />
+            <StatCard label="Done" value={stats.completed} color="text-green-600" />
             <StatCard label="In Progress" value={stats.inProgress} color="text-blue-600" />
             <StatCard label="Pending" value={stats.pending} color="text-amber-600" />
             <StatCard label="Avg. Progress" value={`${stats.avgCompletion}%`} color="text-gray-900 dark:text-white" highlight />
@@ -377,13 +406,18 @@ export function WorkflowTaskDetailModal({
                       <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {row.assignee === 'Unassigned' ? (
                           <span
-                            className="text-blue-600 hover:underline cursor-pointer"
+                            className="group inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 cursor-pointer hover:bg-orange-200 hover:shadow-md dark:hover:bg-orange-900/50 hover:scale-105 transition-all relative"
                             onClick={() => handleAssignClick(localTasks[task.id!] || task)}
                           >
                             Unassigned
+                            <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-gray-900 dark:bg-gray-700 text-white text-[10px] font-normal whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                              Click to assign →
+                            </span>
                           </span>
                         ) : (
-                          row.assignee
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                            {row.assignee}
+                          </span>
                         )}
                       </td>
                       <td className="px-3 py-3 text-center">
@@ -451,17 +485,22 @@ export function WorkflowTaskDetailModal({
                         <h4 className="font-semibold text-sm text-gray-900 dark:text-white truncate" title={row.clientName}>
                           {row.clientName}
                         </h4>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 flex items-center gap-1">
                           Assigned:{' '}
                           {row.assignee === 'Unassigned' ? (
                             <span
-                              className="text-blue-600 hover:underline cursor-pointer"
+                              className="group inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 cursor-pointer hover:bg-orange-200 hover:shadow-md dark:hover:bg-orange-900/50 hover:scale-105 transition-all relative"
                               onClick={() => handleAssignClick(localTasks[task.id!] || task)}
                             >
                               Unassigned
+                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-gray-900 dark:bg-gray-700 text-white text-[10px] font-normal whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
+                                Click to assign →
+                              </span>
                             </span>
                           ) : (
-                            row.assignee
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
+                              {row.assignee}
+                            </span>
                           )}
                         </p>
                       </div>
@@ -535,6 +574,7 @@ export function WorkflowTaskDetailModal({
           onClose={() => { setMappingDialogOpen(false); setMappingTask(null); }}
           onSave={handleMappingSave}
           initialMappings={mappingTask.teamMemberMappings || []}
+          defaultClientFilter={mappingTask.clientFilter || 'all'}
         />
       )}
     </div>
@@ -556,16 +596,16 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-lg border px-3.5 py-2.5 transition-colors ${
+      className={`rounded-lg border px-2 py-1.5 transition-colors ${
         highlight
           ? 'border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/10'
           : 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40'
       }`}
     >
-      <p className="text-[10px] sm:text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
+      <p className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">
         {label}
       </p>
-      <p className={`text-xl sm:text-2xl font-bold mt-0.5 ${color}`}>
+      <p className={`text-base font-bold mt-0.5 ${color}`}>
         {value}
       </p>
     </div>

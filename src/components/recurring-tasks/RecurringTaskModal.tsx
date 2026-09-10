@@ -44,6 +44,12 @@ const recurringTaskFormSchema = z.object({
   requiresRemark: z.boolean().optional(),
   tarEnabled: z.boolean().optional(),
   statEnabled: z.boolean().optional(),
+  clientFilter: z.enum([
+    'all', 'roc', 'gstr1', 'gst3b', 'iff', 'itr',
+    'itrAudit', 'taxAudit', 'accounting', 'clientVisit',
+    'bank', 'tcs', 'tds', 'statutoryAudit'
+  ]).optional(),
+  showUnassignedClients: z.boolean().optional(),
 });
 
 type RecurringTaskFormData = z.infer<typeof recurringTaskFormSchema>;
@@ -83,6 +89,13 @@ export function RecurringTaskModal({
   const [showMappingDialog, setShowMappingDialog] = useState(false);
   const [tarEnabled, setTarEnabled] = useState(false);
   const [statEnabled, setStatEnabled] = useState(false);
+  const [showUnassignedClients, setShowUnassignedClients] = useState(false);
+  const [dynamicClientStats, setDynamicClientStats] = useState<{
+    totalCount: number;
+    mappedCount: number;
+    unassignedCount: number;
+  } | null>(null);
+  const [loadingDynamicStats, setLoadingDynamicStats] = useState(false);
 
   const {
     register,
@@ -250,9 +263,62 @@ export function RecurringTaskModal({
   // Get available clients (not already selected)
   const getAvailableClients = () => {
     const filteredClients = getFilteredClients();
-    return filteredClients.filter(client => 
+    return filteredClients.filter(client =>
       !selectedClients.some(selected => selected.id === client.id)
     );
+  };
+
+  // Fetch dynamic client stats based on compliance filter
+  const fetchDynamicClientStats = async () => {
+    const filter = watch('clientFilter') || 'all';
+    if (!filter || filter === 'all') {
+      setDynamicClientStats(null);
+      return;
+    }
+
+    setLoadingDynamicStats(true);
+    try {
+      if (task?.id) {
+        // For existing tasks, call the API with current filter as query param
+        // (may not be saved to Firestore yet when editing)
+        const response = await authenticatedFetch(
+          `/api/recurring-tasks/${task.id}/unassigned-clients?clientFilter=${encodeURIComponent(filter)}`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          setDynamicClientStats({
+            totalCount: data.totalCount,
+            mappedCount: data.mappedCount,
+            unassignedCount: data.unassignedCount,
+          });
+        }
+      } else {
+        // For new tasks, calculate client-side using loaded clients
+        const filteredClients = clients.filter(client => {
+          if (!client.compliance) return false;
+          return !!client.compliance[filter as keyof typeof client.compliance];
+        });
+
+        const mappedClientIds = new Set<string>();
+        teamMemberMappings.forEach(mapping => {
+          mapping.clientIds.forEach(clientId => mappedClientIds.add(clientId));
+        });
+
+        const mappedCount = filteredClients.filter(c =>
+          c.id && mappedClientIds.has(c.id)
+        ).length;
+
+        setDynamicClientStats({
+          totalCount: filteredClients.length,
+          mappedCount,
+          unassignedCount: filteredClients.length - mappedCount,
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching dynamic client stats:', error);
+    } finally {
+      setLoadingDynamicStats(false);
+    }
   };
 
   // Handle client selection
@@ -311,11 +377,13 @@ export function RecurringTaskModal({
         requiresRemark: task.requiresRemark || false,
         tarEnabled: task.tarEnabled || false,
         statEnabled: task.statEnabled || false,
+        clientFilter: task.clientFilter || 'all',
       });
 
       // Set TAR/STAT toggle states
       setTarEnabled(task.tarEnabled || false);
       setStatEnabled(task.statEnabled || false);
+      setShowUnassignedClients(task.showUnassignedClients || false);
 
       // Set selected clients for display
       if (task.contactIds && task.contactIds.length > 0) {
@@ -333,6 +401,11 @@ export function RecurringTaskModal({
       } else {
         console.log('⚠️ [RecurringTaskModal] No team member mappings found in task');
         setTeamMemberMappings([]);
+      }
+
+      // Load dynamic client stats if task has a clientFilter
+      if (task.clientFilter && task.clientFilter !== 'all' && task.id) {
+        setTimeout(() => fetchDynamicClientStats(), 300);
       }
     } else {
       console.log('➕ [RecurringTaskModal] Creating new task - resetting form');
@@ -355,11 +428,13 @@ export function RecurringTaskModal({
         requiresRemark: false,
         tarEnabled: false,
         statEnabled: false,
+        clientFilter: 'all',
       });
       setSelectedClients([]);
       setTeamMemberMappings([]);
       setTarEnabled(false);
       setStatEnabled(false);
+      setDynamicClientStats(null);
     }
   }, [task, reset, clients]);
 
@@ -402,6 +477,8 @@ export function RecurringTaskModal({
         tarSteps,
         statSteps,
         teamMemberMappings: teamMemberMappings.length > 0 ? teamMemberMappings : undefined,
+        clientFilter: data.clientFilter || undefined,
+        showUnassignedClients: showUnassignedClients,
       };
 
       console.log('📤 [RecurringTaskModal] Final submission data:', submissionData);
@@ -411,6 +488,8 @@ export function RecurringTaskModal({
       setTeamMemberMappings([]);
       setTarEnabled(false);
       setStatEnabled(false);
+      setShowUnassignedClients(false);
+      setDynamicClientStats(null);
       onClose();
     } catch (error) {
       console.error('❌ [RecurringTaskModal] Error submitting recurring task:', error);
@@ -425,6 +504,8 @@ export function RecurringTaskModal({
     setTeamMemberMappings([]);
     setTarEnabled(false);
     setStatEnabled(false);
+    setShowUnassignedClients(false);
+    setDynamicClientStats(null);
     onClose();
   };
 
@@ -454,6 +535,106 @@ export function RecurringTaskModal({
               required
               disabled={isLoading}
             />
+          </div>
+
+          {/* Unassigned Clients Info - Dynamic Client Filter */}
+          <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg space-y-3">
+            <div>
+              <Label htmlFor="clientFilter" className="font-medium text-gray-900 dark:text-white">
+                Client Filter (Optional)
+              </Label>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 mb-2">
+                Select a compliance filter to automatically track total, mapped, and unassigned clients. New clients with matching filters will be included automatically.
+              </p>
+              <Select
+                id="clientFilter"
+                {...register('clientFilter')}
+                disabled={isLoading}
+                className="mt-1"
+                onChange={(e) => {
+                  register('clientFilter').onChange(e);
+                  // Reset stats when filter changes
+                  setDynamicClientStats(null);
+                  if (e.target.value && e.target.value !== 'all') {
+                    // Trigger fetch after a short delay for state to settle
+                    setTimeout(() => fetchDynamicClientStats(), 100);
+                  }
+                }}
+              >
+                <option value="all">All Clients (No Filter)</option>
+                <option value="roc">Only with ROC</option>
+                <option value="gstr1">Only with GSTR1</option>
+                <option value="gst3b">Only with GST3B</option>
+                <option value="iff">Only with IFF</option>
+                <option value="itr">Only with ITR</option>
+                <option value="itrAudit">Only with ITR Audit</option>
+                <option value="taxAudit">Only with Tax Audit</option>
+                <option value="accounting">Only with Accounting</option>
+                <option value="clientVisit">Only with Client Visit</option>
+                <option value="bank">Only with Bank</option>
+                <option value="tcs">Only with TCS</option>
+                <option value="tds">Only with TDS</option>
+                <option value="statutoryAudit">Only with Statutory Audit</option>
+              </Select>
+            </div>
+
+            {/* Live Stats Preview */}
+            {dynamicClientStats && (
+              <div className="grid grid-cols-3 gap-3">
+                <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <p className="text-2xl font-bold text-blue-600">{dynamicClientStats.totalCount}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Total Clients</p>
+                </div>
+                <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <p className="text-2xl font-bold text-green-600">{dynamicClientStats.mappedCount}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Mapped</p>
+                </div>
+                <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <p className="text-2xl font-bold text-orange-600">{dynamicClientStats.unassignedCount}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Unassigned</p>
+                </div>
+              </div>
+            )}
+
+            {loadingDynamicStats && (
+              <div className="flex items-center justify-center py-3">
+                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600 mr-2"></div>
+                <span className="text-sm text-gray-500">Calculating clients...</span>
+              </div>
+            )}
+
+            {watch('clientFilter') && watch('clientFilter') !== 'all' && !dynamicClientStats && !loadingDynamicStats && (
+              <div className="flex items-center justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchDynamicClientStats}
+                  disabled={loadingDynamicStats}
+                  className="text-xs"
+                >
+                  Calculate Unassigned Clients
+                </Button>
+              </div>
+            )}
+
+            {/* Show Unassigned Clients Toggle */}
+            {watch('clientFilter') && watch('clientFilter') !== 'all' && (
+              <div className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-orange-600 dark:text-orange-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                  </svg>
+                  <Label className="text-sm font-medium text-orange-900 dark:text-orange-200">
+                    Show Unassigned Clients in Reports
+                  </Label>
+                </div>
+                <Switch
+                  checked={showUnassignedClients}
+                  onCheckedChange={setShowUnassignedClients}
+                />
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -899,8 +1080,15 @@ export function RecurringTaskModal({
         <TeamMemberMappingDialog
           isOpen={showMappingDialog}
           onClose={() => setShowMappingDialog(false)}
-          onSave={(mappings) => setTeamMemberMappings(mappings)}
+          onSave={(mappings) => {
+            setTeamMemberMappings(mappings);
+            // Re-fetch dynamic stats if filter is set
+            if (watch('clientFilter') && watch('clientFilter') !== 'all') {
+              setTimeout(() => fetchDynamicClientStats(), 200);
+            }
+          }}
           initialMappings={teamMemberMappings}
+          defaultClientFilter={watch('clientFilter') || 'all'}
         />
       </DialogContent>
     </Dialog>
