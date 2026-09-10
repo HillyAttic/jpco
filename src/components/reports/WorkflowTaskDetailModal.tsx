@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { RecurringTask, WorkflowStep, WorkflowType, TeamMemberMapping, getClientCompletedStepIds, getClientProgressSummary } from '@/services/recurring-task.service';
 import { Client } from '@/services/client.service';
 import { getWorkflowTemplate } from '@/lib/workflow-templates';
@@ -56,6 +57,14 @@ export function WorkflowTaskDetailModal({
   const [mappingDialogOpen, setMappingDialogOpen] = useState(false);
   const [mappingTask, setMappingTask] = useState<RecurringTask | null>(null);
   const [localTasks, setLocalTasks] = useState<Record<string, RecurringTask>>({});
+
+  // Tooltip state for unassigned badges (renders via portal to escape overflow)
+  const [hoveredBadge, setHoveredBadge] = useState<{ x: number; y: number } | null>(null);
+
+  const handleBadgeHover = useCallback((e: React.MouseEvent) => {
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    setHoveredBadge({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
+  }, []);
 
   const handleAssignClick = (task: RecurringTask) => {
     setMappingTask(task);
@@ -406,13 +415,12 @@ export function WorkflowTaskDetailModal({
                       <td className="px-3 py-3 text-sm text-gray-600 dark:text-gray-400 truncate">
                         {row.assignee === 'Unassigned' ? (
                           <span
-                            className="group inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 cursor-pointer hover:bg-orange-200 hover:shadow-md dark:hover:bg-orange-900/50 hover:scale-105 transition-all relative"
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 cursor-pointer hover:bg-orange-200 hover:shadow-md dark:hover:bg-orange-900/50 hover:scale-105 transition-all"
                             onClick={() => handleAssignClick(localTasks[task.id!] || task)}
+                            onMouseEnter={handleBadgeHover}
+                            onMouseLeave={() => setHoveredBadge(null)}
                           >
                             Unassigned
-                            <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-gray-900 dark:bg-gray-700 text-white text-[10px] font-normal whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                              Click to assign →
-                            </span>
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
@@ -489,13 +497,12 @@ export function WorkflowTaskDetailModal({
                           Assigned:{' '}
                           {row.assignee === 'Unassigned' ? (
                             <span
-                              className="group inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 cursor-pointer hover:bg-orange-200 hover:shadow-md dark:hover:bg-orange-900/50 hover:scale-105 transition-all relative"
+                              className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300 cursor-pointer hover:bg-orange-200 hover:shadow-md dark:hover:bg-orange-900/50 hover:scale-105 transition-all"
                               onClick={() => handleAssignClick(localTasks[task.id!] || task)}
+                              onMouseEnter={handleBadgeHover}
+                              onMouseLeave={() => setHoveredBadge(null)}
                             >
                               Unassigned
-                              <span className="absolute -top-8 left-1/2 -translate-x-1/2 px-2 py-1 rounded-md bg-gray-900 dark:bg-gray-700 text-white text-[10px] font-normal whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-50">
-                                Click to assign →
-                              </span>
                             </span>
                           ) : (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-semibold bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300">
@@ -576,6 +583,17 @@ export function WorkflowTaskDetailModal({
           initialMappings={mappingTask.teamMemberMappings || []}
           defaultClientFilter={mappingTask.clientFilter || 'all'}
         />
+      )}
+
+      {/* Portal-based tooltip (escapes overflow containers) */}
+      {hoveredBadge && createPortal(
+        <div
+          className="fixed px-3 py-1.5 rounded-lg bg-gray-900 dark:bg-gray-700 text-white text-xs font-semibold whitespace-nowrap shadow-lg z-[9999] pointer-events-none -translate-x-1/2 -translate-y-1/2"
+          style={{ left: hoveredBadge.x, top: hoveredBadge.y }}
+        >
+          Click to assign →
+        </div>,
+        document.body
       )}
     </div>
   );
