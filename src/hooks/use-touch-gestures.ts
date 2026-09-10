@@ -28,7 +28,7 @@ interface TouchState {
 }
 
 export function useTouchGestures(
-  elementRef: React.RefObject<HTMLElement>,
+  elementRef: React.RefObject<HTMLElement | null>,
   options: TouchGestureOptions = {}
 ) {
   const { isTouchDevice } = useResponsive();
