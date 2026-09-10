@@ -21,6 +21,24 @@ export interface TeamMemberMapping {
   clientIds: string[];
 }
 
+export interface WorkflowStep {
+  id: string;
+  name: string;
+  shortName: string;
+  completed: boolean;
+  completedAt?: Date;
+  completedBy?: string;
+}
+
+/** Per-client workflow progress — stored under clientProgress[clientId] */
+export interface ClientWorkflowProgress {
+  completedStepIds: string[];
+  completedAt?: string; // ISO date string
+  completedBy?: string; // user UID
+}
+
+export type WorkflowType = 'TAR' | 'STAT';
+
 export interface RecurringTask {
   id?: string;
   title: string;
@@ -38,6 +56,13 @@ export interface RecurringTask {
   teamMemberMappings?: TeamMemberMapping[]; // Team member to client mappings
   requiresArn?: boolean; // Whether ARN is required for completion
   requiresRemark?: boolean; // Whether remark is required for completion
+  // TAR/STAT workflow fields
+  tarEnabled?: boolean; // Whether TAR (Tax Audit Report) workflow is enabled
+  statEnabled?: boolean; // Whether STAT (Statutory Audit) workflow is enabled
+  tarSteps?: WorkflowStep[]; // TAR workflow step definitions (7 steps)
+  statSteps?: WorkflowStep[]; // STAT workflow step definitions (10 steps)
+  /** Per-client progress: clientId -> { completedStepIds, completedAt, completedBy } */
+  clientProgress?: Record<string, ClientWorkflowProgress>;
   createdBy?: string; // User ID of the creator
   createdAt?: Date;
   updatedAt?: Date;
@@ -290,3 +315,141 @@ export const recurringTaskService = {
     }
   },
 };
+
+// ─────────────────────────────────────────────
+// Per-client workflow progress helpers
+// ─────────────────────────────────────────────
+
+/**
+ * Get the completed step IDs for a specific client.
+ * Falls back to legacy task-level steps if clientProgress is not yet populated.
+ */
+export function getClientCompletedStepIds(
+  task: RecurringTask,
+  clientId: string,
+  workflowType: WorkflowType
+): string[] {
+  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
+  const legacySteps = task[key] || [];
+
+  // If clientProgress exists for this client, use it
+  if (task.clientProgress?.[clientId]) {
+    return task.clientProgress[clientId].completedStepIds || [];
+  }
+
+  // Migration fallback: derive from legacy task-level steps
+  // All clients share the same legacy progress until they diverge
+  return legacySteps.filter((s) => s.completed).map((s) => s.id);
+}
+
+/**
+ * Check if a specific step is completed for a specific client.
+ */
+export function isStepCompletedForClient(
+  task: RecurringTask,
+  stepId: string,
+  clientId: string,
+  workflowType: WorkflowType
+): boolean {
+  return getClientCompletedStepIds(task, clientId, workflowType).includes(stepId);
+}
+
+/**
+ * Calculate per-client progress percentage.
+ */
+export function calculateClientProgressPercent(
+  task: RecurringTask,
+  clientId: string,
+  workflowType: WorkflowType
+): number {
+  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
+  const totalSteps = (task[key] || []).length;
+  if (totalSteps === 0) return 0;
+  const completed = getClientCompletedStepIds(task, clientId, workflowType).length;
+  return Math.round((completed / totalSteps) * 100);
+}
+
+/**
+ * Get per-client workflow status.
+ */
+export function getClientWorkflowStatus(
+  task: RecurringTask,
+  clientId: string,
+  workflowType: WorkflowType
+): 'completed' | 'in-progress' | 'pending' {
+  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
+  const totalSteps = (task[key] || []).length;
+  if (totalSteps === 0) return 'pending';
+  const completed = getClientCompletedStepIds(task, clientId, workflowType).length;
+  if (completed === totalSteps) return 'completed';
+  if (completed > 0) return 'in-progress';
+  return 'pending';
+}
+
+/**
+ * Build an updated task with a toggled step for a specific client.
+ * Initializes clientProgress from legacy steps on first touch.
+ */
+export function updateClientStepProgress(
+  task: RecurringTask,
+  stepId: string,
+  completed: boolean,
+  clientId: string,
+  workflowType: WorkflowType,
+  userUid: string | undefined
+): RecurringTask {
+  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
+  const totalSteps = task[key] || [];
+
+  // Build clientProgress if not present
+  const clientProgress = { ...(task.clientProgress || {}) };
+  const existing = clientProgress[clientId]
+    ? { ...clientProgress[clientId] }
+    : {
+        completedStepIds: totalSteps.filter((s) => s.completed).map((s) => s.id),
+      };
+
+  const completedStepIds = new Set(existing.completedStepIds || []);
+
+  if (completed) {
+    completedStepIds.add(stepId);
+  } else {
+    completedStepIds.delete(stepId);
+  }
+
+  clientProgress[clientId] = {
+    completedStepIds: Array.from(completedStepIds),
+    completedAt: new Date().toISOString(),
+    completedBy: userUid,
+  };
+
+  return { ...task, clientProgress };
+}
+
+/**
+ * Get a per-client progress summary compatible with calculateWorkflowProgress shape.
+ */
+export function getClientProgressSummary(
+  task: RecurringTask,
+  clientId: string,
+  workflowType: WorkflowType
+): {
+  total: number;
+  completed: number;
+  percentage: number;
+  status: 'pending' | 'in-progress' | 'completed';
+} {
+  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
+  const total = (task[key] || []).length;
+  const completed = getClientCompletedStepIds(task, clientId, workflowType).length;
+  const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  let status: 'pending' | 'in-progress' | 'completed' = 'pending';
+  if (completed === total && total > 0) {
+    status = 'completed';
+  } else if (completed > 0) {
+    status = 'in-progress';
+  }
+
+  return { total, completed, percentage, status };
+}

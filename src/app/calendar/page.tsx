@@ -3,21 +3,40 @@
 import React, { useState, useEffect } from 'react';
 import { Task, TaskStatus, TaskPriority } from '@/types/task.types';
 import { taskApi } from '@/services/task.api';
-import { recurringTaskService, RecurringTask } from '@/services/recurring-task.service';
+import {
+  recurringTaskService,
+  RecurringTask,
+  WorkflowStep,
+  WorkflowType,
+  getClientCompletedStepIds,
+} from '@/services/recurring-task.service';
 import { calculateAllOccurrences } from '@/utils/recurrence-scheduler';
 import { CalendarView } from '@/components/calendar-view';
 import { MobileCalendarView } from '@/components/mobile-calendar-view';
 import { Button } from '@/components/ui/button';
 import { PlusCircleIcon, DevicePhoneMobileIcon, ComputerDesktopIcon } from '@heroicons/react/24/outline';
 import { TaskCreationModal } from '@/components/task-creation-modal';
+import { WorkflowDrawer } from '@/components/compliance/WorkflowDrawer';
+import { WorkflowGridModal } from '@/components/compliance/WorkflowGridModal';
+import { initializeWorkflowSteps, getWorkflowTemplate } from '@/lib/workflow-templates';
 import { auth } from '@/lib/firebase';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
+import { authenticatedFetch } from '@/lib/api-client';
 
 // Extended task type to include recurring task occurrences
 interface CalendarTask extends Task {
   isRecurring?: boolean;
   recurringTaskId?: string;
   recurrencePattern?: string;
+  tarEnabled?: boolean;
+  statEnabled?: boolean;
+}
+
+/** Per-client workflow entry for the TAR/STAT card grids */
+interface ClientWorkflowEntry {
+  clientId: string;
+  clientName: string;
+  task: RecurringTask;
 }
 
 export default function CalendarPage() {
@@ -27,6 +46,7 @@ export default function CalendarPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [nonRecurringTasks, setNonRecurringTasks] = useState<Task[]>([]);
+  const [clients, setClients] = useState<any[]>([]);
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth < 768 ? 'mobile' : 'desktop';
@@ -34,43 +54,45 @@ export default function CalendarPage() {
     return 'desktop';
   });
 
+  // Workflow drawer state
+  const [workflowDrawerOpen, setWorkflowDrawerOpen] = useState(false);
+  const [selectedWorkflowTask, setSelectedWorkflowTask] = useState<RecurringTask | null>(null);
+  const [selectedWorkflowType, setSelectedWorkflowType] = useState<WorkflowType>('TAR');
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClientName, setSelectedClientName] = useState<string | null>(null);
+
+  // Workflow grid modal state (shown on calendar event click)
+  const [workflowGridOpen, setWorkflowGridOpen] = useState(false);
+  const [gridModalTask, setGridModalTask] = useState<RecurringTask | null>(null);
+
   useEffect(() => {
     loadTasks();
   }, []);
 
   /**
    * Generate calendar task occurrences from recurring tasks
-   * Creates individual task entries for each occurrence based on recurrence pattern
-   * Optimized to only generate occurrences for the visible calendar range
    */
   const generateRecurringTaskOccurrences = React.useCallback((recurringTasks: RecurringTask[]): CalendarTask[] => {
     const calendarTasks: CalendarTask[] = [];
 
-    // Optimize: Only generate occurrences for current year ± 1 year (3 years total instead of 7)
     const calendarStartDate = new Date();
     calendarStartDate.setFullYear(calendarStartDate.getFullYear() - 1);
-    calendarStartDate.setMonth(0); // January
+    calendarStartDate.setMonth(0);
     calendarStartDate.setDate(1);
 
     const calendarEndDate = new Date();
     calendarEndDate.setFullYear(calendarEndDate.getFullYear() + 1);
-    calendarEndDate.setMonth(11); // December
+    calendarEndDate.setMonth(11);
     calendarEndDate.setDate(31);
 
     recurringTasks.forEach(recurringTask => {
-      // Skip paused tasks
       if (recurringTask.isPaused) return;
 
-      // For recurring tasks, use dueDate as the starting point for occurrences
-      // This ensures the calendar shows when tasks are actually due, not when they started
       const taskDueDate = new Date(recurringTask.dueDate);
-      const taskEndDate = calendarEndDate; // Recurring tasks don't have an end date
-
-      // Only generate occurrences within the calendar range
+      const taskEndDate = calendarEndDate;
       const occurrenceStartDate = taskDueDate > calendarStartDate ? taskDueDate : calendarStartDate;
       const occurrenceEndDate = taskEndDate < calendarEndDate ? taskEndDate : calendarEndDate;
 
-      // Skip if task is completely outside the calendar range
       if (occurrenceStartDate > calendarEndDate || occurrenceEndDate < calendarStartDate) {
         return;
       }
@@ -82,9 +104,7 @@ export default function CalendarPage() {
           recurringTask.recurrencePattern
         );
 
-        // Create a calendar task for each occurrence
         occurrences.forEach(occurrenceDate => {
-          // Check if this occurrence was completed
           const wasCompleted = recurringTask.completionHistory.some(completion => {
             const completionDate = new Date(completion.date);
             return (
@@ -108,6 +128,8 @@ export default function CalendarPage() {
             isRecurring: true,
             recurringTaskId: recurringTask.id,
             recurrencePattern: recurringTask.recurrencePattern,
+            tarEnabled: recurringTask.tarEnabled,
+            statEnabled: recurringTask.statEnabled,
           });
         });
       } catch (error) {
@@ -118,20 +140,109 @@ export default function CalendarPage() {
     return calendarTasks;
   }, []);
 
-  // Memoize the generation of recurring task occurrences to avoid recalculation
   const recurringCalendarTasks = React.useMemo(() => {
     return generateRecurringTaskOccurrences(recurringTasks);
   }, [recurringTasks, generateRecurringTaskOccurrences]);
 
-  // Memoize the combined tasks array - exclude non-recurring tasks and leaves
   const allTasks = React.useMemo(() => {
     return recurringCalendarTasks;
   }, [recurringCalendarTasks]);
 
-  // Update tasks when allTasks changes
   useEffect(() => {
     setTasks(allTasks);
   }, [allTasks]);
+
+  // Helper: extract client IDs visible to the current user from a task
+  const getClientIdsForTask = (task: RecurringTask): string[] => {
+    const currentUid = auth.currentUser?.uid;
+
+    // Admins see all clients from all mappings
+    if (isAdmin) {
+      const ids = new Set<string>();
+      (task.contactIds || []).forEach(id => ids.add(id));
+      (task.teamMemberMappings || []).forEach(m => {
+        (m.clientIds || []).forEach(id => ids.add(id));
+      });
+      return Array.from(ids);
+    }
+
+    // Non-admins: only their own mapping's clients
+    const userMapping = (task.teamMemberMappings || []).find(m => m.userId === currentUid);
+    if (userMapping) {
+      return [...userMapping.clientIds];
+    }
+
+    // Fallback: if no mappings at all, use contactIds (legacy tasks)
+    if (!task.teamMemberMappings || task.teamMemberMappings.length === 0) {
+      return [...(task.contactIds || [])];
+    }
+
+    // User has no mapping on this task → no clients to show
+    return [];
+  };
+
+  // Helper: get client name from ID
+  const getClientName = (clientId: string): string => {
+    const client = clients.find(c => c.id === clientId);
+    return client?.clientName || 'Unassigned';
+  };
+
+  // Group TAR-enabled tasks by client
+  const tarClientGroups = React.useMemo((): ClientWorkflowEntry[] => {
+    const entries: ClientWorkflowEntry[] = [];
+
+    recurringTasks.forEach(task => {
+      if (!task.tarEnabled) return;
+      const clientIds = getClientIdsForTask(task);
+      const names = clientIds.length > 0
+        ? [...new Set(clientIds.map(id => getClientName(id)))]
+        : ['Unassigned'];
+
+      clientIds.forEach((clientId, idx) => {
+        entries.push({
+          clientId,
+          clientName: names[idx] || getClientName(clientId),
+          task,
+        });
+      });
+
+      if (clientIds.length === 0) {
+        entries.push({ clientId: '', clientName: 'Unassigned', task });
+      }
+    });
+
+    return entries;
+  }, [recurringTasks, clients, isAdmin]);
+
+  // Group STAT-enabled tasks by client
+  const statClientGroups = React.useMemo((): ClientWorkflowEntry[] => {
+    const entries: ClientWorkflowEntry[] = [];
+
+    recurringTasks.forEach(task => {
+      if (!task.statEnabled) return;
+      const clientIds = getClientIdsForTask(task);
+      const names = clientIds.length > 0
+        ? [...new Set(clientIds.map(id => getClientName(id)))]
+        : ['Unassigned'];
+
+      clientIds.forEach((clientId, idx) => {
+        entries.push({
+          clientId,
+          clientName: names[idx] || getClientName(clientId),
+          task,
+        });
+      });
+
+      if (clientIds.length === 0) {
+        entries.push({ clientId: '', clientName: 'Unassigned', task });
+      }
+    });
+
+    return entries;
+  }, [recurringTasks, clients, isAdmin]);
+
+  const hasTarTasks = tarClientGroups.length > 0;
+  const hasStatTasks = statClientGroups.length > 0;
 
   const loadTasks = async () => {
     try {
@@ -140,16 +251,8 @@ export default function CalendarPage() {
       const currentUser = auth.currentUser;
 
       if (!currentUser) {
-        // If auth is not ready or user not logged in, we might want to wait or just return
-        // But since this is a protected page usually, we can assume auth will be ready soon or redirect
-        // For now, let's just log and continue
         console.log('Waiting for user authentication...');
-        // We could use onAuthStateChanged here but typically the provider handles it.
-        // Let's try to get the user from the context if we were using it, but here we depend on firebase auth directly in this function
       }
-
-      // Fetch both task types in parallel for better performance
-      // If user is not logged in, some of these might fail or return empty
 
       const fetchRecurring = async () => {
         if (!currentUser) return [];
@@ -166,14 +269,42 @@ export default function CalendarPage() {
         return await recurringResponse.json();
       };
 
-      const [nonRecurringTasksData, recurringTasksData] = await Promise.all([
+      const [nonRecurringTasksData, recurringTasksData, clientsData] = await Promise.all([
         taskApi.getTasks().catch(e => { console.error(e); return []; }),
-        fetchRecurring().catch(e => { console.error(e); return []; })
+        fetchRecurring().catch(e => { console.error(e); return []; }),
+        authenticatedFetch('/api/clients').then(r => r.ok ? r.json() : { data: [] }).catch(e => { console.error(e); return { data: [] }; })
       ]);
 
-      // Store in separate state to enable memoization
       setNonRecurringTasks(nonRecurringTasksData);
-      setRecurringTasks(recurringTasksData);
+      setClients(clientsData.data || []);
+
+      // Auto-initialize workflow steps for tasks that have TAR/STAT enabled but empty steps
+      const initializedTasks = recurringTasksData.map((task: RecurringTask) => {
+        let updated = { ...task };
+        if (task.tarEnabled && (!task.tarSteps || task.tarSteps.length === 0)) {
+          updated = { ...updated, tarSteps: initializeWorkflowSteps('TAR') };
+          if (task.id) {
+            authenticatedFetch(`/api/workflow/${task.id}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ workflowType: 'TAR' }),
+            }).catch(err => console.error(`Failed to init TAR steps for task ${task.id}:`, err));
+          }
+        }
+        if (task.statEnabled && (!task.statSteps || task.statSteps.length === 0)) {
+          updated = { ...updated, statSteps: initializeWorkflowSteps('STAT') };
+          if (task.id) {
+            authenticatedFetch(`/api/workflow/${task.id}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ workflowType: 'STAT' }),
+            }).catch(err => console.error(`Failed to init STAT steps for task ${task.id}:`, err));
+          }
+        }
+        return updated;
+      });
+
+      setRecurringTasks(initializedTasks);
     } catch (error) {
       console.error('Error loading tasks:', error);
     } finally {
@@ -185,6 +316,139 @@ export default function CalendarPage() {
     setTasks(prev => [...prev, { ...newTask, isRecurring: false }]);
   };
 
+  // Handle workflow task click from calendar event — opens grid modal (not drawer directly)
+  const handleWorkflowTaskClick = async (
+    task: RecurringTask,
+    type: WorkflowType,
+    clientId?: string,
+    clientName?: string,
+  ) => {
+    let enrichedTask = { ...task };
+    const stepsField = type === 'TAR' ? 'tarSteps' : 'statSteps';
+    const enabledField = type === 'TAR' ? 'tarEnabled' : 'statEnabled';
+
+    if (task[enabledField] && (!task[stepsField] || (task[stepsField] as WorkflowStep[]).length === 0)) {
+      const steps = initializeWorkflowSteps(type);
+      enrichedTask = { ...enrichedTask, [stepsField]: steps };
+
+      if (task.id) {
+        authenticatedFetch(`/api/workflow/${task.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workflowType: type }),
+        }).catch(err => console.error(`Failed to init ${type} steps for task ${task.id}:`, err));
+      }
+    }
+
+    // If called from calendar click (no clientId), show grid modal
+    if (!clientId) {
+      setGridModalTask(enrichedTask);
+      setWorkflowGridOpen(true);
+      return;
+    }
+
+    // If called from grid modal card click (has clientId), show drawer
+    setSelectedWorkflowTask(enrichedTask);
+    setSelectedWorkflowType(type);
+    setSelectedClientId(clientId || null);
+    setSelectedClientName(clientName || null);
+    setWorkflowDrawerOpen(true);
+  };
+
+  // Handle step toggle — per-client
+  const handleStepToggle = async (stepId: string, completed: boolean, clientId?: string) => {
+    if (!selectedWorkflowTask?.id) return;
+
+    const stepsField = selectedWorkflowType === 'TAR' ? 'tarSteps' : 'statSteps';
+
+    // Update clientProgress in local state
+    const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
+    const existing = updatedClientProgress[clientId || '']
+      ? { ...updatedClientProgress[clientId || ''] }
+      : {
+          completedStepIds: (selectedWorkflowTask[stepsField] as WorkflowStep[] || [])
+            .filter((s) => s.completed)
+            .map((s) => s.id),
+        };
+
+    const completedStepIds = new Set(existing.completedStepIds || []);
+    if (completed) {
+      completedStepIds.add(stepId);
+    } else {
+      completedStepIds.delete(stepId);
+    }
+
+    updatedClientProgress[clientId || ''] = {
+      completedStepIds: Array.from(completedStepIds),
+      completedAt: new Date().toISOString(),
+      completedBy: auth.currentUser?.uid,
+    };
+
+    const updatedTask = {
+      ...selectedWorkflowTask,
+      clientProgress: updatedClientProgress,
+    };
+
+    // Update local state
+    setSelectedWorkflowTask(updatedTask);
+    setRecurringTasks(prev => prev.map(t =>
+      t.id === selectedWorkflowTask.id ? { ...t, clientProgress: updatedClientProgress } : t
+    ));
+
+    // Persist to API with clientId
+    await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        stepId,
+        workflowType: selectedWorkflowType,
+        completed,
+        clientId: clientId || undefined,
+      }),
+    });
+  };
+
+  // Handle mark all steps complete — per-client
+  const handleMarkAllComplete = async (clientId?: string) => {
+    if (!selectedWorkflowTask?.id) return;
+
+    const stepsField = selectedWorkflowType === 'TAR' ? 'tarSteps' : 'statSteps';
+    const allSteps = (selectedWorkflowTask[stepsField] as WorkflowStep[]) || [];
+
+    const allStepIds = allSteps.map((s) => s.id);
+
+    const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
+    updatedClientProgress[clientId || ''] = {
+      completedStepIds: [...allStepIds],
+      completedAt: new Date().toISOString(),
+      completedBy: auth.currentUser?.uid,
+    };
+
+    const updatedTask = {
+      ...selectedWorkflowTask,
+      clientProgress: updatedClientProgress,
+    };
+
+    setSelectedWorkflowTask(updatedTask);
+    setRecurringTasks(prev => prev.map(t =>
+      t.id === selectedWorkflowTask.id ? { ...t, clientProgress: updatedClientProgress } : t
+    ));
+
+    // Persist each step for this client
+    for (const stepId of allStepIds) {
+      await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stepId,
+          workflowType: selectedWorkflowType,
+          completed: true,
+          clientId: clientId || undefined,
+        }),
+      });
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -194,16 +458,16 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Compliance Calendar</h1>
           <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">View your recurring compliance tasks</p>
         </div>
-        
-        {/* View Toggle */}
-        <div className="flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+
+        {/* View Toggle - hidden on mobile since auto-detection handles it */}
+        <div className="hidden sm:flex items-center space-x-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
           <button
             onClick={() => setViewMode('desktop')}
             className={`flex items-center space-x-2 px-3 py-2 rounded-md text-sm font-medium transition-colors ${
@@ -231,9 +495,33 @@ export default function CalendarPage() {
 
       {/* Calendar View */}
       {viewMode === 'desktop' ? (
-        <CalendarView tasks={tasks} />
+        <CalendarView
+          tasks={tasks}
+          onWorkflowTaskClick={(task: RecurringTask, type: WorkflowType, clientId?: string, clientName?: string) =>
+            handleWorkflowTaskClick(task, type, clientId, clientName)
+          }
+        />
       ) : (
-        <MobileCalendarView tasks={tasks} />
+        <MobileCalendarView
+          tasks={tasks}
+          onWorkflowTaskClick={(task: RecurringTask, type: WorkflowType, clientId?: string, clientName?: string) =>
+            handleWorkflowTaskClick(task, type, clientId, clientName)
+          }
+        />
+      )}
+
+      {/* Workflow Grid Modal — shown on calendar event click for TAR/STAT tasks */}
+      {gridModalTask && (
+        <WorkflowGridModal
+          open={workflowGridOpen}
+          onClose={() => { setWorkflowGridOpen(false); setGridModalTask(null); }}
+          task={gridModalTask}
+          tarEntries={tarClientGroups.filter(e => e.task.id === gridModalTask.id)}
+          statEntries={statClientGroups.filter(e => e.task.id === gridModalTask.id)}
+          onCardUpdate={(task, type, clientId, clientName) => {
+            handleWorkflowTaskClick(task, type, clientId, clientName);
+          }}
+        />
       )}
 
       {/* Create Task Modal */}
@@ -242,6 +530,32 @@ export default function CalendarPage() {
         onClose={() => setShowCreateModal(false)}
         onTaskCreated={handleTaskCreated}
       />
+
+      {/* Workflow Drawer — shows per-client progress */}
+      {selectedWorkflowTask && (
+        <WorkflowDrawer
+          open={workflowDrawerOpen}
+          onOpenChange={setWorkflowDrawerOpen}
+          taskId={selectedWorkflowTask.id!}
+          taskTitle={selectedWorkflowTask.title}
+          workflowType={selectedWorkflowType}
+          steps={selectedWorkflowType === 'TAR' ? (selectedWorkflowTask.tarSteps || []) : (selectedWorkflowTask.statSteps || [])}
+          completedStepIds={
+            selectedClientId
+              ? getClientCompletedStepIds(selectedWorkflowTask, selectedClientId, selectedWorkflowType)
+              : []
+          }
+          assignee={
+            selectedClientId
+              ? selectedWorkflowTask.teamMemberMappings?.find(m => m.clientIds.includes(selectedClientId))?.userName
+              : selectedWorkflowTask.teamMemberMappings?.[0]?.userName || selectedWorkflowTask.createdBy
+          }
+          clientId={selectedClientId || undefined}
+          clientName={selectedClientName || undefined}
+          onStepToggle={handleStepToggle}
+          onMarkAllComplete={handleMarkAllComplete}
+        />
+      )}
     </div>
   );
 }

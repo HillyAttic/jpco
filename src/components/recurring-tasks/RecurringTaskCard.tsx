@@ -209,6 +209,18 @@ export function RecurringTaskCard({
                   <span>Paused</span>
                 </Badge>
               )}
+              {/* TAR Badge */}
+              {task.tarEnabled && (
+                <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-200">
+                  TAR
+                </Badge>
+              )}
+              {/* STAT Badge */}
+              {task.statEnabled && (
+                <Badge className="bg-teal-100 text-teal-700 hover:bg-teal-200">
+                  STAT
+                </Badge>
+              )}
             </div>
             
             {/* Overdue Indicator */}

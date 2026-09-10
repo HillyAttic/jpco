@@ -32,6 +32,24 @@ const createRecurringTaskSchema = z.object({
   })).optional(),
   requiresArn: z.boolean().optional(),
   requiresRemark: z.boolean().optional(),
+  tarEnabled: z.boolean().optional(),
+  statEnabled: z.boolean().optional(),
+  tarSteps: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    shortName: z.string(),
+    completed: z.boolean(),
+    completedAt: z.union([z.string(), z.date()]).optional(),
+    completedBy: z.string().optional(),
+  })).optional(),
+  statSteps: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    shortName: z.string(),
+    completed: z.boolean(),
+    completedAt: z.union([z.string(), z.date()]).optional(),
+    completedBy: z.string().optional(),
+  })).optional(),
 });
 
 /**
@@ -277,12 +295,26 @@ export async function GET(request: NextRequest) {
     }
 
     // Serialize dates to ISO strings for JSON response
+    const serializeDate = (val: any): string | null => {
+      if (!val) return null;
+      if (typeof val === 'string') return val;
+      return val.toDate ? val.toDate().toISOString() : new Date(val).toISOString();
+    };
+    const serializeSteps = (steps: any[] | undefined) => {
+      if (!steps) return undefined;
+      return steps.map(s => ({
+        ...s,
+        completedAt: s.completedAt ? serializeDate(s.completedAt) : undefined,
+      }));
+    };
     const serializedTasks = tasks.map(task => ({
       ...task,
-      startDate: task.startDate ? ((task.startDate as any).toDate ? (task.startDate as any).toDate().toISOString() : new Date(task.startDate as any).toISOString()) : null,
-      dueDate: task.dueDate ? ((task.dueDate as any).toDate ? (task.dueDate as any).toDate().toISOString() : new Date(task.dueDate as any).toISOString()) : null,
-      createdAt: task.createdAt ? ((task.createdAt as any).toDate ? (task.createdAt as any).toDate().toISOString() : new Date(task.createdAt as any).toISOString()) : null,
-      updatedAt: task.updatedAt ? ((task.updatedAt as any).toDate ? (task.updatedAt as any).toDate().toISOString() : new Date(task.updatedAt as any).toISOString()) : null,
+      startDate: task.startDate ? serializeDate(task.startDate) : null,
+      dueDate: task.dueDate ? serializeDate(task.dueDate) : null,
+      createdAt: task.createdAt ? serializeDate(task.createdAt) : null,
+      updatedAt: task.updatedAt ? serializeDate(task.updatedAt) : null,
+      tarSteps: serializeSteps(task.tarSteps as any),
+      statSteps: serializeSteps(task.statSteps as any),
     }));
 
     return NextResponse.json(serializedTasks, { status: 200 });

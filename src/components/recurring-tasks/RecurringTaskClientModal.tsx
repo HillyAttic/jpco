@@ -661,76 +661,138 @@ export function RecurringTaskClientModal({
                   </p>
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-50 dark:bg-gray-800 sticky top-0">
-                        <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 min-w-[150px] sm:min-w-[200px]">
-                          Client Name
-                        </th>
-                        {visibleMonths.map(month => (
-                          <th
-                            key={month.key}
-                            className="px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 min-w-[60px] sm:min-w-[80px]"
-                          >
-                            <div>{month.monthName}</div>
-                            <div className="text-xs font-normal text-gray-500 dark:text-gray-400">
-                              {month.fullDate.getFullYear()}
-                            </div>
+                <>
+                  {/* Desktop Table - hidden on mobile */}
+                  <div className="hidden md:block overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 dark:bg-gray-800 sticky top-0">
+                          <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 min-w-[150px] sm:min-w-[200px]">
+                            Client Name
                           </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200 dark:divide-gray-700">
-                      {filteredClients.map((client, clientIndex) => {
-                        return (
-                          <tr
-                            key={client.id}
-                            className={clientIndex % 2 === 0 ? 'bg-white dark:bg-gray-dark' : 'bg-gray-50 dark:bg-gray-800'}
-                          >
-                            <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 sticky left-0 z-10 bg-white dark:bg-gray-dark">
-                              <div>
-                                <div className="font-semibold text-xs sm:text-sm">{client.clientName}</div>
-                                {client.contact?.email && (
-                                  <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px] sm:max-w-none">{client.contact.email}</div>
-                                )}
+                          {visibleMonths.map(month => (
+                            <th
+                              key={month.key}
+                              className="px-2 sm:px-3 py-2 sm:py-3 text-center text-xs sm:text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 min-w-[60px] sm:min-w-[80px]"
+                            >
+                              <div>{month.monthName}</div>
+                              <div className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                                {month.fullDate.getFullYear()}
                               </div>
-                            </td>
-                            {visibleMonths.map(month => {
-                              const monthRemark = remarkData.get(client.id)?.get(month.key);
-                              return (
-                              <td
-                                key={month.key}
-                                className="px-2 sm:px-3 py-2 sm:py-3 text-center"
-                              >
-                                <div className="flex flex-col items-center gap-0.5">
-                                  <div className="flex justify-center">
-                                    <input
-                                      type="checkbox"
-                                      checked={isCompleted(client.id, month.key)}
-                                      onChange={() => toggleCompletion(client.id, month.key)}
-                                      className="w-4 h-4 sm:w-5 sm:h-5 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer"
-                                      aria-label={`Mark ${client.clientName} as completed for ${month.label}`}
-                                    />
-                                  </div>
-                                  {monthRemark && (
-                                    <span
-                                      className="text-[9px] text-amber-700 dark:text-amber-400 whitespace-normal break-words"
-                                      title={`${monthRemark.remark} — ${monthRemark.remarkBy}`}
-                                    >
-                                      💬 {monthRemark.remark}
-                                    </span>
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredClients.map((client, clientIndex) => {
+                          return (
+                            <tr
+                              key={client.id}
+                              className={clientIndex % 2 === 0 ? 'bg-white dark:bg-gray-dark' : 'bg-gray-50 dark:bg-gray-800'}
+                            >
+                              <td className="px-3 sm:px-4 py-2 sm:py-3 text-xs sm:text-sm font-medium text-gray-900 dark:text-white border-r border-gray-200 dark:border-gray-700 sticky left-0 z-10 bg-white dark:bg-gray-dark">
+                                <div>
+                                  <div className="font-semibold text-xs sm:text-sm">{client.clientName}</div>
+                                  {client.contact?.email && (
+                                    <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px] sm:max-w-none">{client.contact.email}</div>
                                   )}
                                 </div>
                               </td>
-                              );
-                            })}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                              {visibleMonths.map(month => {
+                                const monthRemark = remarkData.get(client.id)?.get(month.key);
+                                return (
+                                <td
+                                  key={month.key}
+                                  className="px-2 sm:px-3 py-2 sm:py-3 text-center"
+                                >
+                                  <div className="flex flex-col items-center gap-0.5">
+                                    <div className="flex justify-center">
+                                      <input
+                                        type="checkbox"
+                                        checked={isCompleted(client.id, month.key)}
+                                        onChange={() => toggleCompletion(client.id, month.key)}
+                                        className="w-4 h-4 sm:w-5 sm:h-5 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer"
+                                        aria-label={`Mark ${client.clientName} as completed for ${month.label}`}
+                                      />
+                                    </div>
+                                    {monthRemark && (
+                                      <span
+                                        className="text-[9px] text-amber-700 dark:text-amber-400 whitespace-normal break-words"
+                                        title={`${monthRemark.remark} — ${monthRemark.remarkBy}`}
+                                      >
+                                        💬 {monthRemark.remark}
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                );
+                              })}
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Mobile Cards - visible only on mobile */}
+                  <div className="md:hidden space-y-3">
+                    {filteredClients.map((client) => {
+                      const clientCompleted = visibleMonths.some(month => isCompleted(client.id, month.key));
+                      return (
+                        <div
+                          key={client.id}
+                          className={`p-4 rounded-xl border transition-all ${
+                            clientCompleted
+                              ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800'
+                              : 'bg-white dark:bg-gray-dark border-gray-200 dark:border-gray-700'
+                          }`}
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="font-semibold text-sm text-gray-900 dark:text-white truncate">
+                                {client.clientName}
+                              </div>
+                              {client.contact?.email && (
+                                <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
+                                  {client.contact.email}
+                                </div>
+                              )}
+                            </div>
+                            {clientCompleted && (
+                              <CheckIcon className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 ml-2" />
+                            )}
+                          </div>
+
+                          {visibleMonths.map(month => {
+                            const monthRemark = remarkData.get(client.id)?.get(month.key);
+                            const completed = isCompleted(client.id, month.key);
+                            return (
+                              <div key={month.key} className="flex items-center gap-3 py-2">
+                                <input
+                                  type="checkbox"
+                                  checked={completed}
+                                  onChange={() => toggleCompletion(client.id, month.key)}
+                                  className="w-5 h-5 rounded border-gray-300 dark:border-gray-600 text-green-600 focus:ring-green-500 cursor-pointer flex-shrink-0"
+                                  aria-label={`Mark ${client.clientName} as completed for ${month.label}`}
+                                />
+                                <div className="flex-1 min-w-0">
+                                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                                    {month.monthName} {month.fullDate.getFullYear()}
+                                  </span>
+                                  {monthRemark && (
+                                    <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 truncate">
+                                      💬 {monthRemark.remark}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </>
               )}
             </div>
           </div>

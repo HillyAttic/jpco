@@ -15,21 +15,27 @@ import { RecurringTaskClientModal } from '@/components/recurring-tasks/Recurring
 import { RecurringTask } from '@/services/recurring-task.service';
 import { useModal } from '@/contexts/modal-context';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
-import { auth } from '@/lib/firebase';  
+import { auth } from '@/lib/firebase';
 import { authenticatedFetch } from '@/lib/api-client';
+import { useTouchGestures, hapticFeedback } from '@/hooks/use-touch-gestures';
 
 interface CalendarTask extends Task {
   isRecurring?: boolean;
   recurringTaskId?: string;
   recurrencePattern?: string;
+  tarEnabled?: boolean;
+  statEnabled?: boolean;
+  clientId?: string;
+  clientName?: string;
 }
 
 interface MobileCalendarViewProps {
   tasks: CalendarTask[];
   onTaskClick?: (task: CalendarTask) => void;
+  onWorkflowTaskClick?: (task: RecurringTask, type: 'TAR' | 'STAT', clientId?: string, clientName?: string) => void;
 }
 
-export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewProps) {
+export function MobileCalendarView({ tasks, onTaskClick, onWorkflowTaskClick }: MobileCalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [showBottomSheet, setShowBottomSheet] = useState(false);
@@ -40,6 +46,29 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
   const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null);
   const { openModal, closeModal } = useModal();
   const calendarGridRef = React.useRef<HTMLDivElement>(null);
+  const calendarContainerRef = React.useRef<HTMLDivElement>(null);
+  const bottomSheetRef = React.useRef<HTMLDivElement>(null);
+
+  // Touch gestures for swipe navigation
+  useTouchGestures(calendarContainerRef, {
+    onSwipeLeft: () => {
+      hapticFeedback.light();
+      navigateMonth('next');
+    },
+    onSwipeRight: () => {
+      hapticFeedback.light();
+      navigateMonth('prev');
+    },
+  });
+
+  // Swipe-to-dismiss for bottom sheet
+  useTouchGestures(bottomSheetRef, {
+    onSwipeDown: () => {
+      hapticFeedback.light();
+      setShowBottomSheet(false);
+    },
+    swipeThreshold: 80,
+  });
 
   // Scroll to today's date when component mounts or month changes
   useEffect(() => {
@@ -140,6 +169,29 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
 
   const handleTaskClick = async (task: CalendarTask, e: React.MouseEvent) => {
     e.stopPropagation();
+    hapticFeedback.light();
+
+    // If it's a recurring task with TAR/STAT enabled, open the workflow grid modal
+    if (task.isRecurring && task.recurringTaskId && (task.tarEnabled || task.statEnabled) && onWorkflowTaskClick) {
+      try {
+        setLoadingTaskId(task.id);
+        const response = await authenticatedFetch(`/api/recurring-tasks/${task.recurringTaskId}`);
+        if (!response.ok) throw new Error('Failed to fetch recurring task');
+        const recurringTask = await response.json();
+
+        onWorkflowTaskClick(
+          recurringTask,
+          task.tarEnabled ? 'TAR' : 'STAT',
+          task.clientId,
+          task.clientName,
+        );
+      } catch (error) {
+        console.error('Error fetching recurring task for workflow:', error);
+      } finally {
+        setLoadingTaskId(null);
+      }
+      return;
+    }
 
     // If it's a recurring task, open the client modal
     if (task.isRecurring && task.recurringTaskId) {
@@ -257,7 +309,7 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
   }, [days]);
 
   return (
-    <div className="bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-lg max-w-md mx-auto overflow-hidden border border-gray-200 dark:border-gray-800">
+    <div ref={calendarContainerRef} className="bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-lg max-w-md mx-auto overflow-hidden border border-gray-200 dark:border-gray-800">
       {/* Mobile Header - Google Calendar Style */}
       <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-[#1a1a2e]">
         <div className="flex items-center gap-3">
@@ -335,7 +387,7 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
               return (
                 <div
                   key={colIndex}
-                  className={`min-h-[80px] py-1.5 px-0.5 relative cursor-pointer transition-colors
+                  className={`min-h-[60px] sm:min-h-[80px] py-1.5 px-0.5 relative cursor-pointer transition-colors
                     ${!isCurrentMonth ? 'opacity-40' : ''}
                     ${isSelected ? 'bg-blue-50 dark:bg-blue-900/15' : 'hover:bg-gray-50 dark:hover:bg-white/5'}
                   `}
@@ -454,7 +506,7 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
             onClick={() => { setShowBottomSheet(false); }}
           />
           {/* Sheet */}
-          <div className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1e36] rounded-t-2xl shadow-2xl max-h-[60vh] animate-slide-up">
+          <div ref={bottomSheetRef} className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#1e1e36] rounded-t-2xl shadow-2xl max-h-[60vh] animate-slide-up">
             {/* Handle */}
             <div className="flex justify-center pt-3 pb-1">
               <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
@@ -487,7 +539,7 @@ export function MobileCalendarView({ tasks, onTaskClick }: MobileCalendarViewPro
                     return (
                       <div
                         key={task.id}
-                        className={`flex items-start gap-3 p-3 rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-700/50 transition-all active:scale-[0.98] ${
+                        className={`flex items-start gap-3 p-3 min-h-[44px] rounded-xl bg-gray-50 dark:bg-white/5 border border-gray-100 dark:border-gray-700/50 transition-all active:scale-[0.98] ${
                           isLoading
                             ? 'cursor-wait opacity-70'
                             : 'cursor-pointer hover:bg-gray-100 dark:hover:bg-white/10'

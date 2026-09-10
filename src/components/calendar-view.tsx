@@ -19,11 +19,16 @@ interface CalendarTask extends Task {
   isRecurring?: boolean;
   recurringTaskId?: string;
   recurrencePattern?: string;
+  tarEnabled?: boolean;
+  statEnabled?: boolean;
+  clientId?: string;
+  clientName?: string;
 }
 
 interface CalendarViewProps {
   tasks: CalendarTask[];
   onTaskClick?: (task: CalendarTask) => void;
+  onWorkflowTaskClick?: (task: RecurringTask, type: 'TAR' | 'STAT', clientId?: string, clientName?: string) => void;
 }
 
 interface DailyStats {
@@ -33,7 +38,7 @@ interface DailyStats {
   total: number;
 }
 
-export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
+export function CalendarView({ tasks, onTaskClick, onWorkflowTaskClick }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [selectedTask, setSelectedTask] = useState<CalendarTask | null>(null);
@@ -159,6 +164,29 @@ export function CalendarView({ tasks, onTaskClick }: CalendarViewProps) {
 
   const handleTaskClick = async (task: CalendarTask, e: React.MouseEvent, taskDate?: Date) => {
     e.stopPropagation();
+
+    // If it's a recurring task with TAR/STAT enabled, open the workflow grid modal
+    if (task.isRecurring && task.recurringTaskId && (task.tarEnabled || task.statEnabled) && onWorkflowTaskClick) {
+      try {
+        setLoadingTaskId(task.id);
+        const response = await authenticatedFetch(`/api/recurring-tasks/${task.recurringTaskId}`);
+        if (!response.ok) throw new Error('Failed to fetch recurring task');
+        const recurringTask = await response.json();
+
+        // Pass to parent to show workflow grid modal
+        onWorkflowTaskClick(
+          recurringTask,
+          task.tarEnabled ? 'TAR' : 'STAT',
+          task.clientId,
+          task.clientName,
+        );
+      } catch (error) {
+        console.error('Error fetching recurring task for workflow:', error);
+      } finally {
+        setLoadingTaskId(null);
+      }
+      return;
+    }
 
     // If it's a recurring task, open the client modal
     if (task.isRecurring && task.recurringTaskId) {

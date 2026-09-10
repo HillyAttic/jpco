@@ -238,6 +238,16 @@ export function RecurringTaskListView({
                       Paused
                     </Badge>
                   )}
+                  {task.tarEnabled && (
+                    <Badge className="bg-purple-100 text-purple-700 text-xs">
+                      TAR
+                    </Badge>
+                  )}
+                  {task.statEnabled && (
+                    <Badge className="bg-teal-100 text-teal-700 text-xs">
+                      STAT
+                    </Badge>
+                  )}
                 </div>
                 <div className="text-gray-500 dark:text-gray-400 text-xs mt-1 line-clamp-1">
                   {task.description}
@@ -371,7 +381,7 @@ export function RecurringTaskListView({
               )}
             </div>
 
-            {/* Status and Priority Badges */}
+            {/* Status, Priority, and TAR/STAT Badges */}
             <div className="flex gap-2 flex-wrap">
               <Badge className={getStatusColor(task.status)}>
                 {task.status.replace('-', ' ')}
@@ -379,6 +389,16 @@ export function RecurringTaskListView({
               <Badge className={getPriorityColor(task.priority)}>
                 {task.priority}
               </Badge>
+              {task.tarEnabled && (
+                <Badge className="bg-purple-100 text-purple-700">
+                  TAR
+                </Badge>
+              )}
+              {task.statEnabled && (
+                <Badge className="bg-teal-100 text-teal-700">
+                  STAT
+                </Badge>
+              )}
             </div>
 
             {/* Task Details */}

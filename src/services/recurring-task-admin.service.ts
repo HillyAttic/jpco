@@ -21,6 +21,24 @@ export interface TeamMemberMapping {
   clientIds: string[];
 }
 
+export interface WorkflowStep {
+  id: string;
+  name: string;
+  shortName: string;
+  completed: boolean;
+  completedAt?: Date;
+  completedBy?: string;
+}
+
+/** Per-client workflow progress — stored under clientProgress[clientId] */
+export interface ClientWorkflowProgress {
+  completedStepIds: string[];
+  completedAt?: string; // ISO date string
+  completedBy?: string; // user UID
+}
+
+export type WorkflowType = 'TAR' | 'STAT';
+
 export interface RecurringTask {
   id?: string;
   title: string;
@@ -38,6 +56,13 @@ export interface RecurringTask {
   teamMemberMappings?: TeamMemberMapping[]; // Team member to client mappings
   requiresArn?: boolean; // Whether ARN is required for completion
   requiresRemark?: boolean; // Whether remark is required for completion
+  // TAR/STAT workflow fields
+  tarEnabled?: boolean; // Whether TAR (Tax Audit Report) workflow is enabled
+  statEnabled?: boolean; // Whether STAT (Statutory Audit) workflow is enabled
+  tarSteps?: WorkflowStep[]; // TAR workflow step definitions (7 steps)
+  statSteps?: WorkflowStep[]; // STAT workflow step definitions (10 steps)
+  /** Per-client progress: clientId -> { completedStepIds, completedAt, completedBy } */
+  clientProgress?: Record<string, ClientWorkflowProgress>;
   createdBy?: string; // User ID of the creator
   createdAt?: Date;
   updatedAt?: Date;

@@ -9,7 +9,13 @@ import { useModal } from '@/contexts/modal-context';
 import { exportToPDF, exportToExcel, exportSummaryToPDF, exportSummaryToExcel } from '@/utils/report-export.utils';
 import { auth } from '@/lib/firebase';
 import { generateMonths, buildCompletionData, getCompletionStatus, calculateCompletionRate } from '@/utils/report-utils';
+import { initializeWorkflowSteps } from '@/lib/workflow-templates';
 import { TaskReportModal } from '@/components/reports/TaskReportModal';
+import { WorkflowTaskDetailModal } from '@/components/reports/WorkflowTaskDetailModal';
+import { WorkflowReportsTable } from '@/components/reports/WorkflowReportsTable';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import type { WorkflowType } from '@/services/recurring-task.service';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -68,6 +74,7 @@ export function ReportsView() {
   const [completions, setCompletions] = useState<Map<string, ClientTaskCompletion[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<RecurringTask | null>(null);
+  const [selectedWorkflowType, setSelectedWorkflowType] = useState<WorkflowType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { openModal: openGlobalModal, closeModal: closeGlobalModal } = useModal();
 
@@ -75,6 +82,10 @@ export function ReportsView() {
   const financialYears = generateFinancialYears();
   const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
   const [selectedMonth, setSelectedMonth] = useState('all');
+
+  // Filter tasks with TAR/STAT enabled (must be before any conditional returns)
+  const tarTasks = useMemo(() => tasks.filter(t => t.tarEnabled), [tasks]);
+  const statTasks = useMemo(() => tasks.filter(t => t.statEnabled), [tasks]);
 
   useEffect(() => {
     loadData();
@@ -109,7 +120,34 @@ export function ReportsView() {
       }
 
       const tasksData = await tasksResponse.json();
-      setTasks(tasksData);
+
+      // Auto-initialize workflow steps for tasks that have TAR/STAT enabled but empty steps
+      const initializedTasks = tasksData.map((task: RecurringTask) => {
+        let updated = { ...task };
+        if (task.tarEnabled && (!task.tarSteps || task.tarSteps.length === 0)) {
+          updated = { ...updated, tarSteps: initializeWorkflowSteps('TAR') };
+          if (task.id) {
+            fetch(`/api/workflow/${task.id}`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ workflowType: 'TAR' }),
+            }).catch(err => console.error(`Failed to init TAR steps for task ${task.id}:`, err));
+          }
+        }
+        if (task.statEnabled && (!task.statSteps || task.statSteps.length === 0)) {
+          updated = { ...updated, statSteps: initializeWorkflowSteps('STAT') };
+          if (task.id) {
+            fetch(`/api/workflow/${task.id}`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({ workflowType: 'STAT' }),
+            }).catch(err => console.error(`Failed to init STAT steps for task ${task.id}:`, err));
+          }
+        }
+        return updated;
+      });
+
+      setTasks(initializedTasks);
       setClients(clientsData);
 
       console.log('Reports: Loaded tasks and clients', {
@@ -151,6 +189,14 @@ export function ReportsView() {
 
   const handleTaskClick = (task: RecurringTask) => {
     setSelectedTask(task);
+    // Determine if this is a TAR or STAT task for the detail modal
+    if (task.tarEnabled) {
+      setSelectedWorkflowType('TAR');
+    } else if (task.statEnabled) {
+      setSelectedWorkflowType('STAT');
+    } else {
+      setSelectedWorkflowType(null);
+    }
     setIsModalOpen(true);
     openGlobalModal(); // Notify global context to hide header
   };
@@ -413,30 +459,40 @@ export function ReportsView() {
         </>
       )}
 
+
       {isModalOpen && selectedTask && (
-        <TaskReportModal
-          task={selectedTask}
-          clients={(() => {
-            // Collect client IDs from all sources
-            const allClientIds = new Set<string>();
+        selectedWorkflowType ? (
+          <WorkflowTaskDetailModal
+            task={selectedTask}
+            clients={clients}
+            workflowType={selectedWorkflowType}
+            onClose={closeModal}
+          />
+        ) : (
+          <TaskReportModal
+            task={selectedTask}
+            clients={(() => {
+              // Collect client IDs from all sources
+              const allClientIds = new Set<string>();
 
-            if (selectedTask.teamMemberMappings && selectedTask.teamMemberMappings.length > 0) {
-              // Add clients from team member mappings
-              selectedTask.teamMemberMappings.forEach(mapping => {
-                mapping.clientIds.forEach(clientId => allClientIds.add(clientId));
-              });
-            }
+              if (selectedTask.teamMemberMappings && selectedTask.teamMemberMappings.length > 0) {
+                // Add clients from team member mappings
+                selectedTask.teamMemberMappings.forEach(mapping => {
+                  mapping.clientIds.forEach(clientId => allClientIds.add(clientId));
+                });
+              }
 
-            // Also include clients from contactIds (these may be unassigned to any team member)
-            if (selectedTask.contactIds && selectedTask.contactIds.length > 0) {
-              selectedTask.contactIds.forEach(clientId => allClientIds.add(clientId));
-            }
+              // Also include clients from contactIds (these may be unassigned to any team member)
+              if (selectedTask.contactIds && selectedTask.contactIds.length > 0) {
+                selectedTask.contactIds.forEach(clientId => allClientIds.add(clientId));
+              }
 
-            return clients.filter(c => c.id && allClientIds.has(c.id));
-          })()}
-          completions={completions.get(selectedTask.id || '') || []}
-          onClose={closeModal}
-        />
+              return clients.filter(c => c.id && allClientIds.has(c.id));
+            })()}
+            completions={completions.get(selectedTask.id || '') || []}
+            onClose={closeModal}
+          />
+        )
       )}
     </div>
   );

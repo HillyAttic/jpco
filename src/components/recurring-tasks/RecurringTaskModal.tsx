@@ -19,9 +19,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import Select from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { XMarkIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { TeamMemberMappingDialog } from './TeamMemberMappingDialog';
 import { useModal } from '@/contexts/modal-context';
+import { TAR_TEMPLATE, STAT_TEMPLATE, initializeWorkflowSteps } from '@/lib/workflow-templates';
 
 // Form-specific schema matching the design requirements
 // Requirement 3.2, 3.8
@@ -32,14 +34,16 @@ const recurringTaskFormSchema = z.object({
   status: z.enum(['pending', 'in-progress', 'completed']),
   contactIds: z.string().optional(),
   categoryId: z.string().optional(),
-  recurrencePattern: z.enum(['monthly', 'quarterly', 'half-yearly', 'yearly'], { 
-    message: 'Invalid recurrence pattern' 
+  recurrencePattern: z.enum(['monthly', 'quarterly', 'half-yearly', 'yearly'], {
+    message: 'Invalid recurrence pattern'
   }),
   startDate: z.string().min(1, 'Start date is required'),
   dueDate: z.string().optional(),
   teamId: z.string().optional(),
   requiresArn: z.boolean().optional(),
   requiresRemark: z.boolean().optional(),
+  tarEnabled: z.boolean().optional(),
+  statEnabled: z.boolean().optional(),
 });
 
 type RecurringTaskFormData = z.infer<typeof recurringTaskFormSchema>;
@@ -77,7 +81,9 @@ export function RecurringTaskModal({
   const [loadingClients, setLoadingClients] = useState(false);
   const [teamMemberMappings, setTeamMemberMappings] = useState<TeamMemberMapping[]>([]);
   const [showMappingDialog, setShowMappingDialog] = useState(false);
-  
+  const [tarEnabled, setTarEnabled] = useState(false);
+  const [statEnabled, setStatEnabled] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -303,7 +309,13 @@ export function RecurringTaskModal({
         teamId: task.teamId || '',
         requiresArn: task.requiresArn || false,
         requiresRemark: task.requiresRemark || false,
+        tarEnabled: task.tarEnabled || false,
+        statEnabled: task.statEnabled || false,
       });
+
+      // Set TAR/STAT toggle states
+      setTarEnabled(task.tarEnabled || false);
+      setStatEnabled(task.statEnabled || false);
 
       // Set selected clients for display
       if (task.contactIds && task.contactIds.length > 0) {
@@ -341,9 +353,13 @@ export function RecurringTaskModal({
         teamId: '',
         requiresArn: false,
         requiresRemark: false,
+        tarEnabled: false,
+        statEnabled: false,
       });
       setSelectedClients([]);
       setTeamMemberMappings([]);
+      setTarEnabled(false);
+      setStatEnabled(false);
     }
   }, [task, reset, clients]);
 
@@ -351,18 +367,50 @@ export function RecurringTaskModal({
     try {
       console.log('📋 [RecurringTaskModal] Form data before submission:', data);
       console.log('🗺️ [RecurringTaskModal] Team member mappings state:', teamMemberMappings);
-      
-      // Include team member mappings in the submission
+
+      // Include team member mappings and TAR/STAT settings in the submission
+      // Preserve existing workflow steps if task already has them, otherwise initialize new ones
+      let tarSteps = undefined;
+      let statSteps = undefined;
+
+      if (tarEnabled) {
+        // Preserve existing TAR steps if task already has them
+        if (task?.tarSteps && task.tarSteps.length > 0) {
+          tarSteps = task.tarSteps;
+          console.log('📋 [RecurringTaskModal] Preserving existing TAR steps:', tarSteps.length);
+        } else {
+          tarSteps = initializeWorkflowSteps('TAR');
+          console.log('📋 [RecurringTaskModal] Initializing new TAR steps:', tarSteps.length);
+        }
+      }
+
+      if (statEnabled) {
+        // Preserve existing STAT steps if task already has them
+        if (task?.statSteps && task.statSteps.length > 0) {
+          statSteps = task.statSteps;
+          console.log('📋 [RecurringTaskModal] Preserving existing STAT steps:', statSteps.length);
+        } else {
+          statSteps = initializeWorkflowSteps('STAT');
+          console.log('📋 [RecurringTaskModal] Initializing new STAT steps:', statSteps.length);
+        }
+      }
+
       const submissionData = {
         ...data,
+        tarEnabled,
+        statEnabled,
+        tarSteps,
+        statSteps,
         teamMemberMappings: teamMemberMappings.length > 0 ? teamMemberMappings : undefined,
       };
-      
+
       console.log('📤 [RecurringTaskModal] Final submission data:', submissionData);
-      
+
       await onSubmit(submissionData as any);
       reset();
       setTeamMemberMappings([]);
+      setTarEnabled(false);
+      setStatEnabled(false);
       onClose();
     } catch (error) {
       console.error('❌ [RecurringTaskModal] Error submitting recurring task:', error);
@@ -375,6 +423,8 @@ export function RecurringTaskModal({
     setClientFilter('all');
     setClientSearchQuery('');
     setTeamMemberMappings([]);
+    setTarEnabled(false);
+    setStatEnabled(false);
     onClose();
   };
 
@@ -774,6 +824,60 @@ export function RecurringTaskModal({
               />
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Require Remark on completion</span>
             </label>
+          </div>
+
+          {/* TAR/STAT Workflow Toggles */}
+          <div className="p-4 bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg space-y-4">
+            <div>
+              <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Report Types</h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Enable workflow tracking for compliance reports</p>
+            </div>
+
+            {/* TAR Toggle */}
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="tarEnabled" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                    TAR Reports
+                  </Label>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                    TAX
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                  Tax Audit Report · {TAR_TEMPLATE.steps.length} steps
+                </p>
+              </div>
+              <Switch
+                id="tarEnabled"
+                checked={tarEnabled}
+                onCheckedChange={setTarEnabled}
+                disabled={isLoading}
+              />
+            </div>
+
+            {/* STAT Toggle */}
+            <div className="flex items-center justify-between p-3 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-600 rounded-lg">
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <Label htmlFor="statEnabled" className="font-medium text-gray-900 dark:text-white cursor-pointer">
+                    Statutory Reports
+                  </Label>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-teal-100 text-teal-700">
+                    STAT
+                  </span>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                  Statutory Audit · {STAT_TEMPLATE.steps.length} steps
+                </p>
+              </div>
+              <Switch
+                id="statEnabled"
+                checked={statEnabled}
+                onCheckedChange={setStatEnabled}
+                disabled={isLoading}
+              />
+            </div>
           </div>
 
           <DialogFooter>

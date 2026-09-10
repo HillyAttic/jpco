@@ -3,6 +3,16 @@ import { recurringTaskAdminService } from '@/services/recurring-task-admin.servi
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
+// Validation schema for workflow step
+const workflowStepSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  shortName: z.string(),
+  completed: z.boolean(),
+  completedAt: z.union([z.string(), z.date()]).optional(),
+  completedBy: z.string().optional(),
+});
+
 // Validation schema for recurring task update
 const updateRecurringTaskSchema = z.object({
   title: z.string().min(1, 'Title is required').max(200).optional(),
@@ -35,6 +45,11 @@ const updateRecurringTaskSchema = z.object({
   isPaused: z.boolean().optional(),
   requiresArn: z.boolean().optional(),
   requiresRemark: z.boolean().optional(),
+  // TAR/STAT workflow fields
+  tarEnabled: z.boolean().optional(),
+  statEnabled: z.boolean().optional(),
+  tarSteps: z.array(workflowStepSchema).optional(),
+  statSteps: z.array(workflowStepSchema).optional(),
 });
 
 /**
@@ -61,12 +76,36 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
     const { id } = await params;
     const task = await recurringTaskAdminService.getById(id);
-    
+
     if (!task) {
       return ErrorResponses.notFound('Recurring task');
     }
-    
-    return NextResponse.json(task, { status: 200 });
+
+    // Serialize dates for JSON response (same as list endpoint)
+    const serializeDate = (val: any): string | null => {
+      if (!val) return null;
+      if (typeof val === 'string') return val;
+      return val.toDate ? val.toDate().toISOString() : new Date(val).toISOString();
+    };
+    const serializeSteps = (steps: any[] | undefined) => {
+      if (!steps) return undefined;
+      return steps.map(s => ({
+        ...s,
+        completedAt: s.completedAt ? serializeDate(s.completedAt) : undefined,
+      }));
+    };
+
+    const serializedTask = {
+      ...task,
+      startDate: serializeDate(task.startDate),
+      dueDate: serializeDate(task.dueDate),
+      createdAt: serializeDate(task.createdAt),
+      updatedAt: serializeDate(task.updatedAt),
+      tarSteps: serializeSteps(task.tarSteps as any),
+      statSteps: serializeSteps(task.statSteps as any),
+    };
+
+    return NextResponse.json(serializedTask, { status: 200 });
   } catch (error) {
     return handleApiError(error);
   }
