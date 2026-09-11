@@ -360,7 +360,7 @@ export default function CalendarPage() {
   };
 
   // Handle step toggle — per-client
-  const handleStepToggle = async (stepId: string, completed: boolean, clientId?: string) => {
+  const handleStepToggle = async (stepId: string, completed: boolean, clientId?: string, remark?: string) => {
     if (!selectedWorkflowTask?.id) return;
 
     const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
@@ -388,18 +388,44 @@ export default function CalendarPage() {
       completedBy: auth.currentUser?.uid,
     };
 
-    const updatedTask = {
-      ...selectedWorkflowTask,
-      clientProgress: updatedClientProgress,
-    };
+    // Also update the individual step objects with completedAt, completedBy, and remark
+    // so the UI can show "Completed [date] by [name]" immediately
+    const now = new Date();
+    const updatedSteps = allSteps.map((s) => {
+      if (s.id === stepId) {
+        const updatedStep = { ...s, completed, completedAt: completed ? now : undefined, completedBy: completed ? auth.currentUser?.uid : undefined };
+
+        // Handle remark: store if provided and step is completed; clear if reopened
+        if (remark !== undefined) {
+          if (completed && remark.trim()) {
+            updatedStep.remark = remark.trim();
+            updatedStep.remarkBy = auth.currentUser?.uid;
+            updatedStep.remarkAt = now;
+          } else if (!completed) {
+            updatedStep.remark = undefined;
+            updatedStep.remarkBy = undefined;
+            updatedStep.remarkAt = undefined;
+          }
+        }
+
+        return updatedStep;
+      }
+      return s;
+    });
+
+    // Write updated steps back into the task (handles both reportTypes and legacy paths)
+    const updatedTask = updateTaskSteps(
+      { ...selectedWorkflowTask, clientProgress: updatedClientProgress },
+      updatedSteps,
+    );
 
     // Update local state
     setSelectedWorkflowTask(updatedTask);
     setRecurringTasks(prev => prev.map(t =>
-      t.id === selectedWorkflowTask.id ? { ...t, clientProgress: updatedClientProgress } : t
+      t.id === selectedWorkflowTask.id ? updateTaskSteps({ ...t, clientProgress: updatedClientProgress }, updatedSteps) : t
     ));
 
-    // Persist to API with clientId
+    // Persist to API with clientId and remark
     await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
@@ -408,8 +434,27 @@ export default function CalendarPage() {
         workflowType: selectedWorkflowType,
         completed,
         clientId: clientId || undefined,
+        remark,
       }),
     });
+  };
+
+  // Helper: write updated step objects back into a task (handles both reportTypes and legacy)
+  const updateTaskSteps = (task: RecurringTask, updatedSteps: WorkflowStep[]): RecurringTask => {
+    const lower = selectedWorkflowType.toLowerCase();
+    if (task.reportTypes && task.reportTypes.length > 0) {
+      const updatedReportTypes = task.reportTypes.map(rt => {
+        if (rt.id === selectedWorkflowType || rt.id === lower) {
+          return { ...rt, steps: updatedSteps };
+        }
+        return rt;
+      });
+      return { ...task, reportTypes: updatedReportTypes };
+    }
+    // Legacy path
+    if (lower === 'tar') return { ...task, tarSteps: updatedSteps };
+    if (lower === 'stat') return { ...task, statSteps: updatedSteps };
+    return task;
   };
 
   // Handle mark all steps complete — per-client
@@ -419,22 +464,31 @@ export default function CalendarPage() {
     const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
 
     const allStepIds = allSteps.map((s) => s.id);
+    const now = new Date();
 
     const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
     updatedClientProgress[clientId || ''] = {
       completedStepIds: [...allStepIds],
-      completedAt: new Date().toISOString(),
+      completedAt: now.toISOString(),
       completedBy: auth.currentUser?.uid,
     };
 
-    const updatedTask = {
-      ...selectedWorkflowTask,
-      clientProgress: updatedClientProgress,
-    };
+    // Also update each step object with completedAt and completedBy
+    const updatedSteps = allSteps.map((s) => ({
+      ...s,
+      completed: true,
+      completedAt: now,
+      completedBy: auth.currentUser?.uid,
+    }));
+
+    const updatedTask = updateTaskSteps(
+      { ...selectedWorkflowTask, clientProgress: updatedClientProgress },
+      updatedSteps,
+    );
 
     setSelectedWorkflowTask(updatedTask);
     setRecurringTasks(prev => prev.map(t =>
-      t.id === selectedWorkflowTask.id ? { ...t, clientProgress: updatedClientProgress } : t
+      t.id === selectedWorkflowTask.id ? updateTaskSteps({ ...t, clientProgress: updatedClientProgress }, updatedSteps) : t
     ));
 
     // Persist each step for this client

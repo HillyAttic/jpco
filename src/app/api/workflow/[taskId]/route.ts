@@ -11,6 +11,7 @@ const updateStepSchema = z.object({
   workflowType: z.string(), // Now dynamic: 'tar', 'stat', or custom report type ID
   completed: z.boolean(),
   clientId: z.string().optional(), // per-client progress
+  remark: z.string().optional(), // optional remark text
 });
 
 // Validation schema for initializing workflow
@@ -152,16 +153,79 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         completedAt: new Date().toISOString(),
         completedBy: authResult.user!.uid,
       };
-    } else {
-      // Legacy fallback: update task-level step and sync to all clients that don't have their own progress
+
+      // Also update individual step objects with completedAt, completedBy, and remark
+      // so the UI can show "Completed [date] by [name]" per step
+      const now = new Date();
       const updatedSteps = steps.map((step: WorkflowStep) => {
         if (step.id === stepId) {
-          return {
+          const updatedStep = {
             ...step,
             completed,
-            completedAt: completed ? new Date() : undefined,
+            completedAt: completed ? now : undefined,
             completedBy: completed ? authResult.user!.uid : undefined,
           };
+
+          // Handle remark: store if provided and step is completed; clear if reopened
+          if (completed && body.remark?.trim()) {
+            updatedStep.remark = body.remark.trim();
+            updatedStep.remarkBy = authResult.user!.uid;
+            updatedStep.remarkAt = now;
+          } else if (!completed) {
+            updatedStep.remark = undefined;
+            updatedStep.remarkBy = undefined;
+            updatedStep.remarkAt = undefined;
+          }
+
+          return updatedStep;
+        }
+        return step;
+      });
+
+      // Build update payload
+      const updatePayload: Record<string, any> = { clientProgress };
+
+      if (task.reportTypes && task.reportTypes.length > 0) {
+        // Update steps inside reportTypes array
+        const updatedReportTypes = task.reportTypes.map(rt => {
+          if (rt.id === workflowType) {
+            return { ...rt, steps: updatedSteps };
+          }
+          return rt;
+        });
+        updatePayload.reportTypes = updatedReportTypes;
+      } else if (stepsField) {
+        // Legacy field update
+        updatePayload[stepsField] = updatedSteps;
+      }
+
+      await recurringTaskAdminService.update(taskId, updatePayload as any);
+
+      return NextResponse.json({ success: true, clientProgress, steps: updatedSteps }, { status: 200 });
+    } else {
+      // Legacy fallback: update task-level step and sync to all clients that don't have their own progress
+      const now = new Date();
+      const updatedSteps = steps.map((step: WorkflowStep) => {
+        if (step.id === stepId) {
+          const updatedStep = {
+            ...step,
+            completed,
+            completedAt: completed ? now : undefined,
+            completedBy: completed ? authResult.user!.uid : undefined,
+          };
+
+          // Handle remark: store if provided and step is completed; clear if reopened
+          if (completed && body.remark?.trim()) {
+            updatedStep.remark = body.remark.trim();
+            updatedStep.remarkBy = authResult.user!.uid;
+            updatedStep.remarkAt = now;
+          } else if (!completed) {
+            updatedStep.remark = undefined;
+            updatedStep.remarkBy = undefined;
+            updatedStep.remarkAt = undefined;
+          }
+
+          return updatedStep;
         }
         return step;
       });
@@ -201,13 +265,6 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
 
       return NextResponse.json({ success: true, steps: updatedSteps, clientProgress }, { status: 200 });
     }
-
-    // Per-client update path
-    await recurringTaskAdminService.update(taskId, {
-      clientProgress,
-    } as any);
-
-    return NextResponse.json({ success: true, clientProgress }, { status: 200 });
   } catch (error) {
     return handleApiError(error);
   }

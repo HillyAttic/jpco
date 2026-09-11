@@ -28,6 +28,9 @@ export interface WorkflowStep {
   completed: boolean;
   completedAt?: Date;
   completedBy?: string;
+  remark?: string;
+  remarkBy?: string;
+  remarkAt?: Date;
 }
 
 /** Per-client workflow progress — stored under clientProgress[clientId] */

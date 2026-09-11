@@ -22,6 +22,7 @@ import {
   X,
   Maximize2,
   Minimize2,
+  MessageSquare,
 } from 'lucide-react';
 
 /** A flattened row: one client from a task's team member mapping */
@@ -271,6 +272,55 @@ export function WorkflowTaskDetailModal({
 
   const steps = getStepsForReportType(task, workflowType);
 
+  // Helper: look up a step object (with completion/remark metadata)
+  const getStepInfo = (stepId: string): WorkflowStep | undefined => {
+    return steps.find(s => s.id === stepId);
+  };
+
+  // Format date for tooltip display
+  const formatDate = (date: any) => {
+    if (!date) return '';
+    try {
+      let d: Date;
+      if (typeof date.toDate === 'function') {
+        d = date.toDate();
+      } else if (date.seconds !== undefined) {
+        d = new Date(date.seconds * 1000);
+      } else if (typeof date === 'string') {
+        d = new Date(date);
+      } else {
+        d = date;
+      }
+      return d.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      });
+    } catch {
+      return '';
+    }
+  };
+
+  // User ID → name lookup for tooltips
+  const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const [fetchedUserNames, setFetchedUserNames] = useState(false);
+  useEffect(() => {
+    if (fetchedUserNames) return;
+    authenticatedFetch('/api/users/names')
+      .then(res => res.json())
+      .then(data => {
+        if (data && typeof data === 'object') {
+          setUserNames(data);
+          setFetchedUserNames(true);
+        }
+      })
+      .catch(() => {
+        // Silently fail
+      });
+  }, [fetchedUserNames]);
+
+  const resolveUserName = (uid: string) => userNames[uid] || uid;
+
   return (
     <div className={`fixed inset-0 z-50 flex flex-col ${isFullscreen ? 'items-stretch justify-stretch p-0' : 'sm:items-center sm:justify-center sm:p-4'}`}>
       {/* Backdrop */}
@@ -435,6 +485,26 @@ export function WorkflowTaskDetailModal({
                       </td>
                       {(steps || []).map((step) => {
                         const done = completedStepIds.includes(step.id);
+                        const stepInfo = getStepInfo(step.id);
+
+                        // Build tooltip content
+                        let tooltipParts: string[] = [];
+                        if (done) {
+                          tooltipParts.push('Completed');
+                          if (stepInfo?.completedAt) {
+                            tooltipParts.push(`Date: ${formatDate(stepInfo.completedAt)}`);
+                          }
+                          if (stepInfo?.completedBy) {
+                            tooltipParts.push(`By: ${resolveUserName(stepInfo.completedBy)}`);
+                          }
+                          if (stepInfo?.remark) {
+                            tooltipParts.push(`Remark: ${stepInfo.remark}`);
+                          }
+                        } else {
+                          tooltipParts.push('Incomplete');
+                        }
+                        const tooltip = `${step.name} — ${tooltipParts.join(' · ')}`;
+
                         return (
                           <td key={step.id} className="px-1 py-3 text-center">
                             <span
@@ -443,7 +513,7 @@ export function WorkflowTaskDetailModal({
                                   ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
                                   : 'bg-red-50 text-red-400 dark:bg-red-900/20 dark:text-red-400'
                               }`}
-                              title={`${step.name} — ${done ? 'Completed' : 'Incomplete'}`}
+                              title={tooltip}
                             >
                               {done ? (
                                 <CheckCircle2 className="h-4 w-4" />
@@ -519,6 +589,13 @@ export function WorkflowTaskDetailModal({
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {(steps || []).map((step) => {
                         const done = completedStepIds.includes(step.id);
+                        const stepInfo = getStepInfo(step.id);
+                        const tooltipParts: string[] = [step.name, done ? 'Completed' : 'Incomplete'];
+                        if (done) {
+                          if (stepInfo?.completedAt) tooltipParts.push(`Date: ${formatDate(stepInfo.completedAt)}`);
+                          if (stepInfo?.completedBy) tooltipParts.push(`By: ${resolveUserName(stepInfo.completedBy)}`);
+                          if (stepInfo?.remark) tooltipParts.push(`Remark: ${stepInfo.remark}`);
+                        }
                         return (
                           <span
                             key={step.id}
@@ -527,9 +604,13 @@ export function WorkflowTaskDetailModal({
                                 ? 'bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400'
                                 : 'bg-red-50 text-red-500 dark:bg-red-900/20 dark:text-red-400'
                             }`}
+                            title={tooltipParts.join(' · ')}
                           >
                             {done ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
                             {step.shortName}
+                            {stepInfo?.remark && (
+                              <MessageSquare className="h-2.5 w-2.5 text-amber-500 ml-0.5" />
+                            )}
                           </span>
                         );
                       })}

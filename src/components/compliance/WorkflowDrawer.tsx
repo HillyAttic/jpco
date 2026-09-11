@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Switch } from '@/components/ui/switch';
-import { CheckCircle2, X } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import { CheckCircle2, X, MessageSquare } from 'lucide-react';
 import { toast } from 'react-toastify';
 
 interface WorkflowDrawerProps {
@@ -23,7 +24,7 @@ interface WorkflowDrawerProps {
   assignee?: string;
   clientId?: string;
   clientName?: string;
-  onStepToggle: (stepId: string, completed: boolean, clientId?: string) => Promise<void>;
+  onStepToggle: (stepId: string, completed: boolean, clientId?: string, remark?: string) => Promise<void>;
   onMarkAllComplete?: (clientId?: string) => Promise<void>;
   reportTypeConfig?: ReportTypeConfig; // Dynamic report type config for badge display
 }
@@ -45,6 +46,8 @@ export function WorkflowDrawer({
 }: WorkflowDrawerProps) {
   const [loading, setLoading] = useState<string | null>(null);
   const [userNames, setUserNames] = useState<Record<string, string>>({});
+  const [remarkText, setRemarkText] = useState<Record<string, string>>({});
+  const [expandedRemarkStep, setExpandedRemarkStep] = useState<string | null>(null);
   const fetchedRef = useRef(false);
 
   // Use dynamic reportTypeConfig if provided, otherwise fall back to static template
@@ -83,10 +86,39 @@ export function WorkflowDrawer({
   const handleStepToggle = async (stepId: string, completed: boolean) => {
     try {
       setLoading(stepId);
-      await onStepToggle(stepId, completed, clientId);
+      const remark = completed ? (remarkText[stepId] || '').trim() || undefined : undefined;
+      await onStepToggle(stepId, completed, clientId, remark);
+
+      // Clear remark input after successful toggle
+      setRemarkText(prev => {
+        const next = { ...prev };
+        delete next[stepId];
+        return next;
+      });
+      setExpandedRemarkStep(null);
+
       toast.success(`Step ${completed ? 'completed' : 'reopened'}${clientName ? ` for ${clientName}` : ''}`);
     } catch (error) {
       toast.error('Failed to update step');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleSaveRemark = async (stepId: string) => {
+    try {
+      setLoading(stepId);
+      const remark = (remarkText[stepId] || '').trim() || undefined;
+      await onStepToggle(stepId, true, clientId, remark);
+      setRemarkText(prev => {
+        const next = { ...prev };
+        delete next[stepId];
+        return next;
+      });
+      setExpandedRemarkStep(null);
+      toast.success('Remark updated');
+    } catch (error) {
+      toast.error('Failed to update remark');
     } finally {
       setLoading(null);
     }
@@ -120,19 +152,24 @@ export function WorkflowDrawer({
       return d.toLocaleDateString('en-IN', {
         day: '2-digit',
         month: 'short',
+        year: 'numeric',
       });
     } catch {
       return '';
     }
   };
 
-  // For display: show which step IDs are completed (from clientProgress)
-  // We need completedAt/completedBy per step — fall back to legacy step data if available
+  // Read completion info from the step objects themselves.
+  // After the API fix, both per-client and legacy paths write
+  // completedAt / completedBy on the individual step objects.
   const getStepCompletionInfo = (stepId: string) => {
-    const legacyStep = steps.find((s) => s.id === stepId);
+    const step = steps.find((s) => s.id === stepId);
     return {
-      completedAt: legacyStep?.completedAt,
-      completedBy: legacyStep?.completedBy,
+      completedAt: step?.completedAt,
+      completedBy: step?.completedBy,
+      remark: step?.remark,
+      remarkBy: step?.remarkBy,
+      remarkAt: step?.remarkAt,
     };
   };
 
@@ -211,46 +248,104 @@ export function WorkflowDrawer({
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 bg-gray-50">
           {virtualSteps.map((step, index) => {
             const info = getStepCompletionInfo(step.id);
+            const hasRemark = !!info.remark;
+            const isRemarkExpanded = expandedRemarkStep === step.id;
+
             return (
               <div
                 key={step.id}
-                className={`flex items-center gap-3 p-3.5 rounded-xl border transition-all cursor-pointer ${
+                className={`rounded-xl border transition-all ${
                   step.completed
                     ? 'bg-green-50 border-green-200'
                     : 'bg-white border-gray-200 hover:border-blue-200'
                 }`}
               >
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
-                    step.completed
-                      ? 'bg-green-500 text-white'
-                      : 'bg-gray-100 text-gray-600'
-                  }`}
-                >
-                  {step.completed ? (
-                    <CheckCircle2 className="h-4 w-4" />
-                  ) : (
-                    index + 1
-                  )}
+                {/* Step header row */}
+                <div className="flex items-center gap-3 p-3.5">
+                  <div
+                    className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
+                      step.completed
+                        ? 'bg-green-500 text-white'
+                        : 'bg-gray-100 text-gray-600'
+                    }`}
+                  >
+                    {step.completed ? (
+                      <CheckCircle2 className="h-4 w-4" />
+                    ) : (
+                      index + 1
+                    )}
+                  </div>
+
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <p className={`font-semibold text-sm truncate ${step.completed ? 'text-green-800' : 'text-gray-900'}`}>
+                        {step.name}
+                      </p>
+                      {hasRemark && (
+                        <MessageSquare className="h-3 w-3 text-amber-500 flex-shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-0.5">
+                      {step.completed
+                        ? `Completed ${formatDate(info.completedAt)}${info.completedBy ? ` · by ${resolveUserName(info.completedBy)}` : ''}`
+                        : 'Not started'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    {/* Remark toggle button (only for completed steps) */}
+                    {step.completed && (
+                      <button
+                        type="button"
+                        onClick={() => setExpandedRemarkStep(isRemarkExpanded ? null : step.id)}
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          isRemarkExpanded || hasRemark
+                            ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
+                            : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100'
+                        }`}
+                        title={hasRemark ? 'View/edit remark' : 'Add remark'}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                      </button>
+                    )}
+                    <Switch
+                      checked={step.completed}
+                      onCheckedChange={(checked) => handleStepToggle(step.id, checked)}
+                      disabled={loading === step.id}
+                      className="flex-shrink-0"
+                    />
+                  </div>
                 </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className={`font-semibold text-sm ${step.completed ? 'text-green-800' : 'text-gray-900'}`}>
-                    {step.name}
-                  </p>
-                  <p className="text-xs text-gray-500 mt-0.5">
-                    {step.completed
-                      ? `Completed ${formatDate(info.completedAt)}${info.completedBy ? ` · by ${resolveUserName(info.completedBy)}` : ''}`
-                      : 'Not started'}
-                  </p>
-                </div>
-
-                <Switch
-                  checked={step.completed}
-                  onCheckedChange={(checked) => handleStepToggle(step.id, checked)}
-                  disabled={loading === step.id}
-                  className="flex-shrink-0"
-                />
+                {/* Expandable remark area */}
+                {step.completed && isRemarkExpanded && (
+                  <div className="px-3.5 pb-3.5 pt-0 ml-10">
+                    <Textarea
+                      placeholder="Add a remark (optional)..."
+                      value={remarkText[step.id] ?? info.remark ?? ''}
+                      onChange={(e) => setRemarkText(prev => ({ ...prev, [step.id]: e.target.value }))}
+                      className="min-h-[60px] text-sm resize-none"
+                      rows={2}
+                    />
+                    {hasRemark && info.remarkBy && (
+                      <p className="text-xs text-gray-400 mt-1.5">
+                        Last remark by {resolveUserName(info.remarkBy)}
+                        {info.remarkAt ? ` · ${formatDate(info.remarkAt)}` : ''}
+                      </p>
+                    )}
+                    <div className="flex justify-end mt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleSaveRemark(step.id)}
+                        disabled={loading === step.id}
+                        className="text-xs"
+                      >
+                        {loading === step.id ? 'Saving...' : 'Save remark'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             );
           })}

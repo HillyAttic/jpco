@@ -122,7 +122,7 @@ export function getReportTypes(task: RecurringTask): ReportTypeConfig[] {
     types.push({
       id: 'tar',
       name: 'TAR Reports',
-      badgeLabel: 'TAX',
+      badgeLabel: 'TAX AUDIT',
       badgeClass: TAR_TEMPLATE.badgeClass,
       description: TAR_TEMPLATE.label,
       enabled: true,
@@ -133,7 +133,7 @@ export function getReportTypes(task: RecurringTask): ReportTypeConfig[] {
     types.push({
       id: 'stat',
       name: 'Statutory Reports',
-      badgeLabel: 'STAT',
+      badgeLabel: 'STATUTORY AUDIT',
       badgeClass: STAT_TEMPLATE.badgeClass,
       description: STAT_TEMPLATE.label,
       enabled: true,
