@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { withManagerAuth } from '@/lib/server-auth';
+import { withAuth } from '@/lib/server-auth';
 import { adminDb } from '@/lib/firebase-admin';
 
 /**
  * GET /api/clients/next-serial
  * Returns the next available serial number (max existing + 1, zero-padded to 3 digits)
  */
-export const GET = withManagerAuth(async () => {
+export const GET = withAuth(async () => {
   try {
     console.log('[API next-serial] Fetching all clients...');
     const clientsSnapshot = await adminDb.collection('clients').get();

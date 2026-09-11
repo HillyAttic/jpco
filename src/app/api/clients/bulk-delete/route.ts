@@ -16,8 +16,8 @@ export async function POST(request: NextRequest) {
     }
 
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
-      return ErrorResponses.forbidden('Only managers and admins can delete clients');
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only admins, managers and employees can delete clients');
     }
 
     const body = await request.json();

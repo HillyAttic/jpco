@@ -62,15 +62,9 @@ export async function GET(
 
     // Check role-based permissions
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
-      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only admins, managers and employees can access this resource');
     }
-
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
 
     const { id } = await params;
 
@@ -106,15 +100,9 @@ export async function PUT(
 
     // Check role-based permissions
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
-      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only admins, managers and employees can access this resource');
     }
-
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
 
     const { id } = await params;
     const body = await request.json();
@@ -165,15 +153,9 @@ export async function DELETE(
 
     // Check role-based permissions
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
-      return ErrorResponses.forbidden('Only managers and admins can access this resource');
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only admins, managers and employees can access this resource');
     }
-
-    // TODO: Add authentication check
-    // const user = await verifyAuth(request);
-    // if (!user) {
-    //   return ErrorResponses.unauthorized();
-    // }
 
     const { id } = await params;
 

@@ -69,30 +69,6 @@ export async function GET(request: NextRequest) {
 
     let clients = await clientAdminService.getAll({ status, search, limit });
 
-    // Non-admin filtering: only show clients the admin has assigned to this user
-    if (userRole !== 'admin') {
-      const { adminDb } = await import('@/lib/firebase-admin');
-      const accessSnapshot = await adminDb
-        .collection('client_access')
-        .where('userId', '==', authResult.user.uid)
-        .limit(1)
-        .get();
-
-      if (accessSnapshot.empty) {
-        // No access doc → user sees zero clients
-        clients = [];
-      } else {
-        const accessData = accessSnapshot.docs[0].data();
-        if (accessData.allClients) {
-          // allClients flag → user sees every client (no filtering)
-        } else {
-          const allowedIds: string[] = accessData.allowedClientIds || [];
-          const allowedSet = new Set(allowedIds);
-          clients = clients.filter((c: any) => c.id && allowedSet.has(c.id));
-        }
-      }
-    }
-
     return NextResponse.json({ data: clients, page, limit, total: clients.length });
   } catch (error) {
     console.error('[API /api/clients] Error:', error);
@@ -115,8 +91,8 @@ export async function POST(request: NextRequest) {
     }
 
     const userRole = authResult.user.claims.role;
-    if (!['admin', 'manager'].includes(userRole)) {
-      return ErrorResponses.forbidden('Only managers and admins can create clients');
+    if (!['admin', 'manager', 'employee'].includes(userRole)) {
+      return ErrorResponses.forbidden('Only admins, managers and employees can create clients');
     }
 
     const body = await request.json();
