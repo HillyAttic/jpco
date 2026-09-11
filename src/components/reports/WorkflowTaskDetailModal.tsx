@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { RecurringTask, WorkflowStep, WorkflowType, TeamMemberMapping, getClientCompletedStepIds, getClientProgressSummary } from '@/services/recurring-task.service';
+import { RecurringTask, WorkflowStep, WorkflowType, TeamMemberMapping, ClientWorkflowProgress, getClientCompletedStepIds, getClientProgressSummary } from '@/services/recurring-task.service';
 import { Client } from '@/services/client.service';
 import { getWorkflowTemplate, getReportTypeById, getStepsForReportType } from '@/lib/workflow-templates';
 import { TeamMemberMappingDialog } from '@/components/recurring-tasks/TeamMemberMappingDialog';
@@ -23,6 +23,7 @@ import {
   Maximize2,
   Minimize2,
   MessageSquare,
+  CalendarDays,
 } from 'lucide-react';
 
 /** A flattened row: one client from a task's team member mapping */
@@ -30,6 +31,34 @@ interface ClientRow {
   clientName: string;
   clientId: string;
   assignee: string;
+}
+
+// ── Financial Year helpers ────────────────────────────────────
+function generateFinancialYears(): string[] {
+  const years: string[] = [];
+  for (let startYear = 2025; startYear <= 2035; startYear++) {
+    years.push(`${startYear}-${String(startYear + 1).slice(-2)}`);
+  }
+  return years;
+}
+
+function getCurrentFinancialYear(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const fyStart = month >= 3 ? year : year - 1;
+  return `${fyStart}-${String(fyStart + 1).slice(-2)}`;
+}
+
+/** Check if an ISO date string falls within a given FY (Apr 1 → Mar 31) */
+function isDateInFY(isoDate: string | undefined, fy: string): boolean {
+  if (!isoDate) return false;
+  const date = new Date(isoDate);
+  if (isNaN(date.getTime())) return false;
+  const year = date.getFullYear();
+  const month = date.getMonth(); // 0-11
+  const fyStartYear = parseInt(fy.split('-')[0]);
+  return month >= 3 ? year === fyStartYear : year === fyStartYear + 1;
 }
 
 interface WorkflowTaskDetailModalProps {
@@ -53,6 +82,30 @@ export function WorkflowTaskDetailModal({
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [selectedFY, setSelectedFY] = useState<string>(getCurrentFinancialYear());
+  const financialYears = useMemo(() => generateFinancialYears(), []);
+
+  // Build a task copy whose clientProgress is scoped to the selected FY.
+  // Clients whose last update falls outside the FY are treated as having no completed steps
+  // for that year, while still remaining visible in the list.
+  const filteredTask = useMemo<RecurringTask>(() => {
+    if (selectedFY === 'all' || !task.clientProgress) return task;
+
+    const filtered: Record<string, ClientWorkflowProgress> = {};
+    let hasAnyProgress = false;
+    Object.entries(task.clientProgress).forEach(([clientId, progress]) => {
+      if (isDateInFY(progress.completedAt, selectedFY)) {
+        filtered[clientId] = progress;
+        hasAnyProgress = true;
+      } else {
+        // Outside selected FY → reset step progress but keep entry so the client still appears
+        filtered[clientId] = { completedStepIds: [] };
+      }
+    });
+
+    if (!hasAnyProgress && Object.keys(task.clientProgress).length === 0) return task;
+    return { ...task, clientProgress: filtered };
+  }, [task, selectedFY]);
 
   // Team member mapping dialog state
   const [mappingDialogOpen, setMappingDialogOpen] = useState(false);
@@ -182,7 +235,7 @@ export function WorkflowTaskDetailModal({
         row.clientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         row.assignee.toLowerCase().includes(searchQuery.toLowerCase());
 
-      const progress = getClientProgressSummary(row.clientId ? task : { ...task }, row.clientId, workflowType);
+      const progress = getClientProgressSummary(row.clientId ? filteredTask : { ...filteredTask }, row.clientId, workflowType);
       const matchesStatus =
         statusFilter === 'all' || progress.status === statusFilter;
 
@@ -191,7 +244,7 @@ export function WorkflowTaskDetailModal({
 
       return matchesSearch && matchesStatus && matchesAssignee;
     });
-  }, [allRows, searchQuery, statusFilter, assigneeFilter, workflowType, task]);
+  }, [allRows, searchQuery, statusFilter, assigneeFilter, workflowType, filteredTask]);
 
   // Calculate summary stats
   const stats = useMemo(() => {
@@ -203,7 +256,7 @@ export function WorkflowTaskDetailModal({
     let unassigned = 0;
 
     allRows.forEach((row) => {
-      const progress = getClientProgressSummary(task, row.clientId, workflowType);
+      const progress = getClientProgressSummary(filteredTask, row.clientId, workflowType);
       totalPercentage += progress.percentage;
       if (row.assignee === 'Unassigned') {
         unassigned++;
@@ -233,15 +286,16 @@ export function WorkflowTaskDetailModal({
       assigned,
       unassigned,
     };
-  }, [allRows, task, workflowType]);
+  }, [allRows, filteredTask, workflowType]);
 
   // Export CSV for this single task
   const exportCSV = () => {
+    const fyLabel = selectedFY === 'all' ? 'all-years' : `FY-${selectedFY}`;
     const headers = ['Client', 'Allocated', 'Status', ...template.steps.map((s) => s.shortName), 'Progress'];
     const rows = filteredRows.map((row) => {
-      const completedStepIds = getClientCompletedStepIds(task, row.clientId, workflowType);
-      const steps = getStepsForReportType(task, workflowType);
-      const progress = getClientProgressSummary(task, row.clientId, workflowType);
+      const completedStepIds = getClientCompletedStepIds(filteredTask, row.clientId, workflowType);
+      const steps = getStepsForReportType(filteredTask, workflowType);
+      const progress = getClientProgressSummary(filteredTask, row.clientId, workflowType);
       return [
         row.clientName,
         row.assignee,
@@ -256,7 +310,7 @@ export function WorkflowTaskDetailModal({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${task.title}-${workflowType}-report-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.download = `${task.title}-${workflowType}-${fyLabel}-report-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -391,6 +445,21 @@ export function WorkflowTaskDetailModal({
                 className="pl-9 h-9 text-sm"
               />
             </div>
+            <div className="relative">
+              <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+              <select
+                value={selectedFY}
+                onChange={(e) => setSelectedFY(e.target.value)}
+                className="w-full sm:w-[140px] h-9 pl-8 pr-3 rounded-md border border-input bg-background text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+              >
+                <option value="all">All Years</option>
+                {financialYears.map((fy) => (
+                  <option key={fy} value={fy}>
+                    FY {fy}
+                  </option>
+                ))}
+              </select>
+            </div>
             <Select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
@@ -453,8 +522,8 @@ export function WorkflowTaskDetailModal({
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                 {filteredRows.map((row, idx) => {
-                  const completedStepIds = getClientCompletedStepIds(task, row.clientId, workflowType);
-                  const progress = getClientProgressSummary(task, row.clientId, workflowType);
+                  const completedStepIds = getClientCompletedStepIds(filteredTask, row.clientId, workflowType);
+                  const progress = getClientProgressSummary(filteredTask, row.clientId, workflowType);
 
                   return (
                     <tr
@@ -554,8 +623,8 @@ export function WorkflowTaskDetailModal({
           {/* Mobile card view */}
           <div className="lg:hidden space-y-2.5 p-3">
             {filteredRows.map((row, idx) => {
-              const completedStepIds = getClientCompletedStepIds(task, row.clientId, workflowType);
-              const progress = getClientProgressSummary(task, row.clientId, workflowType);
+              const completedStepIds = getClientCompletedStepIds(filteredTask, row.clientId, workflowType);
+              const progress = getClientProgressSummary(filteredTask, row.clientId, workflowType);
 
               return (
                 <Card key={`${row.clientId}-${idx}`} className="border border-gray-200 dark:border-gray-700 shadow-sm">

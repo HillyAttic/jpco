@@ -47,6 +47,7 @@ export default function CalendarPage() {
   const [recurringTasks, setRecurringTasks] = useState<RecurringTask[]>([]);
   const [nonRecurringTasks, setNonRecurringTasks] = useState<Task[]>([]);
   const [clients, setClients] = useState<any[]>([]);
+  const [unassignedClientIdsMap, setUnassignedClientIdsMap] = useState<Record<string, string[]>>({});
   const [viewMode, setViewMode] = useState<'desktop' | 'mobile'>(() => {
     if (typeof window !== 'undefined') {
       return window.innerWidth < 768 ? 'mobile' : 'desktop';
@@ -68,6 +69,59 @@ export default function CalendarPage() {
   useEffect(() => {
     loadTasks();
   }, []);
+
+  /**
+   * For admin users: fetch unassigned clients per task (clients matching
+   * the task's clientFilter that are NOT in any teamMemberMapping).
+   * These are shown in the calendar workflow grid alongside assigned clients.
+   * Non-admin users (managers/employees) do NOT see unassigned clients.
+   */
+  useEffect(() => {
+    if (!isAdmin || recurringTasks.length === 0) {
+      setUnassignedClientIdsMap({});
+      return;
+    }
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    let cancelled = false;
+
+    currentUser.getIdToken().then(token => {
+      if (cancelled) return;
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+
+      Promise.all(
+        recurringTasks
+          .filter(t => t.id && t.clientFilter && t.clientFilter !== 'all')
+          .map(async (task) => {
+            try {
+              const resp = await fetch(
+                `/api/recurring-tasks/${task.id}/unassigned-clients`,
+                { headers }
+              );
+              if (!resp.ok) return { taskId: task.id!, ids: [] };
+              const data = await resp.json();
+              return { taskId: task.id!, ids: data.unassignedClientIds || [] };
+            } catch {
+              return { taskId: task.id!, ids: [] };
+            }
+          })
+      ).then(results => {
+        if (cancelled) return;
+        const map: Record<string, string[]> = {};
+        results.forEach(({ taskId, ids }) => {
+          if (ids.length > 0) map[taskId] = ids;
+        });
+        setUnassignedClientIdsMap(map);
+      });
+    });
+
+    return () => { cancelled = true; };
+  }, [isAdmin, recurringTasks]);
 
   /**
    * Generate calendar task occurrences from recurring tasks
@@ -156,13 +210,16 @@ export default function CalendarPage() {
   const getClientIdsForTask = (task: RecurringTask): string[] => {
     const currentUid = auth.currentUser?.uid;
 
-    // Admins see all clients from all mappings
+    // Admins see all clients from all mappings + unassigned clients (from clientFilter)
     if (isAdmin) {
       const ids = new Set<string>();
       (task.contactIds || []).forEach(id => ids.add(id));
       (task.teamMemberMappings || []).forEach(m => {
         (m.clientIds || []).forEach(id => ids.add(id));
       });
+      // Include unassigned clients (matching clientFilter, not in any mapping)
+      const unassigned = unassignedClientIdsMap[task.id || ''] || [];
+      unassigned.forEach(id => ids.add(id));
       return Array.from(ids);
     }
 
@@ -214,7 +271,7 @@ export default function CalendarPage() {
     });
 
     return entries;
-  }, [recurringTasks, clients, isAdmin]);
+  }, [recurringTasks, clients, isAdmin, unassignedClientIdsMap]);
 
   // Group STAT-enabled tasks by client (supports dynamic report types)
   const statClientGroups = React.useMemo((): ClientWorkflowEntry[] => {
@@ -243,7 +300,7 @@ export default function CalendarPage() {
     });
 
     return entries;
-  }, [recurringTasks, clients, isAdmin]);
+  }, [recurringTasks, clients, isAdmin, unassignedClientIdsMap]);
 
   const hasTarTasks = tarClientGroups.length > 0;
   const hasStatTasks = statClientGroups.length > 0;
