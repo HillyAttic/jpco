@@ -481,7 +481,7 @@ export function RecurringTaskModal({
         statEnabled: enabledReportTypes.some(rt => rt.id === 'stat'),
         tarSteps: effectiveReportTypes.find(rt => rt.id === 'tar')?.steps,
         statSteps: effectiveReportTypes.find(rt => rt.id === 'stat')?.steps,
-        teamMemberMappings: teamMemberMappings.length > 0 ? teamMemberMappings : undefined,
+        teamMemberMappings: teamMemberMappings,
         clientFilter: data.clientFilter || undefined,
         showUnassignedClients: showUnassignedClients,
       };
