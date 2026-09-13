@@ -21,7 +21,7 @@ import { WorkflowGridModal } from '@/components/compliance/WorkflowGridModal';
 import { initializeWorkflowSteps, getWorkflowTemplate, getReportTypes, getStepsForReportType } from '@/lib/workflow-templates';
 import { auth } from '@/lib/firebase';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
-import { authenticatedFetch } from '@/lib/api-client';
+import { apiPut, authenticatedFetch } from '@/lib/api-client';
 
 // Extended task type to include recurring task occurrences
 interface CalendarTask extends Task {
@@ -483,16 +483,12 @@ export default function CalendarPage() {
     ));
 
     // Persist to API with clientId and remark
-    await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        stepId,
-        workflowType: selectedWorkflowType,
-        completed,
-        clientId: clientId || undefined,
-        remark,
-      }),
+    await apiPut(`/api/workflow/${selectedWorkflowTask.id}`, {
+      stepId,
+      workflowType: selectedWorkflowType,
+      completed,
+      clientId: clientId || undefined,
+      remark,
     });
   };
 

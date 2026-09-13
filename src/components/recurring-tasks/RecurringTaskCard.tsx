@@ -17,6 +17,7 @@ import {
   CalendarDaysIcon,
   ArrowRightIcon,
   ChartBarIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { CheckCircleIcon as CheckCircleSolidIcon } from '@heroicons/react/24/solid';
 
@@ -39,6 +40,7 @@ interface RecurringTaskCardProps {
   onScheduleClick?: (task: RecurringTask) => void;
   onViewReport?: (task: RecurringTask) => void;
   onGoToReportsClick?: (task: RecurringTask) => void;
+  onUpdateProgressClick?: (task: RecurringTask) => void;
 }
 
 /**
@@ -65,6 +67,7 @@ export function RecurringTaskCard({
   onScheduleClick,
   onViewReport,
   onGoToReportsClick,
+  onUpdateProgressClick,
 }: RecurringTaskCardProps) {
   // Check if task is overdue
   const isOverdue = task.status !== 'completed' && new Date(task.dueDate) < new Date();
@@ -391,13 +394,14 @@ export function RecurringTaskCard({
               ? task.teamMemberMappings!.reduce((s, m) => s + m.clientIds.length, 0)
               : 0;
           const hasClientsButton = clientCount > 0;
-          const hasTeamButton = canViewAllTasks;
+          const hasTeamButton = canViewAllTasks || !!userMapping;
           const hasPlanButton = !!userMapping && clientCount > 0;
           const hasDelegateButton = (!!userMapping || canViewAllTasks) && clientCount > 0;
-          const hasScheduleButton = isManager;
+          const hasScheduleButton = isManager || !!userMapping;
           const hasViewReportButton = canViewAllTasks;
           const hasGoToReportsButton = isManager;
-          if (!hasClientsButton && !hasTeamButton && !hasPlanButton && !hasDelegateButton && !hasScheduleButton && !hasViewReportButton && !hasGoToReportsButton) return null;
+          const hasUpdateProgressButton = (!!userMapping || canViewAllTasks) && clientCount > 0;
+          if (!hasClientsButton && !hasTeamButton && !hasPlanButton && !hasDelegateButton && !hasScheduleButton && !hasViewReportButton && !hasGoToReportsButton && !hasUpdateProgressButton) return null;
           return (
             <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 flex flex-wrap gap-2">
               {hasClientsButton && onClientsClick && (
@@ -423,6 +427,11 @@ export function RecurringTaskCard({
               {hasScheduleButton && onScheduleClick && (
                 <button onClick={() => onScheduleClick(task)} className="px-3 py-1.5 text-xs font-medium bg-teal-100 text-teal-700 hover:bg-teal-200 dark:bg-teal-900/30 dark:text-teal-300 dark:hover:bg-teal-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]">
                   <CalendarDaysIcon className="w-4 h-4" />Schedule
+                </button>
+              )}
+              {hasUpdateProgressButton && onUpdateProgressClick && (
+                <button onClick={() => onUpdateProgressClick(task)} className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]">
+                  <CheckCircleIcon className="w-4 h-4" />Mark Progress
                 </button>
               )}
               {hasViewReportButton && onViewReport && (

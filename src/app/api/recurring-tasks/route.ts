@@ -337,6 +337,11 @@ export async function GET(request: NextRequest) {
       updatedAt: task.updatedAt ? serializeDate(task.updatedAt) : null,
       tarSteps: serializeSteps(task.tarSteps as any),
       statSteps: serializeSteps(task.statSteps as any),
+      // Serialize reportTypes steps so completedAt Timestamps are proper ISO strings
+      reportTypes: task.reportTypes?.map((rt: any) => ({
+        ...rt,
+        steps: serializeSteps(rt.steps),
+      })),
     }));
 
     return NextResponse.json(serializedTasks, { status: 200 });

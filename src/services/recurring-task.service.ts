@@ -349,7 +349,9 @@ export function getClientCompletedStepIds(
   clientId: string,
   workflowType: WorkflowType
 ): string[] {
-  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
+  // Case-insensitive: recurring page passes 'tar'/'stat', calendar passes 'TAR'/'STAT'
+  const lowerType = workflowType.toLowerCase();
+  const key = lowerType === 'tar' ? 'tarSteps' : 'statSteps';
   const legacySteps = task[key] || [];
 
   // If clientProgress exists for this client, use it

@@ -20,6 +20,41 @@ const initializeWorkflowSchema = z.object({
 });
 
 /**
+ * Build the persisted version of a workflow step after a completion toggle.
+ * Reopened steps must omit cleared metadata rather than sending undefined
+ * values, because Firestore rejects undefined properties in update payloads.
+ */
+function updateWorkflowStep(
+  step: WorkflowStep,
+  completed: boolean,
+  userId: string,
+  now: Date,
+  remark?: string,
+): WorkflowStep {
+  const updatedStep: WorkflowStep = { ...step, completed };
+
+  if (!completed) {
+    delete updatedStep.completedAt;
+    delete updatedStep.completedBy;
+    delete updatedStep.remark;
+    delete updatedStep.remarkBy;
+    delete updatedStep.remarkAt;
+    return updatedStep;
+  }
+
+  updatedStep.completedAt = now;
+  updatedStep.completedBy = userId;
+
+  if (remark?.trim()) {
+    updatedStep.remark = remark.trim();
+    updatedStep.remarkBy = userId;
+    updatedStep.remarkAt = now;
+  }
+
+  return updatedStep;
+}
+
+/**
  * GET /api/workflow/[taskId]
  * Fetch workflow steps for a task
  * Requires: Employee role or higher
@@ -155,30 +190,12 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
         completedBy: authResult.user!.uid,
       };
 
-      // Also update individual step objects with completedAt, completedBy, and remark
+      // Also update individual step objects with completion metadata
       // so the UI can show "Completed [date] by [name]" per step
       const now = new Date();
       const updatedSteps = steps.map((step: WorkflowStep) => {
         if (step.id === stepId) {
-          const updatedStep = {
-            ...step,
-            completed,
-            completedAt: completed ? now : undefined,
-            completedBy: completed ? authResult.user!.uid : undefined,
-          };
-
-          // Handle remark: store if provided and step is completed; clear if reopened
-          if (completed && body.remark?.trim()) {
-            updatedStep.remark = body.remark.trim();
-            updatedStep.remarkBy = authResult.user!.uid;
-            updatedStep.remarkAt = now;
-          } else if (!completed) {
-            updatedStep.remark = undefined;
-            updatedStep.remarkBy = undefined;
-            updatedStep.remarkAt = undefined;
-          }
-
-          return updatedStep;
+          return updateWorkflowStep(step, completed, authResult.user!.uid, now, body.remark);
         }
         return step;
       });
@@ -208,25 +225,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const now = new Date();
       const updatedSteps = steps.map((step: WorkflowStep) => {
         if (step.id === stepId) {
-          const updatedStep = {
-            ...step,
-            completed,
-            completedAt: completed ? now : undefined,
-            completedBy: completed ? authResult.user!.uid : undefined,
-          };
-
-          // Handle remark: store if provided and step is completed; clear if reopened
-          if (completed && body.remark?.trim()) {
-            updatedStep.remark = body.remark.trim();
-            updatedStep.remarkBy = authResult.user!.uid;
-            updatedStep.remarkAt = now;
-          } else if (!completed) {
-            updatedStep.remark = undefined;
-            updatedStep.remarkBy = undefined;
-            updatedStep.remarkAt = undefined;
-          }
-
-          return updatedStep;
+          return updateWorkflowStep(step, completed, authResult.user!.uid, now, body.remark);
         }
         return step;
       });

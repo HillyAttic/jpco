@@ -25,6 +25,11 @@ import { Button } from '@/components/ui/button';
 import { PlusIcon } from '@heroicons/react/24/outline';
 import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
+import { WorkflowGridModal } from '@/components/compliance/WorkflowGridModal';
+import { WorkflowDrawer } from '@/components/compliance/WorkflowDrawer';
+import { getClientCompletedStepIds } from '@/services/recurring-task.service';
+import { getReportTypes, getStepsForReportType, initializeWorkflowSteps } from '@/lib/workflow-templates';
+import { apiPut, authenticatedFetch } from '@/lib/api-client';
 
 /**
  * Recurring Tasks Page
@@ -47,6 +52,7 @@ export default function RecurringTasksPage() {
     deleteTask,
     pauseTask,
     resumeTask,
+    refreshTasks,
   } = useRecurringTasks();
 
   // Bulk selection state - Requirement 10.1
@@ -81,6 +87,17 @@ export default function RecurringTasksPage() {
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   const [selectedTaskForSchedule, setSelectedTaskForSchedule] = useState<RecurringTask | null>(null);
 
+  // Workflow drawer and grid modal state
+  const [workflowGridOpen, setWorkflowGridOpen] = useState(false);
+  const [gridModalTask, setGridModalTask] = useState<RecurringTask | null>(null);
+  const [workflowDrawerOpen, setWorkflowDrawerOpen] = useState(false);
+  const [selectedWorkflowTask, setSelectedWorkflowTask] = useState<RecurringTask | null>(null);
+  const [selectedWorkflowType, setSelectedWorkflowType] = useState<string>('');
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+  const [selectedClientName, setSelectedClientName] = useState<string | null>(null);
+
+  // Clients data for resolving client names in workflow grid
+  const [clients, setClients] = useState<any[]>([]);
 
   // Load team names for display
   useEffect(() => {
@@ -101,6 +118,29 @@ export default function RecurringTasksPage() {
 
     loadTeamNames();
   }, []);
+
+  // Load clients for resolving client names in workflow grid
+  useEffect(() => {
+    const loadClients = async () => {
+      try {
+        const resp = await authenticatedFetch('/api/clients');
+        if (resp.ok) {
+          const data = await resp.json();
+          setClients(data.data || []);
+        }
+      } catch (error) {
+        console.error('Error loading clients:', error);
+      }
+    };
+
+    loadClients();
+  }, []);
+
+  // Helper: get client name from ID
+  const getClientName = (clientId: string): string => {
+    const client = clients.find(c => c.id === clientId);
+    return client?.clientName || clientId;
+  };
 
   /**
    * Handle opening modal for creating new task
@@ -276,6 +316,255 @@ export default function RecurringTasksPage() {
     router.push('/reports');
   };
 
+  /**
+   * Helper: write updated step objects back into a task (dynamic reportTypes or legacy tarSteps/statSteps)
+   */
+  const updateTaskSteps = (task: RecurringTask, updatedSteps: any[], workflowType: string): RecurringTask => {
+    const lower = workflowType.toLowerCase();
+    if (task.reportTypes && task.reportTypes.length > 0) {
+      const updatedReportTypes = task.reportTypes.map(rt => {
+        if (rt.id === workflowType || rt.id === lower) {
+          return { ...rt, steps: updatedSteps };
+        }
+        return rt;
+      });
+      return { ...task, reportTypes: updatedReportTypes };
+    }
+    // Legacy path
+    if (lower === 'tar') return { ...task, tarSteps: updatedSteps };
+    if (lower === 'stat') return { ...task, statSteps: updatedSteps };
+    return task;
+  };
+
+  /**
+   * Build grid modal entries from task data — filtered by role
+   * Uses same filtering logic as calendar page for consistency
+   */
+  const buildWorkflowEntries = (task: RecurringTask): Record<string, { clientId: string; clientName: string; task: RecurringTask }[]> => {
+    const reportTypes = getReportTypes(task);
+    const enabledTypes = reportTypes.filter(rt => rt.enabled);
+    if (enabledTypes.length === 0) return {};
+
+    const entriesByType: Record<string, { clientId: string; clientName: string; task: RecurringTask }[]> = {};
+    const mappings = task.teamMemberMappings || [];
+
+    // Filter by role: admin sees all, non-admin sees own mapping only
+    // Match calendar page behavior (isAdmin only, not canViewAllTasks)
+    const currentUid = user?.uid;
+    const relevantMappings = isAdmin
+      ? mappings
+      : mappings.filter(m => m.userId === currentUid);
+
+    const allClientIds = [...new Set(relevantMappings.flatMap(m => m.clientIds))];
+
+    enabledTypes.forEach(rt => {
+      entriesByType[rt.id] = allClientIds.map(id => ({
+        clientId: id,
+        clientName: getClientName(id),
+        task,
+      }));
+    });
+
+    return entriesByType;
+  };
+
+  /**
+   * Handle workflow task click — opens grid modal (no clientId) or drawer (with clientId)
+   */
+  const handleWorkflowTaskClick = async (
+    task: RecurringTask,
+    type: string,
+    clientId?: string,
+    clientName?: string,
+  ) => {
+    let enrichedTask = { ...task };
+    const steps = getStepsForReportType(task, type);
+
+    // Initialize steps if none exist
+    if (steps.length === 0) {
+      const newSteps = initializeWorkflowSteps(type.toLowerCase() as any);
+      if (type.toLowerCase() === 'tar') {
+        enrichedTask = { ...enrichedTask, tarSteps: newSteps };
+      } else if (type.toLowerCase() === 'stat') {
+        enrichedTask = { ...enrichedTask, statSteps: newSteps };
+      } else if (enrichedTask.reportTypes) {
+        const updatedReportTypes = enrichedTask.reportTypes.map(rt =>
+          rt.id === type ? { ...rt, steps: newSteps } : rt
+        );
+        enrichedTask = { ...enrichedTask, reportTypes: updatedReportTypes };
+      }
+
+      // Persist initialized steps to backend
+      if (task.id) {
+        authenticatedFetch(`/api/workflow/${task.id}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ workflowType: type }),
+        }).catch(err => console.error(`Failed to init ${type} steps for task ${task.id}:`, err));
+      }
+    }
+
+    // If called from button click (no clientId), show grid modal
+    if (!clientId) {
+      setGridModalTask(enrichedTask);
+      setWorkflowGridOpen(true);
+      return;
+    }
+
+    // If called from grid modal card click (has clientId), show drawer
+    setSelectedWorkflowTask(enrichedTask);
+    setSelectedWorkflowType(type);
+    setSelectedClientId(clientId || null);
+    setSelectedClientName(clientName || null);
+    setWorkflowDrawerOpen(true);
+  };
+
+  /**
+   * Sync updated task data back into both selectedWorkflowTask and gridModalTask
+   * so the grid modal reflects the latest toggle state when reopened.
+   */
+  const syncTaskUpdate = (updatedTask: RecurringTask) => {
+    setSelectedWorkflowTask(updatedTask);
+    setGridModalTask(prev => prev && prev.id === updatedTask.id ? updatedTask : prev);
+  };
+
+  /**
+   * Handle step toggle — per-client progress update with optimistic UI
+   */
+  const handleStepToggle = async (stepId: string, completed: boolean, clientId?: string, remark?: string) => {
+    if (!selectedWorkflowTask?.id) return;
+
+    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
+
+    // Update clientProgress in local state
+    const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
+    const existing = updatedClientProgress[clientId || '']
+      ? { ...updatedClientProgress[clientId || ''] }
+      : { completedStepIds: allSteps.filter((s) => s.completed).map((s) => s.id) };
+
+    const completedStepIds = new Set(existing.completedStepIds || []);
+    if (completed) {
+      completedStepIds.add(stepId);
+    } else {
+      completedStepIds.delete(stepId);
+    }
+
+    updatedClientProgress[clientId || ''] = {
+      completedStepIds: Array.from(completedStepIds),
+      completedAt: new Date().toISOString(),
+      completedBy: user?.uid,
+    };
+
+    // Also update the individual step objects
+    const now = new Date();
+    const updatedSteps = allSteps.map((s) => {
+      if (s.id === stepId) {
+        const updatedStep = {
+          ...s,
+          completed,
+          completedAt: completed ? now : undefined,
+          completedBy: completed ? user?.uid : undefined,
+        };
+        if (remark !== undefined) {
+          if (completed && remark.trim()) {
+            updatedStep.remark = remark.trim();
+            updatedStep.remarkBy = user?.uid;
+            updatedStep.remarkAt = now;
+          } else if (!completed) {
+            updatedStep.remark = undefined;
+            updatedStep.remarkBy = undefined;
+            updatedStep.remarkAt = undefined;
+          }
+        }
+        return updatedStep;
+      }
+      return s;
+    });
+
+    // Write updated steps back into the task
+    const updatedTask = updateTaskSteps(
+      { ...selectedWorkflowTask, clientProgress: updatedClientProgress },
+      updatedSteps,
+      selectedWorkflowType,
+    );
+
+    // Update all local state sources optimistically
+    syncTaskUpdate(updatedTask);
+
+    // Persist to API
+    try {
+      await apiPut(`/api/workflow/${selectedWorkflowTask.id}`, {
+        stepId,
+        workflowType: selectedWorkflowType,
+        completed,
+        clientId: clientId || undefined,
+        remark,
+      });
+      // Refresh the hook's tasks to keep them in sync for when the modal is reopened
+      await refreshTasks();
+    } catch (error) {
+      console.error('Failed to update workflow step:', error);
+      // Revert on error — reload from server
+      setSelectedWorkflowTask(selectedWorkflowTask);
+      setGridModalTask(prev => prev && prev.id === selectedWorkflowTask.id ? selectedWorkflowTask : prev);
+    }
+  };
+
+  /**
+   * Handle mark all steps complete — per-client
+   */
+  const handleMarkAllComplete = async (clientId?: string) => {
+    if (!selectedWorkflowTask?.id) return;
+
+    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
+    const allStepIds = allSteps.map((s) => s.id);
+    const now = new Date();
+
+    const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
+    updatedClientProgress[clientId || ''] = {
+      completedStepIds: [...allStepIds],
+      completedAt: now.toISOString(),
+      completedBy: user?.uid,
+    };
+
+    const updatedSteps = allSteps.map((s) => ({
+      ...s,
+      completed: true,
+      completedAt: now,
+      completedBy: user?.uid,
+    }));
+
+    const updatedTask = updateTaskSteps(
+      { ...selectedWorkflowTask, clientProgress: updatedClientProgress },
+      updatedSteps,
+      selectedWorkflowType,
+    );
+
+    // Update all local state sources optimistically
+    syncTaskUpdate(updatedTask);
+
+    // Persist each step for this client
+    for (const stepId of allStepIds) {
+      try {
+        await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stepId,
+            workflowType: selectedWorkflowType,
+            completed: true,
+            clientId: clientId || undefined,
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to mark step complete:', error);
+      }
+    }
+
+    // Refresh tasks to keep them in sync
+    await refreshTasks();
+  };
+
   // Common action button props for list and card views
   const actionButtonProps = {
     currentUserId: user?.uid,
@@ -308,6 +597,11 @@ export default function RecurringTasksPage() {
     },
     onGoToReportsClick: () => {
       router.push('/reports');
+    },
+    onUpdateProgressClick: (task: RecurringTask) => {
+      setGridModalTask(task);
+      setWorkflowGridOpen(true);
+      openModal();
     },
   };
 
@@ -570,6 +864,42 @@ export default function RecurringTasksPage() {
           teamMemberMappings={selectedTaskForSchedule.teamMemberMappings}
           contactIds={selectedTaskForSchedule.contactIds}
           onScheduled={() => {}}
+        />
+      )}
+
+      {/* Workflow Grid Modal */}
+      {workflowGridOpen && gridModalTask && (
+        <WorkflowGridModal
+          open={workflowGridOpen}
+          onClose={() => { setWorkflowGridOpen(false); setGridModalTask(null); closeModal(); }}
+          task={gridModalTask}
+          entriesByType={buildWorkflowEntries(gridModalTask)}
+          onCardUpdate={(task, type, clientId, clientName) => {
+            handleWorkflowTaskClick(task, type, clientId, clientName);
+          }}
+        />
+      )}
+
+      {/* Workflow Drawer */}
+      {workflowDrawerOpen && selectedWorkflowTask && (
+        <WorkflowDrawer
+          open={workflowDrawerOpen}
+          onOpenChange={(open) => { if (!open) { setWorkflowDrawerOpen(false); setSelectedWorkflowTask(null); } }}
+          taskId={selectedWorkflowTask.id!}
+          taskTitle={selectedWorkflowTask.title}
+          workflowType={selectedWorkflowType as any}
+          steps={getStepsForReportType(selectedWorkflowTask, selectedWorkflowType)}
+          completedStepIds={
+            selectedClientId
+              ? getClientCompletedStepIds(selectedWorkflowTask, selectedClientId, selectedWorkflowType)
+              : []
+          }
+          clientId={selectedClientId || undefined}
+          clientName={selectedClientName || undefined}
+          assignee={(userProfile?.displayName ?? undefined) || (user?.email ?? undefined)}
+          onStepToggle={handleStepToggle}
+          onMarkAllComplete={handleMarkAllComplete}
+          reportTypeConfig={getReportTypes(selectedWorkflowTask).find(rt => rt.id === selectedWorkflowType)}
         />
       )}
 

@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import {
   PencilIcon, TrashIcon, PauseIcon, PlayIcon, EyeIcon,
   UserGroupIcon, CalendarIcon, CalendarDaysIcon, ArrowRightIcon, ChartBarIcon,
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface RecurringTaskListViewProps {
@@ -27,6 +28,7 @@ interface RecurringTaskListViewProps {
   onDelegateClick?: (task: RecurringTask) => void;
   onScheduleClick?: (task: RecurringTask) => void;
   onGoToReportsClick?: (task: RecurringTask) => void;
+  onUpdateProgressClick?: (task: RecurringTask) => void;
 }
 
 /**
@@ -53,6 +55,7 @@ export function RecurringTaskListView({
   onDelegateClick,
   onScheduleClick,
   onGoToReportsClick,
+  onUpdateProgressClick,
 }: RecurringTaskListViewProps) {
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -111,14 +114,15 @@ export function RecurringTaskListView({
         : 0;
 
     const hasClientsButton = clientCount > 0;
-    const hasTeamButton = canViewAllTasks;
+    const hasTeamButton = canViewAllTasks || !!userMapping;
     const hasPlanButton = !!userMapping && clientCount > 0;
     const hasDelegateButton = (!!userMapping || canViewAllTasks) && clientCount > 0;
-    const hasScheduleButton = isManager;
+    const hasScheduleButton = isManager || !!userMapping;
     const hasViewReportButton = canViewAllTasks;
     const hasGoToReportsButton = isManager;
+    const hasUpdateProgressButton = (!!userMapping || canViewAllTasks) && clientCount > 0;
 
-    if (!hasClientsButton && !hasTeamButton && !hasPlanButton && !hasDelegateButton && !hasScheduleButton && !hasViewReportButton && !hasGoToReportsButton) {
+    if (!hasClientsButton && !hasTeamButton && !hasPlanButton && !hasDelegateButton && !hasScheduleButton && !hasViewReportButton && !hasGoToReportsButton && !hasUpdateProgressButton) {
       return null;
     }
 
@@ -167,6 +171,15 @@ export function RecurringTaskListView({
           >
             <CalendarDaysIcon className="w-4 h-4" />
             Schedule
+          </button>
+        )}
+        {hasUpdateProgressButton && onUpdateProgressClick && (
+          <button
+            onClick={() => onUpdateProgressClick(task)}
+            className="px-3 py-1.5 text-xs font-medium bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:bg-blue-900/50 rounded-md transition-colors flex items-center gap-1 min-h-[35px]"
+          >
+            <CheckCircleIcon className="w-4 h-4" />
+            Mark Progress
           </button>
         )}
         {hasViewReportButton && onViewReport && (
