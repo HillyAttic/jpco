@@ -112,19 +112,20 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return ErrorResponses.notFound('Recurring task');
     }
 
-    // Resolve steps: check reportTypes first, then legacy fields
+    // Resolve steps: check reportTypes first (case-insensitive), then legacy fields
     let steps: WorkflowStep[] = [];
     let stepsField: string | null = null;
+    const lowerWorkflowType = workflowType.toLowerCase();
 
     if (task.reportTypes && task.reportTypes.length > 0) {
-      const reportType = task.reportTypes.find(rt => rt.id === workflowType);
+      const reportType = task.reportTypes.find(rt => rt.id.toLowerCase() === lowerWorkflowType);
       if (reportType) {
         steps = reportType.steps;
       }
     }
-    // Fallback to legacy fields
+    // Fallback to legacy fields (case-insensitive)
     if (steps.length === 0) {
-      stepsField = workflowType === 'tar' ? 'tarSteps' : workflowType === 'stat' ? 'statSteps' : null;
+      stepsField = lowerWorkflowType === 'tar' ? 'tarSteps' : lowerWorkflowType === 'stat' ? 'statSteps' : null;
       if (stepsField) {
         steps = (task as any)[stepsField] || [];
       }
@@ -186,9 +187,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const updatePayload: Record<string, any> = { clientProgress };
 
       if (task.reportTypes && task.reportTypes.length > 0) {
-        // Update steps inside reportTypes array
+        // Update steps inside reportTypes array (case-insensitive match)
         const updatedReportTypes = task.reportTypes.map(rt => {
-          if (rt.id === workflowType) {
+          if (rt.id.toLowerCase() === lowerWorkflowType) {
             return { ...rt, steps: updatedSteps };
           }
           return rt;
@@ -248,9 +249,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       const updatePayload: Record<string, any> = { clientProgress };
 
       if (task.reportTypes && task.reportTypes.length > 0) {
-        // Update steps inside reportTypes array
+        // Update steps inside reportTypes array (case-insensitive match)
         const updatedReportTypes = task.reportTypes.map(rt => {
-          if (rt.id === workflowType) {
+          if (rt.id.toLowerCase() === lowerWorkflowType) {
             return { ...rt, steps: updatedSteps };
           }
           return rt;
