@@ -242,6 +242,11 @@ export default function AttendanceRosterPage() {
         };
       });
 
+      // Default sort A-Z by employee name
+      roster.sort((a, b) =>
+        a.employeeName.localeCompare(b.employeeName, undefined, { sensitivity: 'base', numeric: true })
+      );
+
       setEmployees(roster);
     } catch (error) {
       console.error('Error fetching attendance data:', error);
