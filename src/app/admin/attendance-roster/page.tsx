@@ -36,6 +36,7 @@ interface EmployeeAttendance {
     absent: number;
     approvedLeave: number;
     unapprovedLeave: number;
+    unapprovedWfh: number;
     halfDay: number;
     wfh: number;
     holiday: number;
@@ -48,11 +49,16 @@ export default function AttendanceRosterPage() {
   const [year, setYear] = useState(new Date().getFullYear());
   const [employees, setEmployees] = useState<EmployeeAttendance[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedEmployee, setSelectedEmployee] = useState<EmployeeAttendance | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
   const [showEmployeeModal, setShowEmployeeModal] = useState(false);
   const [showHolidayModal, setShowHolidayModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const { openModal, closeModal } = useModal();
+
+  // Derived (not state) so the open modal follows the roster when the month changes
+  const selectedEmployee = selectedEmployeeId
+    ? employees.find((emp) => emp.employeeId === selectedEmployeeId) ?? null
+    : null;
 
   useEffect(() => {
     fetchAttendanceData();
@@ -131,6 +137,7 @@ export default function AttendanceRosterPage() {
         let absentCount = 0;
         let approvedLeaveCount = 0;
         let unapprovedLeaveCount = 0;
+        let unapprovedWfhCount = 0;
         let halfDayCount = 0;
         let wfhCount = 0;
         let holidayCount = 0;
@@ -204,9 +211,16 @@ export default function AttendanceRosterPage() {
             leaveType = approvedLeave.leaveType || 'approved-leave';
             leaveStatus = 'approved';
           } else if (pendingLeave) {
+            // Unapproved requests keep their requested type so the UI can tell a
+            // pending WFH apart from a pending leave.
             status = 'unapproved-leave';
-            unapprovedLeaveCount++;
+            leaveType = pendingLeave.leaveType || 'leave';
             leaveStatus = 'pending';
+            if (leaveType === 'wfh') {
+              unapprovedWfhCount++;
+            } else {
+              unapprovedLeaveCount++;
+            }
           } else if (attendance) {
             status = 'present';
             hours = attendance.totalHours || 0;
@@ -234,6 +248,7 @@ export default function AttendanceRosterPage() {
             absent: absentCount,
             approvedLeave: approvedLeaveCount,
             unapprovedLeave: unapprovedLeaveCount,
+            unapprovedWfh: unapprovedWfhCount,
             halfDay: halfDayCount,
             wfh: wfhCount,
             holiday: holidayCount,
@@ -270,10 +285,10 @@ export default function AttendanceRosterPage() {
     }
   };
 
-  const getStatusLabel = (status: string) => {
+  const getStatusLabel = (status: string, leaveType?: string) => {
     switch (status) {
       case 'approved-leave': return 'Leave';
-      case 'unapproved-leave': return 'Unapproved';
+      case 'unapproved-leave': return leaveType === 'wfh' ? 'Unapproved WFH' : 'Unapproved Leave';
       case 'half-day': return 'Half Day';
       case 'wfh': return 'WFH';
       default: return status;
@@ -290,9 +305,38 @@ export default function AttendanceRosterPage() {
   ];
 
   const openEmployeeModal = (employee: EmployeeAttendance) => {
-    setSelectedEmployee(employee);
+    setSelectedEmployeeId(employee.employeeId);
     setShowEmployeeModal(true);
     openModal();
+  };
+
+  const closeEmployeeModal = () => {
+    setShowEmployeeModal(false);
+    setSelectedEmployeeId(null);
+    closeModal();
+  };
+
+  const goToPreviousMonth = () => {
+    if (month === 0) {
+      setMonth(11);
+      setYear((y) => y - 1);
+    } else {
+      setMonth(month - 1);
+    }
+  };
+
+  const goToNextMonth = () => {
+    if (month === 11) {
+      setMonth(0);
+      setYear((y) => y + 1);
+    } else {
+      setMonth(month + 1);
+    }
+  };
+
+  const goToCurrentMonth = () => {
+    setMonth(new Date().getMonth());
+    setYear(new Date().getFullYear());
   };
 
   return (
@@ -318,7 +362,7 @@ export default function AttendanceRosterPage() {
           onChange={(e) => setYear(parseInt(e.target.value))}
           className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white"
         >
-          {[2024, 2025, 2026].map((y) => (
+          {[...new Set([2024, 2025, 2026, year])].sort((a, b) => a - b).map((y) => (
             <option key={y} value={y}>{y}</option>
           ))}
         </select>
@@ -366,7 +410,7 @@ export default function AttendanceRosterPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-red-500 rounded"></div>
-          <span className="text-sm text-gray-700 dark:text-gray-300">Unapproved Leave</span>
+          <span className="text-sm text-gray-700 dark:text-gray-300">Unapproved (Leave / WFH)</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-blue-500 rounded"></div>
@@ -422,7 +466,7 @@ export default function AttendanceRosterPage() {
                       <td key={idx} className="px-2 py-3">
                         <div
                           className={`w-6 h-6 rounded ${getStatusColor(day.status, day.leaveType)} mx-auto cursor-pointer`}
-                          title={`${day.date.toLocaleDateString()}: ${day.status}${day.hours ? ` (${day.hours.toFixed(1)}h)` : ''}`}
+                          title={`${day.date.toLocaleDateString()}: ${getStatusLabel(day.status, day.leaveType)}${day.hours ? ` (${day.hours.toFixed(1)}h)` : ''}`}
                         ></div>
                       </td>
                     ))}
@@ -434,6 +478,7 @@ export default function AttendanceRosterPage() {
                         <span className="text-green-600">HD: {employee.stats.halfDay}</span>
                         <span className="text-gray-900 dark:text-gray-100">WFH: {employee.stats.wfh}</span>
                         <span className="text-red-600">UL: {employee.stats.unapprovedLeave}</span>
+                        <span className="text-red-600">UWFH: {employee.stats.unapprovedWfh}</span>
                         <span className="text-blue-600">H: {employee.stats.holiday}</span>
                         <span className="text-gray-600 dark:text-gray-400">Hrs: {employee.stats.totalHours.toFixed(1)}</span>
                       </div>
@@ -455,14 +500,11 @@ export default function AttendanceRosterPage() {
                 <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white truncate">{selectedEmployee.employeeName}</h3>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 truncate">{selectedEmployee.employeeEmail}</p>
                 <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1 sm:mt-2">
-                  {monthNames[month]} {year} - Attendance Overview
+                  Attendance Overview
                 </p>
               </div>
               <button
-                onClick={() => {
-                  setShowEmployeeModal(false);
-                  closeModal();
-                }}
+                onClick={closeEmployeeModal}
                 className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex-shrink-0"
               >
                 <svg className="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -471,59 +513,109 @@ export default function AttendanceRosterPage() {
               </button>
             </div>
 
-            {/* Stats Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
-              <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-green-600">{selectedEmployee.stats.present}</div>
-                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Present</div>
+            {/* Month Navigation */}
+            <div className="flex items-center justify-between gap-2 mb-4 sm:mb-6">
+              <button
+                onClick={goToPreviousMonth}
+                disabled={loading}
+                className="px-2 sm:px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs sm:text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                <span className="hidden sm:inline">Previous</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white">
+                  {monthNames[month]} {year}
+                </span>
+                <button
+                  onClick={goToCurrentMonth}
+                  disabled={loading}
+                  className="px-2 py-1 border border-gray-300 dark:border-gray-600 rounded-lg text-xs text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Today
+                </button>
               </div>
-              <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-red-600">{selectedEmployee.stats.absent}</div>
-                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Absent</div>
-              </div>
-              <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-green-600">{selectedEmployee.stats.approvedLeave}</div>
-                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Approved Leave</div>
-              </div>
-              <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-green-600">{selectedEmployee.stats.halfDay}</div>
-                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Half Day</div>
-              </div>
-              <div className="bg-gray-100 dark:bg-gray-800 p-2 sm:p-4 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{selectedEmployee.stats.wfh}</div>
-                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">WFH</div>
-              </div>
-              <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-red-600">{selectedEmployee.stats.unapprovedLeave}</div>
-                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unapproved</div>
-              </div>
-              <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-4 rounded-lg">
-                <div className="text-lg sm:text-2xl font-bold text-blue-600">{selectedEmployee.stats.holiday}</div>
-                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Holidays</div>
-              </div>
-              <div className="bg-gray-50 dark:bg-gray-700 p-2 sm:p-4 rounded-lg col-span-2">
-                <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{selectedEmployee.stats.totalHours.toFixed(1)}</div>
-                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Hours</div>
-              </div>
+
+              <button
+                onClick={goToNextMonth}
+                disabled={loading}
+                className="px-2 sm:px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-xs sm:text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <span className="hidden sm:inline">Next</span>
+                <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
 
-            {/* Calendar View */}
-            <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
-              <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-[280px]">
-                {selectedEmployee.days.map((day, idx) => (
-                  <div
-                    key={idx}
-                    className={`p-1.5 sm:p-3 rounded-lg border ${getStatusColor(day.status)} bg-opacity-20 border-opacity-50`}
-                  >
-                    <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{day.date.getDate()}</div>
-                    <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 capitalize truncate">{getStatusLabel(day.status)}</div>
-                    {(day.hours ?? 0) > 0 && (
-                      <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">{(day.hours ?? 0).toFixed(1)}h</div>
-                    )}
-                  </div>
-                ))}
+            {loading ? (
+              <div className="p-8 text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
               </div>
-            </div>
+            ) : (
+              <>
+                {/* Stats Summary */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
+                  <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
+                    <div className="text-lg sm:text-2xl font-bold text-green-600">{selectedEmployee.stats.present}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Present</div>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
+                    <div className="text-lg sm:text-2xl font-bold text-red-600">{selectedEmployee.stats.absent}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Absent</div>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
+                    <div className="text-lg sm:text-2xl font-bold text-green-600">{selectedEmployee.stats.approvedLeave}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Approved Leave</div>
+                  </div>
+                  <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-4 rounded-lg">
+                    <div className="text-lg sm:text-2xl font-bold text-green-600">{selectedEmployee.stats.halfDay}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Half Day</div>
+                  </div>
+                  <div className="bg-gray-100 dark:bg-gray-800 p-2 sm:p-4 rounded-lg">
+                    <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{selectedEmployee.stats.wfh}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">WFH</div>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
+                    <div className="text-lg sm:text-2xl font-bold text-red-600">{selectedEmployee.stats.unapprovedLeave}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unapproved Leave</div>
+                  </div>
+                  <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
+                    <div className="text-lg sm:text-2xl font-bold text-red-600">{selectedEmployee.stats.unapprovedWfh}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unapproved WFH</div>
+                  </div>
+                  <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-4 rounded-lg">
+                    <div className="text-lg sm:text-2xl font-bold text-blue-600">{selectedEmployee.stats.holiday}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Holidays</div>
+                  </div>
+                  <div className="bg-gray-50 dark:bg-gray-700 p-2 sm:p-4 rounded-lg col-span-2">
+                    <div className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white">{selectedEmployee.stats.totalHours.toFixed(1)}</div>
+                    <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Total Hours</div>
+                  </div>
+                </div>
+
+                {/* Calendar View */}
+                <div className="overflow-x-auto -mx-3 sm:mx-0 px-3 sm:px-0">
+                  <div className="grid grid-cols-7 gap-1 sm:gap-2 min-w-[280px]">
+                    {selectedEmployee.days.map((day, idx) => (
+                      <div
+                        key={idx}
+                        className={`p-1.5 sm:p-3 rounded-lg border ${getStatusColor(day.status)} bg-opacity-20 border-opacity-50`}
+                      >
+                        <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">{day.date.getDate()}</div>
+                        <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 capitalize leading-tight break-words">{getStatusLabel(day.status, day.leaveType)}</div>
+                        {(day.hours ?? 0) > 0 && (
+                          <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400">{(day.hours ?? 0).toFixed(1)}h</div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

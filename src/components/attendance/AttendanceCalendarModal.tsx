@@ -17,7 +17,7 @@ interface AttendanceCalendarModalProps {
 
 interface DayStatus {
   date: Date;
-  status: 'present' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'half-day' | 'upcoming' | 'holiday' | 'wfh';
+  status: 'present' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'unapproved-wfh' | 'half-day' | 'upcoming' | 'holiday' | 'wfh';
   duration?: string;
   hours?: number;
   leaveType?: 'full' | 'half';
@@ -148,12 +148,13 @@ export function AttendanceCalendarModal({
 
                 // Present takes precedence over leave
                 if (!dataMap.has(dateKey)) {
-                  let status: 'present' | 'wfh' | 'half-day' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'upcoming' | 'holiday';
+                  let status: 'present' | 'wfh' | 'half-day' | 'absent' | 'approved-leave' | 'unapproved-leave' | 'unapproved-wfh' | 'upcoming' | 'holiday';
                   if (isApproved) {
                     status = isWfh ? 'wfh' : isHalfDay ? 'half-day' : 'approved-leave';
                   } else {
-                    // Pending or rejected leave requests are unapproved
-                    status = 'unapproved-leave';
+                    // Pending or rejected requests are unapproved — keep WFH distinguishable
+                    // from leave so the calendar shows what was actually requested.
+                    status = isWfh ? 'unapproved-wfh' : 'unapproved-leave';
                   }
                   dataMap.set(dateKey, {
                     date: new Date(cur),
@@ -215,6 +216,7 @@ export function AttendanceCalendarModal({
       case 'absent': return 'bg-red-500';
       case 'approved-leave': return 'bg-purple-500';
       case 'unapproved-leave': return 'bg-red-500';
+      case 'unapproved-wfh': return 'bg-red-500';
       case 'half-day': return 'bg-orange-500';
       case 'holiday': return 'bg-blue-500';
       case 'upcoming': return 'bg-gray-200';
@@ -226,7 +228,8 @@ export function AttendanceCalendarModal({
   const getStatusLabel = (status: string) => {
     switch (status) {
       case 'approved-leave': return 'Leave';
-      case 'unapproved-leave': return 'Unapproved';
+      case 'unapproved-leave': return 'Unapproved Leave';
+      case 'unapproved-wfh': return 'Unapproved WFH';
       case 'half-day': return 'Half Day';
       case 'upcoming': return 'upcoming';
       case 'wfh': return 'WFH';
@@ -237,7 +240,7 @@ export function AttendanceCalendarModal({
   const calculateStats = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    let present = 0, absent = 0, approvedLeave = 0, halfDay = 0, unapprovedLeave = 0, wfh = 0, holidayCount = 0, totalHours = 0;
+    let present = 0, absent = 0, approvedLeave = 0, halfDay = 0, unapprovedLeave = 0, unapprovedWfh = 0, wfh = 0, holidayCount = 0, totalHours = 0;
 
     const daysInMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 0).getDate();
     for (let day = 1; day <= daysInMonth; day++) {
@@ -254,11 +257,12 @@ export function AttendanceCalendarModal({
         case 'approved-leave': approvedLeave++; break;
         case 'half-day': halfDay++; break;
         case 'unapproved-leave': unapprovedLeave++; break;
+        case 'unapproved-wfh': unapprovedWfh++; break;
         case 'wfh': wfh++; break;
         case 'holiday': holidayCount++; break;
       }
     }
-    return { present, absent, approvedLeave, halfDay, unapprovedLeave, wfh, holidays: holidayCount, totalHours };
+    return { present, absent, approvedLeave, halfDay, unapprovedLeave, unapprovedWfh, wfh, holidays: holidayCount, totalHours };
   };
 
   const previousMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
@@ -341,7 +345,11 @@ export function AttendanceCalendarModal({
               </div>
               <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
                 <div className="text-lg sm:text-2xl font-bold text-red-600">{stats.unapprovedLeave}</div>
-                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unapproved</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unapproved Leave</div>
+              </div>
+              <div className="bg-red-50 dark:bg-red-900/20 p-2 sm:p-4 rounded-lg">
+                <div className="text-lg sm:text-2xl font-bold text-red-600">{stats.unapprovedWfh}</div>
+                <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">Unapproved WFH</div>
               </div>
               <div className="bg-blue-50 dark:bg-blue-900/20 p-2 sm:p-4 rounded-lg">
                 <div className="text-lg sm:text-2xl font-bold text-blue-600">{stats.holidays}</div>
@@ -379,7 +387,7 @@ export function AttendanceCalendarModal({
                       <div className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
                         {date.getDate()}
                       </div>
-                      <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 capitalize truncate">
+                      <div className="text-[10px] sm:text-xs text-gray-600 dark:text-gray-400 capitalize leading-tight break-words">
                         {getStatusLabel(status.status)}
                       </div>
                       {status.status === 'present' && status.duration && status.duration !== 'In Progress' && (
@@ -399,7 +407,7 @@ export function AttendanceCalendarModal({
                 { color: 'bg-purple-500', label: 'Approved Leave' },
                 { color: 'bg-orange-500', label: 'Half Day' },
                 { color: 'bg-black', label: 'WFH' },
-                { color: 'bg-red-500', label: 'Unapproved' },
+                { color: 'bg-red-500', label: 'Unapproved (Leave / WFH)' },
                 { color: 'bg-blue-500', label: 'Holiday' },
                 { color: 'bg-gray-200', label: 'Upcoming' },
               ].map(({ color, label }) => (
