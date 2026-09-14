@@ -27,6 +27,7 @@ import { auth } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 import { WorkflowGridModal } from '@/components/compliance/WorkflowGridModal';
 import { WorkflowDrawer } from '@/components/compliance/WorkflowDrawer';
+import { RecurringTaskClientModal } from '@/components/recurring-tasks/RecurringTaskClientModal';
 import { getClientCompletedStepIds } from '@/services/recurring-task.service';
 import { getReportTypes, getStepsForReportType, initializeWorkflowSteps } from '@/lib/workflow-templates';
 import { apiPut, authenticatedFetch } from '@/lib/api-client';
@@ -95,6 +96,11 @@ export default function RecurringTasksPage() {
   const [selectedWorkflowType, setSelectedWorkflowType] = useState<string>('');
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedClientName, setSelectedClientName] = useState<string | null>(null);
+
+  // RecurringTaskClientModal state (same as calendar page)
+  const [clientModalOpen, setClientModalOpen] = useState(false);
+  const [clientModalTask, setClientModalTask] = useState<RecurringTask | null>(null);
+  const [clientModalClients, setClientModalClients] = useState<any[]>([]);
 
   // Clients data for resolving client names in workflow grid
   const [clients, setClients] = useState<any[]>([]);
@@ -674,10 +680,40 @@ export default function RecurringTasksPage() {
     onGoToReportsClick: () => {
       router.push('/reports');
     },
-    onUpdateProgressClick: (task: RecurringTask) => {
-      setGridModalTask(task);
-      setWorkflowGridOpen(true);
-      openModal();
+    onUpdateProgressClick: async (task: RecurringTask) => {
+      // Fetch the full recurring task to get contactIds and team member mappings
+      try {
+        const response = await authenticatedFetch(`/api/recurring-tasks/${task.id}`);
+        if (!response.ok) throw new Error('Failed to fetch recurring task');
+        const recurringTask = await response.json();
+
+        // Collect all client IDs from contactIds and team member mappings
+        const contactIds = recurringTask.contactIds || [];
+        const teamMemberMappings = recurringTask.teamMemberMappings || [];
+        const mappedClientIds = new Set<string>();
+        teamMemberMappings.forEach((mapping: any) => {
+          if (mapping.clientIds && Array.isArray(mapping.clientIds)) {
+            mapping.clientIds.forEach((clientId: string) => mappedClientIds.add(clientId));
+          }
+        });
+        const allClientIds = [...new Set([...contactIds, ...Array.from(mappedClientIds)])];
+
+        // Fetch and filter clients (same logic as calendar page)
+        let assignedClients: any[] = [];
+        if (allClientIds.length > 0) {
+          const clientsResponse = await authenticatedFetch('/api/clients');
+          const clientsData = await clientsResponse.json();
+          const allClients = clientsData.data || [];
+          assignedClients = allClients.filter((client: any) => allClientIds.includes(client.id));
+        }
+
+        setClientModalTask(recurringTask);
+        setClientModalClients(assignedClients);
+        setClientModalOpen(true);
+        openModal();
+      } catch (error) {
+        console.error('Error loading task for client modal:', error);
+      }
     },
   };
 
@@ -982,6 +1018,17 @@ export default function RecurringTasksPage() {
           onMarkAllComplete={handleMarkAllComplete}
           onMarkAllIncomplete={handleMarkAllIncomplete}
           reportTypeConfig={getReportTypes(selectedWorkflowTask).find(rt => rt.id === selectedWorkflowType)}
+        />
+      )}
+
+      {/* RecurringTaskClientModal - same as calendar page */}
+      {clientModalTask && (
+        <RecurringTaskClientModal
+          isOpen={clientModalOpen}
+          onClose={() => { setClientModalOpen(false); setClientModalTask(null); setClientModalClients([]); closeModal(); }}
+          task={clientModalTask}
+          clients={clientModalClients}
+          viewingMonth={new Date()}
         />
       )}
 
