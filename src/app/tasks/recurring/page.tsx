@@ -267,6 +267,7 @@ export default function RecurringTasksPage() {
         statEnabled: data.statEnabled || false, // Include STAT workflow toggle
         tarSteps: data.tarSteps, // Include initialized TAR workflow steps
         statSteps: data.statSteps, // Include initialized STAT workflow steps
+        reportTypes: data.reportTypes, // Include Report Types config (drives workflow tracking)
         clientFilter: data.clientFilter, // Include client filter for dynamic client tracking
         showUnassignedClients: data.showUnassignedClients, // Include show unassigned clients toggle
       };
@@ -681,12 +682,24 @@ export default function RecurringTasksPage() {
       router.push('/reports');
     },
     onUpdateProgressClick: async (task: RecurringTask) => {
-      // Fetch the full recurring task to get contactIds and team member mappings
+      // Fetch the full recurring task to get contactIds, team member mappings
+      // and report types (workflow tracking config)
       try {
         const response = await authenticatedFetch(`/api/recurring-tasks/${task.id}`);
         if (!response.ok) throw new Error('Failed to fetch recurring task');
         const recurringTask = await response.json();
 
+        // Workflow tracking enabled (Report Types toggle in the task edit modal)?
+        // Then open the workflow grid so progress is tracked per report step,
+        // same modal the calendar shows for TAR/STAT tasks.
+        const enabledReportTypes = getReportTypes(recurringTask).filter((rt) => rt.enabled);
+        if (enabledReportTypes.length > 0) {
+          await handleWorkflowTaskClick(recurringTask, enabledReportTypes[0].id);
+          openModal();
+          return;
+        }
+
+        // No workflow tracking — fall back to the plain monthly completion modal.
         // Collect all client IDs from contactIds and team member mappings
         const contactIds = recurringTask.contactIds || [];
         const teamMemberMappings = recurringTask.teamMemberMappings || [];
