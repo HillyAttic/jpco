@@ -257,16 +257,13 @@ export function WorkflowTaskDetailModal({
     let assigned = 0;
     let unassigned = 0;
 
-    // Use the summary's total client count (mapped + unassigned) if provided,
-    // otherwise fall back to the rows count.
-    const denominator = totalClientCount ?? allRows.length;
-
-    // Compute avgCompletion using the same method as ReportsView.getWorkflowCompletionRate:
-    // For each enabled report type, count clients who completed ALL steps, divide by total,
-    // then average across report types. This matches the 4% shown on the summary row.
+    // Compute avgCompletion: for each enabled report type, count clients who
+    // completed ALL steps among the visible rows, divide by row count, then
+    // average across report types. Iterating allRows (not clientProgress)
+    // prevents orphaned progress entries from inflating the average.
     const enabledReportTypes = getReportTypes(task).filter(rt => rt.enabled);
     let avgCompletion = 0;
-    if (enabledReportTypes.length > 0 && denominator > 0) {
+    if (enabledReportTypes.length > 0 && allRows.length > 0) {
       let totalPct = 0;
       enabledReportTypes.forEach(rt => {
         const steps = rt.steps || [];
@@ -274,13 +271,15 @@ export function WorkflowTaskDetailModal({
         if (stepCount === 0) return;
         const cp = filteredTask.clientProgress || {};
         let completedClients = 0;
-        Object.values(cp).forEach((progress: ClientWorkflowProgress) => {
+        allRows.forEach(row => {
+          const progress = cp[row.clientId];
+          if (!progress) return;
           const done = (progress.completedStepIds || []).filter(id =>
             steps.some(s => s.id === id)
           ).length;
           if (done === stepCount) completedClients++;
         });
-        totalPct += (completedClients / denominator) * 100;
+        totalPct += (completedClients / allRows.length) * 100;
       });
       avgCompletion = Math.round(totalPct / enabledReportTypes.length);
     }
@@ -313,7 +312,7 @@ export function WorkflowTaskDetailModal({
       assigned,
       unassigned,
     };
-  }, [allRows, filteredTask, workflowType, task, totalClientCount]);
+  }, [allRows, filteredTask, workflowType, task]);
 
   // Export CSV for this single task
   const exportCSV = () => {

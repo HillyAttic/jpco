@@ -102,6 +102,16 @@ export function ReportsView() {
     const reportTypes = getReportTypes(task).filter(rt => rt.enabled);
     if (reportTypes.length === 0) return 0;
 
+    // Build set of client IDs that belong to this task so we only count
+    // progress entries for actual clients (not orphaned/stale entries).
+    const taskClientIds = new Set<string>();
+    if (task.teamMemberMappings) {
+      task.teamMemberMappings.forEach(m => m.clientIds.forEach(id => taskClientIds.add(id)));
+    }
+    if (task.contactIds) {
+      task.contactIds.forEach(id => taskClientIds.add(id));
+    }
+
     let totalPct = 0;
     reportTypes.forEach(rt => {
       const steps = rt.steps || [];
@@ -109,8 +119,9 @@ export function ReportsView() {
       if (stepCount === 0) { totalPct += 0; return; }
       const cp = task.clientProgress || {};
       let completedClients = 0;
-      Object.values(cp).forEach((progress: ClientWorkflowProgress) => {
-        const done = (progress.completedStepIds || []).filter(id =>
+      Object.entries(cp).forEach(([clientId, progress]) => {
+        if (taskClientIds.size > 0 && !taskClientIds.has(clientId)) return;
+        const done = ((progress as ClientWorkflowProgress).completedStepIds || []).filter(id =>
           steps.some(s => s.id === id)
         ).length;
         if (done === stepCount) completedClients++;
