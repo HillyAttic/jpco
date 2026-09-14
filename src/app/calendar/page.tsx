@@ -537,6 +537,58 @@ export default function CalendarPage() {
     }
   };
 
+  // Handle mark all steps incomplete — per-client (untick all)
+  const handleMarkAllIncomplete = async (clientId?: string) => {
+    if (!selectedWorkflowTask?.id) return;
+
+    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
+    const allStepIds = allSteps.map((s) => s.id);
+    const key = clientId || '';
+    const nowIso = new Date().toISOString();
+    const uid = auth.currentUser?.uid;
+
+    const prevClientProgress = selectedWorkflowTask.clientProgress || {};
+    const updatedClientProgress = { ...prevClientProgress };
+
+    // Clear completedStepIds but keep stepMeta for audit trail
+    const existingMeta = updatedClientProgress[key]?.stepMeta || {};
+    updatedClientProgress[key] = {
+      completedStepIds: [],
+      completedAt: nowIso,
+      completedBy: uid,
+      stepMeta: existingMeta,
+    };
+
+    const updatedTask = { ...selectedWorkflowTask, clientProgress: updatedClientProgress };
+
+    setSelectedWorkflowTask(updatedTask);
+    setRecurringTasks(prev => prev.map(t =>
+      t.id === selectedWorkflowTask.id ? { ...t, clientProgress: updatedClientProgress } : t
+    ));
+
+    try {
+      for (const stepId of allStepIds) {
+        await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stepId,
+            workflowType: selectedWorkflowType,
+            completed: false,
+            clientId: clientId || undefined,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to mark all steps incomplete:', error);
+      setSelectedWorkflowTask({ ...selectedWorkflowTask, clientProgress: prevClientProgress });
+      setRecurringTasks(prev => prev.map(t =>
+        t.id === selectedWorkflowTask.id ? { ...t, clientProgress: prevClientProgress } : t
+      ));
+      throw error;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -643,6 +695,7 @@ export default function CalendarPage() {
           clientName={selectedClientName || undefined}
           onStepToggle={handleStepToggle}
           onMarkAllComplete={handleMarkAllComplete}
+          onMarkAllIncomplete={handleMarkAllIncomplete}
         />
       )}
     </div>

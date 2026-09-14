@@ -591,6 +591,56 @@ export default function RecurringTasksPage() {
     }
   };
 
+  /**
+   * Handle mark all steps incomplete — per-client (untick all)
+   */
+  const handleMarkAllIncomplete = async (clientId?: string) => {
+    if (!selectedWorkflowTask?.id) return;
+
+    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
+    const allStepIds = allSteps.map((s) => s.id);
+    const key = clientId || '';
+    const nowIso = new Date().toISOString();
+    const uid = user?.uid;
+
+    const prevClientProgress = selectedWorkflowTask.clientProgress || {};
+    const updatedClientProgress = { ...prevClientProgress };
+
+    // Clear completedStepIds but keep stepMeta for audit trail
+    const existingMeta = updatedClientProgress[key]?.stepMeta || {};
+    updatedClientProgress[key] = {
+      completedStepIds: [],
+      completedAt: nowIso,
+      completedBy: uid,
+      stepMeta: existingMeta,
+    };
+
+    const updatedTask = { ...selectedWorkflowTask, clientProgress: updatedClientProgress };
+
+    // Update all local state sources optimistically
+    syncTaskUpdate(updatedTask);
+
+    // Persist each step for this client
+    try {
+      for (const stepId of allStepIds) {
+        await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stepId,
+            workflowType: selectedWorkflowType,
+            completed: false,
+            clientId: clientId || undefined,
+          }),
+        });
+      }
+      await refreshTasks();
+    } catch (error) {
+      console.error('Failed to mark all steps incomplete:', error);
+      syncTaskUpdate({ ...selectedWorkflowTask, clientProgress: prevClientProgress });
+    }
+  };
+
   // Common action button props for list and card views
   const actionButtonProps = {
     currentUserId: user?.uid,
@@ -923,9 +973,14 @@ export default function RecurringTasksPage() {
           stepMeta={selectedWorkflowTask.clientProgress?.[selectedClientId || '']?.stepMeta}
           clientId={selectedClientId || undefined}
           clientName={selectedClientName || undefined}
-          assignee={(userProfile?.displayName ?? undefined) || (user?.email ?? undefined)}
+          assignee={
+            selectedClientId
+              ? selectedWorkflowTask.teamMemberMappings?.find(m => m.clientIds.includes(selectedClientId))?.userName
+              : selectedWorkflowTask.teamMemberMappings?.[0]?.userName || selectedWorkflowTask.createdBy
+          }
           onStepToggle={handleStepToggle}
           onMarkAllComplete={handleMarkAllComplete}
+          onMarkAllIncomplete={handleMarkAllIncomplete}
           reportTypeConfig={getReportTypes(selectedWorkflowTask).find(rt => rt.id === selectedWorkflowType)}
         />
       )}

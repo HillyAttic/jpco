@@ -71,6 +71,7 @@ export function ReportsView() {
   const [completions, setCompletions] = useState<Map<string, ClientTaskCompletion[]>>(new Map());
   const [loading, setLoading] = useState(true);
   const [selectedTask, setSelectedTask] = useState<RecurringTask | null>(null);
+  const [selectedDisplayClientCount, setSelectedDisplayClientCount] = useState(0);
   const [selectedWorkflowType, setSelectedWorkflowType] = useState<WorkflowType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { openModal: openGlobalModal, closeModal: closeGlobalModal } = useModal();
@@ -328,6 +329,26 @@ export function ReportsView() {
 
   const handleTaskClick = (task: RecurringTask) => {
     setSelectedTask(task);
+
+    // Compute displayClientCount (same logic as the render loop) to pass to the modal
+    const hasDynamicFilter = !!task.clientFilter && task.clientFilter !== 'all';
+    const dynamicStats = hasDynamicFilter ? dynamicStatsMap.get(task.id || '') : null;
+
+    if (dynamicStats) {
+      setSelectedDisplayClientCount(dynamicStats.totalCount);
+    } else {
+      const hasMappings = task.teamMemberMappings && task.teamMemberMappings.length > 0;
+      if (hasMappings) {
+        const mappedIds = new Set<string>();
+        task.teamMemberMappings!.forEach(m => m.clientIds.forEach(id => mappedIds.add(id)));
+        const relevantClients = clients.filter(c => c.id && mappedIds.has(c.id));
+        setSelectedDisplayClientCount(relevantClients.length);
+      } else {
+        const contactClients = clients.filter(c => c.id && task.contactIds?.includes(c.id));
+        setSelectedDisplayClientCount(contactClients.length);
+      }
+    }
+
     // Determine the first enabled workflow type for the detail modal
     const reportTypes = getReportTypes(task);
     const firstEnabled = reportTypes.find(rt => rt.enabled);
@@ -337,7 +358,6 @@ export function ReportsView() {
       setSelectedWorkflowType(null);
     }
     // Initialize toggle state from task's stored preference
-    const hasDynamicFilter = !!task.clientFilter && task.clientFilter !== 'all';
     if (hasDynamicFilter) {
       setShowUnassignedToggle(prev => new Map(prev).set(task.id || '', task.showUnassignedClients || false));
       // Fetch unassigned clients if toggle is ON
@@ -638,6 +658,7 @@ export function ReportsView() {
             onClose={closeModal}
             showUnassignedClients={showUnassignedToggle.get(selectedTask.id || '') ?? selectedTask.showUnassignedClients ?? false}
             unassignedClientIds={unassignedClientsMap.get(selectedTask.id || '') || []}
+            totalClientCount={selectedDisplayClientCount}
           />
         ) : (
           <TaskReportModal

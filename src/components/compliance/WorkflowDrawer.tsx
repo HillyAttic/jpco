@@ -28,6 +28,7 @@ interface WorkflowDrawerProps {
   clientName?: string;
   onStepToggle: (stepId: string, completed: boolean, clientId?: string, remark?: string) => Promise<void>;
   onMarkAllComplete?: (clientId?: string) => Promise<void>;
+  onMarkAllIncomplete?: (clientId?: string) => Promise<void>;
   reportTypeConfig?: ReportTypeConfig; // Dynamic report type config for badge display
 }
 
@@ -45,6 +46,7 @@ export function WorkflowDrawer({
   clientName,
   onStepToggle,
   onMarkAllComplete,
+  onMarkAllIncomplete,
   reportTypeConfig,
 }: WorkflowDrawerProps) {
   const [loading, setLoading] = useState<string | null>(null);
@@ -134,6 +136,18 @@ export function WorkflowDrawer({
       toast.success('All steps completed');
     } catch (error) {
       toast.error('Failed to complete all steps');
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleMarkAllIncomplete = async () => {
+    try {
+      setLoading('all');
+      await onMarkAllIncomplete?.(clientId);
+      toast.success('All steps reopened');
+    } catch (error) {
+      toast.error('Failed to reopen all steps');
     } finally {
       setLoading(null);
     }
@@ -370,17 +384,30 @@ export function WorkflowDrawer({
               ? 'Workflow complete'
               : `${progress.total - progress.completed} step${progress.total - progress.completed !== 1 ? 's' : ''} remaining`}
           </p>
-          {progress.status !== 'completed' && onMarkAllComplete && (
-            <Button
-              variant="outline"
-              onClick={handleMarkAllComplete}
-              disabled={loading === 'all'}
-              size="sm"
-              className="border-gray-300 text-gray-700 hover:bg-gray-50"
-            >
-              {loading === 'all' ? 'Completing...' : 'Mark all complete'}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {progress.status === 'completed' && onMarkAllIncomplete && (
+              <Button
+                variant="outline"
+                onClick={handleMarkAllIncomplete}
+                disabled={loading === 'all'}
+                size="sm"
+                className="border-red-200 text-red-700 hover:bg-red-50"
+              >
+                {loading === 'all' ? 'Reopening...' : 'Untick all'}
+              </Button>
+            )}
+            {progress.status !== 'completed' && onMarkAllComplete && (
+              <Button
+                variant="outline"
+                onClick={handleMarkAllComplete}
+                disabled={loading === 'all'}
+                size="sm"
+                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+              >
+                {loading === 'all' ? 'Completing...' : 'Mark all complete'}
+              </Button>
+            )}
+          </div>
         </div>
       </div>
     </div>,

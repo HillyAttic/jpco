@@ -4,7 +4,7 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { RecurringTask, WorkflowStep, WorkflowType, TeamMemberMapping, ClientWorkflowProgress, getClientCompletedStepIds, getClientProgressSummary, getClientStepMeta } from '@/services/recurring-task.service';
 import { Client } from '@/services/client.service';
-import { getWorkflowTemplate, getReportTypeById, getStepsForReportType } from '@/lib/workflow-templates';
+import { getWorkflowTemplate, getReportTypeById, getReportTypes, getStepsForReportType } from '@/lib/workflow-templates';
 import { TeamMemberMappingDialog } from '@/components/recurring-tasks/TeamMemberMappingDialog';
 import { authenticatedFetch } from '@/lib/api-client';
 import { toast } from 'react-toastify';
@@ -68,6 +68,8 @@ interface WorkflowTaskDetailModalProps {
   onClose: () => void;
   showUnassignedClients?: boolean;
   unassignedClientIds?: string[];
+  /** Total client count from the summary view (mapped + unassigned) — used as denominator for avg progress */
+  totalClientCount?: number;
 }
 
 export function WorkflowTaskDetailModal({
@@ -77,6 +79,7 @@ export function WorkflowTaskDetailModal({
   onClose,
   showUnassignedClients = false,
   unassignedClientIds = [],
+  totalClientCount,
 }: WorkflowTaskDetailModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -251,13 +254,39 @@ export function WorkflowTaskDetailModal({
     let completed = 0;
     let inProgress = 0;
     let pending = 0;
-    let totalPercentage = 0;
     let assigned = 0;
     let unassigned = 0;
 
+    // Use the summary's total client count (mapped + unassigned) if provided,
+    // otherwise fall back to the rows count.
+    const denominator = totalClientCount ?? allRows.length;
+
+    // Compute avgCompletion using the same method as ReportsView.getWorkflowCompletionRate:
+    // For each enabled report type, count clients who completed ALL steps, divide by total,
+    // then average across report types. This matches the 4% shown on the summary row.
+    const enabledReportTypes = getReportTypes(task).filter(rt => rt.enabled);
+    let avgCompletion = 0;
+    if (enabledReportTypes.length > 0 && denominator > 0) {
+      let totalPct = 0;
+      enabledReportTypes.forEach(rt => {
+        const steps = rt.steps || [];
+        const stepCount = steps.length;
+        if (stepCount === 0) return;
+        const cp = filteredTask.clientProgress || {};
+        let completedClients = 0;
+        Object.values(cp).forEach((progress: ClientWorkflowProgress) => {
+          const done = (progress.completedStepIds || []).filter(id =>
+            steps.some(s => s.id === id)
+          ).length;
+          if (done === stepCount) completedClients++;
+        });
+        totalPct += (completedClients / denominator) * 100;
+      });
+      avgCompletion = Math.round(totalPct / enabledReportTypes.length);
+    }
+
     allRows.forEach((row) => {
       const progress = getClientProgressSummary(filteredTask, row.clientId, workflowType);
-      totalPercentage += progress.percentage;
       if (row.assignee === 'Unassigned') {
         unassigned++;
       } else {
@@ -275,8 +304,6 @@ export function WorkflowTaskDetailModal({
       }
     });
 
-    const avgCompletion = allRows.length > 0 ? Math.round(totalPercentage / allRows.length) : 0;
-
     return {
       totalClients: allRows.length,
       completed,
@@ -286,7 +313,7 @@ export function WorkflowTaskDetailModal({
       assigned,
       unassigned,
     };
-  }, [allRows, filteredTask, workflowType]);
+  }, [allRows, filteredTask, workflowType, task, totalClientCount]);
 
   // Export CSV for this single task
   const exportCSV = () => {
