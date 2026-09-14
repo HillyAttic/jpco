@@ -30,11 +30,22 @@ export interface WorkflowStep {
   completedBy?: string;
 }
 
+/** Per-step completion metadata scoped to a single client */
+export interface ClientStepMeta {
+  completedAt?: string; // ISO date string
+  completedBy?: string; // user UID
+  remark?: string;
+  remarkBy?: string;
+  remarkAt?: string; // ISO date string
+}
+
 /** Per-client workflow progress — stored under clientProgress[clientId] */
 export interface ClientWorkflowProgress {
   completedStepIds: string[];
   completedAt?: string; // ISO date string
   completedBy?: string; // user UID
+  /** Per-step completion metadata scoped to THIS client only, keyed by stepId. */
+  stepMeta?: Record<string, ClientStepMeta>;
 }
 
 export type WorkflowType = string;

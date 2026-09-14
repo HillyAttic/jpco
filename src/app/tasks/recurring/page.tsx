@@ -99,6 +99,9 @@ export default function RecurringTasksPage() {
   // Clients data for resolving client names in workflow grid
   const [clients, setClients] = useState<any[]>([]);
 
+  // Unassigned client IDs per task (fetched from API, same as calendar page)
+  const [unassignedClientIdsMap, setUnassignedClientIdsMap] = useState<Record<string, string[]>>({});
+
   // Load team names for display
   useEffect(() => {
     const loadTeamNames = async () => {
@@ -135,6 +138,58 @@ export default function RecurringTasksPage() {
 
     loadClients();
   }, []);
+
+  /**
+   * Fetch unassigned clients per task for admin users.
+   * These are clients matching the task's clientFilter that are NOT in any teamMemberMapping.
+   * Same logic as calendar page — ensures both pages show the same client list.
+   */
+  useEffect(() => {
+    if (!isAdmin || tasks.length === 0) {
+      setUnassignedClientIdsMap({});
+      return;
+    }
+
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    let cancelled = false;
+
+    currentUser.getIdToken().then(token => {
+      if (cancelled) return;
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      };
+
+      Promise.all(
+        tasks
+          .filter(t => t.id && t.clientFilter && t.clientFilter !== 'all')
+          .map(async (task) => {
+            try {
+              const resp = await fetch(
+                `/api/recurring-tasks/${task.id}/unassigned-clients`,
+                { headers }
+              );
+              if (!resp.ok) return { taskId: task.id!, ids: [] };
+              const data = await resp.json();
+              return { taskId: task.id!, ids: data.unassignedClientIds || [] };
+            } catch {
+              return { taskId: task.id!, ids: [] };
+            }
+          })
+      ).then(results => {
+        if (cancelled) return;
+        const map: Record<string, string[]> = {};
+        results.forEach(({ taskId, ids }) => {
+          if (ids.length > 0) map[taskId] = ids;
+        });
+        setUnassignedClientIdsMap(map);
+      });
+    });
+
+    return () => { cancelled = true; };
+  }, [isAdmin, tasks]);
 
   // Helper: get client name from ID
   const getClientName = (clientId: string): string => {
@@ -317,26 +372,6 @@ export default function RecurringTasksPage() {
   };
 
   /**
-   * Helper: write updated step objects back into a task (dynamic reportTypes or legacy tarSteps/statSteps)
-   */
-  const updateTaskSteps = (task: RecurringTask, updatedSteps: any[], workflowType: string): RecurringTask => {
-    const lower = workflowType.toLowerCase();
-    if (task.reportTypes && task.reportTypes.length > 0) {
-      const updatedReportTypes = task.reportTypes.map(rt => {
-        if (rt.id === workflowType || rt.id === lower) {
-          return { ...rt, steps: updatedSteps };
-        }
-        return rt;
-      });
-      return { ...task, reportTypes: updatedReportTypes };
-    }
-    // Legacy path
-    if (lower === 'tar') return { ...task, tarSteps: updatedSteps };
-    if (lower === 'stat') return { ...task, statSteps: updatedSteps };
-    return task;
-  };
-
-  /**
    * Build grid modal entries from task data — filtered by role
    * Uses same filtering logic as calendar page for consistency
    */
@@ -355,10 +390,24 @@ export default function RecurringTasksPage() {
       ? mappings
       : mappings.filter(m => m.userId === currentUid);
 
-    const allClientIds = [...new Set(relevantMappings.flatMap(m => m.clientIds))];
+    // Collect client IDs from mappings AND contactIds (same as calendar page)
+    const allClientIds = new Set<string>();
+    relevantMappings.forEach(m => {
+      (m.clientIds || []).forEach(id => allClientIds.add(id));
+    });
+    // Include contactIds that are not in mappings (legacy/fallback)
+    if (task.contactIds) {
+      task.contactIds.forEach(id => allClientIds.add(id));
+    }
+
+    // Include unassigned clients (matching clientFilter, not in any mapping)
+    const unassigned = unassignedClientIdsMap[task.id || ''] || [];
+    unassigned.forEach(id => allClientIds.add(id));
+
+    const finalClientIds = Array.from(allClientIds);
 
     enabledTypes.forEach(rt => {
-      entriesByType[rt.id] = allClientIds.map(id => ({
+      entriesByType[rt.id] = finalClientIds.map(id => ({
         clientId: id,
         clientName: getClientName(id),
         task,
@@ -434,59 +483,41 @@ export default function RecurringTasksPage() {
   const handleStepToggle = async (stepId: string, completed: boolean, clientId?: string, remark?: string) => {
     if (!selectedWorkflowTask?.id) return;
 
-    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
+    const key = clientId || '';
+    const nowIso = new Date().toISOString();
+    const uid = user?.uid;
 
-    // Update clientProgress in local state
-    const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
-    const existing = updatedClientProgress[clientId || '']
-      ? { ...updatedClientProgress[clientId || ''] }
-      : { completedStepIds: allSteps.filter((s) => s.completed).map((s) => s.id) };
+    const prevClientProgress = selectedWorkflowTask.clientProgress || {};
+    const updatedClientProgress = { ...prevClientProgress };
+    const existing = updatedClientProgress[key]
+      ? { ...updatedClientProgress[key] }
+      : { completedStepIds: [] as string[] };
 
     const completedStepIds = new Set(existing.completedStepIds || []);
+    const stepMeta = { ...(existing.stepMeta || {}) };
+
     if (completed) {
       completedStepIds.add(stepId);
+      stepMeta[stepId] = {
+        completedAt: nowIso,
+        completedBy: uid,
+        ...(remark && remark.trim()
+          ? { remark: remark.trim(), remarkBy: uid, remarkAt: nowIso }
+          : {}),
+      };
     } else {
       completedStepIds.delete(stepId);
+      delete stepMeta[stepId];
     }
 
-    updatedClientProgress[clientId || ''] = {
+    updatedClientProgress[key] = {
       completedStepIds: Array.from(completedStepIds),
-      completedAt: new Date().toISOString(),
-      completedBy: user?.uid,
+      completedAt: nowIso,
+      completedBy: uid,
+      stepMeta,
     };
 
-    // Also update the individual step objects
-    const now = new Date();
-    const updatedSteps = allSteps.map((s) => {
-      if (s.id === stepId) {
-        const updatedStep = {
-          ...s,
-          completed,
-          completedAt: completed ? now : undefined,
-          completedBy: completed ? user?.uid : undefined,
-        };
-        if (remark !== undefined) {
-          if (completed && remark.trim()) {
-            updatedStep.remark = remark.trim();
-            updatedStep.remarkBy = user?.uid;
-            updatedStep.remarkAt = now;
-          } else if (!completed) {
-            updatedStep.remark = undefined;
-            updatedStep.remarkBy = undefined;
-            updatedStep.remarkAt = undefined;
-          }
-        }
-        return updatedStep;
-      }
-      return s;
-    });
-
-    // Write updated steps back into the task
-    const updatedTask = updateTaskSteps(
-      { ...selectedWorkflowTask, clientProgress: updatedClientProgress },
-      updatedSteps,
-      selectedWorkflowType,
-    );
+    const updatedTask = { ...selectedWorkflowTask, clientProgress: updatedClientProgress };
 
     // Update all local state sources optimistically
     syncTaskUpdate(updatedTask);
@@ -504,9 +535,8 @@ export default function RecurringTasksPage() {
       await refreshTasks();
     } catch (error) {
       console.error('Failed to update workflow step:', error);
-      // Revert on error — reload from server
-      setSelectedWorkflowTask(selectedWorkflowTask);
-      setGridModalTask(prev => prev && prev.id === selectedWorkflowTask.id ? selectedWorkflowTask : prev);
+      // Revert on error
+      syncTaskUpdate({ ...selectedWorkflowTask, clientProgress: prevClientProgress });
     }
   };
 
@@ -518,34 +548,31 @@ export default function RecurringTasksPage() {
 
     const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
     const allStepIds = allSteps.map((s) => s.id);
-    const now = new Date();
+    const key = clientId || '';
+    const nowIso = new Date().toISOString();
+    const uid = user?.uid;
 
-    const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
-    updatedClientProgress[clientId || ''] = {
+    const prevClientProgress = selectedWorkflowTask.clientProgress || {};
+    const updatedClientProgress = { ...prevClientProgress };
+    const stepMeta: Record<string, any> = {};
+    allStepIds.forEach((sid) => {
+      stepMeta[sid] = { completedAt: nowIso, completedBy: uid };
+    });
+    updatedClientProgress[key] = {
       completedStepIds: [...allStepIds],
-      completedAt: now.toISOString(),
-      completedBy: user?.uid,
+      completedAt: nowIso,
+      completedBy: uid,
+      stepMeta,
     };
 
-    const updatedSteps = allSteps.map((s) => ({
-      ...s,
-      completed: true,
-      completedAt: now,
-      completedBy: user?.uid,
-    }));
-
-    const updatedTask = updateTaskSteps(
-      { ...selectedWorkflowTask, clientProgress: updatedClientProgress },
-      updatedSteps,
-      selectedWorkflowType,
-    );
+    const updatedTask = { ...selectedWorkflowTask, clientProgress: updatedClientProgress };
 
     // Update all local state sources optimistically
     syncTaskUpdate(updatedTask);
 
     // Persist each step for this client
-    for (const stepId of allStepIds) {
-      try {
+    try {
+      for (const stepId of allStepIds) {
         await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
@@ -556,13 +583,12 @@ export default function RecurringTasksPage() {
             clientId: clientId || undefined,
           }),
         });
-      } catch (error) {
-        console.error('Failed to mark step complete:', error);
       }
+      await refreshTasks();
+    } catch (error) {
+      console.error('Failed to mark all steps complete:', error);
+      syncTaskUpdate({ ...selectedWorkflowTask, clientProgress: prevClientProgress });
     }
-
-    // Refresh tasks to keep them in sync
-    await refreshTasks();
   };
 
   // Common action button props for list and card views
@@ -894,6 +920,7 @@ export default function RecurringTasksPage() {
               ? getClientCompletedStepIds(selectedWorkflowTask, selectedClientId, selectedWorkflowType)
               : []
           }
+          stepMeta={selectedWorkflowTask.clientProgress?.[selectedClientId || '']?.stepMeta}
           clientId={selectedClientId || undefined}
           clientName={selectedClientName || undefined}
           assignee={(userProfile?.displayName ?? undefined) || (user?.email ?? undefined)}

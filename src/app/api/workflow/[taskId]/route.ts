@@ -147,108 +147,82 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       return ErrorResponses.notFound('Recurring task');
     }
 
-    // Resolve steps: check reportTypes first (case-insensitive), then legacy fields
+    // Resolve step definitions: check reportTypes first (case-insensitive), then legacy fields
     let steps: WorkflowStep[] = [];
-    let stepsField: string | null = null;
     const lowerWorkflowType = workflowType.toLowerCase();
 
     if (task.reportTypes && task.reportTypes.length > 0) {
       const reportType = task.reportTypes.find(rt => rt.id.toLowerCase() === lowerWorkflowType);
       if (reportType) {
-        steps = reportType.steps;
+        steps = reportType.steps || [];
       }
     }
     // Fallback to legacy fields (case-insensitive)
     if (steps.length === 0) {
-      stepsField = lowerWorkflowType === 'tar' ? 'tarSteps' : lowerWorkflowType === 'stat' ? 'statSteps' : null;
-      if (stepsField) {
-        steps = (task as any)[stepsField] || [];
+      const legacyField = lowerWorkflowType === 'tar' ? 'tarSteps' : lowerWorkflowType === 'stat' ? 'statSteps' : null;
+      if (legacyField) {
+        steps = (task as any)[legacyField] || [];
       }
     }
+
+    const nowIso = new Date().toISOString();
+    const userUid = authResult.user!.uid;
+    const remark: string | undefined = typeof body.remark === 'string' ? body.remark : undefined;
 
     // Build updated clientProgress
     const clientProgress = { ...(task.clientProgress || {}) };
 
     if (clientId) {
-      // Per-client update: initialize from legacy if first touch, then toggle
+      // ── Per-client update ────────────────────────────────────────────
+      // ALL per-client state (completed step IDs + per-step metadata) lives
+      // inside clientProgress[clientId]. The shared step-definition array is
+      // NEVER mutated, so one client's toggle cannot leak to any other client.
       const existing = clientProgress[clientId]
         ? { ...clientProgress[clientId] }
-        : {
-            completedStepIds: steps.filter((s: WorkflowStep) => s.completed).map((s: WorkflowStep) => s.id),
-          };
+        : { completedStepIds: [] as string[] };
 
-      const completedStepIds = new Set(existing.completedStepIds || []);
+      const completedStepIds = new Set<string>(existing.completedStepIds || []);
+      const stepMeta: Record<string, any> = { ...(existing.stepMeta || {}) };
+
       if (completed) {
         completedStepIds.add(stepId);
+        stepMeta[stepId] = {
+          completedAt: nowIso,
+          completedBy: userUid,
+          ...(remark?.trim()
+            ? { remark: remark.trim(), remarkBy: userUid, remarkAt: nowIso }
+            : {}),
+        };
       } else {
         completedStepIds.delete(stepId);
+        delete stepMeta[stepId];
       }
 
       clientProgress[clientId] = {
         completedStepIds: Array.from(completedStepIds),
-        completedAt: new Date().toISOString(),
-        completedBy: authResult.user!.uid,
+        completedAt: nowIso,
+        completedBy: userUid,
+        stepMeta,
       };
 
-      // Also update individual step objects with completion metadata
-      // so the UI can show "Completed [date] by [name]" per step
-      const now = new Date();
-      const updatedSteps = steps.map((step: WorkflowStep) => {
-        if (step.id === stepId) {
-          return updateWorkflowStep(step, completed, authResult.user!.uid, now, body.remark);
-        }
-        return step;
-      });
+      await recurringTaskAdminService.update(taskId, { clientProgress } as any);
 
-      // Build update payload
-      const updatePayload: Record<string, any> = { clientProgress };
-
-      if (task.reportTypes && task.reportTypes.length > 0) {
-        // Update steps inside reportTypes array (case-insensitive match)
-        const updatedReportTypes = task.reportTypes.map(rt => {
-          if (rt.id.toLowerCase() === lowerWorkflowType) {
-            return { ...rt, steps: updatedSteps };
-          }
-          return rt;
-        });
-        updatePayload.reportTypes = updatedReportTypes;
-      } else if (stepsField) {
-        // Legacy field update
-        updatePayload[stepsField] = updatedSteps;
-      }
-
-      await recurringTaskAdminService.update(taskId, updatePayload as any);
-
-      return NextResponse.json({ success: true, clientProgress, steps: updatedSteps }, { status: 200 });
+      return NextResponse.json({ success: true, clientProgress }, { status: 200 });
     } else {
-      // Legacy fallback: update task-level step and sync to all clients that don't have their own progress
+      // ── Legacy task-level update (no clientId) ───────────────────────
+      // Only used for genuinely legacy tasks that never adopted per-client
+      // tracking. Update the shared step objects for backward compatibility.
       const now = new Date();
       const updatedSteps = steps.map((step: WorkflowStep) => {
         if (step.id === stepId) {
-          return updateWorkflowStep(step, completed, authResult.user!.uid, now, body.remark);
+          return updateWorkflowStep(step, completed, userUid, now, remark);
         }
         return step;
       });
 
-      // Sync legacy completion to all clients that don't yet have their own progress
-      // This ensures backward compatibility
-      const completedIds = updatedSteps.filter((s: WorkflowStep) => s.completed).map((s: WorkflowStep) => s.id);
-      const taskClientIds = getClientIdsFromTask(task);
-      taskClientIds.forEach((cid: string) => {
-        if (!clientProgress[cid]) {
-          clientProgress[cid] = {
-            completedStepIds: [...completedIds],
-            completedAt: new Date().toISOString(),
-            completedBy: authResult.user!.uid,
-          };
-        }
-      });
-
-      // Build update payload: write to reportTypes or legacy field
-      const updatePayload: Record<string, any> = { clientProgress };
+      const updatePayload: Record<string, any> = {};
 
       if (task.reportTypes && task.reportTypes.length > 0) {
-        // Update steps inside reportTypes array (case-insensitive match)
         const updatedReportTypes = task.reportTypes.map(rt => {
           if (rt.id.toLowerCase() === lowerWorkflowType) {
             return { ...rt, steps: updatedSteps };
@@ -256,14 +230,16 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
           return rt;
         });
         updatePayload.reportTypes = updatedReportTypes;
-      } else if (stepsField) {
-        // Legacy field update
-        updatePayload[stepsField] = updatedSteps;
+      } else {
+        const legacyField = lowerWorkflowType === 'tar' ? 'tarSteps' : lowerWorkflowType === 'stat' ? 'statSteps' : null;
+        if (legacyField) {
+          updatePayload[legacyField] = updatedSteps;
+        }
       }
 
       await recurringTaskAdminService.update(taskId, updatePayload as any);
 
-      return NextResponse.json({ success: true, steps: updatedSteps, clientProgress }, { status: 200 });
+      return NextResponse.json({ success: true, steps: updatedSteps }, { status: 200 });
     }
   } catch (error) {
     return handleApiError(error);
@@ -323,12 +299,4 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 }
 
-/** Extract all client IDs from a task (contactIds + teamMemberMappings) */
-function getClientIdsFromTask(task: any): string[] {
-  const ids = new Set<string>();
-  (task.contactIds || []).forEach((id: string) => ids.add(id));
-  (task.teamMemberMappings || []).forEach((m: any) => {
-    (m.clientIds || []).forEach((id: string) => ids.add(id));
-  });
-  return Array.from(ids);
-}
+

@@ -6,7 +6,6 @@ import { taskApi } from '@/services/task.api';
 import {
   recurringTaskService,
   RecurringTask,
-  WorkflowStep,
   WorkflowType,
   getClientCompletedStepIds,
 } from '@/services/recurring-task.service';
@@ -416,98 +415,72 @@ export default function CalendarPage() {
     setWorkflowDrawerOpen(true);
   };
 
-  // Handle step toggle — per-client
+  // Handle step toggle — per-client.
+  // All per-client state (completed IDs + step metadata) is stored inside
+  // clientProgress[clientId]. The shared step-definition array is never mutated.
   const handleStepToggle = async (stepId: string, completed: boolean, clientId?: string, remark?: string) => {
     if (!selectedWorkflowTask?.id) return;
 
-    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
+    const key = clientId || '';
+    const nowIso = new Date().toISOString();
+    const uid = auth.currentUser?.uid;
 
-    // Update clientProgress in local state
-    const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
-    const existing = updatedClientProgress[clientId || '']
-      ? { ...updatedClientProgress[clientId || ''] }
-      : {
-          completedStepIds: allSteps
-            .filter((s) => s.completed)
-            .map((s) => s.id),
-        };
+    const prevClientProgress = selectedWorkflowTask.clientProgress || {};
+    const updatedClientProgress = { ...prevClientProgress };
+    const existing = updatedClientProgress[key]
+      ? { ...updatedClientProgress[key] }
+      : { completedStepIds: [] as string[] };
 
     const completedStepIds = new Set(existing.completedStepIds || []);
+    const stepMeta = { ...(existing.stepMeta || {}) };
+
     if (completed) {
       completedStepIds.add(stepId);
+      stepMeta[stepId] = {
+        completedAt: nowIso,
+        completedBy: uid,
+        ...(remark && remark.trim()
+          ? { remark: remark.trim(), remarkBy: uid, remarkAt: nowIso }
+          : {}),
+      };
     } else {
       completedStepIds.delete(stepId);
+      delete stepMeta[stepId];
     }
 
-    updatedClientProgress[clientId || ''] = {
+    updatedClientProgress[key] = {
       completedStepIds: Array.from(completedStepIds),
-      completedAt: new Date().toISOString(),
-      completedBy: auth.currentUser?.uid,
+      completedAt: nowIso,
+      completedBy: uid,
+      stepMeta,
     };
 
-    // Also update the individual step objects with completedAt, completedBy, and remark
-    // so the UI can show "Completed [date] by [name]" immediately
-    const now = new Date();
-    const updatedSteps = allSteps.map((s) => {
-      if (s.id === stepId) {
-        const updatedStep = { ...s, completed, completedAt: completed ? now : undefined, completedBy: completed ? auth.currentUser?.uid : undefined };
+    const updatedTask = { ...selectedWorkflowTask, clientProgress: updatedClientProgress };
 
-        // Handle remark: store if provided and step is completed; clear if reopened
-        if (remark !== undefined) {
-          if (completed && remark.trim()) {
-            updatedStep.remark = remark.trim();
-            updatedStep.remarkBy = auth.currentUser?.uid;
-            updatedStep.remarkAt = now;
-          } else if (!completed) {
-            updatedStep.remark = undefined;
-            updatedStep.remarkBy = undefined;
-            updatedStep.remarkAt = undefined;
-          }
-        }
-
-        return updatedStep;
-      }
-      return s;
-    });
-
-    // Write updated steps back into the task (handles both reportTypes and legacy paths)
-    const updatedTask = updateTaskSteps(
-      { ...selectedWorkflowTask, clientProgress: updatedClientProgress },
-      updatedSteps,
-    );
-
-    // Update local state
+    // Optimistic local update
     setSelectedWorkflowTask(updatedTask);
     setRecurringTasks(prev => prev.map(t =>
-      t.id === selectedWorkflowTask.id ? updateTaskSteps({ ...t, clientProgress: updatedClientProgress }, updatedSteps) : t
+      t.id === selectedWorkflowTask.id ? { ...t, clientProgress: updatedClientProgress } : t
     ));
 
     // Persist to API with clientId and remark
-    await apiPut(`/api/workflow/${selectedWorkflowTask.id}`, {
-      stepId,
-      workflowType: selectedWorkflowType,
-      completed,
-      clientId: clientId || undefined,
-      remark,
-    });
-  };
-
-  // Helper: write updated step objects back into a task (handles both reportTypes and legacy)
-  const updateTaskSteps = (task: RecurringTask, updatedSteps: WorkflowStep[]): RecurringTask => {
-    const lower = selectedWorkflowType.toLowerCase();
-    if (task.reportTypes && task.reportTypes.length > 0) {
-      const updatedReportTypes = task.reportTypes.map(rt => {
-        if (rt.id === selectedWorkflowType || rt.id === lower) {
-          return { ...rt, steps: updatedSteps };
-        }
-        return rt;
+    try {
+      await apiPut(`/api/workflow/${selectedWorkflowTask.id}`, {
+        stepId,
+        workflowType: selectedWorkflowType,
+        completed,
+        clientId: clientId || undefined,
+        remark,
       });
-      return { ...task, reportTypes: updatedReportTypes };
+    } catch (error) {
+      console.error('Failed to update workflow step:', error);
+      // Revert on error
+      setSelectedWorkflowTask({ ...selectedWorkflowTask, clientProgress: prevClientProgress });
+      setRecurringTasks(prev => prev.map(t =>
+        t.id === selectedWorkflowTask.id ? { ...t, clientProgress: prevClientProgress } : t
+      ));
+      throw error;
     }
-    // Legacy path
-    if (lower === 'tar') return { ...task, tarSteps: updatedSteps };
-    if (lower === 'stat') return { ...task, statSteps: updatedSteps };
-    return task;
   };
 
   // Handle mark all steps complete — per-client
@@ -515,47 +488,52 @@ export default function CalendarPage() {
     if (!selectedWorkflowTask?.id) return;
 
     const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
-
     const allStepIds = allSteps.map((s) => s.id);
-    const now = new Date();
+    const key = clientId || '';
+    const nowIso = new Date().toISOString();
+    const uid = auth.currentUser?.uid;
 
-    const updatedClientProgress = { ...(selectedWorkflowTask.clientProgress || {}) };
-    updatedClientProgress[clientId || ''] = {
+    const prevClientProgress = selectedWorkflowTask.clientProgress || {};
+    const updatedClientProgress = { ...prevClientProgress };
+    const stepMeta: Record<string, any> = {};
+    allStepIds.forEach((sid) => {
+      stepMeta[sid] = { completedAt: nowIso, completedBy: uid };
+    });
+    updatedClientProgress[key] = {
       completedStepIds: [...allStepIds],
-      completedAt: now.toISOString(),
-      completedBy: auth.currentUser?.uid,
+      completedAt: nowIso,
+      completedBy: uid,
+      stepMeta,
     };
 
-    // Also update each step object with completedAt and completedBy
-    const updatedSteps = allSteps.map((s) => ({
-      ...s,
-      completed: true,
-      completedAt: now,
-      completedBy: auth.currentUser?.uid,
-    }));
-
-    const updatedTask = updateTaskSteps(
-      { ...selectedWorkflowTask, clientProgress: updatedClientProgress },
-      updatedSteps,
-    );
+    const updatedTask = { ...selectedWorkflowTask, clientProgress: updatedClientProgress };
 
     setSelectedWorkflowTask(updatedTask);
     setRecurringTasks(prev => prev.map(t =>
-      t.id === selectedWorkflowTask.id ? updateTaskSteps({ ...t, clientProgress: updatedClientProgress }, updatedSteps) : t
+      t.id === selectedWorkflowTask.id ? { ...t, clientProgress: updatedClientProgress } : t
     ));
 
     // Persist each step for this client
-    for (const stepId of allStepIds) {
-      await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stepId,
-          workflowType: selectedWorkflowType,
-          completed: true,
-          clientId: clientId || undefined,
-        }),
-      });
+    try {
+      for (const stepId of allStepIds) {
+        await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stepId,
+            workflowType: selectedWorkflowType,
+            completed: true,
+            clientId: clientId || undefined,
+          }),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to mark all steps complete:', error);
+      setSelectedWorkflowTask({ ...selectedWorkflowTask, clientProgress: prevClientProgress });
+      setRecurringTasks(prev => prev.map(t =>
+        t.id === selectedWorkflowTask.id ? { ...t, clientProgress: prevClientProgress } : t
+      ));
+      throw error;
     }
   };
 
@@ -655,6 +633,7 @@ export default function CalendarPage() {
               ? getClientCompletedStepIds(selectedWorkflowTask, selectedClientId, selectedWorkflowType)
               : []
           }
+          stepMeta={selectedWorkflowTask.clientProgress?.[selectedClientId || '']?.stepMeta}
           assignee={
             selectedClientId
               ? selectedWorkflowTask.teamMemberMappings?.find(m => m.clientIds.includes(selectedClientId))?.userName

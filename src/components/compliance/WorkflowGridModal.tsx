@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
-import { X, ChevronDown, ChevronRight } from 'lucide-react';
+import { X, ChevronDown, ChevronRight, Search } from 'lucide-react';
 import { RecurringTask, TeamMemberMapping, ReportTypeConfig } from '@/services/recurring-task.service';
 import { WorkflowCard } from './WorkflowCard';
 import { getClientCompletedStepIds } from '@/services/recurring-task.service';
@@ -79,6 +79,7 @@ export function WorkflowGridModal({
   const [mappingTask, setMappingTask] = useState<RecurringTask | null>(null);
   const [mappingClientId, setMappingClientId] = useState<string>('');
   const [localTasks, setLocalTasks] = useState<Record<string, RecurringTask>>({});
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleAssignClick = (entryTask: RecurringTask) => {
     setMappingTask(entryTask);
@@ -107,6 +108,24 @@ export function WorkflowGridModal({
   if (!open) return null;
 
   const totalEntries = typeIds.reduce((sum, id) => sum + effectiveEntriesByType[id].entries.length, 0);
+
+  // Filter entries per section by client name
+  const filteredEntriesByType = useMemo(() => {
+    if (!searchQuery.trim()) return effectiveEntriesByType;
+    const q = searchQuery.toLowerCase();
+    const result: typeof effectiveEntriesByType = {};
+    typeIds.forEach(id => {
+      const filtered = effectiveEntriesByType[id].entries.filter(e =>
+        e.clientName.toLowerCase().includes(q)
+      );
+      if (filtered.length > 0) {
+        result[id] = { ...effectiveEntriesByType[id], entries: filtered };
+      }
+    });
+    return result;
+  }, [effectiveEntriesByType, typeIds, searchQuery]);
+
+  const filteredTypeIds = Object.keys(filteredEntriesByType);
 
   return createPortal(
     <div
@@ -137,11 +156,34 @@ export function WorkflowGridModal({
           </button>
         </div>
 
+        {/* Search bar */}
+        <div className="px-6 py-3 border-b border-gray-200 flex-shrink-0">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search clients..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-9 pl-9 pr-3 rounded-lg border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent dark:bg-gray-800 dark:border-gray-700 dark:text-white"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Scrollable content */}
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-8">
           {/* Dynamic workflow sections */}
-          {typeIds.map((typeId) => {
-            const { entries, reportType } = effectiveEntriesByType[typeId];
+          {filteredTypeIds.map((typeId) => {
+            const { entries, reportType } = filteredEntriesByType[typeId];
             const isExpanded = expandedTypes[typeId] !== false;
             const sectionName = reportType?.name || typeId.toUpperCase();
             const badgeClass = reportType?.badgeClass || 'bg-gray-100 text-gray-700';
@@ -164,7 +206,7 @@ export function WorkflowGridModal({
                     {badgeLabel}
                   </span>
                   <span className="text-sm font-normal text-gray-500">
-                    ({entries.length})
+                    ({entries.length}{searchQuery.trim() && entries.length !== effectiveEntriesByType[typeId]?.entries.length ? ` / ${effectiveEntriesByType[typeId]?.entries.length}` : ''})
                   </span>
                 </button>
                 {isExpanded && (
@@ -202,9 +244,17 @@ export function WorkflowGridModal({
           })}
 
           {/* Empty state */}
-          {typeIds.length === 0 && (
+          {filteredTypeIds.length === 0 && (
             <div className="text-center py-16">
-              <p className="text-gray-500">No workflow types enabled for this task.</p>
+              {searchQuery.trim() ? (
+                <>
+                  <Search className="h-10 w-10 text-gray-300 mx-auto mb-3" />
+                  <p className="text-gray-500 font-medium">No clients match "{searchQuery}"</p>
+                  <p className="text-sm text-gray-400 mt-1">Try a different search term</p>
+                </>
+              ) : (
+                <p className="text-gray-500">No workflow types enabled for this task.</p>
+              )}
             </div>
           )}
         </div>

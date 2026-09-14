@@ -1,20 +1,17 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { RecurringTask, recurringTaskService, TeamMemberMapping } from '@/services/recurring-task.service';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { RecurringTask } from '@/services/recurring-task.service';
 import { clientService, Client } from '@/services/client.service';
-import { taskCompletionService, ClientTaskCompletion } from '@/services/task-completion.service';
+import { ClientTaskCompletion } from '@/services/task-completion.service';
 import { UserGroupIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { useModal } from '@/contexts/modal-context';
-import { exportToPDF, exportToExcel, exportSummaryToPDF, exportSummaryToExcel } from '@/utils/report-export.utils';
+import { exportSummaryToPDF, exportSummaryToExcel } from '@/utils/report-export.utils';
 import { auth } from '@/lib/firebase';
-import { generateMonths, buildCompletionData, getCompletionStatus, calculateCompletionRate } from '@/utils/report-utils';
 import { initializeWorkflowSteps, getReportTypes } from '@/lib/workflow-templates';
+import { ClientWorkflowProgress } from '@/services/recurring-task.service';
 import { TaskReportModal } from '@/components/reports/TaskReportModal';
 import { WorkflowTaskDetailModal } from '@/components/reports/WorkflowTaskDetailModal';
-import { WorkflowReportsTable } from '@/components/reports/WorkflowReportsTable';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import type { WorkflowType } from '@/services/recurring-task.service';
 
 const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -93,6 +90,35 @@ export function ReportsView() {
   const financialYears = generateFinancialYears();
   const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
   const [selectedMonth, setSelectedMonth] = useState('all');
+
+  /**
+   * Compute completion rate from task.clientProgress (the real workflow data store).
+   * For each report type enabled on the task, count how many clients have all steps
+   * completed vs total clients. Returns the average across enabled report types.
+   */
+  const getWorkflowCompletionRate = useCallback((task: RecurringTask, totalClientCount: number): number => {
+    if (totalClientCount === 0) return 0;
+    const reportTypes = getReportTypes(task).filter(rt => rt.enabled);
+    if (reportTypes.length === 0) return 0;
+
+    let totalPct = 0;
+    reportTypes.forEach(rt => {
+      const steps = rt.steps || [];
+      const stepCount = steps.length;
+      if (stepCount === 0) { totalPct += 0; return; }
+      const cp = task.clientProgress || {};
+      let completedClients = 0;
+      Object.values(cp).forEach((progress: ClientWorkflowProgress) => {
+        const done = (progress.completedStepIds || []).filter(id =>
+          steps.some(s => s.id === id)
+        ).length;
+        if (done === stepCount) completedClients++;
+      });
+      totalPct += (completedClients / totalClientCount) * 100;
+    });
+
+    return Math.round(totalPct / reportTypes.length);
+  }, []);
 
   // Filter tasks with workflow types enabled (supports both legacy and dynamic report types)
   const tarTasks = useMemo(() => tasks.filter(t => {
@@ -514,10 +540,9 @@ export function ReportsView() {
                 }
 
                 const taskCompletions = completions.get(task.id || '') || [];
-                // Calculate completion rate for the selected period
-                const dueMonth = getTaskDueMonth(task);
-                const monthKey = getMonthKeyForPeriod(selectedFY, selectedMonth, task.recurrencePattern, dueMonth);
-                const completionRate = calculateCompletionRate(task, displayClientCount, taskCompletions, monthKey);
+                // Calculate completion rate from clientProgress (real workflow data),
+                // not from the separate task-completions collection
+                const completionRate = getWorkflowCompletionRate(task, displayClientCount);
 
                 return (
                   <tr key={task.id} className="hover:bg-gray-50 dark:bg-gray-800">

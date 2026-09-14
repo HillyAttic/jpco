@@ -2,7 +2,7 @@
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { RecurringTask, WorkflowStep, WorkflowType, TeamMemberMapping, ClientWorkflowProgress, getClientCompletedStepIds, getClientProgressSummary } from '@/services/recurring-task.service';
+import { RecurringTask, WorkflowStep, WorkflowType, TeamMemberMapping, ClientWorkflowProgress, getClientCompletedStepIds, getClientProgressSummary, getClientStepMeta } from '@/services/recurring-task.service';
 import { Client } from '@/services/client.service';
 import { getWorkflowTemplate, getReportTypeById, getStepsForReportType } from '@/lib/workflow-templates';
 import { TeamMemberMappingDialog } from '@/components/recurring-tasks/TeamMemberMappingDialog';
@@ -326,11 +326,6 @@ export function WorkflowTaskDetailModal({
 
   const steps = getStepsForReportType(task, workflowType);
 
-  // Helper: look up a step object (with completion/remark metadata)
-  const getStepInfo = (stepId: string): WorkflowStep | undefined => {
-    return steps.find(s => s.id === stepId);
-  };
-
   // Format date for tooltip display
   const formatDate = (date: any) => {
     if (!date) return '';
@@ -554,7 +549,7 @@ export function WorkflowTaskDetailModal({
                       </td>
                       {(steps || []).map((step) => {
                         const done = completedStepIds.includes(step.id);
-                        const stepInfo = getStepInfo(step.id);
+                        const stepInfo = getClientStepMeta(filteredTask, row.clientId, step.id, workflowType);
 
                         // Build tooltip content
                         let tooltipParts: string[] = [];
@@ -658,7 +653,7 @@ export function WorkflowTaskDetailModal({
                     <div className="flex flex-wrap gap-1.5 mb-3">
                       {(steps || []).map((step) => {
                         const done = completedStepIds.includes(step.id);
-                        const stepInfo = getStepInfo(step.id);
+                        const stepInfo = getClientStepMeta(filteredTask, row.clientId, step.id, workflowType);
                         const tooltipParts: string[] = [step.name, done ? 'Completed' : 'Incomplete'];
                         if (done) {
                           if (stepInfo?.completedAt) tooltipParts.push(`Date: ${formatDate(stepInfo.completedAt)}`);

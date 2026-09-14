@@ -33,11 +33,26 @@ export interface WorkflowStep {
   remarkAt?: Date;
 }
 
+/** Per-step completion metadata scoped to a single client */
+export interface ClientStepMeta {
+  completedAt?: string; // ISO date string
+  completedBy?: string; // user UID
+  remark?: string;
+  remarkBy?: string;
+  remarkAt?: string; // ISO date string
+}
+
 /** Per-client workflow progress — stored under clientProgress[clientId] */
 export interface ClientWorkflowProgress {
   completedStepIds: string[];
-  completedAt?: string; // ISO date string
-  completedBy?: string; // user UID
+  completedAt?: string; // ISO date string (last touch)
+  completedBy?: string; // user UID (last toucher)
+  /**
+   * Per-step completion metadata scoped to THIS client only.
+   * Keyed by stepId. This keeps "Completed [date] by [name]" and remarks
+   * isolated per client instead of leaking through the shared step array.
+   */
+  stepMeta?: Record<string, ClientStepMeta>;
 }
 
 export type WorkflowType = string;
@@ -354,14 +369,94 @@ export function getClientCompletedStepIds(
   const key = lowerType === 'tar' ? 'tarSteps' : 'statSteps';
   const legacySteps = task[key] || [];
 
-  // If clientProgress exists for this client, use it
+  // If clientProgress exists for this client, use ONLY it (per-client isolation)
   if (task.clientProgress?.[clientId]) {
     return task.clientProgress[clientId].completedStepIds || [];
   }
 
-  // Migration fallback: derive from legacy task-level steps
-  // All clients share the same legacy progress until they diverge
+  // If the task already tracks per-client progress for ANYONE, then this system
+  // has migrated to per-client mode. A client without its own entry has simply
+  // not been touched yet — it must NOT inherit another client's progress from
+  // the shared step array. Returning [] here prevents the "toggle one client,
+  // all clients flip" leakage bug.
+  if (task.clientProgress && Object.keys(task.clientProgress).length > 0) {
+    return [];
+  }
+
+  // Genuine legacy task (no per-client progress has ever been recorded):
+  // derive from the shared task-level steps for backward compatibility.
   return legacySteps.filter((s) => s.completed).map((s) => s.id);
+}
+
+/**
+ * Get per-step completion metadata for a specific client.
+ * Reads from clientProgress[clientId].stepMeta so completion date/author and
+ * remarks are isolated per client. Falls back to the shared step object only
+ * for genuine legacy tasks (no per-client progress recorded at all).
+ */
+export function getClientStepMeta(
+  task: RecurringTask,
+  clientId: string,
+  stepId: string,
+  workflowType: WorkflowType
+): ClientStepMeta {
+  const clientEntry = task.clientProgress?.[clientId];
+  if (clientEntry?.stepMeta?.[stepId]) {
+    return clientEntry.stepMeta[stepId];
+  }
+
+  // If per-client progress exists (for this or any client) but no stepMeta for
+  // this step, return empty — do NOT leak the shared step object's metadata.
+  if (task.clientProgress && Object.keys(task.clientProgress).length > 0) {
+    return {};
+  }
+
+  // Genuine legacy fallback: read metadata from the shared step object.
+  const lowerType = workflowType.toLowerCase();
+  const key = lowerType === 'tar' ? 'tarSteps' : 'statSteps';
+  const legacySteps = task[key] || [];
+  const step = legacySteps.find((s) => s.id === stepId);
+  if (!step) return {};
+  return {
+    completedAt: step.completedAt ? toIso(step.completedAt) : undefined,
+    completedBy: step.completedBy,
+    remark: step.remark,
+    remarkBy: step.remarkBy,
+    remarkAt: step.remarkAt ? toIso(step.remarkAt) : undefined,
+  };
+}
+
+/**
+ * Resolve the step-definition array for a given report type on a task.
+ * Handles dynamic reportTypes (including custom IDs) first, then falls back
+ * to the legacy tarSteps/statSteps fields. Case-insensitive.
+ *
+ * NOTE: kept local to this service to avoid a circular import with
+ * workflow-templates.ts (which imports types from here).
+ */
+function resolveSteps(task: RecurringTask, workflowType: WorkflowType): WorkflowStep[] {
+  const lower = (workflowType || '').toLowerCase();
+  if (task.reportTypes && task.reportTypes.length > 0) {
+    const rt = task.reportTypes.find((r) => r.id.toLowerCase() === lower);
+    if (rt) return rt.steps || [];
+  }
+  if (lower === 'tar') return task.tarSteps || [];
+  if (lower === 'stat') return task.statSteps || [];
+  return [];
+}
+
+/** Normalize a Firestore Timestamp / Date / string into an ISO string. */
+function toIso(value: any): string | undefined {
+  if (!value) return undefined;
+  try {
+    if (typeof value === 'string') return value;
+    if (typeof value.toDate === 'function') return value.toDate().toISOString();
+    if (value.seconds !== undefined) return new Date(value.seconds * 1000).toISOString();
+    if (value instanceof Date) return value.toISOString();
+  } catch {
+    return undefined;
+  }
+  return undefined;
 }
 
 /**
@@ -384,8 +479,7 @@ export function calculateClientProgressPercent(
   clientId: string,
   workflowType: WorkflowType
 ): number {
-  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
-  const totalSteps = (task[key] || []).length;
+  const totalSteps = resolveSteps(task, workflowType).length;
   if (totalSteps === 0) return 0;
   const completed = getClientCompletedStepIds(task, clientId, workflowType).length;
   return Math.round((completed / totalSteps) * 100);
@@ -399,8 +493,7 @@ export function getClientWorkflowStatus(
   clientId: string,
   workflowType: WorkflowType
 ): 'completed' | 'in-progress' | 'pending' {
-  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
-  const totalSteps = (task[key] || []).length;
+  const totalSteps = resolveSteps(task, workflowType).length;
   if (totalSteps === 0) return 'pending';
   const completed = getClientCompletedStepIds(task, clientId, workflowType).length;
   if (completed === totalSteps) return 'completed';
@@ -410,7 +503,11 @@ export function getClientWorkflowStatus(
 
 /**
  * Build an updated task with a toggled step for a specific client.
- * Initializes clientProgress from legacy steps on first touch.
+ *
+ * Per-client completion, including per-step metadata (completedAt / completedBy
+ * / remark), is stored ENTIRELY inside clientProgress[clientId]. The shared
+ * step-definition array (tarSteps/statSteps/reportTypes[].steps) is never
+ * mutated here, so one client's toggle can never leak to another client.
  */
 export function updateClientStepProgress(
   task: RecurringTask,
@@ -418,31 +515,41 @@ export function updateClientStepProgress(
   completed: boolean,
   clientId: string,
   workflowType: WorkflowType,
-  userUid: string | undefined
+  userUid: string | undefined,
+  remark?: string
 ): RecurringTask {
-  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
-  const totalSteps = task[key] || [];
+  const nowIso = new Date().toISOString();
 
-  // Build clientProgress if not present
+  // Build clientProgress if not present. Do NOT seed from the shared step
+  // array: the first touch for a client starts from its own real state
+  // (empty unless it already had a per-client entry).
   const clientProgress = { ...(task.clientProgress || {}) };
   const existing = clientProgress[clientId]
     ? { ...clientProgress[clientId] }
-    : {
-        completedStepIds: totalSteps.filter((s) => s.completed).map((s) => s.id),
-      };
+    : { completedStepIds: [] as string[] };
 
   const completedStepIds = new Set(existing.completedStepIds || []);
+  const stepMeta = { ...(existing.stepMeta || {}) };
 
   if (completed) {
     completedStepIds.add(stepId);
+    stepMeta[stepId] = {
+      completedAt: nowIso,
+      completedBy: userUid,
+      ...(remark?.trim()
+        ? { remark: remark.trim(), remarkBy: userUid, remarkAt: nowIso }
+        : {}),
+    };
   } else {
     completedStepIds.delete(stepId);
+    delete stepMeta[stepId];
   }
 
   clientProgress[clientId] = {
     completedStepIds: Array.from(completedStepIds),
-    completedAt: new Date().toISOString(),
+    completedAt: nowIso,
     completedBy: userUid,
+    stepMeta,
   };
 
   return { ...task, clientProgress };
@@ -461,8 +568,7 @@ export function getClientProgressSummary(
   percentage: number;
   status: 'pending' | 'in-progress' | 'completed';
 } {
-  const key = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
-  const total = (task[key] || []).length;
+  const total = resolveSteps(task, workflowType).length;
   const completed = getClientCompletedStepIds(task, clientId, workflowType).length;
   const percentage = total > 0 ? Math.round((completed / total) * 100) : 0;
 

@@ -21,6 +21,8 @@ interface WorkflowDrawerProps {
   workflowType: WorkflowType;
   steps: WorkflowStep[];          // step metadata (names, ids)
   completedStepIds: string[];     // which step IDs this client has completed
+  /** Per-step completion metadata scoped to THIS client (keyed by stepId) */
+  stepMeta?: Record<string, { completedAt?: any; completedBy?: string; remark?: string; remarkBy?: string; remarkAt?: any }>;
   assignee?: string;
   clientId?: string;
   clientName?: string;
@@ -37,6 +39,7 @@ export function WorkflowDrawer({
   workflowType,
   steps,
   completedStepIds,
+  stepMeta,
   assignee,
   clientId,
   clientName,
@@ -159,10 +162,20 @@ export function WorkflowDrawer({
     }
   };
 
-  // Read completion info from the step objects themselves.
-  // After the API fix, both per-client and legacy paths write
-  // completedAt / completedBy on the individual step objects.
+  // Read completion info from the PER-CLIENT step metadata (clientProgress.stepMeta)
+  // so completion date/author and remarks are isolated per client. Falls back to
+  // the shared step object only when no per-client metadata is available (legacy).
   const getStepCompletionInfo = (stepId: string) => {
+    const meta = stepMeta?.[stepId];
+    if (meta) {
+      return {
+        completedAt: meta.completedAt,
+        completedBy: meta.completedBy,
+        remark: meta.remark,
+        remarkBy: meta.remarkBy,
+        remarkAt: meta.remarkAt,
+      };
+    }
     const step = steps.find((s) => s.id === stepId);
     return {
       completedAt: step?.completedAt,
