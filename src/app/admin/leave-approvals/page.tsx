@@ -15,6 +15,10 @@ export default function LeaveApprovalsPage() {
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'leave' | 'wfh'>('leave');
 
+  // Labels for the active tab, used in modal copy and toasts
+  const requestLabel = activeTab === 'wfh' ? 'WFH Request' : 'Leave Request';
+  const requestLabelLower = activeTab === 'wfh' ? 'WFH request' : 'leave request';
+
   // Read tab from URL query param
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -41,7 +45,7 @@ export default function LeaveApprovalsPage() {
       }
     } catch (error) {
       console.error('Error fetching leave requests:', error);
-      toast.error('Failed to load leave requests');
+      toast.error('Failed to load requests');
     } finally {
       setLoading(false);
     }
@@ -58,14 +62,14 @@ export default function LeaveApprovalsPage() {
       });
 
       if (response.ok) {
-        toast.success('Leave request approved');
+        toast.success(`${requestLabel} approved`);
         fetchRequests();
       } else {
-        toast.error('Failed to approve leave request');
+        toast.error(`Failed to approve ${requestLabelLower}`);
       }
     } catch (error) {
       console.error('Error approving leave:', error);
-      toast.error('Failed to approve leave request');
+      toast.error(`Failed to approve ${requestLabelLower}`);
     }
   };
 
@@ -85,17 +89,17 @@ export default function LeaveApprovalsPage() {
       });
 
       if (response.ok) {
-        toast.success('Leave request approved with reason');
+        toast.success(`${requestLabel} approved with reason`);
         setShowApproveModal(false);
         setApprovalReason('');
         setSelectedRequest(null);
         fetchRequests();
       } else {
-        toast.error('Failed to approve leave request');
+        toast.error(`Failed to approve ${requestLabelLower}`);
       }
     } catch (error) {
       console.error('Error approving leave:', error);
-      toast.error('Failed to approve leave request');
+      toast.error(`Failed to approve ${requestLabelLower}`);
     }
   };
 
@@ -104,8 +108,35 @@ export default function LeaveApprovalsPage() {
     setShowApproveModal(true);
   };
 
-  const handleReject = async () => {
-    if (!selectedRequest) return;
+  // Reject immediately, without a reason
+  const handleRejectDirect = async (id: string) => {
+    try {
+      // Import authenticated fetch helper
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch(`/api/leave-requests/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'reject' }),
+      });
+
+      if (response.ok) {
+        toast.success(`${requestLabel} rejected`);
+        fetchRequests();
+      } else {
+        toast.error(`Failed to reject ${requestLabelLower}`);
+      }
+    } catch (error) {
+      console.error('Error rejecting leave:', error);
+      toast.error(`Failed to reject ${requestLabelLower}`);
+    }
+  };
+
+  // Reject with a reason from the modal
+  const handleRejectWithReason = async () => {
+    if (!selectedRequest || !rejectionReason.trim()) {
+      toast.error('Please provide a rejection reason');
+      return;
+    }
 
     try {
       // Import authenticated fetch helper
@@ -117,17 +148,17 @@ export default function LeaveApprovalsPage() {
       });
 
       if (response.ok) {
-        toast.success('Leave request rejected');
+        toast.success(`${requestLabel} rejected with reason`);
         setShowRejectModal(false);
         setRejectionReason('');
         setSelectedRequest(null);
         fetchRequests();
       } else {
-        toast.error('Failed to reject leave request');
+        toast.error(`Failed to reject ${requestLabelLower}`);
       }
     } catch (error) {
       console.error('Error rejecting leave:', error);
-      toast.error('Failed to reject leave request');
+      toast.error(`Failed to reject ${requestLabelLower}`);
     }
   };
 
@@ -224,78 +255,94 @@ export default function LeaveApprovalsPage() {
         ) : (
           <>
             {/* Desktop Table View */}
-            <div className="hidden lg:block overflow-x-auto">
-              <table className="w-full">
+            <div className="hidden lg:block">
+              <table className="w-full table-fixed">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Employee</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Leave Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Duration</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Dates</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Reason</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">Actions</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase w-[14%]">Employee</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase w-[8%]">Leave Type</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase w-[7%]">Duration</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase w-[11%]">Dates</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase w-[34%]">Reason</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase w-[7%]">Status</th>
+                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase w-[19%]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {filteredRequests.map((request) => (
                     <tr key={request.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4">
                         <div>
-                          <div className="font-medium text-gray-900 dark:text-white">{request.employeeName}</div>
-                          <div className="text-sm text-gray-500">{request.employeeEmail}</div>
+                          <div className="font-medium text-gray-900 dark:text-white text-sm truncate">{request.employeeName}</div>
+                          <div className="text-xs text-gray-500 truncate">{request.employeeEmail}</div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
-                        <div className="flex items-center gap-2">
-                          {getLeaveTypeLabel(request.leaveType)}
+                      <td className="px-3 py-4 text-sm text-gray-900 dark:text-white">
+                        <div className="flex items-center gap-1">
+                          <span className="text-sm">{getLeaveTypeLabel(request.leaveType)}</span>
                           {request.halfDay && (
-                            <span className="px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-800">
-                              Half Day
+                            <span className="px-1.5 py-0.5 text-[10px] font-medium rounded-full bg-purple-100 text-purple-800 whitespace-nowrap">
+                              Half
                             </span>
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                      <td className="px-3 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap">
                         {request.totalDays} {request.totalDays === 1 ? 'day' : 'days'}
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white">
+                      <td className="px-3 py-4 text-sm text-gray-900 dark:text-white whitespace-nowrap">
                         <div>{new Date(request.startDate).toLocaleDateString()}</div>
-                        <div className="text-gray-500">to {new Date(request.endDate).toLocaleDateString()}</div>
+                        <div className="text-gray-500 text-xs">to {new Date(request.endDate).toLocaleDateString()}</div>
                       </td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-white min-w-[280px]">
-                        {request.reason}
+                      <td className="px-3 py-4 text-sm text-gray-900 dark:text-white">
+                        <div className="break-words whitespace-pre-wrap">{request.reason}</div>
+                        {request.rejectionReason && (
+                          <div className="mt-1 text-xs text-red-600 dark:text-red-400 break-words">
+                            <span className="font-medium">Rejection:</span> {request.rejectionReason}
+                          </div>
+                        )}
+                        {request.approvalReason && (
+                          <div className="mt-1 text-xs text-green-700 dark:text-green-400 break-words">
+                            <span className="font-medium">Approval:</span> {request.approvalReason}
+                          </div>
+                        )}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4">
                         <span className={`px-2 py-1 text-xs font-medium rounded-full ${getStatusColor(request.status)}`}>
                           {request.status}
                         </span>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-4">
                         {request.status === 'pending' && (
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-1">
                             <button
                               onClick={() => handleApprove(request.id!)}
-                              className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                              className="px-2 py-1 bg-green-600 text-white text-xs font-medium rounded hover:bg-green-700 whitespace-nowrap"
                             >
                               Approve
                             </button>
                             <button
                               onClick={() => openApproveModal(request)}
-                              className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                              className="px-2 py-1 bg-blue-600 text-white text-xs font-medium rounded hover:bg-blue-700 whitespace-nowrap"
                             >
-                              Approve with Reason
+                              Approve w/ Reason
+                            </button>
+                            <button
+                              onClick={() => handleRejectDirect(request.id!)}
+                              className="px-2 py-1 bg-red-600 text-white text-xs font-medium rounded hover:bg-red-700 whitespace-nowrap"
+                            >
+                              Reject
                             </button>
                             <button
                               onClick={() => openRejectModal(request)}
-                              className="px-3 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                              className="px-2 py-1 bg-orange-600 text-white text-xs font-medium rounded hover:bg-orange-700 whitespace-nowrap"
                             >
-                              Reject
+                              Reject w/ Reason
                             </button>
                           </div>
                         )}
                         {request.status !== 'pending' && (
-                          <div className="text-sm text-gray-500">
+                          <div className="text-xs text-gray-500 whitespace-nowrap">
                             By {request.approverName || 'Manager'}
                           </div>
                         )}
@@ -356,6 +403,16 @@ export default function LeaveApprovalsPage() {
                     <div className="text-gray-900 dark:text-white break-words whitespace-pre-wrap">
                       {request.reason}
                     </div>
+                    {request.rejectionReason && (
+                      <div className="mt-2 text-xs text-red-600 dark:text-red-400 break-words">
+                        <span className="font-medium">Rejection:</span> {request.rejectionReason}
+                      </div>
+                    )}
+                    {request.approvalReason && (
+                      <div className="mt-2 text-xs text-green-700 dark:text-green-400 break-words">
+                        <span className="font-medium">Approval:</span> {request.approvalReason}
+                      </div>
+                    )}
                   </div>
 
                   {/* Actions or Approver */}
@@ -374,10 +431,16 @@ export default function LeaveApprovalsPage() {
                         Approve with Reason
                       </button>
                       <button
-                        onClick={() => openRejectModal(request)}
+                        onClick={() => handleRejectDirect(request.id!)}
                         className="w-full px-4 py-2 bg-red-600 text-white text-sm font-medium rounded-lg hover:bg-red-700"
                       >
                         Reject
+                      </button>
+                      <button
+                        onClick={() => openRejectModal(request)}
+                        className="w-full px-4 py-2 bg-orange-600 text-white text-sm font-medium rounded-lg hover:bg-orange-700"
+                      >
+                        Reject with Reason
                       </button>
                     </div>
                   ) : (
@@ -396,9 +459,10 @@ export default function LeaveApprovalsPage() {
       {showRejectModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Reject Leave Request</h3>
+            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Reject {requestLabel} with Reason</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              You can provide a reason for rejecting <span className="text-blue-600 dark:text-blue-400 font-semibold">(optional)</span>:
+              Please provide a reason for rejecting this {requestLabelLower}
+              <span className="text-red-600 dark:text-red-400 font-semibold"> (required)</span>:
             </p>
             <textarea
               value={rejectionReason}
@@ -409,7 +473,7 @@ export default function LeaveApprovalsPage() {
             />
             <div className="flex gap-2 mt-4">
               <button
-                onClick={handleReject}
+                onClick={handleRejectWithReason}
                 className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
               >
                 Reject
@@ -433,9 +497,9 @@ export default function LeaveApprovalsPage() {
       {showApproveModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Approve Leave Request with Reason</h3>
+            <h3 className="text-lg font-bold mb-4 text-gray-900 dark:text-white">Approve {requestLabel} with Reason</h3>
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-              Please provide a reason or note for approving this leave request:
+              Please provide a reason or note for approving this {requestLabelLower}:
             </p>
             <textarea
               value={approvalReason}
