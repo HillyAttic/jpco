@@ -29,6 +29,8 @@ interface Employee {
   name: string;
   department?: string;
   designation?: string;
+  doj?: string | null;
+  pan?: string | null;
   grossSalary?: number;
 }
 
@@ -456,8 +458,8 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       employeeCode: employee.employeeId,
       designation: employee.designation || '',
       department: employee.department || '',
-      doj: null,
-      pan: null,
+      doj: employee.doj ?? null,
+      pan: employee.pan ?? null,
       grossSalary: employee.grossSalary || 0,
       month,
       year,
@@ -482,8 +484,11 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         const saved = existingSlips[0];
         // Merge saved manual edits but preserve live attendance data
         slip.salaryBreakup = saved.salaryBreakup;
-        slip.doj = saved.doj;
-        slip.pan = saved.pan;
+        // Prefer the live employee record for DOJ/PAN (the slip snapshot may predate
+        // the values being configured on the salary-config page), falling back to the
+        // slip's stored value when the employee record has none.
+        slip.doj = employee.doj || saved.doj;
+        slip.pan = employee.pan || saved.pan;
         // Override stale attendanceBreakdown from saved slip with live calculation
         // (saved slips may have been generated before Sundays were added to holiday count)
         slip.attendanceBreakdown = employee.calculation.attendanceBreakdown;
@@ -510,8 +515,14 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
       });
 
       if (existingSlips.length > 0) {
-        // Use the existing saved slip
-        setEditSlip(existingSlips[0]);
+        // Use the existing saved slip, but prefer the live employee record for
+        // DOJ/PAN — the snapshot may predate those being configured.
+        const saved = existingSlips[0];
+        setEditSlip({
+          ...saved,
+          doj: employee.doj || saved.doj,
+          pan: employee.pan || saved.pan,
+        });
         return;
       }
     } catch (error) {
@@ -526,8 +537,8 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         employeeCode: employee.employeeId,
         designation: employee.designation || '',
         department: employee.department || '',
-        doj: null,
-        pan: null,
+        doj: employee.doj ?? null,
+        pan: employee.pan ?? null,
         grossSalary: employee.grossSalary || 0,
         month,
         year,
