@@ -579,8 +579,8 @@ export function ReportsView() {
                   <tr key={task.id} className="hover:bg-gray-50 dark:bg-gray-800">
                     <td className="px-3 sm:px-6 py-4">
                       <div className="flex flex-col gap-2">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <div className="text-sm font-medium text-gray-900 dark:text-white break-words">{task.title}</div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-white break-words">{task.title}</div>
+                        <div className="flex items-center gap-1.5 flex-wrap empty:hidden">
                           {hasTeamMemberMapping && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800 whitespace-nowrap" title="Assigned via Team Member Mapping">
                               <UserGroupIcon className="w-3 h-3" />
@@ -590,21 +590,20 @@ export function ReportsView() {
                           )}
                           {unassignedCount > 0 && (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800 whitespace-nowrap" title={`${unassignedCount} clients not assigned to any team member`}>
-                              <span className="hidden sm:inline">{unassignedCount} unassigned</span>
-                              <span className="sm:hidden">{unassignedCount} unasgn.</span>
+                              {unassignedCount} unassigned
                             </span>
                           )}
                         </div>
                         {/* Mobile: Show recurrence and client count */}
-                        <div className="flex items-center gap-3 text-xs md:hidden">
+                        <div className="flex items-center gap-2 text-xs md:hidden">
                           <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white font-semibold">
                             {task.recurrencePattern}
                           </span>
                           <span className="text-gray-500 dark:text-gray-400">
                             {hasTeamMemberMapping ? (
-                              <span>{mappedCount} mapped{unassignedCount > 0 ? ` + ${unassignedCount} unasn.` : ''}</span>
+                              <>{mappedCount} mapped{unassignedCount > 0 ? ` + ${unassignedCount} unassigned` : ''}</>
                             ) : (
-                              <span>{displayClientCount} clients</span>
+                              <>{displayClientCount} clients</>
                             )}
                           </span>
                         </div>
