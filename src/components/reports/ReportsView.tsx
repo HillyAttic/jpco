@@ -338,6 +338,53 @@ export function ReportsView() {
     }
   };
 
+  /** Per-task display numbers, shared by the desktop table and mobile cards */
+  const getTaskDisplay = (task: RecurringTask) => {
+    const hasTeamMemberMapping = !!task.teamMemberMappings && task.teamMemberMappings.length > 0;
+
+    // Get clients based on task type
+    const allClientIds = new Set<string>();
+    if (hasTeamMemberMapping) {
+      task.teamMemberMappings!.forEach(m => m.clientIds.forEach(id => allClientIds.add(id)));
+    }
+    if (task.contactIds) task.contactIds.forEach(id => allClientIds.add(id));
+    const taskClients = clients.filter(c => c.id && allClientIds.has(c.id));
+
+    const hasDynamicFilter = !!task.clientFilter && task.clientFilter !== 'all';
+    const dynamicStats = hasDynamicFilter ? dynamicStatsMap.get(task.id || '') : null;
+
+    let mappedCount: number;
+    let unassignedCount: number;
+    let displayClientCount: number;
+
+    if (dynamicStats) {
+      displayClientCount = dynamicStats.totalCount;
+      mappedCount = dynamicStats.mappedCount;
+      unassignedCount = dynamicStats.unassignedCount;
+    } else {
+      const mappedClientIds = new Set<string>();
+      if (hasTeamMemberMapping) {
+        task.teamMemberMappings!.forEach(m => m.clientIds.forEach(id => mappedClientIds.add(id)));
+      }
+      unassignedCount = hasTeamMemberMapping
+        ? taskClients.filter(c => c.id && !mappedClientIds.has(c.id)).length
+        : 0;
+      mappedCount = hasTeamMemberMapping
+        ? task.teamMemberMappings!.reduce((sum, m) => sum + m.clientIds.length, 0)
+        : 0;
+      displayClientCount = taskClients.length;
+    }
+
+    return {
+      hasTeamMemberMapping,
+      hasDynamicFilter,
+      mappedCount,
+      unassignedCount,
+      displayClientCount,
+      completionRate: getWorkflowCompletionRate(task, displayClientCount),
+    };
+  };
+
   const handleTaskClick = (task: RecurringTask) => {
     setSelectedTask(task);
 
@@ -491,7 +538,7 @@ export function ReportsView() {
             )}
           </div>
 
-          <div className="bg-white dark:bg-gray-dark rounded-lg shadow overflow-hidden">
+          <div className="hidden md:block bg-white dark:bg-gray-dark rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50 dark:bg-gray-800">
@@ -515,65 +562,7 @@ export function ReportsView() {
               </thead>
               <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200">
                 {tasks.map((task) => {
-                const hasTeamMemberMapping = task.teamMemberMappings && task.teamMemberMappings.length > 0;
-
-                // Get clients based on task type
-                let taskClients: Client[];
-                let allClientIds: Set<string>;
-                if (hasTeamMemberMapping) {
-                  // Collect from both team member mappings AND contactIds
-                  allClientIds = new Set<string>();
-                  task.teamMemberMappings!.forEach(mapping => {
-                    mapping.clientIds.forEach(clientId => allClientIds.add(clientId));
-                  });
-                  if (task.contactIds && task.contactIds.length > 0) {
-                    task.contactIds.forEach(clientId => allClientIds.add(clientId));
-                  }
-                  taskClients = clients.filter(c => c.id && allClientIds.has(c.id));
-                } else {
-                  allClientIds = new Set<string>();
-                  if (task.contactIds) {
-                    task.contactIds.forEach(clientId => allClientIds.add(clientId));
-                  }
-                  taskClients = clients.filter(c => c.id && task.contactIds?.includes(c.id));
-                }
-
-                // Calculate unassigned count for team-mapped tasks
-                const mappedClientIds = new Set<string>();
-                if (hasTeamMemberMapping) {
-                  task.teamMemberMappings!.forEach(mapping => {
-                    mapping.clientIds.forEach(clientId => mappedClientIds.add(clientId));
-                  });
-                }
-
-                // Use dynamic stats if available, otherwise fall back to static
-                const hasDynamicFilter = !!task.clientFilter && task.clientFilter !== 'all';
-                const dynamicStats = hasDynamicFilter ? dynamicStatsMap.get(task.id || '') : null;
-
-                let unassignedCount: number;
-                let mappedCount: number;
-                let displayClientCount: number;
-
-                if (dynamicStats) {
-                  // Dynamic mode: use API-calculated counts
-                  displayClientCount = dynamicStats.totalCount;
-                  mappedCount = dynamicStats.mappedCount;
-                  unassignedCount = dynamicStats.unassignedCount;
-                } else {
-                  // Static mode: existing logic
-                  unassignedCount = hasTeamMemberMapping
-                    ? taskClients.filter(c => c.id && !mappedClientIds.has(c.id)).length
-                    : 0;
-                  mappedCount = hasTeamMemberMapping
-                    ? task.teamMemberMappings!.reduce((sum, m) => sum + m.clientIds.length, 0)
-                    : 0;
-                  displayClientCount = taskClients.length;
-                }
-
-                const taskCompletions = completions.get(task.id || '') || [];
-                // Calculate completion rate from clientProgress (real workflow data),
-                // not from the separate task-completions collection
-                const completionRate = getWorkflowCompletionRate(task, displayClientCount);
+                const { hasTeamMemberMapping, hasDynamicFilter, mappedCount, unassignedCount, displayClientCount, completionRate } = getTaskDisplay(task);
 
                 return (
                   <tr key={task.id} className="hover:bg-gray-50 dark:bg-gray-800">
@@ -593,19 +582,6 @@ export function ReportsView() {
                               {unassignedCount} unassigned
                             </span>
                           )}
-                        </div>
-                        {/* Mobile: Show recurrence and client count */}
-                        <div className="flex items-center gap-2 text-xs md:hidden">
-                          <span className="px-2 py-0.5 rounded-full bg-blue-600 text-white font-semibold">
-                            {task.recurrencePattern}
-                          </span>
-                          <span className="text-gray-500 dark:text-gray-400">
-                            {hasTeamMemberMapping ? (
-                              <>{mappedCount} mapped{unassignedCount > 0 ? ` + ${unassignedCount} unassigned` : ''}</>
-                            ) : (
-                              <>{displayClientCount} clients</>
-                            )}
-                          </span>
                         </div>
                       </div>
                     </td>
@@ -644,8 +620,7 @@ export function ReportsView() {
                         onClick={() => handleTaskClick(task)}
                         className="text-blue-600 hover:text-blue-900 text-xs sm:text-sm"
                       >
-                        <span className="hidden sm:inline">View Details</span>
-                        <span className="sm:hidden">View</span>
+                        View Details
                       </button>
                     </td>
                   </tr>
@@ -654,7 +629,68 @@ export function ReportsView() {
               </tbody>
             </table>
           </div>
-        </div>
+          </div>
+
+          {/* Mobile card view — one card per task */}
+          <div className="md:hidden space-y-3">
+            {tasks.map((task) => {
+              const { hasTeamMemberMapping, hasDynamicFilter, mappedCount, unassignedCount, displayClientCount, completionRate } = getTaskDisplay(task);
+
+              return (
+                <div key={task.id} className="bg-white dark:bg-gray-dark rounded-lg shadow p-4 space-y-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white break-words min-w-0">
+                      {task.title}
+                    </h3>
+                    <span className="shrink-0 px-2 py-0.5 rounded-full text-xs font-semibold bg-blue-600 text-white">
+                      {task.recurrencePattern}
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {hasTeamMemberMapping && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800" title="Assigned via Team Member Mapping">
+                        <UserGroupIcon className="w-3 h-3" />
+                        Mapped
+                      </span>
+                    )}
+                    {unassignedCount > 0 && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800" title={`${unassignedCount} clients not assigned to any team member`}>
+                        {unassignedCount} unassigned
+                      </span>
+                    )}
+                    {hasDynamicFilter && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-teal-100 text-teal-800" title="Total clients calculated dynamically from compliance filter">
+                        Dynamic
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    {hasTeamMemberMapping ? (
+                      <>{mappedCount} mapped{unassignedCount > 0 ? ` + ${unassignedCount} unassigned` : ''}</>
+                    ) : (
+                      <>{displayClientCount} {displayClientCount === 1 ? 'client' : 'clients'}</>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 min-w-0 bg-gray-200 rounded-full h-2">
+                      <div className="bg-green-600 h-2 rounded-full" style={{ width: `${completionRate}%` }}></div>
+                    </div>
+                    <span className="text-xs font-semibold text-gray-700 dark:text-gray-300 whitespace-nowrap">{completionRate}%</span>
+                  </div>
+
+                  <button
+                    onClick={() => handleTaskClick(task)}
+                    className="w-full py-2 rounded-lg border border-gray-300 dark:border-gray-600 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                  >
+                    View Details
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </>
       )}
 
