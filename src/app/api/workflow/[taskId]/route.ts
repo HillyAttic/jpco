@@ -1,58 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { FieldValue } from 'firebase-admin/firestore';
 import { recurringTaskAdminService } from '@/services/recurring-task-admin.service';
-import { initializeWorkflowSteps, getWorkflowTemplate } from '@/lib/workflow-templates';
-import { WorkflowStep, WorkflowType } from '@/services/recurring-task.service';
+import { initializeWorkflowSteps } from '@/lib/workflow-templates';
+import { WorkflowType } from '@/services/recurring-task.service';
 import { z } from 'zod';
 import { handleApiError, ErrorResponses } from '@/lib/api-error-handler';
 
-// Validation schema for updating a single workflow step
-const updateStepSchema = z.object({
-  stepId: z.string(),
-  workflowType: z.string(), // Now dynamic: 'tar', 'stat', or custom report type ID
-  completed: z.boolean(),
-  clientId: z.string().optional(), // per-client progress
-  remark: z.string().optional(), // optional remark text
-});
+// Validation schema for toggling workflow step(s) for one client
+const updateStepSchema = z
+  .object({
+    stepId: z.string().optional(), // single step
+    stepIds: z.array(z.string()).optional(), // bulk (mark all complete / untick all)
+    workflowType: z.string().optional(), // kept for callers; step IDs are explicit
+    completed: z.boolean(),
+    clientId: z.string().min(1, 'clientId is required'), // per-client progress
+    remark: z.string().optional(), // optional remark text (single-step only)
+  })
+  .refine((v) => !!v.stepId || (v.stepIds?.length ?? 0) > 0, {
+    message: 'Provide stepId or stepIds',
+    path: ['stepId'],
+  });
 
 // Validation schema for initializing workflow
 const initializeWorkflowSchema = z.object({
   workflowType: z.string(), // Now dynamic
 });
-
-/**
- * Build the persisted version of a workflow step after a completion toggle.
- * Reopened steps must omit cleared metadata rather than sending undefined
- * values, because Firestore rejects undefined properties in update payloads.
- */
-function updateWorkflowStep(
-  step: WorkflowStep,
-  completed: boolean,
-  userId: string,
-  now: Date,
-  remark?: string,
-): WorkflowStep {
-  const updatedStep: WorkflowStep = { ...step, completed };
-
-  if (!completed) {
-    delete updatedStep.completedAt;
-    delete updatedStep.completedBy;
-    delete updatedStep.remark;
-    delete updatedStep.remarkBy;
-    delete updatedStep.remarkAt;
-    return updatedStep;
-  }
-
-  updatedStep.completedAt = now;
-  updatedStep.completedBy = userId;
-
-  if (remark?.trim()) {
-    updatedStep.remark = remark.trim();
-    updatedStep.remarkBy = userId;
-    updatedStep.remarkAt = now;
-  }
-
-  return updatedStep;
-}
 
 /**
  * GET /api/workflow/[taskId]
@@ -112,7 +84,7 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 
 /**
  * PUT /api/workflow/[taskId]
- * Update a single workflow step completion status for a specific client
+ * Mark one or more workflow steps complete/incomplete for ONE client.
  * Requires: Employee role or higher
  */
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ taskId: string }> }) {
@@ -140,107 +112,55 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       );
     }
 
-    const { stepId, workflowType, completed, clientId } = validationResult.data;
+    const { stepId, stepIds, completed, clientId } = validationResult.data;
+    const stepIdsToWrite = stepIds?.length ? stepIds : [stepId!];
+    const remark: string | undefined = typeof body.remark === 'string' ? body.remark : undefined;
+
+    // clientId and stepId become Firestore field-path segments — a dot would
+    // silently build a nested map instead of the intended field.
+    if (clientId.includes('.') || stepIdsToWrite.some((id) => id.includes('.'))) {
+      return ErrorResponses.badRequest('clientId and stepId must not contain "."');
+    }
 
     const task = await recurringTaskAdminService.getById(taskId);
     if (!task) {
       return ErrorResponses.notFound('Recurring task');
     }
 
-    // Resolve step definitions: check reportTypes first (case-insensitive), then legacy fields
-    let steps: WorkflowStep[] = [];
-    const lowerWorkflowType = workflowType.toLowerCase();
-
-    if (task.reportTypes && task.reportTypes.length > 0) {
-      const reportType = task.reportTypes.find(rt => rt.id.toLowerCase() === lowerWorkflowType);
-      if (reportType) {
-        steps = reportType.steps || [];
-      }
-    }
-    // Fallback to legacy fields (case-insensitive)
-    if (steps.length === 0) {
-      const legacyField = lowerWorkflowType === 'tar' ? 'tarSteps' : lowerWorkflowType === 'stat' ? 'statSteps' : null;
-      if (legacyField) {
-        steps = (task as any)[legacyField] || [];
-      }
-    }
-
     const nowIso = new Date().toISOString();
-    const userUid = authResult.user!.uid;
-    const remark: string | undefined = typeof body.remark === 'string' ? body.remark : undefined;
+    const userUid = authResult.user.uid;
+    const withRemark = stepIdsToWrite.length === 1 && !!remark?.trim();
 
-    // Build updated clientProgress
-    const clientProgress = { ...(task.clientProgress || {}) };
-
-    if (clientId) {
-      // ── Per-client update ────────────────────────────────────────────
-      // ALL per-client state (completed step IDs + per-step metadata) lives
-      // inside clientProgress[clientId]. The shared step-definition array is
-      // NEVER mutated, so one client's toggle cannot leak to any other client.
-      const existing = clientProgress[clientId]
-        ? { ...clientProgress[clientId] }
-        : { completedStepIds: [] as string[] };
-
-      const completedStepIds = new Set<string>(existing.completedStepIds || []);
-      const stepMeta: Record<string, any> = { ...(existing.stepMeta || {}) };
-
-      if (completed) {
-        completedStepIds.add(stepId);
-        stepMeta[stepId] = {
-          completedAt: nowIso,
-          completedBy: userUid,
-          ...(remark?.trim()
-            ? { remark: remark.trim(), remarkBy: userUid, remarkAt: nowIso }
-            : {}),
-        };
-      } else {
-        completedStepIds.delete(stepId);
-        delete stepMeta[stepId];
-      }
-
-      clientProgress[clientId] = {
-        completedStepIds: Array.from(completedStepIds),
-        completedAt: nowIso,
-        completedBy: userUid,
-        stepMeta,
-      };
-
-      await recurringTaskAdminService.update(taskId, { clientProgress } as any);
-
-      return NextResponse.json({ success: true, clientProgress }, { status: 200 });
-    } else {
-      // ── Legacy task-level update (no clientId) ───────────────────────
-      // Only used for genuinely legacy tasks that never adopted per-client
-      // tracking. Update the shared step objects for backward compatibility.
-      const now = new Date();
-      const updatedSteps = steps.map((step: WorkflowStep) => {
-        if (step.id === stepId) {
-          return updateWorkflowStep(step, completed, userUid, now, remark);
-        }
-        return step;
-      });
-
-      const updatePayload: Record<string, any> = {};
-
-      if (task.reportTypes && task.reportTypes.length > 0) {
-        const updatedReportTypes = task.reportTypes.map(rt => {
-          if (rt.id.toLowerCase() === lowerWorkflowType) {
-            return { ...rt, steps: updatedSteps };
+    // ALL per-client state lives in clientProgress[clientId]. Write it through
+    // dotted sub-paths instead of rewriting the whole clientProgress map: a
+    // read-modify-write of the map loses steps whenever two writes overlap
+    // (mark-all fires one request per step, and other clients write too).
+    const update: Record<string, any> = {
+      [`clientProgress.${clientId}.completedStepIds`]: completed
+        ? FieldValue.arrayUnion(...stepIdsToWrite)
+        : FieldValue.arrayRemove(...stepIdsToWrite),
+      [`clientProgress.${clientId}.completedAt`]: nowIso,
+      [`clientProgress.${clientId}.completedBy`]: userUid,
+    };
+    stepIdsToWrite.forEach((id) => {
+      update[`clientProgress.${clientId}.stepMeta.${id}`] = completed
+        ? {
+            completedAt: nowIso,
+            completedBy: userUid,
+            ...(withRemark ? { remark: remark!.trim(), remarkBy: userUid, remarkAt: nowIso } : {}),
           }
-          return rt;
-        });
-        updatePayload.reportTypes = updatedReportTypes;
-      } else {
-        const legacyField = lowerWorkflowType === 'tar' ? 'tarSteps' : lowerWorkflowType === 'stat' ? 'statSteps' : null;
-        if (legacyField) {
-          updatePayload[legacyField] = updatedSteps;
-        }
-      }
+        : FieldValue.delete();
+    });
 
-      await recurringTaskAdminService.update(taskId, updatePayload as any);
+    const { adminDb } = await import('@/lib/firebase-admin');
+    await adminDb.collection('recurring-tasks').doc(taskId).update(update);
 
-      return NextResponse.json({ success: true, steps: updatedSteps }, { status: 200 });
-    }
+    // Return the persisted state so callers never have to guess what landed.
+    const updated = await recurringTaskAdminService.getById(taskId);
+    return NextResponse.json(
+      { success: true, clientProgress: updated?.clientProgress || {} },
+      { status: 200 }
+    );
   } catch (error) {
     return handleApiError(error);
   }

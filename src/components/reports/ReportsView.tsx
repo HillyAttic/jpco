@@ -146,9 +146,9 @@ export function ReportsView() {
     loadData();
   }, []);
 
-  const loadData = async () => {
+  const loadData = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) setLoading(true);
       console.log('Reports: Loading data...');
 
       // Fetch tasks from API instead of direct Firebase access
@@ -203,6 +203,8 @@ export function ReportsView() {
       });
 
       setTasks(initializedTasks);
+      // Keep an open detail modal in sync with refreshed data
+      setSelectedTask(prev => (prev?.id ? initializedTasks.find((t: RecurringTask) => t.id === prev.id) ?? prev : prev));
       setClients(clientsData);
 
       console.log('Reports: Loaded tasks and clients', {
@@ -287,9 +289,18 @@ export function ReportsView() {
     } catch (error) {
       console.error('Error loading reports data:', error);
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
+
+  // Auto-refresh so the board and any open detail modal stay live.
+  // ponytail: 30s polling; swap for Firestore onSnapshot/SSE if latency matters.
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (!document.hidden) loadData(true);
+    }, 30000);
+    return () => clearInterval(id);
+  }, []);
 
   // Fetch unassigned client IDs for a task with clientFilter
   const fetchUnassignedClients = async (taskId: string, clientFilter: string) => {
@@ -477,7 +488,7 @@ export function ReportsView() {
             </div>
           </div>
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             disabled={loading}
             className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >

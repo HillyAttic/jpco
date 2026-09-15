@@ -485,167 +485,63 @@ export default function RecurringTasksPage() {
   };
 
   /**
-   * Handle step toggle — per-client progress update with optimistic UI
+   * Persist a workflow change and adopt the progress the server actually stored.
+   * Nothing is applied locally first: a rejected write must not leave the drawer
+   * and grid showing ticks that were never saved.
+   */
+  const persistWorkflow = async (body: Record<string, unknown>) => {
+    if (!selectedWorkflowTask?.id) return;
+    const data = await apiPut(`/api/workflow/${selectedWorkflowTask.id}`, body);
+    if (data?.clientProgress) {
+      syncTaskUpdate({ ...selectedWorkflowTask, clientProgress: data.clientProgress });
+    }
+    await refreshTasks();
+  };
+
+  /**
+   * Handle step toggle — per-client progress update
    */
   const handleStepToggle = async (stepId: string, completed: boolean, clientId?: string, remark?: string) => {
-    if (!selectedWorkflowTask?.id) return;
-
-    const key = clientId || '';
-    const nowIso = new Date().toISOString();
-    const uid = user?.uid;
-
-    const prevClientProgress = selectedWorkflowTask.clientProgress || {};
-    const updatedClientProgress = { ...prevClientProgress };
-    const existing = updatedClientProgress[key]
-      ? { ...updatedClientProgress[key] }
-      : { completedStepIds: [] as string[] };
-
-    const completedStepIds = new Set(existing.completedStepIds || []);
-    const stepMeta = { ...(existing.stepMeta || {}) };
-
-    if (completed) {
-      completedStepIds.add(stepId);
-      stepMeta[stepId] = {
-        completedAt: nowIso,
-        completedBy: uid,
-        ...(remark && remark.trim()
-          ? { remark: remark.trim(), remarkBy: uid, remarkAt: nowIso }
-          : {}),
-      };
-    } else {
-      completedStepIds.delete(stepId);
-      delete stepMeta[stepId];
-    }
-
-    updatedClientProgress[key] = {
-      completedStepIds: Array.from(completedStepIds),
-      completedAt: nowIso,
-      completedBy: uid,
-      stepMeta,
-    };
-
-    const updatedTask = { ...selectedWorkflowTask, clientProgress: updatedClientProgress };
-
-    // Update all local state sources optimistically
-    syncTaskUpdate(updatedTask);
-
-    // Persist to API
     try {
-      await apiPut(`/api/workflow/${selectedWorkflowTask.id}`, {
+      await persistWorkflow({
         stepId,
         workflowType: selectedWorkflowType,
         completed,
         clientId: clientId || undefined,
         remark,
       });
-      // Refresh the hook's tasks to keep them in sync for when the modal is reopened
-      await refreshTasks();
     } catch (error) {
       console.error('Failed to update workflow step:', error);
-      // Revert on error
-      syncTaskUpdate({ ...selectedWorkflowTask, clientProgress: prevClientProgress });
+      throw error; // the drawer surfaces it as a toast
     }
   };
 
   /**
-   * Handle mark all steps complete — per-client
+   * Handle mark all steps complete — per-client, in one write
    */
   const handleMarkAllComplete = async (clientId?: string) => {
     if (!selectedWorkflowTask?.id) return;
-
-    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
-    const allStepIds = allSteps.map((s) => s.id);
-    const key = clientId || '';
-    const nowIso = new Date().toISOString();
-    const uid = user?.uid;
-
-    const prevClientProgress = selectedWorkflowTask.clientProgress || {};
-    const updatedClientProgress = { ...prevClientProgress };
-    const stepMeta: Record<string, any> = {};
-    allStepIds.forEach((sid) => {
-      stepMeta[sid] = { completedAt: nowIso, completedBy: uid };
+    const stepIds = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType).map((s) => s.id);
+    await persistWorkflow({
+      stepIds,
+      workflowType: selectedWorkflowType,
+      completed: true,
+      clientId: clientId || undefined,
     });
-    updatedClientProgress[key] = {
-      completedStepIds: [...allStepIds],
-      completedAt: nowIso,
-      completedBy: uid,
-      stepMeta,
-    };
-
-    const updatedTask = { ...selectedWorkflowTask, clientProgress: updatedClientProgress };
-
-    // Update all local state sources optimistically
-    syncTaskUpdate(updatedTask);
-
-    // Persist each step for this client
-    try {
-      for (const stepId of allStepIds) {
-        await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stepId,
-            workflowType: selectedWorkflowType,
-            completed: true,
-            clientId: clientId || undefined,
-          }),
-        });
-      }
-      await refreshTasks();
-    } catch (error) {
-      console.error('Failed to mark all steps complete:', error);
-      syncTaskUpdate({ ...selectedWorkflowTask, clientProgress: prevClientProgress });
-    }
   };
 
   /**
-   * Handle mark all steps incomplete — per-client (untick all)
+   * Handle mark all steps incomplete — per-client (untick all), in one write
    */
   const handleMarkAllIncomplete = async (clientId?: string) => {
     if (!selectedWorkflowTask?.id) return;
-
-    const allSteps = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType);
-    const allStepIds = allSteps.map((s) => s.id);
-    const key = clientId || '';
-    const nowIso = new Date().toISOString();
-    const uid = user?.uid;
-
-    const prevClientProgress = selectedWorkflowTask.clientProgress || {};
-    const updatedClientProgress = { ...prevClientProgress };
-
-    // Clear completedStepIds but keep stepMeta for audit trail
-    const existingMeta = updatedClientProgress[key]?.stepMeta || {};
-    updatedClientProgress[key] = {
-      completedStepIds: [],
-      completedAt: nowIso,
-      completedBy: uid,
-      stepMeta: existingMeta,
-    };
-
-    const updatedTask = { ...selectedWorkflowTask, clientProgress: updatedClientProgress };
-
-    // Update all local state sources optimistically
-    syncTaskUpdate(updatedTask);
-
-    // Persist each step for this client
-    try {
-      for (const stepId of allStepIds) {
-        await authenticatedFetch(`/api/workflow/${selectedWorkflowTask.id}`, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stepId,
-            workflowType: selectedWorkflowType,
-            completed: false,
-            clientId: clientId || undefined,
-          }),
-        });
-      }
-      await refreshTasks();
-    } catch (error) {
-      console.error('Failed to mark all steps incomplete:', error);
-      syncTaskUpdate({ ...selectedWorkflowTask, clientProgress: prevClientProgress });
-    }
+    const stepIds = getStepsForReportType(selectedWorkflowTask, selectedWorkflowType).map((s) => s.id);
+    await persistWorkflow({
+      stepIds,
+      workflowType: selectedWorkflowType,
+      completed: false,
+      clientId: clientId || undefined,
+    });
   };
 
   // Common action button props for list and card views
