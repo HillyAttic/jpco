@@ -445,7 +445,7 @@ export function WorkflowTaskDetailModal({
           </div>
 
           {/* ── Stats cards ──────────────────────────────────── */}
-          <div className="grid grid-cols-7 gap-2 mt-4">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mt-4 sm:grid-cols-7">
             <StatCard label="Total" value={stats.totalClients} color="text-gray-900 dark:text-white" />
             <StatCard label="Assigned" value={stats.assigned} color="text-purple-600" />
             <StatCard label="Unassigned" value={stats.unassigned} color="text-orange-600" />
@@ -467,11 +467,11 @@ export function WorkflowTaskDetailModal({
               />
             </div>
             <div className="relative">
-              <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
-              <select
+              <CalendarDays className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none z-10" />
+              <Select
                 value={selectedFY}
                 onChange={(e) => setSelectedFY(e.target.value)}
-                className="w-full sm:w-[140px] h-9 pl-8 pr-3 rounded-md border border-input bg-background text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                className="w-full sm:w-[150px] h-9 pl-8 text-sm"
               >
                 <option value="all">All Years</option>
                 {financialYears.map((fy) => (
@@ -479,7 +479,7 @@ export function WorkflowTaskDetailModal({
                     FY {fy}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <Select
               value={statusFilter}
@@ -793,7 +793,7 @@ function StatCard({
           : 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40'
       }`}
     >
-      <p className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide truncate">
+      <p className="text-[9px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide leading-tight">
         {label}
       </p>
       <p className={`text-base font-bold mt-0.5 ${color}`}>
