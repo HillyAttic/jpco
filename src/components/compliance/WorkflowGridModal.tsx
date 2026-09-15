@@ -136,30 +136,30 @@ export function WorkflowGridModal({
       <div className="absolute inset-0 bg-black/50 transition-opacity pointer-events-none" />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-[95vw] max-w-[90rem] max-h-[88vh] flex flex-col overflow-hidden overscroll-contain">
+      <div className="relative bg-white dark:bg-gray-dark rounded-2xl shadow-2xl w-[95vw] max-w-[90rem] max-h-[88vh] flex flex-col overflow-hidden overscroll-contain">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between flex-shrink-0">
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between flex-shrink-0">
           <div>
-            <h2 className="text-xl font-bold text-gray-900">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               {task.title} — Workflows
             </h2>
-            <p className="text-sm text-gray-500 mt-0.5">
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
               {task.recurrencePattern && `${task.recurrencePattern.charAt(0).toUpperCase() + task.recurrencePattern.slice(1)} · `}
               {typeIds.length > 0 ? `${typeIds.length} workflow type${typeIds.length > 1 ? 's' : ''}` : 'No workflows'}
             </p>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
           >
-            <X className="h-5 w-5 text-gray-500" />
+            <X className="h-5 w-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
 
         {/* Search bar */}
-        <div className="px-6 py-3 border-b border-gray-200 flex-shrink-0">
+        <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 dark:text-gray-500" />
             <input
               type="text"
               placeholder="Search clients..."
@@ -194,7 +194,7 @@ export function WorkflowGridModal({
               <div key={typeId}>
                 <button
                   onClick={() => toggleExpanded(typeId)}
-                  className="flex items-center gap-2 text-lg font-bold text-gray-900 mb-4 hover:text-blue-600 transition-colors"
+                  className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-white mb-4 hover:text-blue-600 transition-colors"
                 >
                   {isExpanded ? (
                     <ChevronDown className="h-5 w-5" />
@@ -205,7 +205,7 @@ export function WorkflowGridModal({
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
                     {badgeLabel}
                   </span>
-                  <span className="text-sm font-normal text-gray-500">
+                  <span className="text-sm font-normal text-gray-500 dark:text-gray-400">
                     ({entries.length}{searchQuery.trim() && entries.length !== effectiveEntriesByType[typeId]?.entries.length ? ` / ${effectiveEntriesByType[typeId]?.entries.length}` : ''})
                   </span>
                 </button>
@@ -248,12 +248,12 @@ export function WorkflowGridModal({
             <div className="text-center py-16">
               {searchQuery.trim() ? (
                 <>
-                  <Search className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                  <p className="text-gray-500 font-medium">No clients match "{searchQuery}"</p>
-                  <p className="text-sm text-gray-400 mt-1">Try a different search term</p>
+                  <Search className="h-10 w-10 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                  <p className="text-gray-500 dark:text-gray-400 font-medium">No clients match "{searchQuery}"</p>
+                  <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">Try a different search term</p>
                 </>
               ) : (
-                <p className="text-gray-500">No workflow types enabled for this task.</p>
+                <p className="text-gray-500 dark:text-gray-400">No workflow types enabled for this task.</p>
               )}
             </div>
           )}

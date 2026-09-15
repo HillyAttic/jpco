@@ -78,7 +78,7 @@ export function WorkflowCard({
 
   return (
     <Card
-      className="cursor-pointer transition-all hover:shadow-lg hover:border-blue-300 hover:bg-blue-50/30 bg-white overflow-hidden w-full"
+      className="cursor-pointer transition-all hover:shadow-lg hover:border-blue-300 hover:bg-blue-50/30 dark:hover:bg-blue-900 dark:hover:border-blue-500 overflow-hidden w-full"
       onClick={onClick}
     >
       <CardHeader className="p-3 pb-1">
@@ -86,18 +86,18 @@ export function WorkflowCard({
           <div className="flex-1 min-w-0">
             {clientName && clientName !== taskTitle ? (
               <>
-                <h3 className="font-bold text-sm text-gray-900 truncate">{clientName}</h3>
-                <p className="text-[10px] text-gray-500 mt-0.5 truncate">{taskTitle}</p>
+                <h3 className="font-bold text-sm text-gray-900 dark:text-white truncate">{clientName}</h3>
+                <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">{taskTitle}</p>
               </>
             ) : (
-              <h3 className="font-bold text-sm text-gray-900 truncate">{taskTitle}</h3>
+              <h3 className="font-bold text-sm text-gray-900 dark:text-white truncate">{taskTitle}</h3>
             )}
-            <p className="text-[10px] text-gray-500 mt-0.5 truncate">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5 truncate">
               {assignee ? (
                 `Assigned to ${assignee}`
               ) : (
                 <span
-                  className="text-blue-600 hover:underline cursor-pointer"
+                  className="text-blue-600 dark:text-blue-400 hover:underline cursor-pointer"
                   onClick={(e) => { e.stopPropagation(); onAssign?.(); }}
                 >
                   Unassigned
@@ -125,17 +125,17 @@ export function WorkflowCard({
               indicatorClassName={progress.status === 'completed' ? 'bg-green-500' : 'bg-gradient-to-r from-blue-500 to-blue-700'}
             />
           </div>
-          <span className="text-[10px] text-gray-500 font-medium whitespace-nowrap shrink-0">
+          <span className="text-[10px] text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap shrink-0">
             {progress.completed}/{progress.total} · {progress.percentage}%
           </span>
         </div>
       </CardContent>
 
       <CardFooter className="p-3 pt-1 flex items-center justify-between">
-        <span className="text-xs text-gray-500 truncate min-w-0">
+        <span className="text-xs text-gray-500 dark:text-gray-400 truncate min-w-0">
           {nextStepText || 'All steps complete'}
         </span>
-        <Button variant="ghost" className="text-blue-600 hover:text-blue-700 font-semibold text-xs gap-1 px-2 min-h-[44px] md:h-7 shrink-0">
+        <Button variant="ghost" className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 dark:hover:bg-blue-900 font-semibold text-xs gap-1 px-2 min-h-[44px] md:h-7 shrink-0">
           Update
           <ArrowRight className="h-3 w-3" />
         </Button>

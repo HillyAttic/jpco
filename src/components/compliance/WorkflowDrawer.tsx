@@ -211,9 +211,9 @@ export function WorkflowDrawer({
       <div className="absolute inset-0 bg-black/50 transition-opacity pointer-events-none" />
 
       {/* Modal Content */}
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[75vh] flex flex-col overflow-hidden overscroll-contain my-auto">
+      <div className="relative bg-white dark:bg-gray-dark rounded-2xl shadow-2xl w-full max-w-lg max-h-[75vh] flex flex-col overflow-hidden overscroll-contain my-auto">
         {/* Header */}
-        <div className="px-5 pt-4 pb-3 border-b bg-white flex-shrink-0">
+        <div className="px-5 pt-4 pb-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-dark flex-shrink-0">
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1.5">
@@ -232,18 +232,18 @@ export function WorkflowDrawer({
               </div>
               {clientName ? (
                 <>
-                  <h2 className="text-lg font-bold text-gray-900 leading-tight">{clientName}</h2>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{clientName}</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {taskTitle}
-                    {assignee ? <> · Assigned to <span className="font-semibold">{assignee}</span></> : <> · <span className="text-gray-400">Unassigned</span></>}
+                    {assignee ? <> · Assigned to <span className="font-semibold">{assignee}</span></> : <> · <span className="text-gray-400 dark:text-gray-500">Unassigned</span></>}
                   </p>
                 </>
               ) : (
                 <>
-                  <h2 className="text-lg font-bold text-gray-900 leading-tight">{taskTitle}</h2>
-                  <p className="text-xs text-gray-500 mt-1">
+                  <h2 className="text-lg font-bold text-gray-900 dark:text-white leading-tight">{taskTitle}</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                     {'fullName' in template ? template.fullName : template.description}
-                    {assignee ? <> · Assigned to <span className="font-semibold">{assignee}</span></> : <> · <span className="text-gray-400">Unassigned</span></>}
+                    {assignee ? <> · Assigned to <span className="font-semibold">{assignee}</span></> : <> · <span className="text-gray-400 dark:text-gray-500">Unassigned</span></>}
                   </p>
                 </>
               )}
@@ -265,14 +265,14 @@ export function WorkflowDrawer({
               className="flex-1 h-2"
               indicatorClassName={progress.status === 'completed' ? 'bg-green-500' : 'bg-gradient-to-r from-blue-500 to-blue-700'}
             />
-            <span className="text-xs text-gray-500 font-medium whitespace-nowrap">
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap">
               {progress.completed} of {progress.total} · {progress.percentage}%
             </span>
           </div>
         </div>
 
         {/* Steps list */}
-        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 bg-gray-50">
+        <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 bg-gray-50 dark:bg-dark">
           {virtualSteps.map((step, index) => {
             const info = getStepCompletionInfo(step.id);
             const hasRemark = !!info.remark;
@@ -283,8 +283,8 @@ export function WorkflowDrawer({
                 key={step.id}
                 className={`rounded-xl border transition-all ${
                   step.completed
-                    ? 'bg-green-50 border-green-200'
-                    : 'bg-white border-gray-200 hover:border-blue-200'
+                    ? 'bg-green-50 border-green-200 dark:bg-green-900 dark:border-green-800'
+                    : 'bg-white border-gray-200 hover:border-blue-200 dark:bg-gray-dark dark:border-gray-700 dark:hover:border-blue-500'
                 }`}
               >
                 {/* Step header row */}
@@ -293,7 +293,7 @@ export function WorkflowDrawer({
                     className={`w-7 h-7 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0 ${
                       step.completed
                         ? 'bg-green-500 text-white'
-                        : 'bg-gray-100 text-gray-600'
+                        : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
                     }`}
                   >
                     {step.completed ? (
@@ -305,14 +305,14 @@ export function WorkflowDrawer({
 
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <p className={`font-semibold text-sm truncate ${step.completed ? 'text-green-800' : 'text-gray-900'}`}>
+                      <p className={`font-semibold text-sm truncate ${step.completed ? 'text-green-800 dark:text-green-400' : 'text-gray-900 dark:text-white'}`}>
                         {step.name}
                       </p>
                       {hasRemark && (
                         <MessageSquare className="h-3 w-3 text-amber-500 flex-shrink-0" />
                       )}
                     </div>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                       {step.completed
                         ? `Completed ${formatDate(info.completedAt)}${info.completedBy ? ` · by ${resolveUserName(info.completedBy)}` : ''}`
                         : 'Not started'}
@@ -327,8 +327,8 @@ export function WorkflowDrawer({
                         onClick={() => setExpandedRemarkStep(isRemarkExpanded ? null : step.id)}
                         className={`p-1.5 rounded-lg transition-colors ${
                           isRemarkExpanded || hasRemark
-                            ? 'text-amber-600 bg-amber-50 hover:bg-amber-100'
-                            : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100'
+                            ? 'text-amber-600 bg-amber-50 hover:bg-amber-100 dark:text-amber-400 dark:bg-amber-900'
+                            : 'text-gray-400 hover:text-amber-500 hover:bg-gray-100 dark:hover:bg-gray-700'
                         }`}
                         title={hasRemark ? 'View/edit remark' : 'Add remark'}
                       >
@@ -355,7 +355,7 @@ export function WorkflowDrawer({
                       rows={2}
                     />
                     {hasRemark && info.remarkBy && (
-                      <p className="text-xs text-gray-400 mt-1.5">
+                      <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5">
                         Last remark by {resolveUserName(info.remarkBy)}
                         {info.remarkAt ? ` · ${formatDate(info.remarkAt)}` : ''}
                       </p>
@@ -378,8 +378,8 @@ export function WorkflowDrawer({
           })}
         </div>
 
-        <div className="px-5 py-3 border-t bg-white flex items-center justify-between flex-shrink-0">
-          <p className="text-sm text-gray-500">
+        <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-dark flex items-center justify-between flex-shrink-0">
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             {progress.status === 'completed'
               ? 'Workflow complete'
               : `${progress.total - progress.completed} step${progress.total - progress.completed !== 1 ? 's' : ''} remaining`}
@@ -391,7 +391,7 @@ export function WorkflowDrawer({
                 onClick={handleMarkAllIncomplete}
                 disabled={loading === 'all'}
                 size="sm"
-                className="border-red-200 text-red-700 hover:bg-red-50"
+                className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-900/30"
               >
                 {loading === 'all' ? 'Reopening...' : 'Untick all'}
               </Button>
@@ -402,7 +402,7 @@ export function WorkflowDrawer({
                 onClick={handleMarkAllComplete}
                 disabled={loading === 'all'}
                 size="sm"
-                className="border-gray-300 text-gray-700 hover:bg-gray-50"
+                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
               >
                 {loading === 'all' ? 'Completing...' : 'Mark all complete'}
               </Button>
