@@ -405,7 +405,7 @@ export function WorkflowTaskDetailModal({
       <div className={`relative z-10 ${isFullscreen ? 'w-full h-full' : 'w-full h-full sm:h-auto sm:max-h-[92vh] sm:max-w-[95vw]'} flex flex-col bg-white dark:bg-gray-900 sm:rounded-xl shadow-2xl overflow-hidden border border-gray-200 dark:border-gray-700`}>
 
         {/* ── Header ─────────────────────────────────────────── */}
-        <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-5 sm:px-6 py-4 bg-white dark:bg-gray-900">
+        <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 bg-white dark:bg-gray-900">
           {/* Title row */}
           <div className="flex items-center justify-between gap-4">
             <div className="min-w-0 flex-1">
@@ -445,7 +445,7 @@ export function WorkflowTaskDetailModal({
           </div>
 
           {/* ── Stats cards ──────────────────────────────────── */}
-          <div className="grid grid-cols-4 gap-1.5 sm:gap-2 mt-4 sm:grid-cols-7">
+          <div className="grid grid-cols-4 gap-1.5 mt-3 sm:grid-cols-7 sm:gap-2 sm:mt-4">
             <StatCard label="Total" value={stats.totalClients} color="text-gray-900 dark:text-white" />
             <StatCard label="Assigned" value={stats.assigned} color="text-purple-600" />
             <StatCard label="Unassigned" value={stats.unassigned} color="text-orange-600" />
@@ -456,8 +456,8 @@ export function WorkflowTaskDetailModal({
           </div>
 
           {/* ── Filters ──────────────────────────────────────── */}
-          <div className="flex flex-col sm:flex-row gap-2.5 mt-4">
-            <div className="relative flex-1">
+          <div className="grid grid-cols-2 gap-2 mt-3 sm:flex sm:flex-row sm:gap-2.5 sm:mt-4">
+            <div className="relative col-span-2 sm:flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
                 placeholder="Search client or assignee..."
@@ -787,7 +787,7 @@ function StatCard({
 }) {
   return (
     <div
-      className={`rounded-lg border px-2 py-1.5 transition-colors ${
+      className={`rounded-lg border px-1.5 sm:px-2 py-1.5 transition-colors ${
         highlight
           ? 'border-blue-200 dark:border-blue-800 bg-blue-50/60 dark:bg-blue-900/10'
           : 'border-gray-200 dark:border-gray-700 bg-gray-50/50 dark:bg-gray-800/40'
