@@ -50,20 +50,20 @@ export const STAT_TEMPLATE: WorkflowTemplate = {
   ],
 };
 
-// Get template by type
+// Get template by type (case-insensitive: callers pass 'tar'/'TAR'/'stat')
 export function getWorkflowTemplate(type: WorkflowType): WorkflowTemplate {
-  return type === 'TAR' ? TAR_TEMPLATE : STAT_TEMPLATE;
+  return String(type).toUpperCase() === 'TAR' ? TAR_TEMPLATE : STAT_TEMPLATE;
 }
 
-// Initialize workflow steps from template
+// Initialize workflow steps from template.
+// Note: completion fields are OMITTED, not set to undefined — Firestore rejects
+// undefined values, which used to make POST /api/workflow/[taskId] fail.
 export function initializeWorkflowSteps(type: WorkflowType): WorkflowStep[] {
   const template = getWorkflowTemplate(type);
   return template.steps.map((step, index) => ({
     id: `${type.toLowerCase()}-step-${index + 1}`,
     ...step,
     completed: false,
-    completedAt: undefined,
-    completedBy: undefined,
   }));
 }
 

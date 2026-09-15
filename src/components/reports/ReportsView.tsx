@@ -296,10 +296,16 @@ export function ReportsView() {
   // Auto-refresh so the board and any open detail modal stay live.
   // ponytail: 30s polling; swap for Firestore onSnapshot/SSE if latency matters.
   useEffect(() => {
-    const id = setInterval(() => {
+    const refresh = () => {
       if (!document.hidden) loadData(true);
-    }, 30000);
-    return () => clearInterval(id);
+    };
+    const id = setInterval(refresh, 30000);
+    // Coming back to this tab means the user just came from marking something.
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, []);
 
   // Fetch unassigned client IDs for a task with clientFilter

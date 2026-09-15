@@ -203,10 +203,12 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return ErrorResponses.notFound('Recurring task');
     }
 
-    // Initialize workflow steps from template
-    const steps = initializeWorkflowSteps(workflowType);
-    const stepsField = workflowType === 'TAR' ? 'tarSteps' : 'statSteps';
-    const enabledField = workflowType === 'TAR' ? 'tarEnabled' : 'statEnabled';
+    // Initialize workflow steps from template (case-insensitive: callers send
+    // 'tar'/'TAR'/'stat' — a case-sensitive check used to write statSteps for 'tar')
+    const isTar = workflowType.toUpperCase() === 'TAR';
+    const steps = initializeWorkflowSteps(isTar ? 'TAR' : 'STAT');
+    const stepsField = isTar ? 'tarSteps' : 'statSteps';
+    const enabledField = isTar ? 'tarEnabled' : 'statEnabled';
 
     await recurringTaskAdminService.update(taskId, {
       [stepsField]: steps,
