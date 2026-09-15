@@ -69,7 +69,7 @@ async function main() {
       };
       STEPS.forEach(id => { update[`clientProgress.${clientId}.stepMeta.${id}`] = FieldValue.delete(); });
       await ref.update(update);
-      const p: any = (await ref.get()).data().clientProgress[clientId];
+      const p: any = (await ref.get()).data()!.clientProgress[clientId];
       const ok = (p.completedStepIds || []).length === 0 && Object.keys(p.stepMeta || {}).length === 0;
       console.log(`  untick all (${clientId}${clientId === 'client-B' ? ', no prior entry' : ''}): ${ok ? 'ok' : `BAD ${JSON.stringify(p)}`}`);
       if (!ok) failures.push(`untick all left state for ${clientId}`);
