@@ -227,24 +227,34 @@ const nextConfig = {
       },
       // Static assets - cache with revalidation
       // Changed from immutable to allow updates when environment variables change
-      {
-        source: '/_next/static/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, stale-while-revalidate=86400',
-          },
-        ],
-      },
-      {
-        source: '/images/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
+      //
+      // PRODUCTION ONLY. Prod chunk names are content-hashed, so a changed file
+      // gets a new URL and a long cache is safe. In dev Turbopack names chunks
+      // by file *path* (src_components_04a98f89._.js) — that name survives an
+      // edit, so caching it for a year pins the browser to stale code and your
+      // changes appear not to apply.
+      ...(process.env.NODE_ENV === 'production'
+        ? [
+            {
+              source: '/_next/static/:path*',
+              headers: [
+                {
+                  key: 'Cache-Control',
+                  value: 'public, max-age=31536000, stale-while-revalidate=86400',
+                },
+              ],
+            },
+            {
+              source: '/images/:path*',
+              headers: [
+                {
+                  key: 'Cache-Control',
+                  value: 'public, max-age=31536000, immutable',
+                },
+              ],
+            },
+          ]
+        : []),
       // Performance and security headers for all pages
       {
         source: '/:path*',

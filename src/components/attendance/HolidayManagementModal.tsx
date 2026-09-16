@@ -15,6 +15,8 @@ interface Holiday {
   createdAt: Date;
   scope?: 'global' | 'manager';
   createdBy?: string;
+  createdByName?: string | null;
+  createdByRole?: string | null;
 }
 
 interface HolidayManagementModalProps {
@@ -24,6 +26,8 @@ interface HolidayManagementModalProps {
   isManager?: boolean;
   isAdmin?: boolean;
 }
+
+const roleLabel = (role: string): string => role.charAt(0).toUpperCase() + role.slice(1);
 
 /** API returns an ISO string; the rest of this component works in YYYY-MM-DD. */
 const toDateKey = (value: string): string => {
@@ -59,6 +63,8 @@ export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, 
           createdAt: new Date(h.createdAt),
           scope: h.scope === 'manager' ? 'manager' : 'global',
           createdBy: h.createdBy || undefined,
+          createdByName: h.createdByName || null,
+          createdByRole: h.createdByRole || null,
         }))
       );
     } catch (error) {
@@ -261,17 +267,23 @@ export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, 
                         <div>
                           <h4 className="font-semibold text-gray-900 dark:text-white">
                             {holiday.name}
-                            {isManager && !isAdmin && (
-                              <span className={`ml-2 text-xs font-normal px-1.5 py-0.5 rounded ${
-                                holiday.scope === 'manager'
-                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
-                                  : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
-                              }`}>
-                                {holiday.scope === 'manager' ? 'Team' : 'Global'}
+                            <span className={`ml-2 text-xs font-normal px-1.5 py-0.5 rounded ${
+                              holiday.scope === 'manager'
+                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300'
+                                : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'
+                            }`}>
+                              {holiday.scope === 'manager' ? 'Team' : 'Global'}
+                            </span>
+                          </h4>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {formatDate(holiday.date)}
+                            {holiday.createdByName && (
+                              <span className="text-xs">
+                                {' · '}Marked by {holiday.createdByName}
+                                {holiday.createdByRole ? ` (${roleLabel(holiday.createdByRole)})` : ''}
                               </span>
                             )}
-                          </h4>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(holiday.date)}</p>
+                          </p>
                           {holiday.description && (
                             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{holiday.description}</p>
                           )}

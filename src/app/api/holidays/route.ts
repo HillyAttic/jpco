@@ -96,7 +96,35 @@ export async function GET(request: NextRequest) {
         };
       });
 
-    return NextResponse.json(holidays);
+    // Who marked each holiday, so the list can credit them. Only the uids that
+    // actually appear, since legacy global holidays carry no createdBy at all.
+    const creatorIds = [...new Set(holidays.map((h) => h.createdBy).filter(Boolean))] as string[];
+    const creators = new Map<string, { name: string; role: string }>();
+    if (creatorIds.length > 0) {
+      const creatorDocs = await Promise.all(
+        creatorIds.map((uid) => adminDb.collection('users').doc(uid).get())
+      );
+      creatorDocs.forEach((doc) => {
+        const u = doc.exists ? doc.data()! : null;
+        if (u) {
+          creators.set(doc.id, {
+            name: u.displayName || u.name || u.email || '',
+            role: u.role || 'employee',
+          });
+        }
+      });
+    }
+
+    return NextResponse.json(
+      holidays.map((h) => {
+        const creator = h.createdBy ? creators.get(h.createdBy) : undefined;
+        return {
+          ...h,
+          createdByName: creator?.name || null,
+          createdByRole: creator?.role || null,
+        };
+      })
+    );
   } catch (error) {
     console.error('Error fetching holidays:', error);
     return handleApiError(error);
@@ -143,7 +171,10 @@ export async function POST(request: NextRequest) {
       name,
       description: (body.description || '').trim(),
       createdAt: Timestamp.now(),
-      ...(role === 'manager' ? { scope: 'manager', createdBy: uid } : {}),
+      // Recorded for everyone so the list can show who marked it. Only the
+      // `scope` field decides reach — an admin's holiday stays company-wide.
+      createdBy: uid,
+      ...(role === 'manager' ? { scope: 'manager' } : {}),
     });
 
     return NextResponse.json({ success: true, id: ref.id }, { status: 201 });
