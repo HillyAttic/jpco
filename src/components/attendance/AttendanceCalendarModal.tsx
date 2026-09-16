@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface AttendanceCalendarModalProps {
   isOpen: boolean;
@@ -45,24 +46,26 @@ export function AttendanceCalendarModal({
 
   const fetchHolidays = async () => {
     try {
-      const snapshot = await getDocs(collection(db, 'holidays'));
+      // The API returns `appliesTo`: 'all' for company-wide holidays, or the
+      // employee ids a team-scoped holiday covers.
+      const res = await authenticatedFetch('/api/holidays');
+      if (!res.ok) return;
+
+      const data: any[] = await res.json();
       const holidayDates = new Set<string>();
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        let dateStr = '';
-        if (data.date && typeof data.date.toDate === 'function') {
-          const d = data.date.toDate();
-          dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        } else if (typeof data.date === 'string') {
-          dateStr = data.date.includes('T')
-            ? (() => { const d = new Date(data.date); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; })()
-            : data.date;
-        } else if (data.date?.seconds) {
-          const d = new Date(data.date.seconds * 1000);
-          dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        }
-        if (dateStr) holidayDates.add(dateStr);
+
+      data.forEach(holiday => {
+        if (!holiday.date) return;
+        // A team-scoped holiday only counts for the employee it covers
+        if (Array.isArray(holiday.appliesTo) && !holiday.appliesTo.includes(employeeId)) return;
+
+        const d = new Date(holiday.date);
+        if (isNaN(d.getTime())) return;
+        holidayDates.add(
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        );
       });
+
       setHolidays(holidayDates);
     } catch (error) {
       console.error('Error fetching holidays:', error);

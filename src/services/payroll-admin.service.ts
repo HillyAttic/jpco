@@ -8,6 +8,7 @@ import { adminDb, adminMessaging } from '@/lib/firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
 import { PayrollSettings, EmployeeSalary, SalaryCalculationResult, AttendanceBreakdown, SalaryBreakup, SalarySlipTemplate, DEFAULT_SALARY_SLIP_TEMPLATE } from '@/types/payroll.types';
 import * as FormulaFunctions from '@/lib/formula-functions';
+import { getManagerTeams, holidayAppliesTo } from '@/lib/holiday-scope';
 
 export const payrollAdminService = {
   // ============================================================================
@@ -288,20 +289,41 @@ export const payrollAdminService = {
         .where('startDate', '<=', Timestamp.fromDate(monthEnd))
         .get();
 
-      // Fetch holidays for the month
-      const holidaysSnapshot = await adminDb
-        .collection('holidays')
-        .get();
+      // Fetch holidays and manager teams. A holiday with scope 'manager' covers
+      // only that manager's team; everything else — including records created
+      // before scoping existed, which have no scope — applies to everyone, so
+      // past months recompute exactly as they did before.
+      const [holidaysSnapshot, managerTeams] = await Promise.all([
+        adminDb.collection('holidays').get(),
+        getManagerTeams(),
+      ]);
 
-      // Build set of holiday dates
       const holidayDates = new Set<string>();
+      const scopedHolidayDates = new Map<string, Set<string>>();
+
       holidaysSnapshot.forEach((doc) => {
-        const holidayDate = doc.data().date;
-        if (holidayDate) {
-          const d = holidayDate.toDate ? holidayDate.toDate() : new Date(holidayDate);
-          const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const data = doc.data();
+        const holidayDate = data.date;
+        if (!holidayDate) return;
+
+        const d = holidayDate.toDate ? holidayDate.toDate() : new Date(holidayDate);
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+        const appliesTo = holidayAppliesTo(
+          { scope: data.scope, createdBy: data.createdBy },
+          managerTeams
+        );
+
+        if (appliesTo === 'all') {
           holidayDates.add(dateStr);
+          return;
         }
+
+        appliesTo.forEach((id) => {
+          const dates = scopedHolidayDates.get(id) ?? new Set<string>();
+          dates.add(dateStr);
+          scopedHolidayDates.set(id, dates);
+        });
       });
 
       // Build set of present dates from attendance
@@ -376,7 +398,7 @@ export const payrollAdminService = {
         }
 
         // Holiday — official holidays from collection
-        if (holidayDates.has(dateStr)) {
+        if (holidayDates.has(dateStr) || scopedHolidayDates.get(employeeId)?.has(dateStr)) {
           holiday++;
           continue;
         }

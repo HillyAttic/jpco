@@ -5,8 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Calendar, Plus, Trash2, Loader2 } from 'lucide-react';
-import { collection, addDoc, getDocs, deleteDoc, doc, query, orderBy, where, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+import { authenticatedFetch } from '@/lib/api-client';
 
 interface Holiday {
   id: string;
@@ -24,74 +23,44 @@ interface HolidayManagementModalProps {
   managerId?: string;
   isManager?: boolean;
   isAdmin?: boolean;
-  assignedEmployeeIds?: string[];
 }
 
-export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, isAdmin, assignedEmployeeIds }: HolidayManagementModalProps) {
+/** API returns an ISO string; the rest of this component works in YYYY-MM-DD. */
+const toDateKey = (value: string): string => {
+  const d = new Date(value);
+  if (isNaN(d.getTime())) return '';
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
+
+export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, isAdmin }: HolidayManagementModalProps) {
   const [holidays, setHolidays] = useState<Holiday[]>([]);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  
+
   // Form state
   const [holidayDate, setHolidayDate] = useState('');
   const [holidayName, setHolidayName] = useState('');
   const [holidayDescription, setHolidayDescription] = useState('');
 
-  const parseHolidayDate = (data: any): string => {
-    if (data.date && typeof data.date.toDate === 'function') {
-      const dateObj = data.date.toDate();
-      const year = dateObj.getFullYear();
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const day = String(dateObj.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    } else if (typeof data.date === 'string') {
-      return data.date;
-    } else if (data.date && typeof data.date.seconds !== 'undefined') {
-      const dateObj = new Date(data.date.seconds * 1000);
-      const year = dateObj.getFullYear();
-      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const day = String(dateObj.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    }
-    return '';
-  };
-
-  // Fetch holidays
+  // Fetch holidays — already scoped to this user by the server
   const fetchHolidays = async () => {
     setLoading(true);
     try {
-      // Fetch global holidays (no scope field or scope === 'global')
-      const globalQuery = query(collection(db, 'holidays'), orderBy('date', 'asc'));
-      const globalSnapshot = await getDocs(globalQuery);
+      const res = await authenticatedFetch('/api/holidays');
+      if (!res.ok) throw new Error(`Failed to load holidays (${res.status})`);
 
-      const allDocs = globalSnapshot.docs;
-
-      const holidayList: Holiday[] = allDocs
-        .map(doc => {
-          const data = doc.data();
-          return {
-            id: doc.id,
-            date: parseHolidayDate(data),
-            name: data.name,
-            description: data.description,
-            createdAt: data.createdAt?.toDate() || new Date(),
-            scope: data.scope || 'global',
-            createdBy: data.createdBy || undefined,
-          };
-        })
-        .filter(holiday => {
-          // Admins see all holidays
-          if (isAdmin) return true;
-          // Managers see global holidays + their own manager-scoped holidays
-          if (isManager && !isAdmin) {
-            if (!holiday.scope || holiday.scope === 'global') return true;
-            if (holiday.scope === 'manager' && holiday.createdBy === managerId) return true;
-            return false;
-          }
-          return true;
-        });
-
-      setHolidays(holidayList);
+      const data: any[] = await res.json();
+      setHolidays(
+        data.map((h) => ({
+          id: h.id,
+          date: toDateKey(h.date),
+          name: h.name,
+          description: h.description,
+          createdAt: new Date(h.createdAt),
+          scope: h.scope === 'manager' ? 'manager' : 'global',
+          createdBy: h.createdBy || undefined,
+        }))
+      );
     } catch (error) {
       console.error('Error fetching holidays:', error);
       alert('Failed to load holidays');
@@ -119,33 +88,26 @@ export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, 
 
     setSaving(true);
     try {
-      // Convert string date to Timestamp for proper Firestore querying
-      const dateObj = new Date(holidayDate + 'T00:00:00');
+      // The server decides the scope: a manager's holiday covers only their team
+      const res = await authenticatedFetch('/api/holidays', {
+        method: 'POST',
+        body: JSON.stringify({
+          date: new Date(holidayDate + 'T00:00:00').toISOString(),
+          name: holidayName.trim(),
+          description: holidayDescription.trim(),
+        }),
+      });
 
-      const holidayData: any = {
-        date: Timestamp.fromDate(dateObj),
-        name: holidayName.trim(),
-        description: holidayDescription.trim() || '',
-        createdAt: Timestamp.now(),
-      };
-
-      // Manager-scoped holidays apply only to their assigned employees
-      if (isManager && !isAdmin && managerId) {
-        holidayData.scope = 'manager';
-        holidayData.createdBy = managerId;
-        holidayData.employeeIds = assignedEmployeeIds || [];
-      }
-
-      await addDoc(collection(db, 'holidays'), holidayData);
+      if (!res.ok) throw new Error(`Failed to add holiday (${res.status})`);
 
       // Reset form
       setHolidayDate('');
       setHolidayName('');
       setHolidayDescription('');
-      
+
       // Refresh list
       await fetchHolidays();
-      
+
       alert('Holiday added successfully!');
     } catch (error) {
       console.error('Error adding holiday:', error);
@@ -162,7 +124,13 @@ export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, 
     }
 
     try {
-      await deleteDoc(doc(db, 'holidays', holidayId));
+      const res = await authenticatedFetch(`/api/holidays/${holidayId}`, { method: 'DELETE' });
+      if (!res.ok) {
+        // Surface the server's message — a 404 here is either "no such route"
+        // (HTML body) or "no such holiday" (JSON body)
+        throw new Error(`Failed to delete holiday (${res.status}): ${await res.text()}`);
+      }
+
       await fetchHolidays();
       alert('Holiday deleted successfully!');
     } catch (error) {
@@ -171,14 +139,14 @@ export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, 
     }
   };
 
-  // Format date for display (dateValue is now always a YYYY-MM-DD string)
+  // Format date for display (dateValue is a YYYY-MM-DD string)
   const formatDate = (dateValue: string) => {
     const date = new Date(dateValue + 'T00:00:00');
-    return date.toLocaleDateString('en-US', { 
+    return date.toLocaleDateString('en-US', {
       weekday: 'short',
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
   };
 
@@ -196,7 +164,7 @@ export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, 
           {/* Add Holiday Form */}
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 bg-gray-50 dark:bg-gray-800">
             <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-4">Add New Holiday</h3>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="holidayDate">Date *</Label>
@@ -233,6 +201,12 @@ export function HolidayManagementModal({ isOpen, onClose, managerId, isManager, 
                 />
               </div>
             </div>
+
+            {isManager && !isAdmin && (
+              <p className="mt-3 text-xs text-gray-600 dark:text-gray-400">
+                This holiday will apply to your team only.
+              </p>
+            )}
 
             <Button
               onClick={handleAddHoliday}

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'react-toastify';
 import { useModal } from '@/contexts/modal-context';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import dynamic from 'next/dynamic';
 
 // Lazy load the HolidayManagementModal
@@ -45,6 +46,7 @@ interface EmployeeAttendance {
 }
 
 export default function AttendanceRosterPage() {
+  const { user, isAdmin, isManager } = useEnhancedAuth();
   const [month, setMonth] = useState(new Date().getMonth());
   const [year, setYear] = useState(new Date().getFullYear());
   const [employees, setEmployees] = useState<EmployeeAttendance[]>([]);
@@ -109,21 +111,30 @@ export default function AttendanceRosterPage() {
           ? leaveRaw.data
           : [];
 
-      // Fetch holidays using API (Admin SDK on server-side)
+      // Fetch holidays using API (Admin SDK on server-side).
+      // `appliesTo` is 'all' for company-wide holidays, or the list of employee
+      // ids that a team-scoped holiday covers.
       const holidaysRes = await authenticatedFetch('/api/holidays');
       const holidaysData = holidaysRes.ok ? await holidaysRes.json() : [];
-      
-      const holidays = new Set<string>();
-      
+
+      const globalHolidays = new Set<string>();
+      const scopedHolidays = new Map<string, Set<string>>();
+
       holidaysData.forEach((holiday: any) => {
-        if (holiday.date) {
-          // API returns ISO string, convert to YYYY-MM-DD
-          const holidayDate = new Date(holiday.date);
-          const year = holidayDate.getFullYear();
-          const month = String(holidayDate.getMonth() + 1).padStart(2, '0');
-          const day = String(holidayDate.getDate()).padStart(2, '0');
-          const formattedDate = `${year}-${month}-${day}`;
-          holidays.add(formattedDate);
+        if (!holiday.date) return;
+        // API returns ISO string, convert to YYYY-MM-DD
+        const holidayDate = new Date(holiday.date);
+        const holidayYear = holidayDate.getFullYear();
+        const holidayMonth = String(holidayDate.getMonth() + 1).padStart(2, '0');
+        const holidayDay = String(holidayDate.getDate()).padStart(2, '0');
+        const formattedDate = `${holidayYear}-${holidayMonth}-${holidayDay}`;
+
+        if (Array.isArray(holiday.appliesTo)) {
+          const covered = scopedHolidays.get(formattedDate) ?? new Set<string>();
+          holiday.appliesTo.forEach((id: string) => covered.add(id));
+          scopedHolidays.set(formattedDate, covered);
+        } else {
+          globalHolidays.add(formattedDate);
         }
       });
 
@@ -155,8 +166,9 @@ export default function AttendanceRosterPage() {
           // Check if it's Sunday
           const isSunday = date.getDay() === 0;
 
-          // Check if it's a holiday
-          const isHoliday = holidays.has(dateStr);
+          // Check if it's a holiday — a team-scoped holiday only counts for that team
+          const isHoliday =
+            globalHolidays.has(dateStr) || scopedHolidays.get(dateStr)?.has(emp.id) === true;
           
           // Debugging removed to reduce console noise
 
@@ -623,6 +635,9 @@ export default function AttendanceRosterPage() {
       {/* Holiday Management Modal */}
       <HolidayManagementModal
         isOpen={showHolidayModal}
+        managerId={user?.uid}
+        isManager={isManager}
+        isAdmin={isAdmin}
         onClose={() => {
           setShowHolidayModal(false);
           fetchAttendanceData(); // Refresh data when modal closes to show new holidays

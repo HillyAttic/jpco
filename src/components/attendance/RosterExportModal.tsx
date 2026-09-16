@@ -225,12 +225,21 @@ export function RosterExportModal({
       leaveMap.get(lr.employeeId)!.push(lr);
     });
 
-    // Build holiday set (YYYY-MM-DD format)
+    // Build holiday lookups (YYYY-MM-DD format). `appliesTo` is 'all' for
+    // company-wide holidays, or the employee ids a team-scoped one covers.
     const holidaySet = new Set<string>();
+    const scopedHolidaySet = new Map<string, Set<string>>();
     holidays.forEach((h) => {
       const hDate = new Date(h.date);
       const dateStr = `${hDate.getFullYear()}-${String(hDate.getMonth() + 1).padStart(2, '0')}-${String(hDate.getDate()).padStart(2, '0')}`;
-      holidaySet.add(dateStr);
+
+      if (Array.isArray(h.appliesTo)) {
+        const covered = scopedHolidaySet.get(dateStr) ?? new Set<string>();
+        h.appliesTo.forEach((id: string) => covered.add(id));
+        scopedHolidaySet.set(dateStr, covered);
+      } else {
+        holidaySet.add(dateStr);
+      }
     });
 
     // Build employee attendance data
@@ -257,7 +266,8 @@ export function RosterExportModal({
 
         const dayOfWeek = currentDate.getDay();
         const isSunday = dayOfWeek === 0;
-        const isHoliday = holidaySet.has(dateStr);
+        const isHoliday =
+          holidaySet.has(dateStr) || scopedHolidaySet.get(dateStr)?.has(emp.id) === true;
 
         const attRecord = attMap.get(emp.id)?.get(dateStr);
         const leaves = leaveMap.get(emp.id) ?? [];
