@@ -785,7 +785,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
     const employeesWithExistingSlips = selectedEmployees.filter(emp => emp.slipId);
 
     if (employeesWithoutSlips.length === 0 && employeesWithExistingSlips.length > 0) {
-      toast.warn('All selected employees already have salary slips for this period. Clean up existing slips first.');
+      toast.success(`All ${employeesWithExistingSlips.length} selected employee(s) already have salary slips for this period. Nothing to regenerate.`);
       return;
     }
 
@@ -826,7 +826,7 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         const slips = data.slips;
 
         if (slips.length === 0 && employeeIds.length > 0) {
-          toast.warn('No new slips generated — slips already exist for this period. Clean up existing slips first.');
+          toast.success(`Salary slips for this period already exist and are up to date — no new slips were needed for ${employeeIds.length} employee(s).`);
         } else if (slips.length < employeeIds.length) {
           const skipped = employeeIds.length - slips.length;
           toast.success(`Generated ${slips.length} slip(s). ${skipped} already existed and were skipped.`);
