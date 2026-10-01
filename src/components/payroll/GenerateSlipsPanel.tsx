@@ -489,9 +489,9 @@ export function GenerateSlipsPanel({ settings, onGenerationComplete, onNavigateT
         // slip's stored value when the employee record has none.
         slip.doj = employee.doj || saved.doj;
         slip.pan = employee.pan || saved.pan;
-        // Override stale attendanceBreakdown from saved slip with live calculation
-        // (saved slips may have been generated before Sundays were added to holiday count)
-        slip.attendanceBreakdown = employee.calculation.attendanceBreakdown;
+        // Saved slip's attendanceBreakdown is authoritative — it may carry manual
+        // admin edits (e.g. Unpaid Leave). Do not overwrite it with the live calculation.
+        slip.attendanceBreakdown = saved.attendanceBreakdown ?? employee.calculation.attendanceBreakdown;
       }
     } catch (error) {
       console.error('Failed to check for existing slip:', error);

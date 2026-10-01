@@ -200,32 +200,10 @@ export default function SalarySlipPage() {
     }
   };
 
-  /**
-   * Fetch live attendance data for a slip and merge it in.
-   * This replaces stale snapshotted attendanceBreakdown (e.g. holiday count
-   * may differ if Sundays were added to the holiday logic after the slip was generated).
-   */
-  const enrichWithFreshAttendance = async (slip: EmployeeSalary): Promise<EmployeeSalary> => {
-    try {
-      const res = await authenticatedFetch('/api/payroll/my-calculation', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month: slip.month, year: slip.year }),
-      });
-      if (res.ok) {
-        const calc = await res.json();
-        if (calc?.attendanceBreakdown) {
-          return { ...slip, attendanceBreakdown: calc.attendanceBreakdown };
-        }
-      }
-    } catch (e) {
-      console.warn('[SalarySlipPage] Could not fetch fresh attendance, using saved data:', e);
-    }
-    return slip;
-  };
-
   const handleViewSlip = async (slip: EmployeeSalary) => {
-    const enriched = await enrichWithFreshAttendance(slip);
+    // A saved slip is the issued record — render it exactly as stored, including
+    // any manual attendance edits an admin made. Never recompute it here.
+    const enriched = slip;
 
     if (!enriched.pan || enriched.pan.trim() === '') {
       setPendingAction('view');
@@ -239,7 +217,7 @@ export default function SalarySlipPage() {
   };
 
   const handleDownloadPDF = async (slip: EmployeeSalary) => {
-    const enriched = await enrichWithFreshAttendance(slip);
+    const enriched = slip;
 
     if (!enriched.pan || enriched.pan.trim() === '') {
       setPendingAction('download');
