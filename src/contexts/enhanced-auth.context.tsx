@@ -183,8 +183,10 @@ export const EnhancedAuthProvider: React.FC<EnhancedAuthProviderProps> = ({ chil
         case 'auth/too-many-requests':
           errorMessage = 'Too many failed attempts. Please try again later';
           break;
+        // Firebase returns this for BOTH "no such account" and "wrong password"
+        // (email enumeration protection), so don't claim which one it is.
         case 'auth/invalid-credential':
-          errorMessage = 'User does not exist in the database. Please contact the administrator.';
+          errorMessage = 'Incorrect email or password. If your account was just created, contact the administrator.';
           break;
         default:
           errorMessage = authError.message;

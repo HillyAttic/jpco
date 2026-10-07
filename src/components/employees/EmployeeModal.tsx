@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PhotoIcon } from '@heroicons/react/24/outline';
+import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 
 // Form-specific schema with required fields
 const employeeFormSchema = z.object({
@@ -53,6 +54,8 @@ export function EmployeeModal({
   isLoading = false,
   managers = [],
 }: EmployeeModalProps) {
+  const { isAdmin } = useEnhancedAuth();
+
   const {
     register,
     handleSubmit,
@@ -276,7 +279,8 @@ export function EmployeeModal({
             </div>
           </div>
 
-          {/* Password fields */}
+          {/* Password fields — only admins may set a password on an existing employee */}
+          {(!employee || isAdmin) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
             {employee && (
               <div className="md:col-span-2">
@@ -324,6 +328,7 @@ export function EmployeeModal({
               />
             </div>
           </div>
+          )}
 
           {/* Status */}
           <div>

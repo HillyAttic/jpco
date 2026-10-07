@@ -17,9 +17,10 @@ const publicRoutes = [
   '/auth/reset-password',
 ];
 
+// Signed-in users get bounced away from these to /dashboard. /auth/forgot-password
+// is deliberately NOT here — it now hosts the admin Change Password screen.
 const authRoutes = [
   '/auth/sign-in',
-  '/auth/forgot-password',
 ];
 
 // Routes that should render without header (but keep sidebar)

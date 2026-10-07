@@ -59,6 +59,25 @@ export function ChecklistIcon(props: SVGPropsType) {
   );
 }
 
+export function KeyIcon(props: SVGPropsType) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width={20}
+      height={20}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      {...props}
+    >
+      <path
+        fillRule="evenodd"
+        d="M15.75 1.5a6.75 6.75 0 00-6.63 8.03L1.72 16.94A.75.75 0 001.5 17.47V21a1.5 1.5 0 001.5 1.5h3.75a.75.75 0 00.75-.75V19.5h2.25a.75.75 0 00.75-.75V16.5h2.25a.75.75 0 00.53-.22l1.09-1.09A6.75 6.75 0 1015.75 1.5zm2.25 6a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
 export function LogOutIcon(props: SVGPropsType) {
   return (
     <svg
