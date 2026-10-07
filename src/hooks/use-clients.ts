@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Client } from '@/services/client.service';
+import { Client, invalidateClientCache } from '@/services/client.service';
 import { authenticatedFetch } from '@/lib/api-client';
 
 interface UseClientsOptions {
@@ -109,6 +109,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
         }
 
         const newClient = await response.json();
+        invalidateClientCache();
 
         // Replace optimistic client with real client
         setClients((prev) =>
@@ -158,6 +159,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
         }
 
         const updatedClient = await response.json();
+        invalidateClientCache();
 
         // Replace optimistic update with server response
         setClients((prev) =>
@@ -201,6 +203,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to delete client');
         }
+        invalidateClientCache();
       } catch (err) {
         // Rollback optimistic update on error (Validates Requirements: 9.5)
         setClients((prev) => [...prev, originalClient]);
@@ -234,6 +237,7 @@ export function useClients(options: UseClientsOptions = {}): UseClientsReturn {
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to delete clients');
         }
+        invalidateClientCache();
       } catch (err) {
         // Rollback optimistic update on error
         setClients((prev) => [...prev, ...originalClients]);

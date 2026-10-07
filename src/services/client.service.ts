@@ -109,6 +109,23 @@ export interface ClientImportRow {
 const clientFirebaseService = createFirebaseService<Client>('clients');
 
 /**
+ * In-memory memo for getAll(). The clients collection is read on nearly every
+ * task-modal open and on each reports-board poll, and it changes rarely.
+ * Any write through this service, or an API-route write (see invalidateClientCache
+ * callers), drops the cache.
+ *
+ * TTL is deliberately short: a write from another user's tab cannot invalidate
+ * this cache, so the TTL is the staleness ceiling. Raise it only if the read
+ * volume matters more than a client edit showing up instantly.
+ */
+const CACHE_TTL_MS = 60 * 1000;
+const getAllCache = new Map<string, { at: number; data: Client[] }>();
+
+export function invalidateClientCache(): void {
+  getAllCache.clear();
+}
+
+/**
  * Client Service API
  */
 export const clientService = {
@@ -121,6 +138,12 @@ export const clientService = {
     page?: number;
     limit?: number;
   }): Promise<Client[]> {
+    const cacheKey = JSON.stringify(filters ?? {});
+    const cached = getAllCache.get(cacheKey);
+    if (cached && Date.now() - cached.at < CACHE_TTL_MS) {
+      return cached.data;
+    }
+
     const options: QueryOptions = {};
 
     // Add status filter
@@ -156,6 +179,7 @@ export const clientService = {
       );
     }
 
+    getAllCache.set(cacheKey, { at: Date.now(), data: clients });
     return clients;
   },
 
@@ -188,7 +212,9 @@ export const clientService = {
    */
   async create(data: Omit<Client, 'id' | 'createdAt' | 'updatedAt'>): Promise<Client> {
     // No longer auto-generate client number
-    return clientFirebaseService.create(data);
+    const client = await clientFirebaseService.create(data);
+    invalidateClientCache();
+    return client;
   },
 
   /**
@@ -220,14 +246,17 @@ export const clientService = {
    * Update a client
    */
   async update(id: string, data: Partial<Omit<Client, 'id'>>): Promise<Client> {
-    return clientFirebaseService.update(id, data);
+    const client = await clientFirebaseService.update(id, data);
+    invalidateClientCache();
+    return client;
   },
 
   /**
    * Delete a client
    */
   async delete(id: string): Promise<void> {
-    return clientFirebaseService.delete(id);
+    await clientFirebaseService.delete(id);
+    invalidateClientCache();
   },
 
   /**
@@ -269,6 +298,7 @@ export const clientService = {
       }
     }
 
+    invalidateClientCache();
     return results;
   },
 

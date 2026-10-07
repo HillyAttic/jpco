@@ -122,7 +122,7 @@ export function TaskListView({
         
         // Import client service dynamically
         const { clientService } = await import('@/services/client.service');
-        const clients = await clientService.getAll();
+        const clients = await clientService.getAll({ limit: 1000 });
         
         // Create a map of client ID to name
         const clientMap: Record<string, string> = {};

@@ -113,7 +113,7 @@ export default function UpdateSchedulePage() {
 
   const loadClients = async () => {
     try {
-      const data = await clientService.getAll({ status: 'active' });
+      const data = await clientService.getAll({ status: 'active', limit: 1000 });
       setClients(data);
     } catch (error) {
       console.error('Error loading clients:', error);

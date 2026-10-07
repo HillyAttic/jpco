@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { RecurringTask, TeamMemberMapping, ReportTypeConfig } from '@/services/recurring-task.service';
 import { Team, teamService } from '@/services/team.service';
 import { Category, categoryService } from '@/services/category.service';
-import { Client } from '@/services/client.service';
+import { Client, clientService } from '@/services/client.service';
 import { authenticatedFetch } from '@/lib/api-client';
 import {
   Dialog,
@@ -191,10 +191,8 @@ export function RecurringTaskModal({
     const loadClients = async () => {
       setLoadingClients(true);
       try {
-        const response = await authenticatedFetch('/api/clients?status=active&limit=1000');
-        if (!response.ok) throw new Error('Failed to fetch clients');
-        const result = await response.json();
-        setClients(result.data || []);
+        // Memoized in client.service — reopening this modal no longer re-reads the collection.
+        setClients(await clientService.getAll({ status: 'active', limit: 1000 }));
       } catch (error) {
         console.error('Error loading clients:', error);
         setClients([]);

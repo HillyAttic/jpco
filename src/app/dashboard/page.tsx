@@ -385,7 +385,7 @@ export default function DashboardPage() {
       const headers = { 'Authorization': `Bearer ${token}` };
 
       const [allClients, completionsRes] = await Promise.all([
-        clientService.getAll(),
+        clientService.getAll({ limit: 1000 }),
         fetch(`/api/task-completions?recurringTaskId=${task.id}`, { headers }),
       ]);
 

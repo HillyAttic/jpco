@@ -133,34 +133,16 @@ export function ScheduleTaskModal({
           setEmployees(emps);
         }
 
-        // OPTIMIZED: Use cached clients instead of fetching on every modal open
-        const { useCachedClients } = await import('@/hooks/use-cached-clients');
-        const { data: allTaskClients } = useCachedClients();
-
-        if (!allTaskClients) {
-          // Fallback if cache is not ready
-          const fallbackClients = await clientService.getAll({ status: 'active', limit: 1000 });
-          const taskClientIds = new Set<string>();
-
-          teamMemberMappings?.forEach(m => m.clientIds.forEach(id => taskClientIds.add(id)));
-          contactIds?.forEach(id => taskClientIds.add(id));
-
-          const filtered = taskClientIds.size > 0
-            ? fallbackClients.filter(c => c.id && taskClientIds.has(c.id))
-            : fallbackClients;
-          setAllClients(filtered);
-        } else {
-          // Use cached clients
-          const taskClientIds = new Set<string>();
-
-          teamMemberMappings?.forEach(m => m.clientIds.forEach(id => taskClientIds.add(id)));
-          contactIds?.forEach(id => taskClientIds.add(id));
-
-          const filtered = taskClientIds.size > 0
-            ? allTaskClients.filter(c => c.id && taskClientIds.has(c.id))
-            : allTaskClients;
-          setAllClients(filtered);
-        }
+        // clientService.getAll is memoized (5 min), so reopening this modal is free.
+        const activeClients = await clientService.getAll({ status: 'active', limit: 1000 });
+        const taskClientIds = new Set<string>();
+        teamMemberMappings?.forEach(m => m.clientIds.forEach(id => taskClientIds.add(id)));
+        contactIds?.forEach(id => taskClientIds.add(id));
+        setAllClients(
+          taskClientIds.size > 0
+            ? activeClients.filter(c => c.id && taskClientIds.has(c.id))
+            : activeClients
+        );
       } catch (error) {
         console.error('Error loading schedule data:', error);
         toast.error('Failed to load scheduling data');

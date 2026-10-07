@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { clientService, Client } from '@/services/client.service';
 import { ClientTaskCompletion } from '@/services/task-completion.service';
@@ -75,6 +75,16 @@ export function ReportsView() {
   const [selectedWorkflowType, setSelectedWorkflowType] = useState<WorkflowType | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { openModal: openGlobalModal, closeModal: closeGlobalModal } = useModal();
+
+  // The 30s tick captures loadData at mount, so state it needs must come from refs.
+  const selectedTaskIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    selectedTaskIdRef.current = selectedTask?.id ?? null;
+  }, [selectedTask]);
+
+  // Fingerprint of the cheap inputs the per-task fan-out depends on. On a silent
+  // tick, unchanged inputs mean the derived stats cannot have changed either.
+  const prevCycleRef = useRef<{ tasks: string; clients: Client[] | null }>({ tasks: '', clients: null });
 
   // Dynamic client stats for tasks with clientFilter
   const [dynamicStatsMap, setDynamicStatsMap] = useState<Map<string, {
@@ -167,7 +177,7 @@ export function ReportsView() {
 
       const [tasksResponse, clientsData] = await Promise.all([
         fetch('/api/recurring-tasks', { headers }),
-        clientService.getAll(),
+        clientService.getAll({ limit: 1000 }),
       ]);
 
       if (!tasksResponse.ok) {
@@ -212,78 +222,104 @@ export function ReportsView() {
         clientsCount: clientsData.length
       });
 
-      // Load completions for all tasks
+      // Derived stats depend only on the task mappings and the client list — if both are
+      // unchanged on a silent tick, neither the dynamic stats nor the unassigned lists can
+      // have moved, so skip the per-task fan-out entirely.
+      const tasksFingerprint = JSON.stringify(tasksData);
+      const inputsChanged =
+        tasksFingerprint !== prevCycleRef.current.tasks ||
+        clientsData !== prevCycleRef.current.clients;
+      prevCycleRef.current = { tasks: tasksFingerprint, clients: clientsData };
+
+      // Completions feed only the export buttons and the open detail modal — the board's
+      // percentages come from clientProgress in the tasks payload. So a silent tick needs
+      // the open task's completions, not all ~20 tasks'.
+      const completionTaskIds: string[] = !silent
+        ? tasksData.map((t: RecurringTask) => t.id).filter(Boolean)
+        : selectedTaskIdRef.current
+          ? [selectedTaskIdRef.current]
+          : [];
+
       const completionsMap = new Map<string, ClientTaskCompletion[]>();
       await Promise.all(
-        tasksData.map(async (task: RecurringTask) => {
-          if (task.id) {
-            // Fetch completions from API instead of direct Firebase access
-            const completionsResponse = await fetch(`/api/task-completions?recurringTaskId=${task.id}`, { headers });
-            
-            if (completionsResponse.ok) {
-              const taskCompletions = await completionsResponse.json();
-              completionsMap.set(task.id, taskCompletions);
-              console.log(`Reports: Loaded completions for task ${task.title}`, {
-                taskId: task.id,
-                completionsCount: taskCompletions.length
-              });
-            } else {
-              console.error(`Reports: Failed to load completions for task ${task.id}`);
-              completionsMap.set(task.id, []);
-            }
+        completionTaskIds.map(async (taskId: string) => {
+          const task = tasksData.find((t: RecurringTask) => t.id === taskId);
+          // Fetch completions from API instead of direct Firebase access
+          const completionsResponse = await fetch(`/api/task-completions?recurringTaskId=${taskId}`, { headers });
+
+          if (completionsResponse.ok) {
+            const taskCompletions = await completionsResponse.json();
+            completionsMap.set(taskId, taskCompletions);
+            console.log(`Reports: Loaded completions for task ${task?.title}`, {
+              taskId,
+              completionsCount: taskCompletions.length
+            });
+          } else {
+            console.error(`Reports: Failed to load completions for task ${taskId}`);
+            completionsMap.set(taskId, []);
           }
         })
       );
-      setCompletions(completionsMap);
-
-      // Fetch dynamic client stats for tasks with clientFilter
-      const dynamicStats = new Map<string, { totalCount: number; mappedCount: number; unassignedCount: number }>();
-      await Promise.all(
-        initializedTasks
-          .filter((task: RecurringTask) => task.clientFilter && task.clientFilter !== 'all' && task.id)
-          .map(async (task: RecurringTask) => {
-            try {
-              const statsResponse = await fetch(`/api/recurring-tasks/${task.id}/unassigned-clients`, { headers });
-              if (statsResponse.ok) {
-                const data = await statsResponse.json();
-                dynamicStats.set(task.id!, {
-                  totalCount: data.totalCount,
-                  mappedCount: data.mappedCount,
-                  unassignedCount: data.unassignedCount,
-                });
-              }
-            } catch (err) {
-              console.error(`Failed to fetch dynamic stats for task ${task.id}:`, err);
-            }
-          })
-      );
-      setDynamicStatsMap(dynamicStats);
-
-      // Fetch unassigned client IDs for tasks with showUnassignedClients enabled
-      const unassignedMap = new Map<string, string[]>();
-      await Promise.all(
-        initializedTasks
-          .filter((task: RecurringTask) => task.showUnassignedClients && task.clientFilter && task.clientFilter !== 'all' && task.id)
-          .map(async (task: RecurringTask) => {
-            try {
-              const resp = await fetch(`/api/recurring-tasks/${task.id}/unassigned-clients?clientFilter=${encodeURIComponent(task.clientFilter!)}`, { headers });
-              if (resp.ok) {
-                const data = await resp.json();
-                unassignedMap.set(task.id!, data.unassignedClientIds || []);
-              }
-            } catch (err) {
-              console.error(`Failed to fetch unassigned clients for task ${task.id}:`, err);
-            }
-          })
-      );
-      setUnassignedClientsMap(unassignedMap);
-      setShowUnassignedToggle(prev => {
-        const next = new Map(prev);
-        initializedTasks
-          .filter((task: RecurringTask) => task.showUnassignedClients && task.clientFilter && task.clientFilter !== 'all' && task.id)
-          .forEach((task: RecurringTask) => next.set(task.id!, true));
-        return next;
+      // A silent tick refreshes one task, so merge instead of replacing the map.
+      setCompletions(prev => {
+        if (!silent) return completionsMap;
+        const merged = new Map(prev);
+        completionsMap.forEach((v, k) => merged.set(k, v));
+        return merged;
       });
+
+      // Each of these is one full read of the clients collection server-side, so they
+      // only run when their inputs actually moved.
+      if (!silent || inputsChanged) {
+        // Fetch dynamic client stats for tasks with clientFilter
+        const dynamicStats = new Map<string, { totalCount: number; mappedCount: number; unassignedCount: number }>();
+        await Promise.all(
+          initializedTasks
+            .filter((task: RecurringTask) => task.clientFilter && task.clientFilter !== 'all' && task.id)
+            .map(async (task: RecurringTask) => {
+              try {
+                const statsResponse = await fetch(`/api/recurring-tasks/${task.id}/unassigned-clients`, { headers });
+                if (statsResponse.ok) {
+                  const data = await statsResponse.json();
+                  dynamicStats.set(task.id!, {
+                    totalCount: data.totalCount,
+                    mappedCount: data.mappedCount,
+                    unassignedCount: data.unassignedCount,
+                  });
+                }
+              } catch (err) {
+                console.error(`Failed to fetch dynamic stats for task ${task.id}:`, err);
+              }
+            })
+        );
+        setDynamicStatsMap(dynamicStats);
+
+        // Fetch unassigned client IDs for tasks with showUnassignedClients enabled
+        const unassignedMap = new Map<string, string[]>();
+        await Promise.all(
+          initializedTasks
+            .filter((task: RecurringTask) => task.showUnassignedClients && task.clientFilter && task.clientFilter !== 'all' && task.id)
+            .map(async (task: RecurringTask) => {
+              try {
+                const resp = await fetch(`/api/recurring-tasks/${task.id}/unassigned-clients?clientFilter=${encodeURIComponent(task.clientFilter!)}`, { headers });
+                if (resp.ok) {
+                  const data = await resp.json();
+                  unassignedMap.set(task.id!, data.unassignedClientIds || []);
+                }
+              } catch (err) {
+                console.error(`Failed to fetch unassigned clients for task ${task.id}:`, err);
+              }
+            })
+        );
+        setUnassignedClientsMap(unassignedMap);
+        setShowUnassignedToggle(prev => {
+          const next = new Map(prev);
+          initializedTasks
+            .filter((task: RecurringTask) => task.showUnassignedClients && task.clientFilter && task.clientFilter !== 'all' && task.id)
+            .forEach((task: RecurringTask) => next.set(task.id!, true));
+          return next;
+        });
+      }
 
       console.log('Reports: All data loaded successfully');
     } catch (error) {
