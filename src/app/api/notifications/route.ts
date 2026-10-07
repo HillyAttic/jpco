@@ -25,6 +25,9 @@ function resolveActionUrl(data: any): string {
  * GET /api/notifications?userId=xxx
  * Fetch notifications for a user (server-side, bypasses Firestore rules)
  *
+ * Add &count=1 to get just `{ unreadCount }` for the badge poll — that path uses an
+ * aggregation and bills ~1 read instead of one per notification document.
+ *
  * POST /api/notifications
  * Mark notification as read, mark all as read, or delete
  */
@@ -58,6 +61,34 @@ export async function GET(request: NextRequest) {
         if (!adminDb) {
             console.warn('Firebase Admin not configured. Returning empty notifications.');
             return NextResponse.json({ notifications: [] }, { status: 200 });
+        }
+
+        // Badge poll. An aggregation bills ~1 read per 1000 matched index entries rather
+        // than one per document, so the 30s tick stops costing ~43 reads a user.
+        // The fallback deliberately reuses the same limit(50) as the list query below, so
+        // it can never be more expensive than the behaviour it replaces.
+        if (request.nextUrl.searchParams.get('count') === '1') {
+            try {
+                const agg = await adminDb
+                    .collection('notifications')
+                    .where('userId', '==', userId)
+                    .where('read', '==', false)
+                    .count()
+                    .get();
+
+                return NextResponse.json({ unreadCount: agg.data().count }, { status: 200 });
+            } catch (countError: any) {
+                console.warn('Count aggregation failed, falling back to a list read:', countError.message);
+
+                const unreadSnapshot = await adminDb
+                    .collection('notifications')
+                    .where('userId', '==', userId)
+                    .where('read', '==', false)
+                    .limit(50)
+                    .get();
+
+                return NextResponse.json({ unreadCount: unreadSnapshot.size }, { status: 200 });
+            }
         }
 
         const snapshot = await adminDb

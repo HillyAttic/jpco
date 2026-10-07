@@ -79,6 +79,7 @@ export function Notification() {
     markAsRead,
     markAllAsRead,
     deleteNotification,
+    refetch,
   } = useNotifications();
 
   // Request notification permission on first interaction
@@ -87,6 +88,12 @@ export function Notification() {
       requestPermission();
     }
   }, [isOpen, permissionGranted, requestPermission]);
+
+  // The 30s tick only polls the unread count, so opening the dropdown is what makes the
+  // list itself current.
+  useEffect(() => {
+    if (isOpen) refetch();
+  }, [isOpen, refetch]);
 
   const handleNotificationClick = async (notification: any) => {
     // Store month/year IMMEDIATELY (before any async work) so the destination page

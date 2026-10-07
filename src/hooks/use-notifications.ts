@@ -32,6 +32,9 @@ export function useNotifications() {
   const [error, setError] = useState<string | null>(null);
   const pollInterval = useRef<NodeJS.Timeout | null>(null);
   const isMounted = useRef(true);
+  // Last unread count the badge acted on. null until the first poll, so that first
+  // number establishes a baseline rather than reading as "new mail arrived".
+  const lastUnreadRef = useRef<number | null>(null);
 
   // Fetch notifications via API route (Admin SDK, bypasses security rules)
   const fetchNotifications = useCallback(async (showLoading = false) => {
@@ -83,6 +86,38 @@ export function useNotifications() {
     }
   }, [user?.uid]);
 
+  // Badge tick. Polls the unread *count* rather than the list, because the route's count
+  // mode is an aggregation (~1 billed read vs one per notification). When the count rises
+  // there is genuinely new mail, so the list is fetched too — that keeps the bell and the
+  // /notifications page filling in on their own, which is how they behaved when the tick
+  // fetched everything. A fall is our own mark-as-read; refetching the list for it would
+  // echo every action into a full list read.
+  const refreshUnreadCount = useCallback(async () => {
+    if (!user?.uid) return;
+
+    try {
+      const { authenticatedFetch } = await import('@/lib/api-client');
+      const response = await authenticatedFetch(
+        `/api/notifications?userId=${encodeURIComponent(user.uid)}&count=1`
+      );
+
+      if (!response.ok) return;
+
+      const { unreadCount: next } = await response.json();
+
+      // Never zero the badge on a malformed response — leave the last known count alone.
+      if (typeof next !== 'number' || !isMounted.current) return;
+
+      const increased = lastUnreadRef.current !== null && next > lastUnreadRef.current;
+      lastUnreadRef.current = next;
+      setUnreadCount(next);
+
+      if (increased) fetchNotifications(false);
+    } catch (err) {
+      console.error('Error fetching unread count:', err);
+    }
+  }, [user?.uid, fetchNotifications]);
+
   // Initial fetch + polling
   useEffect(() => {
     isMounted.current = true;
@@ -91,16 +126,22 @@ export function useNotifications() {
       setNotifications([]);
       setUnreadCount(0);
       setLoading(false);
+      lastUnreadRef.current = null;
       return;
     }
 
     // Initial fetch
     fetchNotifications(true);
 
-    // Poll every 30 seconds
-    pollInterval.current = setInterval(() => {
-      fetchNotifications(false);
-    }, 30000);
+    // Poll every 30 seconds, but only while the tab is actually visible. A hidden tab
+    // needs no live badge: background FCM goes to the service worker and raises an OS
+    // notification, and visibilitychange fires on the way back in, so returning to the
+    // tab refreshes immediately.
+    const tick = () => {
+      if (!document.hidden) refreshUnreadCount();
+    };
+    pollInterval.current = setInterval(tick, 30000);
+    document.addEventListener('visibilitychange', tick);
 
     return () => {
       isMounted.current = false;
@@ -108,8 +149,9 @@ export function useNotifications() {
         clearInterval(pollInterval.current);
         pollInterval.current = null;
       }
+      document.removeEventListener('visibilitychange', tick);
     };
-  }, [user?.uid, fetchNotifications]);
+  }, [user?.uid, fetchNotifications, refreshUnreadCount]);
 
   // Check notification permission on mount
   useEffect(() => {
