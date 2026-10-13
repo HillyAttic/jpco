@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Bell, BellOff, Check, X } from "lucide-react";
+import { Bell, BellOff, Check, CheckCheck, X } from "lucide-react";
 import { useEnhancedAuth } from "@/contexts/enhanced-auth.context";
 import { authenticatedFetch } from "@/lib/api-client";
 import { useNotifications } from "@/hooks/use-notifications";
@@ -46,11 +46,19 @@ const NOTIFICATION_TYPE_URLS: Record<string, string> = {
 export default function NotificationsPage() {
   const router = useRouter();
   const { user, isAdmin, isManager } = useEnhancedAuth();
-  const { notifications, loading, markAsRead: markNotificationRead, refetch } = useNotifications();
+  const {
+    notifications,
+    loading,
+    unreadCount,
+    markAsRead: markNotificationRead,
+    markAllAsRead,
+    refetch,
+  } = useNotifications();
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | null>(null);
   const [fcmToken, setFcmToken] = useState<string | null>(null);
   const [isClearing, setIsClearing] = useState(false);
   const [isEnabling, setIsEnabling] = useState(false);
+  const [isMarkingAll, setIsMarkingAll] = useState(false);
 
   // Check notification permission and FCM token on mount
   useEffect(() => {
@@ -217,6 +225,22 @@ export default function NotificationsPage() {
 
     return unsubscribe;
   }, [user, refetch]);
+
+  // Mark every unread notification as read (works on mobile and desktop)
+  const handleMarkAllAsRead = async () => {
+    if (unreadCount === 0 || isMarkingAll) return;
+
+    setIsMarkingAll(true);
+    try {
+      await markAllAsRead();
+      toast.success("All notifications marked as read");
+    } catch (error) {
+      console.error("Error marking all as read:", error);
+      toast.error("Failed to mark all as read");
+    } finally {
+      setIsMarkingAll(false);
+    }
+  };
 
   // Handle notification click
   const handleNotificationClick = (notification: Notification) => {
@@ -426,10 +450,24 @@ export default function NotificationsPage() {
 
       {/* Notifications List */}
       <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
-        <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700">
-          <h2 className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
+        <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between gap-2 sm:gap-3">
+          <h2 className="min-w-0 truncate font-semibold text-gray-900 dark:text-white text-sm sm:text-base">
             Recent Notifications
           </h2>
+
+          {!loading && unreadCount > 0 && (
+            <button
+              onClick={handleMarkAllAsRead}
+              disabled={isMarkingAll}
+              title="Mark all as read"
+              className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 px-2.5 py-1.5 sm:px-3 text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-300 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900/40 disabled:opacity-60 disabled:cursor-wait"
+            >
+              <CheckCheck className="w-4 h-4" />
+              <span className="whitespace-nowrap">
+                {isMarkingAll ? "Marking..." : "Mark all read"}
+              </span>
+            </button>
+          )}
         </div>
 
         <div className="divide-y divide-gray-200 dark:divide-gray-700">
