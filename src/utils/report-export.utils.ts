@@ -5,6 +5,7 @@ import { RecurringTask } from '@/services/recurring-task.service';
 import { Client } from '@/services/client.service';
 import { ClientTaskCompletion } from '@/services/task-completion.service';
 import { format, isFuture, isToday, startOfMonth } from 'date-fns';
+import { generateFYMonths, getCurrentPeriod, getFinancialYear } from '@/utils/report-utils';
 
 interface MonthData {
   key: string;
@@ -344,50 +345,25 @@ function getTaskClients(task: RecurringTask, allClients: Client[]): Client[] {
   return allClients.filter(c => c.id && task.contactIds?.includes(c.id));
 }
 
+/**
+ * Same period the reports display: scheduled months of the task's current financial year
+ * that have already started, anchored on the task's due month.
+ */
 function calculateCompletionRate(
   task: RecurringTask,
   clientCount: number,
   taskCompletions: ClientTaskCompletion[]
 ): number {
   if (clientCount === 0) return 0;
-  
-  const months = generateMonthsForCalculation(task.recurrencePattern);
-  const totalExpected = clientCount * months.filter(m => !isFuture(m) || isToday(startOfMonth(m))).length;
-  
-  if (totalExpected === 0) return 0;
-  
-  const completed = taskCompletions.filter(c => c.isCompleted).length;
-  return Math.round((completed / totalExpected) * 100);
-}
 
-function generateMonthsForCalculation(recurrencePattern: string): Date[] {
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
-  
-  const endYear = currentYear + 5;
-  const endMonth = 11;
-  
-  const allMonths: Date[] = [];
-  for (let year = currentYear; year <= endYear; year++) {
-    const firstMonth = (year === currentYear) ? currentMonth : 0;
-    const lastMonth = (year === endYear) ? endMonth : 11;
-    
-    for (let month = firstMonth; month <= lastMonth; month++) {
-      allMonths.push(new Date(year, month, 1));
-    }
-  }
+  const dueMonth = task.dueDate ? new Date(task.dueDate).getMonth() : undefined;
+  const currentPeriod = getCurrentPeriod(task.recurrencePattern, dueMonth);
+  const months = generateFYMonths(getFinancialYear(currentPeriod.fullDate), task.recurrencePattern, dueMonth)
+    .filter(m => !isFuture(m.fullDate) || isToday(startOfMonth(m.fullDate)));
 
-  switch (recurrencePattern) {
-    case 'monthly':
-      return allMonths;
-    case 'quarterly':
-      return allMonths.filter((_, index) => index % 3 === 0);
-    case 'half-yearly':
-      return allMonths.filter((_, index) => index % 6 === 0);
-    case 'yearly':
-      return allMonths.filter((_, index) => index % 12 === 0);
-    default:
-      return allMonths;
-  }
+  if (months.length === 0) return 0;
+
+  const expectedKeys = new Set(months.map(m => m.key));
+  const completed = taskCompletions.filter(c => c.isCompleted && expectedKeys.has(c.monthKey)).length;
+  return Math.round((completed / (clientCount * months.length)) * 100);
 }

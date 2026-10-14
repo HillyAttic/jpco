@@ -1,7 +1,6 @@
 import { isFuture, isToday, startOfMonth } from 'date-fns';
 import { Client } from '@/services/client.service';
 import { ClientTaskCompletion } from '@/services/task-completion.service';
-import { RecurringTask } from '@/services/recurring-task.service';
 
 export interface MonthData {
   key: string;       // "YYYY-MM"
@@ -10,58 +9,117 @@ export interface MonthData {
   fullDate: Date;
 }
 
-export function generateMonths(recurrencePattern: string, dueMonth?: number): MonthData[] {
-  const currentDate = new Date();
-  const currentYear = currentDate.getFullYear();
-  const currentMonth = currentDate.getMonth();
+/** Indian financial year label (Apr → Mar) containing `date`, e.g. "2026-27". */
+export function getFinancialYear(date: Date): string {
+  const fyStart = date.getMonth() >= 3 ? date.getFullYear() : date.getFullYear() - 1;
+  return `${fyStart}-${String(fyStart + 1).slice(-2)}`;
+}
 
-  // Start from current month
-  const startYear = currentYear;
-  const startMonth = currentMonth;
+export function buildMonthData(month: number, year: number): MonthData {
+  const date = new Date(year, month, 1);
+  return {
+    key: `${year}-${String(month + 1).padStart(2, '0')}`,
+    monthName: date.toLocaleDateString('en-US', { month: 'short' }),
+    year: year.toString(),
+    fullDate: date,
+  };
+}
 
-  // End at 5 years forward
-  const endYear = currentYear + 5;
-  const endMonth = 11; // December
+const FY_START_MONTH = 3; // April
 
-  // Generate all months from current month to end
-  const allMonths: MonthData[] = [];
-  for (let year = startYear; year <= endYear; year++) {
-    const firstMonth = (year === startYear) ? startMonth : 0;
-    const lastMonth = (year === endYear) ? endMonth : 11;
+/**
+ * Narrow a month list to the months a task's recurrence actually schedules.
+ * `dueMonth` (0-indexed month of the task's due date) anchors the phase, matching how the
+ * overdue compliance calendar is laid out. Without one, the schedule is anchored to the
+ * financial year (April) so the writer and the reader always agree on the same period.
+ */
+export function applyRecurrenceFilter(
+  months: MonthData[],
+  recurrencePattern: string,
+  dueMonth?: number
+): MonthData[] {
+  // A malformed dueDate yields NaN from getMonth(); treat it as unanchored rather than
+  // matching nothing at all.
+  if (dueMonth !== undefined && Number.isNaN(dueMonth)) dueMonth = undefined;
 
-    for (let month = firstMonth; month <= lastMonth; month++) {
-      const date = new Date(year, month, 1);
-      allMonths.push({
-        key: `${year}-${String(month + 1).padStart(2, '0')}`,
-        monthName: date.toLocaleDateString('en-US', { month: 'short' }),
-        year: year.toString(),
-        fullDate: date,
-      });
+  const phase = (m: MonthData, cycle: number) => {
+    const month = m.fullDate.getMonth();
+    const anchor = dueMonth !== undefined ? dueMonth : FY_START_MONTH;
+    return month % cycle === anchor % cycle;
+  };
+
+  switch (recurrencePattern) {
+    case 'quarterly':
+      return months.filter(m => phase(m, 3));
+    case 'half-yearly':
+      return months.filter(m => phase(m, 6));
+    case 'yearly':
+      // yearly schedules one month, not one month per cycle
+      return months.filter(m => m.fullDate.getMonth() === (dueMonth !== undefined ? dueMonth : FY_START_MONTH));
+    default:
+      return months;
+  }
+}
+
+/** Scheduled months of one Indian financial year (Apr → Mar). */
+export function generateFYMonths(fy: string, recurrencePattern: string, dueMonth?: number): MonthData[] {
+  const startYear = parseInt(fy.split('-')[0]);
+  return applyRecurrenceFilter(
+    [
+      ...Array.from({ length: 9 }, (_, i) => buildMonthData(3 + i, startYear)),
+      ...Array.from({ length: 3 }, (_, i) => buildMonthData(i, startYear + 1)),
+    ],
+    recurrencePattern,
+    dueMonth
+  );
+}
+
+/** FY months, optionally narrowed to a single month name. */
+export function generateDisplayMonths(
+  fy: string,
+  recurrencePattern: string,
+  selectedMonth?: string,
+  dueMonth?: number
+): MonthData[] {
+  const months = generateFYMonths(fy, recurrencePattern, dueMonth);
+  if (selectedMonth && selectedMonth !== 'all') {
+    return months.filter(m => m.monthName === selectedMonth);
+  }
+  return months;
+}
+
+/** Every scheduled month from Apr 2025 to 2 years ahead — full history + near future. */
+export function generateAllExportMonths(recurrencePattern: string, dueMonth?: number): MonthData[] {
+  const endYear = new Date().getFullYear() + 2;
+  const all: MonthData[] = [];
+  for (let year = 2025; year <= endYear; year++) {
+    for (let month = year === 2025 ? 3 : 0; month <= 11; month++) {
+      all.push(buildMonthData(month, year));
     }
   }
+  return applyRecurrenceFilter(all, recurrencePattern, dueMonth);
+}
 
-  // Filter based on recurrence pattern
-  switch (recurrencePattern) {
-    case 'monthly':
-      return allMonths;
-    case 'quarterly':
-      if (dueMonth !== undefined) {
-        return allMonths.filter(m => (m.fullDate.getMonth() - dueMonth + 12) % 3 === 0);
-      }
-      return allMonths.filter((_, index) => index % 3 === 0);
-    case 'half-yearly':
-      if (dueMonth !== undefined) {
-        return allMonths.filter(m => (m.fullDate.getMonth() - dueMonth + 12) % 6 === 0);
-      }
-      return allMonths.filter((_, index) => index % 6 === 0);
-    case 'yearly':
-      if (dueMonth !== undefined) {
-        return allMonths.filter(m => m.fullDate.getMonth() === dueMonth);
-      }
-      return allMonths.filter((_, index) => index % 12 === 0);
-    default:
-      return allMonths;
+/**
+ * Snap a reference date onto a task's own recurrence schedule — the most recent scheduled
+ * period that has already started. Completion records must be keyed by this period, otherwise
+ * the reports (which render only scheduled periods) never display them. Falls back to the next
+ * scheduled period for tasks whose schedule starts in the future.
+ */
+export function getCurrentPeriod(
+  recurrencePattern: string,
+  dueMonth?: number,
+  refDate: Date = new Date()
+): MonthData {
+  const refMonthStart = new Date(refDate.getFullYear(), refDate.getMonth(), 1);
+  const candidates: MonthData[] = [];
+  for (let offset = -24; offset <= 24; offset++) {
+    const d = new Date(refDate.getFullYear(), refDate.getMonth() + offset, 1);
+    candidates.push(buildMonthData(d.getMonth(), d.getFullYear()));
   }
+  const scheduled = applyRecurrenceFilter(candidates, recurrencePattern, dueMonth);
+  const started = scheduled.filter(m => m.fullDate <= refMonthStart);
+  return started.length ? started[started.length - 1] : scheduled[0];
 }
 
 export function buildCompletionData(
@@ -142,24 +200,4 @@ export function getCompletionStatus(
   }
 
   return 'incomplete';
-}
-
-export function calculateCompletionRate(
-  task: RecurringTask,
-  clientCount: number,
-  taskCompletions: ClientTaskCompletion[],
-  monthKey?: string
-): number {
-  if (clientCount === 0) return 0;
-
-  const currentDate = new Date();
-  const key = monthKey || `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
-
-  const monthCompletions = taskCompletions.filter(
-    c => c.isCompleted && c.monthKey === key
-  );
-
-  if (clientCount === 0) return 0;
-
-  return Math.round((monthCompletions.length / clientCount) * 100);
 }

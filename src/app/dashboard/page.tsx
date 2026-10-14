@@ -57,7 +57,7 @@ import { EnhancedKanbanBoard } from '@/components/kanban/EnhancedKanbanBoard';
 import { kanbanService } from '@/services/kanban.service';
 import { KanbanTask, Business } from '@/types/kanban.types';
 import { TaskReportModal } from '@/components/reports/TaskReportModal';
-import { generateMonths } from '@/utils/report-utils';
+import { getCurrentPeriod } from '@/utils/report-utils';
 import { ClientTaskCompletion } from '@/services/task-completion.service';
 
 // Lazy load heavy chart components with progressive hydration
@@ -337,9 +337,8 @@ export default function DashboardPage() {
         if (!task.id || !stats[task.id]) return;
 
         const taskStats = stats[task.id];
-        const months = generateMonths(task.recurrencePattern!);
-        const currentPeriodKey = months[0]?.key;
-        if (!currentPeriodKey) return;
+        const dueMonth = task.dueDate ? new Date(task.dueDate).getMonth() : undefined;
+        const currentPeriodKey = getCurrentPeriod(task.recurrencePattern!, dueMonth).key;
 
         const completed = taskStats.completions.filter(
           (c: any) => c.isCompleted && c.monthKey === currentPeriodKey

@@ -6,6 +6,7 @@ import { RecurringTask } from '@/services/recurring-task.service';
 import { taskCompletionService } from '@/services/task-completion.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { auth } from '@/lib/firebase';
+import { getCurrentPeriod } from '@/utils/report-utils';
 
 interface Client {
   id: string;
@@ -57,28 +58,14 @@ export function RecurringTaskClientModal({
   const [remarkDate, setRemarkDate] = useState('');
   const [remarkError, setRemarkError] = useState('');
   const { user, userProfile } = useEnhancedAuth();
-  // Generate only the viewing month (or current month if not specified)
-  const generateMonths = () => {
-    const targetDate = viewingMonth || new Date();
-    const targetYear = targetDate.getFullYear();
-    const targetMonth = targetDate.getMonth();
-    
-    const date = new Date(targetYear, targetMonth, 1);
-    return [{
-      key: `${targetYear}-${String(targetMonth + 1).padStart(2, '0')}`,
-      label: date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
-      monthName: date.toLocaleDateString('en-US', { month: 'short' }),
-      year: targetYear.toString(),
-      fullDate: date,
-    }];
-  };
-
-  // Filter months based on recurrence pattern - always show only viewing month
-  const getVisibleMonths = () => {
-    return generateMonths(); // Always return viewing month only
-  };
-
-  const visibleMonths = getVisibleMonths();
+  // Key completions by the task's own recurrence period, not by the calendar month. The
+  // reports only render scheduled periods, so a calendar-month key is invisible there.
+  const dueMonth = task?.dueDate ? new Date(task.dueDate).getMonth() : undefined;
+  const period = getCurrentPeriod(task?.recurrencePattern ?? 'monthly', dueMonth, viewingMonth || new Date());
+  const visibleMonths = [{
+    ...period,
+    label: period.fullDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+  }];
 
   // Initialize client completions from task data
   useEffect(() => {

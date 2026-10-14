@@ -7,7 +7,17 @@ import { ClientTaskCompletion } from '@/services/task-completion.service';
 import { XMarkIcon, CheckIcon, XCircleIcon, UserGroupIcon, ArrowDownTrayIcon, UserMinusIcon, ChatBubbleLeftIcon, ArrowsPointingOutIcon, ArrowsPointingInIcon } from '@heroicons/react/24/outline';
 import { isFuture, isToday, startOfMonth } from 'date-fns';
 import { exportToPDF, exportToExcel } from '@/utils/report-export.utils';
-import { buildCompletionData, buildRemarkData, getCompletionStatus, type MonthData, type RemarkInfo } from '@/utils/report-utils';
+import {
+  buildCompletionData,
+  buildRemarkData,
+  getCompletionStatus,
+  getFinancialYear,
+  generateDisplayMonths,
+  generateFYMonths,
+  generateAllExportMonths,
+  type MonthData,
+  type RemarkInfo,
+} from '@/utils/report-utils';
 
 export interface TaskReportModalProps {
   task: RecurringTask;
@@ -40,80 +50,6 @@ function generateFinancialYears(): string[] {
     years.push(`${startYear}-${String(startYear + 1).slice(-2)}`);
   }
   return years;
-}
-
-function getCurrentFinancialYear(): string {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth(); // 0-indexed
-  // FY starts in April (month index 3)
-  const fyStart = month >= 3 ? year : year - 1;
-  return `${fyStart}-${String(fyStart + 1).slice(-2)}`;
-}
-
-/** Generate months for a financial year, optionally filtered to a single month */
-function generateDisplayMonths(fy: string, recurrencePattern: string, selectedMonth?: string, dueMonth?: number): MonthData[] {
-  const months = generateFYMonths(fy, recurrencePattern, dueMonth);
-  if (selectedMonth && selectedMonth !== 'all') {
-    return months.filter(m => m.monthName === selectedMonth);
-  }
-  return months;
-}
-
-function buildMonthData(month: number, year: number): MonthData {
-  const date = new Date(year, month, 1);
-  return {
-    key: `${year}-${String(month + 1).padStart(2, '0')}`,
-    monthName: date.toLocaleDateString('en-US', { month: 'short' }),
-    year: year.toString(),
-    fullDate: date,
-  };
-}
-
-function applyRecurrenceFilter(months: MonthData[], recurrencePattern: string, dueMonth?: number): MonthData[] {
-  switch (recurrencePattern) {
-    case 'quarterly':
-      if (dueMonth !== undefined) {
-        const offset = dueMonth % 3;
-        return months.filter(m => m.fullDate.getMonth() % 3 === offset);
-      }
-      return months.filter((_, i) => i % 3 === 0);
-    case 'half-yearly':
-      if (dueMonth !== undefined) {
-        const offset = dueMonth % 6;
-        return months.filter(m => m.fullDate.getMonth() % 6 === offset);
-      }
-      return months.filter((_, i) => i % 6 === 0);
-    case 'yearly':
-      if (dueMonth !== undefined) {
-        return months.filter(m => m.fullDate.getMonth() === dueMonth);
-      }
-      return months.filter((_, i) => i % 12 === 0);
-    default:            return months;
-  }
-}
-
-/** All months from Apr 2025 (FY 2025-26 start) to 2 years ahead — covers full history + near future */
-function generateAllExportMonths(recurrencePattern: string, dueMonth?: number): MonthData[] {
-  const endYear = new Date().getFullYear() + 2;
-  const all: MonthData[] = [];
-  for (let year = 2025; year <= endYear; year++) {
-    const firstMonth = year === 2025 ? 3 : 0;
-    for (let month = firstMonth; month <= 11; month++) {
-      all.push(buildMonthData(month, year));
-    }
-  }
-  return applyRecurrenceFilter(all, recurrencePattern, dueMonth);
-}
-
-/** All months for a specific Indian financial year (Apr → Mar) */
-function generateFYMonths(fy: string, recurrencePattern: string, dueMonth?: number): MonthData[] {
-  const startYear = parseInt(fy.split('-')[0]);
-  const fyMonths: MonthData[] = [
-    ...Array.from({ length: 9 }, (_, i) => buildMonthData(3 + i, startYear)),
-    ...Array.from({ length: 3 }, (_, i) => buildMonthData(i, startYear + 1)),
-  ];
-  return applyRecurrenceFilter(fyMonths, recurrencePattern, dueMonth);
 }
 
 // ---------- Export Dialog ----------
@@ -391,7 +327,7 @@ function TeamMemberReportModal({ task, clients, completions, onClose, showUnassi
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
+  const [selectedFY, setSelectedFY] = useState(getFinancialYear(new Date()));
   const [selectedMonth, setSelectedMonth] = useState('all');
   const financialYears = generateFinancialYears();
 
@@ -745,7 +681,7 @@ function RegularTaskReportModal({ task, clients, completions, onClose, showUnass
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [showExportDialog, setShowExportDialog] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [selectedFY, setSelectedFY] = useState(getCurrentFinancialYear());
+  const [selectedFY, setSelectedFY] = useState(getFinancialYear(new Date()));
   const [selectedMonth, setSelectedMonth] = useState('all');
   const financialYears = generateFinancialYears();
 
