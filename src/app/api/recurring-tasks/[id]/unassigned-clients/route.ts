@@ -119,6 +119,9 @@ export async function GET(
       mappedCount,
       unassignedCount: unassignedClientIds.length,
       unassignedClientIds,
+      // The full live population (mapped + unassigned) — callers need it as the
+      // numerator scope so completion counts divide by the same set.
+      clientIds: filteredClients.map(c => c.id).filter(Boolean),
       lastCalculated: new Date().toISOString(),
     });
   } catch (error) {

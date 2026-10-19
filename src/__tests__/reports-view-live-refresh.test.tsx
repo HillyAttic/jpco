@@ -54,6 +54,7 @@ const serverTask = {
   tarSteps: initializeWorkflowSteps('TAR'),
   teamMemberMappings: [{ userId: 'uid-1', userName: 'Ajay Chaudhary', clientIds: [CLIENT_ID] }],
   contactIds: [],
+  clientFilter: 'all' as string,
   clientProgress: {} as Record<string, { completedStepIds: string[] }>,
 };
 
@@ -135,4 +136,45 @@ it('summary % counts fully-complete clients, not steps (per-step detail is in th
   // 5 of 7 steps: the client is not done, so the summary row stays at 0%
   await waitFor(() => expect(screen.getAllByText('0%').length).toBeGreaterThan(0));
   expect(screen.queryByText('71%')).not.toBeInTheDocument();
+});
+
+it('counts completions over the dynamic filter population, not just mapped clients', async () => {
+  // 1 mapped + 2 unmapped clients, all fully complete → 100%, not 33%.
+  // The unmapped ones only exist in the compliance filter, which is what the
+  // row divides by (regression: they used to be dropped from the numerator).
+  const mapped = CLIENT_ID;
+  const unmapped = ['client-b', 'client-c'];
+  serverTask.clientFilter = 'taxAudit';
+  serverTask.clientProgress = Object.fromEntries(
+    [mapped, ...unmapped].map((id) => [id, { completedStepIds: [...STEP_IDS] }])
+  );
+
+  global.fetch = jest.fn(async (input: any) => {
+    const url = String(input);
+    if (url.includes('/unassigned-clients')) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          totalCount: 3,
+          mappedCount: 1,
+          unassignedCount: 2,
+          unassignedClientIds: unmapped,
+          clientIds: [mapped, ...unmapped],
+        }),
+      } as any;
+    }
+    if (url.startsWith('/api/recurring-tasks')) {
+      return { ok: true, status: 200, json: async () => [JSON.parse(JSON.stringify(serverTask))] } as any;
+    }
+    if (url.startsWith('/api/task-completions')) {
+      return { ok: true, status: 200, json: async () => [] } as any;
+    }
+    throw new Error(`unexpected fetch: ${url}`);
+  }) as unknown as typeof fetch;
+
+  render(<ReportsView />);
+
+  await waitFor(() => expect(screen.getAllByText('100%').length).toBeGreaterThan(0));
+  expect(screen.queryByText('33%')).not.toBeInTheDocument();
 });

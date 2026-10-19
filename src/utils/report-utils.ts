@@ -1,6 +1,7 @@
 import { isFuture, isToday, startOfMonth } from 'date-fns';
 import { Client } from '@/services/client.service';
 import { ClientTaskCompletion } from '@/services/task-completion.service';
+import { RecurringTask } from '@/services/recurring-task.service';
 
 export interface MonthData {
   key: string;       // "YYYY-MM"
@@ -178,6 +179,37 @@ export function buildRemarkData(
   });
 
   return data;
+}
+
+/**
+ * Period-scoped completion rate for a task that tracks client-month completions
+ * instead of workflow steps (no enabled report types — the "Team Member Reports"
+ * layout). Mirrors the per-member rate in TaskReportModal so the summary row and
+ * the modal agree: completed client-months / (clients × scheduled months started).
+ */
+export function computeTaskCompletionRate(
+  task: RecurringTask,
+  completions: ClientTaskCompletion[],
+  fy: string,
+  selectedMonth: string = 'all'
+): number {
+  const clientIds = new Set<string>();
+  (task.teamMemberMappings || []).forEach(m => (m.clientIds || []).forEach(id => clientIds.add(id)));
+  (task.contactIds || []).forEach(id => clientIds.add(id));
+  if (clientIds.size === 0) return 0;
+
+  const dueMonth = task.dueDate ? new Date(task.dueDate).getMonth() : undefined;
+  const months = generateDisplayMonths(fy, task.recurrencePattern, selectedMonth, dueMonth);
+  const started = months.filter(m => !isFuture(m.fullDate) || isToday(startOfMonth(m.fullDate)));
+  const expected = clientIds.size * started.length;
+  if (expected === 0) return 0;
+
+  const monthKeys = new Set(months.map(m => m.key));
+  const completed = completions.filter(
+    c => c.isCompleted && clientIds.has(c.clientId) && monthKeys.has(c.monthKey)
+  ).length;
+
+  return Math.round((completed / expected) * 100);
 }
 
 export function getCompletionStatus(

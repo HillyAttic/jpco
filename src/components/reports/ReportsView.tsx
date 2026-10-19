@@ -7,6 +7,7 @@ import { ClientTaskCompletion } from '@/services/task-completion.service';
 import { UserGroupIcon, ArrowDownTrayIcon } from '@heroicons/react/24/outline';
 import { useModal } from '@/contexts/modal-context';
 import { exportSummaryToPDF, exportSummaryToExcel } from '@/utils/report-export.utils';
+import { computeTaskCompletionRate } from '@/utils/report-utils';
 import { auth } from '@/lib/firebase';
 import { initializeWorkflowSteps, getReportTypes } from '@/lib/workflow-templates';
 import { ClientWorkflowProgress } from '@/services/recurring-task.service';
@@ -91,6 +92,7 @@ export function ReportsView() {
     totalCount: number;
     mappedCount: number;
     unassignedCount: number;
+    clientIds?: string[];
   }>>(new Map());
 
   // Unassigned clients toggle state per task
@@ -107,19 +109,30 @@ export function ReportsView() {
    * For each report type enabled on the task, count how many clients have all steps
    * completed vs total clients. Returns the average across enabled report types.
    */
-  const getWorkflowCompletionRate = useCallback((task: RecurringTask, totalClientCount: number): number => {
+  const getWorkflowCompletionRate = useCallback((
+    task: RecurringTask,
+    totalClientCount: number,
+    clientIdsInScope?: Set<string>
+  ): number => {
     if (totalClientCount === 0) return 0;
     const reportTypes = getReportTypes(task).filter(rt => rt.enabled);
     if (reportTypes.length === 0) return 0;
 
     // Build set of client IDs that belong to this task so we only count
     // progress entries for actual clients (not orphaned/stale entries).
+    // Dynamic-filter tasks must use the live compliance-filtered population
+    // (clientIdsInScope): contactIds/mappings alone omit every unmapped client
+    // while the denominator still counts them, which halves the rate.
     const taskClientIds = new Set<string>();
-    if (task.teamMemberMappings) {
-      task.teamMemberMappings.forEach(m => m.clientIds.forEach(id => taskClientIds.add(id)));
-    }
-    if (task.contactIds) {
-      task.contactIds.forEach(id => taskClientIds.add(id));
+    if (clientIdsInScope) {
+      clientIdsInScope.forEach(id => taskClientIds.add(id));
+    } else {
+      if (task.teamMemberMappings) {
+        task.teamMemberMappings.forEach(m => m.clientIds.forEach(id => taskClientIds.add(id)));
+      }
+      if (task.contactIds) {
+        task.contactIds.forEach(id => taskClientIds.add(id));
+      }
     }
 
     let totalPct = 0;
@@ -272,7 +285,7 @@ export function ReportsView() {
       // only run when their inputs actually moved.
       if (!silent || inputsChanged) {
         // Fetch dynamic client stats for tasks with clientFilter
-        const dynamicStats = new Map<string, { totalCount: number; mappedCount: number; unassignedCount: number }>();
+        const dynamicStats = new Map<string, { totalCount: number; mappedCount: number; unassignedCount: number; clientIds?: string[] }>();
         await Promise.all(
           initializedTasks
             .filter((task: RecurringTask) => task.clientFilter && task.clientFilter !== 'all' && task.id)
@@ -285,6 +298,7 @@ export function ReportsView() {
                     totalCount: data.totalCount,
                     mappedCount: data.mappedCount,
                     unassignedCount: data.unassignedCount,
+                    clientIds: data.clientIds,
                   });
                 }
               } catch (err) {
@@ -428,13 +442,25 @@ export function ReportsView() {
       displayClientCount = taskClients.length;
     }
 
+    // Tasks with no enabled report types track client-month completions instead of
+    // workflow steps — getWorkflowCompletionRate returns a flat 0 for those, so fall
+    // back to the same period-scoped rate the team-member modal shows.
+    const hasEnabledReportTypes = getReportTypes(task).some(rt => rt.enabled);
+    const completionRate = hasEnabledReportTypes
+      ? getWorkflowCompletionRate(
+          task,
+          displayClientCount,
+          dynamicStats?.clientIds ? new Set(dynamicStats.clientIds) : undefined
+        )
+      : computeTaskCompletionRate(task, completions.get(task.id || '') || [], selectedFY, selectedMonth);
+
     return {
       hasTeamMemberMapping,
       hasDynamicFilter,
       mappedCount,
       unassignedCount,
       displayClientCount,
-      completionRate: getWorkflowCompletionRate(task, displayClientCount),
+      completionRate,
     };
   };
 
