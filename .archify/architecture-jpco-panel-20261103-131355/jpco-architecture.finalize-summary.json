@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\candidate.json",
+    "sha256": "63d75bd098b8e205ce633610b8161357e38bc3b6a934971a4c433ad20bd66030",
+    "bytes": 7573
+  },
+  "artifact": {
+    "path": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\jpco-architecture.html",
+    "sha256": "d03e030efbab221e94411370a0ebdf77d2973724938057ba501dd78f08651b7e",
+    "bytes": 858845
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\jpco-architecture.finalize.json",
+    "summaryReceipt": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\jpco-architecture.finalize-summary.json",
+    "browserCheckReceipt": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\jpco-architecture.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-03T07:44:27.510Z",
+    "source": "network",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 7060,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 3,
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "services-to-admin-sdk",
+            "from": "services",
+            "to": "admin_sdk",
+            "label": "Admin SDK",
+            "collectionIndex": 5,
+            "artifactIndex": 6
+          },
+          "right": {
+            "id": "client-sdk-to-firestore",
+            "from": "client_sdk",
+            "to": "firestore",
+            "label": "direct reads · security rules",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "point": [
+            505,
+            447
+          ]
+        },
+        {
+          "left": {
+            "id": "client-sdk-to-firestore",
+            "from": "client_sdk",
+            "to": "firestore",
+            "label": "direct reads · security rules",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "right": {
+            "id": "admin-to-firestore",
+            "from": "admin_sdk",
+            "to": "firestore",
+            "label": "",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "point": [
+            748,
+            447
+          ],
+          "sharedNode": "firestore"
+        },
+        {
+          "left": {
+            "id": "admin-to-firestore",
+            "from": "admin_sdk",
+            "to": "firestore",
+            "label": "",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "right": {
+            "id": "admin-to-storage",
+            "from": "admin_sdk",
+            "to": "storage",
+            "label": "",
+            "collectionIndex": 9,
+            "artifactIndex": 10
+          },
+          "point": [
+            748,
+            492
+          ],
+          "sharedNode": "admin_sdk"
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "client-sdk-to-firestore",
+            "from": "client_sdk",
+            "to": "firestore",
+            "label": "direct reads · security rules",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "bends": 3,
+          "stretch": 1.197
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "services → admin_sdk crosses client_sdk → firestore: move the node of whichever is a branch, return, or second entrance to the other side of the main path, so that relationship runs through an empty corridor.",
+      "client_sdk → firestore and admin_sdk → firestore cross next to firestore: move node client_sdk or admin_sdk so the two reach firestore from different sides (for example one level with it, one directly above or below it).",
+      "admin_sdk → firestore and admin_sdk → storage cross next to admin_sdk: move node firestore or storage so the two reach admin_sdk from different sides (for example one level with it, one directly above or below it).",
+      "client_sdk → firestore needs 3 bends: move node client_sdk or firestore so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

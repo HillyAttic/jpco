@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "command": "finalize",
+  "status": "pass",
+  "type": "architecture",
+  "quality": "showcase",
+  "specification": {
+    "path": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\candidate.json",
+    "sha256": "803cb40a5e5cfa3b29a234ac06aff3c1a3d31ed5fe4bd59d6d2ee971554352ba",
+    "bytes": 7574
+  },
+  "artifact": {
+    "path": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\jpco-architecture.html",
+    "sha256": "4b6a43efee3e811676764a5bb1b9b79288aa028a2df89f5c4a3451a292ccce77",
+    "bytes": 858691
+  },
+  "gates": {
+    "validate": "pass",
+    "deliver": "pass",
+    "check": "pass",
+    "browser-check": "pass"
+  },
+  "diagnostics": [],
+  "diagnosticSummary": {
+    "total": 0,
+    "shown": 0,
+    "truncated": false
+  },
+  "evidence": {
+    "receipt": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\review-2\\jpco-architecture.finalize.json",
+    "summaryReceipt": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\review-2\\jpco-architecture.finalize-summary.json",
+    "browserCheckReceipt": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\review-2\\jpco-architecture.browser-check.json"
+  },
+  "update": {
+    "status": "current",
+    "installedVersion": "3.2.0",
+    "availableVersion": "3.2.0",
+    "releaseNotes": null,
+    "checkedAt": "2026-11-03T07:44:27.510Z",
+    "source": "cache",
+    "noticeRequired": false,
+    "noticeText": null
+  },
+  "visualReview": "not-requested",
+  "durationMs": 10403,
+  "browserCheck": {
+    "requested": true,
+    "ran": true
+  },
+  "visualReviewRecommendation": {
+    "action": "inspect-route-readability",
+    "signals": {
+      "resolvedCrossovers": 1,
+      "routesOverSuggestedBends": 1
+    },
+    "reason": "Automated gates passed, but crossings or detours still need perceptual review before claiming visual quality.",
+    "affectedRoutes": {
+      "crossings": [
+        {
+          "left": {
+            "id": "client-sdk-to-firestore",
+            "from": "client_sdk",
+            "to": "firestore",
+            "label": "direct reads · security rules",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "right": {
+            "id": "admin-to-firestore",
+            "from": "admin_sdk",
+            "to": "firestore",
+            "label": "",
+            "collectionIndex": 8,
+            "artifactIndex": 9
+          },
+          "point": [
+            505,
+            697
+          ],
+          "sharedNode": "firestore"
+        }
+      ],
+      "detours": [
+        {
+          "relationship": {
+            "id": "client-sdk-to-firestore",
+            "from": "client_sdk",
+            "to": "firestore",
+            "label": "direct reads · security rules",
+            "collectionIndex": 7,
+            "artifactIndex": 8
+          },
+          "bends": 3,
+          "stretch": 1.046
+        }
+      ],
+      "truncated": false
+    },
+    "hints": [
+      "client_sdk → firestore and admin_sdk → firestore cross next to firestore: move node client_sdk or admin_sdk so the two reach firestore from different sides (for example one level with it, one directly above or below it).",
+      "client_sdk → firestore needs 3 bends: move node client_sdk or firestore so they share a row or column with matching centers, or sit diagonally with a clear corner."
+    ],
+    "repair": "Trace these relationships at the desktop viewport. For Architecture, use references/architecture-layout-repair.md: reflow a blocked main path or tangled connected scene, and repair an isolated defect locally only when the surrounding composition is accepted. Preserve all semantic content and user-fixed geometry. Rerun finalize once after the edit."
+  }
+}

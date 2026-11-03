@@ -1,0 +1,272 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "JPCO Panel System Architecture",
+    "locale": "en",
+    "output": ".archify/architecture-jpco-panel-20261103-131355/jpco-architecture.html",
+    "quality_profile": "showcase",
+    "repository": {
+      "url": "https://github.com/HillyAttic/jpco.git",
+      "provider": "github",
+      "link_mode": "web",
+      "revision": "294b722c3332d4428e3b6de327780a5c4487658a"
+    }
+  },
+  "components": [
+    {
+      "id": "users",
+      "type": "external",
+      "label": "Staff & Clients",
+      "sublabel": "Browser · installed PWA",
+      "pos": [40, 20],
+      "size": [140, 60]
+    },
+    {
+      "id": "web",
+      "type": "frontend",
+      "label": "Next.js 16 PWA",
+      "sublabel": "React 19 · App Router",
+      "tag": "Vercel",
+      "pos": [40, 140],
+      "size": [160, 64],
+      "sources": [
+        { "path": "src/app/layout.tsx", "line": 52, "end_line": 97 },
+        { "path": "src/app/providers.tsx", "line": 14, "end_line": 40 }
+      ]
+    },
+    {
+      "id": "client_sdk",
+      "type": "frontend",
+      "label": "Firebase Client SDK",
+      "sublabel": "Auth · offline cache · Storage",
+      "tag": "browser",
+      "pos": [40, 320],
+      "size": [160, 64],
+      "sources": [
+        { "path": "src/lib/firebase.ts", "line": 41, "end_line": 59 },
+        { "path": "src/services/firebase.service.ts", "line": 26, "end_line": 54 },
+        { "path": "src/lib/task-attachment.service.ts", "line": 41, "end_line": 69 }
+      ]
+    },
+    {
+      "id": "api",
+      "type": "backend",
+      "label": "API Route Handlers",
+      "sublabel": "REST · Zod validation",
+      "tag": "121 routes",
+      "pos": [420, 140],
+      "size": [170, 64],
+      "sources": [
+        { "path": "src/app/api/tasks/route.ts", "line": 40, "end_line": 67 },
+        { "path": "src/app/api/tasks/route.ts", "line": 118, "end_line": 144 }
+      ]
+    },
+    {
+      "id": "guard",
+      "type": "security",
+      "label": "Auth & RBAC Guard",
+      "sublabel": "server-auth.ts",
+      "tag": "5-min profile cache",
+      "pos": [420, 260],
+      "size": [170, 64],
+      "sources": [
+        { "path": "src/lib/server-auth.ts", "line": 11, "end_line": 31 },
+        { "path": "src/lib/server-auth.ts", "line": 44, "end_line": 74 },
+        { "path": "src/lib/server-auth.ts", "line": 155, "end_line": 174 }
+      ]
+    },
+    {
+      "id": "services",
+      "type": "backend",
+      "label": "Server Service Layer",
+      "sublabel": "admin + domain services",
+      "tag": "orchestration",
+      "pos": [420, 380],
+      "size": [170, 64],
+      "sources": [
+        { "path": "src/services/admin-base.service.ts", "line": 1, "end_line": 35 },
+        { "path": "src/services/nonrecurring-task-admin.service.ts", "line": 15, "end_line": 35 }
+      ]
+    },
+    {
+      "id": "admin_sdk",
+      "type": "cloud",
+      "label": "Firebase Admin SDK",
+      "sublabel": "service account",
+      "tag": "privileged",
+      "pos": [420, 500],
+      "size": [170, 64],
+      "sources": [
+        { "path": "src/lib/firebase-admin.ts", "line": 12, "end_line": 62 }
+      ]
+    },
+    {
+      "id": "auth",
+      "type": "security",
+      "label": "Firebase Auth",
+      "sublabel": "ID tokens · custom claims",
+      "tag": "roles",
+      "pos": [780, 140],
+      "size": [170, 64],
+      "sources": [
+        { "path": "src/contexts/enhanced-auth.context.tsx", "line": 60, "end_line": 82 },
+        { "path": "functions/src/index.ts", "line": 24, "end_line": 58 }
+      ]
+    },
+    {
+      "id": "firestore",
+      "type": "database",
+      "label": "Cloud Firestore",
+      "sublabel": "primary data store",
+      "tag": "rules v2",
+      "pos": [780, 300],
+      "size": [170, 64],
+      "sources": [
+        { "path": "firestore.rules", "line": 1, "end_line": 40 }
+      ]
+    },
+    {
+      "id": "storage",
+      "type": "database",
+      "label": "Cloud Storage",
+      "sublabel": "attachments · avatars",
+      "pos": [780, 460],
+      "size": [170, 64],
+      "sources": [
+        { "path": "src/lib/task-attachment.service.ts", "line": 41, "end_line": 69 },
+        { "path": "src/app/api/auth/profile/route.ts", "line": 135, "end_line": 150 }
+      ]
+    },
+    {
+      "id": "fcm",
+      "type": "messagebus",
+      "label": "FCM Push",
+      "sublabel": "data-only payloads",
+      "tag": "service worker",
+      "pos": [780, 620],
+      "size": [170, 64],
+      "sources": [
+        { "path": "src/lib/notifications/send-notification.ts", "line": 61, "end_line": 111 },
+        { "path": "src/lib/firebase-messaging.ts", "line": 26, "end_line": 59 }
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Vercel · Next.js server runtime",
+      "wraps": ["api", "guard", "services", "admin_sdk"],
+      "pad": 18
+    },
+    {
+      "kind": "region",
+      "label": "Firebase project jpcopanel · asia-south2",
+      "wraps": ["auth", "firestore", "storage", "fcm"],
+      "pad": 18
+    }
+  ],
+  "connections": [
+    {
+      "id": "staff-to-web",
+      "from": "users",
+      "to": "web",
+      "label": "HTTPS · PWA",
+      "variant": "emphasis"
+    },
+    {
+      "id": "web-to-client-sdk",
+      "from": "web",
+      "to": "client_sdk",
+      "label": "calls SDK"
+    },
+    {
+      "id": "web-to-api",
+      "from": "web",
+      "to": "api",
+      "label": "REST · Bearer ID token",
+      "variant": "emphasis"
+    },
+    {
+      "id": "api-to-guard",
+      "from": "api",
+      "to": "guard",
+      "label": "auth + role"
+    },
+    {
+      "id": "guard-to-services",
+      "from": "guard",
+      "to": "services",
+      "label": "authorized"
+    },
+    {
+      "id": "services-to-admin-sdk",
+      "from": "services",
+      "to": "admin_sdk",
+      "label": "Admin SDK"
+    },
+    {
+      "id": "guard-to-auth",
+      "from": "guard",
+      "to": "auth",
+      "label": "verify ID token",
+      "variant": "security"
+    },
+    {
+      "id": "client-sdk-to-firestore",
+      "from": "client_sdk",
+      "to": "firestore",
+      "label": "direct reads · security rules",
+      "variant": "dashed",
+      "fromSide": "bottom",
+      "toSide": "right"
+    },
+    {
+      "id": "admin-to-firestore",
+      "from": "admin_sdk",
+      "to": "firestore",
+      "variant": "emphasis"
+    },
+    {
+      "id": "admin-to-storage",
+      "from": "admin_sdk",
+      "to": "storage"
+    },
+    {
+      "id": "admin-to-fcm",
+      "from": "admin_sdk",
+      "to": "fcm",
+      "label": "push",
+      "variant": "dashed"
+    }
+  ],
+  "cards": [
+    {
+      "dot": "cyan",
+      "title": "Browser Path",
+      "items": [
+        "Next.js 16 App Router PWA with a service worker and manifest",
+        "Client SDK signs users in and keeps a persistent Firestore cache",
+        "Task attachments upload browser-to-Storage; rules gate direct Firestore access"
+      ]
+    },
+    {
+      "dot": "emerald",
+      "title": "Server Path",
+      "items": [
+        "Route handlers validate payloads with Zod and wrap auth per role",
+        "server-auth verifies the ID token and caches the user profile for 5 minutes",
+        "Notifications write Firestore history and send FCM directly from routes"
+      ]
+    },
+    {
+      "dot": "rose",
+      "title": "Security & Platform",
+      "items": [
+        "Roles are admin, manager, employee, enforced in rules and route wrappers",
+        "Credential vault secrets are AES-256-CBC encrypted with ENCRYPTION_KEY",
+        "Callable Cloud Functions sync role changes into Auth custom claims"
+      ]
+    }
+  ]
+}

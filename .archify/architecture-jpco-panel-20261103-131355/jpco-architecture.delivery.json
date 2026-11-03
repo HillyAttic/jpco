@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "receiptId": "d1f98d8d-f683-4d93-8451-a200070b2c9f",
+  "status": "current",
+  "command": "deliver",
+  "type": "architecture",
+  "input": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\candidate.json",
+  "output": "D:\\jpcopanel\\.archify\\architecture-jpco-panel-20261103-131355\\jpco-architecture.html",
+  "specification": {
+    "sha256": "803cb40a5e5cfa3b29a234ac06aff3c1a3d31ed5fe4bd59d6d2ee971554352ba",
+    "bytes": 7574
+  },
+  "artifact": {
+    "sha256": "4b6a43efee3e811676764a5bb1b9b79288aa028a2df89f5c4a3451a292ccce77",
+    "bytes": 858691
+  }
+}
