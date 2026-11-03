@@ -614,27 +614,27 @@ export function RecurringTaskClientModal({
         {/* Modal */}
         <div className="relative bg-white dark:bg-gray-dark rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden flex flex-col">
           {/* Header */}
-          <div className="sticky top-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
+          <div className="sticky top-0 shrink-0 bg-white dark:bg-gray-dark border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between z-10">
             <div className="flex-1 min-w-0 pr-4">
               <h2 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white truncate">{task.title}</h2>
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Track completion for {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} • {visibleMonths[0]?.label || 'Current month'} only
               </p>
-              <div className="relative mt-2 max-w-xs">
-                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <div className="mt-2 flex max-w-xs items-center gap-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-2.5 focus-within:ring-2 focus-within:ring-blue-500">
+                <MagnifyingGlassIcon className="w-4 h-4 shrink-0 text-gray-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search clients..."
                   aria-label="Search clients"
-                  className="w-full pl-8 pr-8 py-1.5 text-xs sm:text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 min-w-0 border-0 bg-transparent py-1.5 text-xs sm:text-sm text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-0"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
                     aria-label="Clear search"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                    className="shrink-0 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                   >
                     <XMarkIcon className="w-4 h-4" />
                   </button>
@@ -657,7 +657,7 @@ export function RecurringTaskClientModal({
           </div>
 
           {/* Content */}
-          <div className="overflow-auto flex-1 max-h-[calc(90vh-180px)]">
+          <div className="overflow-auto flex-1 min-h-0">
             <div className="p-4 sm:p-6">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
@@ -813,7 +813,7 @@ export function RecurringTaskClientModal({
           </div>
 
           {/* Footer */}
-          <div className="sticky bottom-0 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="shrink-0 sticky bottom-0 bg-gray-50 dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
             <div className="text-xs sm:text-sm text-gray-600 dark:text-gray-400">
               Total: {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} × {visibleMonths.length} month{visibleMonths.length !== 1 ? 's' : ''}
             </div>
