@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { XMarkIcon, UserGroupIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, UserGroupIcon, CheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { RecurringTask } from '@/services/recurring-task.service';
 import { taskCompletionService } from '@/services/task-completion.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
@@ -46,6 +46,7 @@ export function RecurringTaskClientModal({
   const [remarkData, setRemarkData] = useState<Map<string, Map<string, { remark: string; remarkBy: string }>>>(new Map());
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [showArnDialog, setShowArnDialog] = useState(false);
   const [currentArnRequest, setCurrentArnRequest] = useState<{ clientId: string; monthKey: string } | null>(null);
   const [arnNumber, setArnNumber] = useState('');
@@ -121,6 +122,9 @@ export function RecurringTaskClientModal({
   };
 
   const filteredClients = getFilteredClients();
+  const displayClients = searchQuery.trim()
+    ? filteredClients.filter(c => c.clientName.toLowerCase().includes(searchQuery.trim().toLowerCase()))
+    : filteredClients;
 
   const loadCompletions = async () => {
     if (!task || !task.id) return;
@@ -616,6 +620,26 @@ export function RecurringTaskClientModal({
               <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Track completion for {filteredClients.length} client{filteredClients.length !== 1 ? 's' : ''} • {visibleMonths[0]?.label || 'Current month'} only
               </p>
+              <div className="relative mt-2 max-w-xs">
+                <MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search clients..."
+                  aria-label="Search clients"
+                  className="w-full pl-8 pr-8 py-1.5 text-xs sm:text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    aria-label="Clear search"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  >
+                    <XMarkIcon className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
               {task.teamMemberMappings && task.teamMemberMappings.length > 0 && filteredClients.length < clients.length && userProfile?.role !== 'admin' && userProfile?.role !== 'manager' && (
                 <p className="text-xs text-purple-600 dark:text-purple-400 mt-1 flex items-center gap-1">
                   <UserGroupIcon className="w-3 h-3" />
@@ -647,6 +671,10 @@ export function RecurringTaskClientModal({
                       : 'No clients assigned to this task'}
                   </p>
                 </div>
+              ) : displayClients.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-500 dark:text-gray-400">No clients match &quot;{searchQuery}&quot;</p>
+                </div>
               ) : (
                 <>
                   {/* Desktop Table - hidden on mobile */}
@@ -671,7 +699,7 @@ export function RecurringTaskClientModal({
                         </tr>
                       </thead>
                       <tbody className="bg-white dark:bg-gray-dark divide-y divide-gray-200 dark:divide-gray-700">
-                        {filteredClients.map((client, clientIndex) => {
+                        {displayClients.map((client, clientIndex) => {
                           return (
                             <tr
                               key={client.id}
@@ -723,7 +751,7 @@ export function RecurringTaskClientModal({
 
                   {/* Mobile Cards - visible only on mobile */}
                   <div className="md:hidden space-y-3">
-                    {filteredClients.map((client) => {
+                    {displayClients.map((client) => {
                       const clientCompleted = visibleMonths.some(month => isCompleted(client.id, month.key));
                       return (
                         <div
