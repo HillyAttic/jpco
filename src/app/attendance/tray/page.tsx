@@ -42,10 +42,8 @@ import {
   Users,
   Filter,
   ShieldAlert,
-  FullscreenIcon,
-  Pencil
+  FullscreenIcon
 } from 'lucide-react';
-import Link from 'next/link';
 import { employeeService } from '@/services/employee.service';
 import { inMemoryPersistence } from 'firebase/auth/cordova';
 
@@ -646,17 +644,6 @@ export default function AttendanceTrayPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
-                      {/* Admin-only edit entry point */}
-                      {isAdmin && (
-                        <Link
-                          href={`/attendance/tray/edit?id=${record.id}`}
-                          className="inline-flex items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
-                        >
-                          <Pencil className="h-3 w-3" />
-                          Edit record
-                        </Link>
-                      )}
-
                       {/* Calendar Overview Button - always visible */}
                       <Button
                         variant="outline"
