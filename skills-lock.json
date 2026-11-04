@@ -1,17 +1,47 @@
 {
   "version": 1,
   "skills": {
+    "apple-design": {
+      "source": "emilkowalski/skills",
+      "sourceType": "github",
+      "skillPath": "skills/apple-design/SKILL.md",
+      "computedHash": "f3f1d2cbc8f3e79ccddff05f4e42d34d995f057fb30ff670e4edf8c87d568b69"
+    },
     "archify": {
       "source": "tt-a1i/archify",
       "sourceType": "github",
       "skillPath": "archify/SKILL.md",
       "computedHash": "e9ef0923cda908886e667eb48e36b29e81d0a7a7b9fe2bc05f3779be271e5119"
     },
+    "build-glassmorphism-ui-en": {
+      "source": "pineapple880066/liquid-glass-ui-skills",
+      "sourceType": "github",
+      "skillPath": "build-glassmorphism-ui-en/SKILL.md",
+      "computedHash": "66e72b06c98a86634e9494ecdf6a9d8bbe3a813ba70cd2d1ee8e4a05ff98b315"
+    },
+    "design-mobile-apps": {
+      "source": "designed-by-ai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/design-mobile-apps/SKILL.md",
+      "computedHash": "30bfa26c39e384af50d5ca2a9da7c39e239ce822f5e3fd2a31e8e6b55d3679ac"
+    },
+    "design-taste-frontend": {
+      "source": "leonxlnx/taste-skill",
+      "sourceType": "github",
+      "skillPath": "skills/taste-skill/SKILL.md",
+      "computedHash": "53590ee9325bee34d7888bf0d81bd3941a108b1e7850df46802d93104e3f2b90"
+    },
     "find-skills": {
       "source": "vercel-labs/skills",
       "sourceType": "github",
       "skillPath": "skills/find-skills/SKILL.md",
       "computedHash": "913b9d37d0d54047dd65222bb8c67b2bf04e3cb87dcad1729068d7a8b2c8c396"
+    },
+    "glassmorphism": {
+      "source": "iart-ai/web-animation-skills",
+      "sourceType": "github",
+      "skillPath": "skills/glassmorphism/SKILL.md",
+      "computedHash": "c4324b3381b3252afb6644a4ad12facc2226d51a47778fa7f1bb6a1cb800cc2b"
     },
     "prototype": {
       "source": "mattpocock/skills",

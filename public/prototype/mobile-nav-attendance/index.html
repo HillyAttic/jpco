@@ -1,0 +1,502 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PROTOTYPE · Mobile nav + Attendance</title>
+<link rel="stylesheet" href="proto.css">
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="M3 10.5 12 3l9 7.5V21H3z"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+  <symbol id="i-task" viewBox="0 0 24 24"><path d="M9 5h11M9 12h11M9 19h11M4.5 5h.01M4.5 12h.01M4.5 19h.01"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="3"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.3-5.6"/><path d="M4 3.5V8h4.5"/><path d="M12 8v4.5l3 1.8"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5"/><path d="M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.8c2 .7 3.2 2.4 3.5 5.2"/></symbol>
+  <symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="M11 12 20 3M17 3h3v3"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M18.7 5.3l-2.1 2.1M7.4 16.6l-2.1 2.1"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.2 7-11a7 7 0 1 0-14 0c0 4.8 7 11 7 11z"/><circle cx="12" cy="10" r="2.6"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M4 12h16M14 6l6 6-6 6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 9a6 6 0 0 1 12 0c0 5 2 6 2 6H4s2-1 2-6"/><path d="M10 19a2 2 0 0 0 4 0"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.3-5.6"/><path d="M20 3.5V8h-4.5"/></symbol>
+</svg>
+
+<main class="rig">
+  <div class="phone" id="phone">
+    <div class="statusbar"><span>9:41</span><span class="signals">▮▮▮ ᯤ</span></div>
+
+    <!-- ============ VARIANT A — Dock + Sheet ============ -->
+    <section class="variant" data-variant="A" hidden>
+      <div class="screen screen-a">
+        <header class="large-title">
+          <p class="eyebrow">Monday, 3 November</p>
+          <h1>Attendance</h1>
+        </header>
+
+        <div class="hero">
+          <div class="status-row">
+            <span class="pulse"></span>
+            <span class="status-text">On the clock</span>
+            <span class="status-meta">since 09:12</span>
+          </div>
+          <p class="big-time" data-clock>09:41</p>
+          <p class="location"><svg class="ic"><use href="#i-pin"/></svg> JPCO Office · verified</p>
+          <button class="primary-pill" data-clockbtn>Clock out</button>
+        </div>
+
+        <h2 class="section-title">Quick actions</h2>
+        <div class="action-row">
+          <button class="action-tile"><span class="tile-ic"><svg class="ic"><use href="#i-cal"/></svg></span>Apply leave</button>
+          <button class="action-tile"><span class="tile-ic"><svg class="ic"><use href="#i-home"/></svg></span>Work from home</button>
+          <button class="action-tile"><span class="tile-ic"><svg class="ic"><use href="#i-history"/></svg></span>History</button>
+        </div>
+
+        <h2 class="section-title">Recent leave</h2>
+        <ul class="inset-list">
+          <li class="row">
+            <span class="row-main"><strong>Sick leave</strong><small>28 Oct – 29 Oct · 2 days</small></span>
+            <span class="pill ok">Approved</span>
+          </li>
+          <li class="row">
+            <span class="row-main"><strong>Casual leave</strong><small>14 Nov · 1 day</small></span>
+            <span class="pill wait">Pending</span>
+          </li>
+        </ul>
+        <p class="footnote">Balance: 6 casual · 4 sick · 2 earned</p>
+      </div>
+
+      <nav class="dock" aria-label="Primary">
+        <span class="dock-pill" id="dockPillA"></span>
+        <button class="dock-btn is-on" data-dock="0"><svg class="ic"><use href="#i-home"/></svg><span>Home</span></button>
+        <button class="dock-btn" data-dock="1"><svg class="ic"><use href="#i-clock"/></svg><span>Attendance</span></button>
+        <button class="dock-btn" data-dock="2"><svg class="ic"><use href="#i-task"/></svg><span>Tasks</span></button>
+        <button class="dock-btn" data-dock="3" data-open-a><svg class="ic"><use href="#i-more"/></svg><span>More</span></button>
+      </nav>
+
+      <div class="scrim" id="scrimA"></div>
+      <div class="sheet" id="sheetA" role="dialog" aria-label="All destinations">
+        <div class="grabber" data-grab></div>
+        <div class="sheet-head" data-grab>
+          <h2>All destinations</h2>
+          <button class="icon-btn" data-close-a aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
+        </div>
+        <label class="search"><svg class="ic"><use href="#i-search"/></svg><input placeholder="Search destinations" aria-label="Search destinations"></label>
+        <div class="sheet-scroll">
+          <p class="sheet-label">Main menu</p>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-home"/></svg></span>Dashboard<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-task"/></svg></span>Tasks<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-clock"/></svg></span>Attendance<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-cal"/></svg></span>Apply leave<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <p class="sheet-label">Management</p>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-users"/></svg></span>Employees<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-key"/></svg></span>Access vault<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-chart"/></svg></span>Reports<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-gear"/></svg></span>Settings<svg class="ic chev"><use href="#i-chev"/></svg></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ VARIANT B — Pull-down + Segmented ============ -->
+    <section class="variant" data-variant="B" hidden>
+      <header class="topbar">
+        <button class="icon-btn" data-open-b aria-label="Menu"><svg class="ic"><use href="#i-more"/></svg></button>
+        <div class="topbar-title"><p class="eyebrow">Attendance</p><strong>Today</strong></div>
+        <span class="avatar">RM</span>
+      </header>
+
+      <div class="screen screen-b">
+        <div class="clock-strip">
+          <div>
+            <p class="muted">Clocked in at</p>
+            <p class="time-md">09:12</p>
+          </div>
+          <div class="strip-right">
+            <p class="muted">Elapsed</p>
+            <p class="time-sm">00:29:14</p>
+          </div>
+          <button class="round-btn" data-clockbtn aria-label="Clock out"><svg class="ic"><use href="#i-clock"/></svg></button>
+        </div>
+
+        <div class="segmented" role="tablist" aria-label="Attendance views">
+          <span class="seg-thumb" id="segThumb"></span>
+          <button class="seg is-on" role="tab" data-seg="0">Today</button>
+          <button class="seg" role="tab" data-seg="1">Leave</button>
+          <button class="seg" role="tab" data-seg="2">WFH</button>
+          <button class="seg" role="tab" data-seg="3">Approvals</button>
+        </div>
+
+        <div class="seg-viewport">
+          <div class="seg-track" id="segTrack">
+            <div class="seg-panel">
+              <div class="stat-grid">
+                <div class="stat"><span class="muted">Clock in</span><strong>09:12</strong></div>
+                <div class="stat"><span class="muted">Break</span><strong>0m</strong></div>
+                <div class="stat"><span class="muted">Target</span><strong>8h</strong></div>
+              </div>
+              <div class="map-card">
+                <span class="pin"><svg class="ic"><use href="#i-pin"/></svg></span>
+                <div><strong>JPCO Office</strong><p class="muted">Location verified · 12 m</p></div>
+              </div>
+              <h3 class="section-title">Quick actions</h3>
+              <div class="action-row">
+                <button class="action-tile compact"><span class="tile-ic"><svg class="ic"><use href="#i-cal"/></svg></span>Leave</button>
+                <button class="action-tile compact"><span class="tile-ic"><svg class="ic"><use href="#i-home"/></svg></span>WFH</button>
+                <button class="action-tile compact"><span class="tile-ic"><svg class="ic"><use href="#i-history"/></svg></span>History</button>
+              </div>
+            </div>
+            <div class="seg-panel">
+              <ul class="inset-list">
+                <li class="row"><span class="row-main"><strong>Sick leave</strong><small>28–29 Oct · 2 days</small></span><span class="pill ok">Approved</span></li>
+                <li class="row"><span class="row-main"><strong>Casual leave</strong><small>14 Nov · 1 day</small></span><span class="pill wait">Pending</span></li>
+              </ul>
+              <p class="footnote">6 casual · 4 sick · 2 earned remaining</p>
+            </div>
+            <div class="seg-panel">
+              <ul class="inset-list">
+                <li class="row"><span class="row-main"><strong>Work from home</strong><small>22 Oct · 1 day</small></span><span class="pill ok">Approved</span></li>
+              </ul>
+              <p class="footnote">WFH allows 2 days per month.</p>
+            </div>
+            <div class="seg-panel">
+              <div class="approval">
+                <div><strong>Priya Nair</strong><p class="muted">Sick leave · 4 Nov · 1 day</p><p class="quote">“Doctor appointment.”</p></div>
+                <div class="approval-actions">
+                  <button class="soft-btn ok-btn">Approve</button>
+                  <button class="soft-btn no-btn">Reject</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="scrim" id="scrimB"></div>
+      <div class="pulldown" id="pulldownB" role="dialog" aria-label="Navigation">
+        <div class="grabber" data-grab></div>
+        <label class="search"><svg class="ic"><use href="#i-search"/></svg><input placeholder="Jump to…" aria-label="Jump to"></label>
+        <div class="dest-grid">
+          <a class="dest" href="#"><svg class="ic"><use href="#i-home"/></svg>Dashboard</a>
+          <a class="dest" href="#"><svg class="ic"><use href="#i-task"/></svg>Tasks</a>
+          <a class="dest" href="#"><svg class="ic"><use href="#i-clock"/></svg>Attendance</a>
+          <a class="dest" href="#"><svg class="ic"><use href="#i-cal"/></svg>Leave</a>
+          <a class="dest" href="#"><svg class="ic"><use href="#i-users"/></svg>Employees</a>
+          <a class="dest" href="#"><svg class="ic"><use href="#i-key"/></svg>Vault</a>
+          <a class="dest" href="#"><svg class="ic"><use href="#i-chart"/></svg>Reports</a>
+          <a class="dest" href="#"><svg class="ic"><use href="#i-gear"/></svg>Settings</a>
+        </div>
+        <p class="footnote center">Swipe down to dismiss</p>
+      </div>
+    </section>
+
+    <!-- ============ VARIANT C — Hold dial + Orbit ============ -->
+    <section class="variant" data-variant="C" hidden>
+      <div class="screen screen-c">
+        <header class="large-title tight"><p class="eyebrow">Monday, 3 Nov</p><h1>Today</h1></header>
+
+        <div class="dial-wrap">
+          <svg class="dial" viewBox="0 0 240 240" aria-hidden="true">
+            <circle class="dial-track" cx="120" cy="120" r="104"/>
+            <circle class="dial-fill" id="dialFill" cx="120" cy="120" r="104"/>
+          </svg>
+          <button class="dial-btn" id="holdBtn">
+            <span class="dial-small">Hold to</span>
+            <span class="dial-big">Clock in</span>
+          </button>
+        </div>
+        <p class="muted center"><svg class="ic pin-ic"><use href="#i-pin"/></svg> JPCO Office · location verified</p>
+
+        <div class="carousel" id="carousel">
+          <article class="c-card">
+            <p class="card-kicker">Leave balance</p>
+            <p class="card-big">12 <small>days</small></p>
+            <p class="muted">6 casual · 4 sick · 2 earned</p>
+            <button class="text-btn">Apply leave <svg class="ic"><use href="#i-arrow"/></svg></button>
+          </article>
+          <article class="c-card">
+            <p class="card-kicker">Work from home</p>
+            <p class="card-big">2 <small>days left</small></p>
+            <p class="muted">Next request: none scheduled</p>
+            <button class="text-btn">Request WFH <svg class="ic"><use href="#i-arrow"/></svg></button>
+          </article>
+          <article class="c-card">
+            <p class="card-kicker">This week</p>
+            <p class="card-big">28 <small>hours</small></p>
+            <p class="muted">4 of 5 days on time</p>
+            <button class="text-btn">Open history <svg class="ic"><use href="#i-arrow"/></svg></button>
+          </article>
+        </div>
+        <div class="dots" id="dots"><i class="on"></i><i></i><i></i></div>
+      </div>
+
+      <div class="orbit" id="orbitC" aria-label="Navigation">
+        <a class="orbit-item" style="--x:0px;--y:-140px" href="#"><svg class="ic"><use href="#i-home"/></svg><span>Home</span></a>
+        <a class="orbit-item" style="--x:-43px;--y:-133px" href="#"><svg class="ic"><use href="#i-task"/></svg><span>Tasks</span></a>
+        <a class="orbit-item" style="--x:-82px;--y:-113px" href="#"><svg class="ic"><use href="#i-clock"/></svg><span>Attendance</span></a>
+        <a class="orbit-item" style="--x:-113px;--y:-82px" href="#"><svg class="ic"><use href="#i-cal"/></svg><span>Leave</span></a>
+        <a class="orbit-item" style="--x:-133px;--y:-43px" href="#"><svg class="ic"><use href="#i-history"/></svg><span>History</span></a>
+        <a class="orbit-item" style="--x:-140px;--y:0px" href="#"><svg class="ic"><use href="#i-more"/></svg><span>All</span></a>
+      </div>
+      <button class="fab" id="fabC" aria-label="Open navigation" aria-expanded="false">
+        <svg class="ic fab-open"><use href="#i-more"/></svg>
+        <svg class="ic fab-close"><use href="#i-x"/></svg>
+      </button>
+    </section>
+
+    <!-- ============ VARIANT D — Real attendance structure, app header ============ -->
+    <section class="variant variant-d" data-variant="D" hidden>
+      <header class="appbar">
+        <button class="icon-btn" data-open-d aria-label="Open navigation"><svg class="ic"><use href="#i-menu"/></svg></button>
+        <p class="appbar-title" id="appbarTitleD">Attendance Tracking</p>
+        <div class="appbar-actions">
+          <button class="icon-btn" aria-label="Notifications"><span class="dot-badge"></span><svg class="ic"><use href="#i-bell"/></svg></button>
+          <span class="avatar">RM</span>
+        </div>
+      </header>
+
+      <div class="screen screen-d" id="screenD">
+        <div class="page-head">
+          <div class="title-row">
+            <h1>Attendance Tracking</h1>
+            <span class="pill live"><span class="pulse small"></span>Connected</span>
+          </div>
+          <p class="muted">Track time, manage leaves, and view history</p>
+          <div class="head-actions">
+            <button class="btn-primary"><svg class="ic"><use href="#i-cal"/></svg>Apply Leave</button>
+            <button class="btn-quiet"><svg class="ic"><use href="#i-home"/></svg>Apply WFH</button>
+            <button class="btn-quiet icon-only" aria-label="View history"><svg class="ic"><use href="#i-history"/></svg></button>
+          </div>
+        </div>
+
+        <section class="group">
+          <div class="group-head">
+            <h2><svg class="ic"><use href="#i-clock"/></svg>Attendance Tracker</h2>
+            <span class="pill ok"><span class="pulse small"></span>Clocked in</span>
+          </div>
+          <div class="tracker">
+            <p class="tracker-msg">Clocked in at <strong>09:12</strong></p>
+            <p class="muted">Location verified · JPCO Office</p>
+            <button class="btn-destructive wide" data-clockbtn data-real>Clock Out</button>
+            <button class="btn-quiet wide" data-refresh><svg class="ic"><use href="#i-refresh"/></svg>Refresh Status</button>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h2>My Leave History</h2><button class="text-btn">Apply</button></div>
+          <ul class="inset-list">
+            <li class="row">
+              <span class="row-main">
+                <span class="row-title"><strong>Sick leave</strong><span class="pill ok">Approved</span></span>
+                <small>28 Oct – 29 Oct · 2 days</small>
+                <span class="note ok-note">Admin note: Take care and rest up.</span>
+              </span>
+            </li>
+            <li class="row">
+              <span class="row-main">
+                <span class="row-title"><strong>Casual leave</strong><span class="pill wait">Pending</span></span>
+                <small>14 Nov · 1 day</small>
+              </span>
+              <button class="text-btn danger">Cancel</button>
+            </li>
+          </ul>
+          <p class="footnote">Balance: 6 casual · 4 sick · 2 earned</p>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h2>My WFH History</h2><button class="text-btn">Request</button></div>
+          <ul class="inset-list">
+            <li class="row">
+              <span class="row-main">
+                <span class="row-title"><strong>Work from home</strong><span class="pill ok">Approved</span></span>
+                <small>22 Oct · 1 day</small>
+              </span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h2><svg class="ic"><use href="#i-pin"/></svg>About Geolocation Attendance</h2></div>
+          <div class="about">
+            <p class="muted">This geolocation-based attendance system tracks your location when clocking in and out. Your location data is securely stored and used for attendance verification purposes.</p>
+            <ul class="bullets">
+              <li><i class="b green"></i><div><strong>Location Required</strong><span>Browser location permission is needed for clock-in/out</span></div></li>
+              <li><i class="b blue"></i><div><strong>Privacy Protected</strong><span>Location data is only stored for attendance records</span></div></li>
+              <li><i class="b yellow"></i><div><strong>Real-time Tracking</strong><span>Instant status updates and location verification</span></div></li>
+              <li><i class="b purple"></i><div><strong>Mobile Friendly</strong><span>Works on smartphones and tablets for remote workers</span></div></li>
+            </ul>
+          </div>
+        </section>
+      </div>
+
+      <nav class="tabbar" id="tabbarD" aria-label="Primary">
+        <button class="tab" data-tabd="0"><svg class="ic"><use href="#i-home"/></svg><span>Home</span></button>
+        <button class="tab is-on" data-tabd="1"><svg class="ic"><use href="#i-clock"/></svg><span>Attendance</span></button>
+        <button class="tab" data-tabd="2"><svg class="ic"><use href="#i-task"/></svg><span>Tasks</span></button>
+        <button class="tab" data-tabd="3" data-open-d><svg class="ic"><use href="#i-more"/></svg><span>More</span></button>
+      </nav>
+
+      <div class="scrim" id="scrimD"></div>
+      <div class="sheet" id="sheetD" role="dialog" aria-label="All destinations">
+        <div class="grabber" data-grab></div>
+        <div class="sheet-head" data-grab>
+          <h2>All destinations</h2>
+          <button class="icon-btn" data-close-d aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
+        </div>
+        <label class="search"><svg class="ic"><use href="#i-search"/></svg><input placeholder="Search destinations" aria-label="Search destinations"></label>
+        <div class="sheet-scroll">
+          <p class="sheet-label">Main menu</p>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-home"/></svg></span>Dashboard<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-task"/></svg></span>Tasks<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-clock"/></svg></span>Attendance<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-cal"/></svg></span>Apply leave<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <p class="sheet-label">Management</p>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-users"/></svg></span>Employees<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-key"/></svg></span>Access vault<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-chart"/></svg></span>Reports<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-gear"/></svg></span>Settings<svg class="ic chev"><use href="#i-chev"/></svg></a>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ VARIANT E — Real structure with hold-to-clock dial ============ -->
+    <section class="variant variant-e" data-variant="E" hidden>
+      <header class="appbar">
+        <button class="icon-btn" data-open-e aria-label="Open navigation"><svg class="ic"><use href="#i-menu"/></svg></button>
+        <p class="appbar-title" id="appbarTitleE">Attendance Tracking</p>
+        <div class="appbar-actions">
+          <button class="icon-btn" aria-label="Notifications"><span class="dot-badge"></span><svg class="ic"><use href="#i-bell"/></svg></button>
+          <span class="avatar">RM</span>
+        </div>
+      </header>
+
+      <div class="screen screen-d screen-e" id="screenE">
+        <div class="page-head">
+          <div class="title-row">
+            <h1>Attendance Tracking</h1>
+            <span class="pill live"><span class="pulse small"></span>Connected</span>
+          </div>
+          <p class="muted">Track time, manage leaves, and view history</p>
+          <div class="head-actions">
+            <button class="btn-primary"><svg class="ic"><use href="#i-cal"/></svg>Apply Leave</button>
+            <button class="btn-quiet"><svg class="ic"><use href="#i-home"/></svg>Apply WFH</button>
+            <button class="btn-quiet icon-only" aria-label="View history"><svg class="ic"><use href="#i-history"/></svg></button>
+          </div>
+        </div>
+
+        <section class="group">
+          <div class="group-head">
+            <h2><svg class="ic"><use href="#i-clock"/></svg>Attendance Tracker</h2>
+            <span class="pill ok" id="statusPillE"><span class="pulse small"></span>Clocked in</span>
+          </div>
+          <div class="dial-dock">
+            <div class="ring-wrap" id="ringWrapE">
+              <svg class="ring-e" viewBox="0 0 240 240" aria-hidden="true">
+                <circle class="ring-track-e" cx="120" cy="120" r="100"/>
+                <circle class="ring-fill-e" id="ringFillE" cx="120" cy="120" r="100"/>
+              </svg>
+              <button class="core" id="holdE" aria-label="Hold to clock out">
+                <span class="core-status" id="coreStatusE">On the clock</span>
+                <span class="core-time" data-clock>09:41</span>
+              </button>
+            </div>
+            <p class="hold-hint" id="holdHintE">Press and hold to clock out</p>
+            <p class="muted center">Location verified · JPCO Office</p>
+            <button class="btn-quiet wide refresh-e" data-refresh-e><svg class="ic"><use href="#i-refresh"/></svg>Refresh Status</button>
+          </div>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h2>My Leave History</h2><button class="text-btn">Apply</button></div>
+          <ul class="inset-list">
+            <li class="row">
+              <span class="row-main">
+                <span class="row-title"><strong>Sick leave</strong><span class="pill ok">Approved</span></span>
+                <small>28 Oct – 29 Oct · 2 days</small>
+                <span class="note ok-note">Admin note: Take care and rest up.</span>
+              </span>
+            </li>
+            <li class="row">
+              <span class="row-main">
+                <span class="row-title"><strong>Casual leave</strong><span class="pill wait">Pending</span></span>
+                <small>14 Nov · 1 day</small>
+              </span>
+              <button class="text-btn danger">Cancel</button>
+            </li>
+          </ul>
+          <p class="footnote">Balance: 6 casual · 4 sick · 2 earned</p>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h2>My WFH History</h2><button class="text-btn">Request</button></div>
+          <ul class="inset-list">
+            <li class="row">
+              <span class="row-main">
+                <span class="row-title"><strong>Work from home</strong><span class="pill ok">Approved</span></span>
+                <small>22 Oct · 1 day</small>
+              </span>
+            </li>
+          </ul>
+        </section>
+
+        <section class="group">
+          <div class="group-head"><h2><svg class="ic"><use href="#i-pin"/></svg>About Geolocation Attendance</h2></div>
+          <div class="about">
+            <p class="muted">This geolocation-based attendance system tracks your location when clocking in and out. Your location data is securely stored and used for attendance verification purposes.</p>
+            <ul class="bullets">
+              <li><i class="b green"></i><div><strong>Location Required</strong><span>Browser location permission is needed for clock-in/out</span></div></li>
+              <li><i class="b blue"></i><div><strong>Privacy Protected</strong><span>Location data is only stored for attendance records</span></div></li>
+              <li><i class="b yellow"></i><div><strong>Real-time Tracking</strong><span>Instant status updates and location verification</span></div></li>
+              <li><i class="b purple"></i><div><strong>Mobile Friendly</strong><span>Works on smartphones and tablets for remote workers</span></div></li>
+            </ul>
+          </div>
+        </section>
+      </div>
+
+      <nav class="tabbar" id="tabbarE" aria-label="Primary">
+        <button class="tab" data-tabe="0"><svg class="ic"><use href="#i-home"/></svg><span>Home</span></button>
+        <button class="tab is-on" data-tabe="1"><svg class="ic"><use href="#i-clock"/></svg><span>Attendance</span></button>
+        <button class="tab" data-tabe="2"><svg class="ic"><use href="#i-task"/></svg><span>Tasks</span></button>
+        <button class="tab" data-tabe="3" data-open-e><svg class="ic"><use href="#i-more"/></svg><span>More</span></button>
+      </nav>
+
+      <div class="scrim" id="scrimE"></div>
+      <div class="sheet" id="sheetE" role="dialog" aria-label="All destinations">
+        <div class="grabber" data-grab></div>
+        <div class="sheet-head" data-grab>
+          <h2>All destinations</h2>
+          <button class="icon-btn" data-close-e aria-label="Close"><svg class="ic"><use href="#i-x"/></svg></button>
+        </div>
+        <label class="search"><svg class="ic"><use href="#i-search"/></svg><input placeholder="Search destinations" aria-label="Search destinations"></label>
+        <div class="sheet-scroll">
+          <p class="sheet-label">Main menu</p>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-home"/></svg></span>Dashboard<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-task"/></svg></span>Tasks<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-clock"/></svg></span>Attendance<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-cal"/></svg></span>Apply leave<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <p class="sheet-label">Management</p>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-users"/></svg></span>Employees<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-key"/></svg></span>Access vault<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-chart"/></svg></span>Reports<svg class="ic chev"><use href="#i-chev"/></svg></a>
+          <a class="sheet-row" href="#"><span class="sheet-ic"><svg class="ic"><use href="#i-gear"/></svg></span>Settings<svg class="ic chev"><use href="#i-chev"/></svg></a>
+        </div>
+      </div>
+    </section>
+  </div>
+  <div class="switcher" id="switcher">
+    <span class="proto-tag">PROTOTYPE</span>
+    <button id="prevVar" aria-label="Previous variant">‹</button>
+    <span id="varLabel">A · Dock + Sheet</span>
+    <button id="nextVar" aria-label="Next variant">›</button>
+  </div>
+</main>
+
+<script src="proto.js"></script>
+</body>
+</html>

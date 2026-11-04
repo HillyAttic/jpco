@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { attendanceService } from '@/services/attendance.service';
 import { apiPost, authenticatedFetch } from '@/lib/api-client';
+import { cn } from '@/lib/utils';
 import { 
   Clock, 
   MapPin, 
@@ -32,7 +33,7 @@ interface AttendanceStatus {
   error?: string;
 }
 
-export function GeolocationAttendanceTracker() {
+export function GeolocationAttendanceTracker({ containerClassName }: { containerClassName?: string }) {
   const auth = useEnhancedAuth();
   const [status, setStatus] = useState<AttendanceStatus>(() => {
     // Always initialize as loading - we'll fetch the real status from backend
@@ -589,7 +590,7 @@ export function GeolocationAttendanceTracker() {
   }
 
   return (
-    <Card className="w-full max-w-md mx-auto">
+    <Card className={cn("w-full max-w-md mx-auto", containerClassName)}>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Clock className="h-5 w-5" />
