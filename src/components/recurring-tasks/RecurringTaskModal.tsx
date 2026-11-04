@@ -1096,6 +1096,11 @@ export function RecurringTaskModal({
           }}
           initialMappings={teamMemberMappings}
           defaultClientFilter={watch('clientFilter') || 'all'}
+          completionTask={{
+            id: task?.id,
+            recurrencePattern: watch('recurrencePattern'),
+            dueDate: watch('dueDate'),
+          }}
         />
 
         {/* Report Type Editor Dialog */}

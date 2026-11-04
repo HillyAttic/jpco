@@ -579,6 +579,7 @@ export function WorkflowReportsTable({
           onSave={handleMappingSave}
           initialMappings={mappingTask.teamMemberMappings || []}
           defaultClientFilter={mappingTask.clientFilter || 'all'}
+          completionTask={mappingTask}
         />
       )}
     </div>

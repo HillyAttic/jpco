@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -7,7 +7,9 @@ import { Client, clientService } from '@/services/client.service';
 import { UserProfile } from '@/types/auth.types';
 import { authenticatedFetch } from '@/lib/api-client';
 import { XMarkIcon, UserIcon, BuildingOfficeIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { CheckCheck } from 'lucide-react';
 import { TeamMemberMapping } from '@/services/recurring-task.service';
+import { getCurrentPeriod } from '@/utils/report-utils';
 
 interface TeamMemberMappingDialogProps {
   isOpen: boolean;
@@ -16,6 +18,12 @@ interface TeamMemberMappingDialogProps {
   initialMappings?: TeamMemberMapping[];
   /** Pre-select a compliance filter when the dialog opens (e.g. task's clientFilter) */
   defaultClientFilter?: string;
+  /** Task whose current-period filing status is shown next to each client */
+  completionTask?: {
+    id?: string;
+    recurrencePattern?: string;
+    dueDate?: Date | string;
+  } | null;
 }
 
 const COMPLIANCE_FILTERS = [
@@ -43,6 +51,7 @@ export function TeamMemberMappingDialog({
   onSave,
   initialMappings = [],
   defaultClientFilter = 'all',
+  completionTask,
 }: TeamMemberMappingDialogProps) {
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
@@ -54,6 +63,39 @@ export function TeamMemberMappingDialog({
   const [clientSearch, setClientSearch] = useState('');
   const [complianceFilter, setComplianceFilter] = useState<string>('all');
   const lastSelectedIndexRef = useRef<number | null>(null);
+  const [filedClientIds, setFiledClientIds] = useState<Set<string>>(new Set());
+
+  // Current due period of the task (e.g. the ITR Audit month for a yearly task)
+  const completionTaskId = completionTask?.id;
+  const recurrencePattern = completionTask?.recurrencePattern || 'monthly';
+  const dueDateValue = completionTask?.dueDate ? String(completionTask.dueDate) : '';
+  const period = useMemo(() => {
+    const dueMonth = dueDateValue ? new Date(dueDateValue).getMonth() : undefined;
+    return getCurrentPeriod(recurrencePattern, dueMonth);
+  }, [recurrencePattern, dueDateValue]);
+
+  // Clients already filed for that period
+  useEffect(() => {
+    if (!isOpen || !completionTaskId) {
+      setFiledClientIds(new Set());
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await authenticatedFetch(`/api/task-completions?recurringTaskId=${completionTaskId}`);
+        if (!response.ok) return;
+        const rows: Array<{ clientId: string; monthKey: string; isCompleted: boolean }> = await response.json();
+        if (cancelled) return;
+        setFiledClientIds(
+          new Set(rows.filter(r => r.isCompleted && r.monthKey === period.key).map(r => r.clientId))
+        );
+      } catch (error) {
+        console.error('Error loading filing status:', error);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isOpen, completionTaskId, period.key]);
 
   // Load users and clients
   useEffect(() => {
@@ -293,6 +335,13 @@ export function TeamMemberMappingDialog({
                   </select>
                 </div>
 
+                {/* Current-period filing status caption */}
+                {completionTaskId && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mb-1 -mt-1 px-0.5">
+                    Filing status: {period.monthName} {period.year}
+                  </p>
+                )}
+
                 {/* Bulk action row */}
                 <div className="flex items-center justify-between mb-1 px-0.5">
                   <span className="text-xs text-gray-500 dark:text-gray-400">
@@ -388,6 +437,14 @@ export function TeamMemberMappingDialog({
                             {client.clientName}
                           </span>
                           <div className="flex items-center gap-1 flex-shrink-0">
+                            {completionTaskId && filedClientIds.has(client.id!) && (
+                              <span
+                                className="flex-shrink-0 inline-flex"
+                                title={`Filed for ${period.monthName} ${period.year}`}
+                              >
+                                <CheckCheck className="w-4 h-4 text-blue-600 dark:text-blue-400" aria-label="Filed" />
+                              </span>
+                            )}
                             {isAssignedToSelectedUser && (
                               <span className="text-[10px] bg-red-100 dark:bg-red-900/40 text-red-700 dark:text-red-300 rounded px-1.5 py-0.5 font-medium">
                                 Assigned

@@ -755,6 +755,7 @@ export function WorkflowTaskDetailModal({
           onSave={handleMappingSave}
           initialMappings={mappingTask.teamMemberMappings || []}
           defaultClientFilter={mappingTask.clientFilter || 'all'}
+          completionTask={mappingTask}
         />
       )}
 
