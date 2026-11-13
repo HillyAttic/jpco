@@ -126,6 +126,14 @@ export function RecurringTaskClientModal({
     ? filteredClients.filter(c => c.clientName.toLowerCase().includes(searchQuery.trim().toLowerCase()))
     : filteredClients;
 
+  // clientId → team member explicitly assigned to that client for this task
+  const assigneeByClient = new Map<string, string>();
+  task?.teamMemberMappings?.forEach(mapping =>
+    mapping.clientIds.forEach(clientId => {
+      if (!assigneeByClient.has(clientId)) assigneeByClient.set(clientId, mapping.userName);
+    })
+  );
+
   const loadCompletions = async () => {
     if (!task || !task.id) return;
     
@@ -685,6 +693,9 @@ export function RecurringTaskClientModal({
                           <th className="px-3 sm:px-4 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 sticky left-0 bg-gray-50 dark:bg-gray-800 z-10 min-w-[150px] sm:min-w-[200px]">
                             Client Name
                           </th>
+                          <th className="px-2 sm:px-3 py-2 sm:py-3 text-left text-xs sm:text-sm font-semibold text-gray-900 dark:text-white border-b-2 border-gray-200 dark:border-gray-700 border-r border-gray-200 dark:border-gray-700 min-w-[120px]">
+                            Assigned To
+                          </th>
                           {visibleMonths.map(month => (
                             <th
                               key={month.key}
@@ -712,6 +723,9 @@ export function RecurringTaskClientModal({
                                     <div className="text-xs text-gray-500 dark:text-gray-400 truncate max-w-[150px] sm:max-w-none">{client.contact.email}</div>
                                   )}
                                 </div>
+                              </td>
+                              <td className="px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">
+                                {assigneeByClient.get(client.id) ?? '—'}
                               </td>
                               {visibleMonths.map(month => {
                                 const monthRemark = remarkData.get(client.id)?.get(month.key);
@@ -770,6 +784,11 @@ export function RecurringTaskClientModal({
                               {client.contact?.email && (
                                 <div className="text-xs text-gray-500 dark:text-gray-400 truncate mt-0.5">
                                   {client.contact.email}
+                                </div>
+                              )}
+                              {assigneeByClient.get(client.id) && (
+                                <div className="text-xs text-purple-600 dark:text-purple-400 truncate mt-0.5">
+                                  Assigned to {assigneeByClient.get(client.id)}
                                 </div>
                               )}
                             </div>
