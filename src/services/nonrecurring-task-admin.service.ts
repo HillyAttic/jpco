@@ -85,29 +85,6 @@ export const nonRecurringTaskAdminService = {
       );
     }
 
-    // Backfill commentCount for tasks that don't have it stored yet
-    // (lazy migration — runs once per task, then caches the value in Firestore)
-    const missing = tasks.filter(t => t.commentCount === undefined);
-    if (missing.length > 0) {
-      await Promise.all(
-        missing.map(async (task) => {
-          try {
-            const commentsSnap = await adminDb
-              .collection('tasks')
-              .doc(task.id!)
-              .collection('comments')
-              .get();
-            const count = commentsSnap.size;
-            task.commentCount = count;
-            // Write back so future fetches skip this step
-            adminDb.collection('tasks').doc(task.id!).update({ commentCount: count }).catch(() => {});
-          } catch {
-            task.commentCount = 0;
-          }
-        })
-      );
-    }
-
     return tasks;
   },
 

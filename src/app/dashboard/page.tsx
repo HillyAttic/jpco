@@ -11,6 +11,7 @@
  */
 
 import React, { useState, useEffect, useMemo, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import {
@@ -42,21 +43,21 @@ import { TaskOverview } from '@/components/dashboard/TaskOverview';
 import { UpcomingDeadlines } from '@/components/dashboard/UpcomingDeadlines';
 import { ActivityFeed } from '@/components/dashboard/ActivityFeed';
 import { QuickActions } from '@/components/dashboard/QuickActions';
-import { PlanTaskModal } from '@/components/dashboard/PlanTaskModal';
-import { ClientListModal } from '@/components/dashboard/ClientListModal';
-import { TeamMembersModal } from '@/components/dashboard/TeamMembersModal';
-import { DelegateTaskModal } from '@/components/dashboard/DelegateTaskModal';
-import { ScheduleTaskModal } from '@/components/dashboard/ScheduleTaskModal';
+const PlanTaskModal = dynamic(() => import('@/components/dashboard/PlanTaskModal').then(m => ({ default: m.PlanTaskModal })), { ssr: false });
+const ClientListModal = dynamic(() => import('@/components/dashboard/ClientListModal').then(m => ({ default: m.ClientListModal })), { ssr: false });
+const TeamMembersModal = dynamic(() => import('@/components/dashboard/TeamMembersModal').then(m => ({ default: m.TeamMembersModal })), { ssr: false });
+const DelegateTaskModal = dynamic(() => import('@/components/dashboard/DelegateTaskModal').then(m => ({ default: m.DelegateTaskModal })), { ssr: false });
+const ScheduleTaskModal = dynamic(() => import('@/components/dashboard/ScheduleTaskModal').then(m => ({ default: m.ScheduleTaskModal })), { ssr: false });
 import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import { ProgressiveHydration, SkeletonLoader } from '@/components/ProgressiveHydration';
 import { useOptimizedFetch, batchFetch } from '@/hooks/use-optimized-fetch';
 import { useDeferredRender } from '@/hooks/use-deferred-value';
 import { processInChunks } from '@/utils/chunk-tasks';
-import { EnhancedKanbanBoard } from '@/components/kanban/EnhancedKanbanBoard';
+const EnhancedKanbanBoard = dynamic(() => import('@/components/kanban/EnhancedKanbanBoard').then(m => ({ default: m.EnhancedKanbanBoard })), { ssr: false });
 import { kanbanService } from '@/services/kanban.service';
 import { KanbanTask, Business } from '@/types/kanban.types';
-import { TaskReportModal } from '@/components/reports/TaskReportModal';
+const TaskReportModal = dynamic(() => import('@/components/reports/TaskReportModal').then(m => ({ default: m.TaskReportModal })), { ssr: false });
 import { getCurrentPeriod } from '@/utils/report-utils';
 import { ClientTaskCompletion } from '@/services/task-completion.service';
 
@@ -84,32 +85,44 @@ interface DashboardTask extends Task {
   }>;
 }
 
+// Module-level caches so names persist across remounts/navigation
+const userNameCache = new Map<string, string>();
+const clientNameCache = new Map<string, string>();
+
 // Helper function to get user name from Firestore (optimized with lazy loading)
 async function getUserName(userId: string): Promise<string> {
+  if (userNameCache.has(userId)) return userNameCache.get(userId)!;
   try {
     const db = await getDbLazy();
     const { doc, getDoc } = await import('firebase/firestore');
     const userDoc = await getDoc(doc(db, 'users', userId));
     if (userDoc.exists()) {
       const userData = userDoc.data();
-      return userData.name || userData.displayName || userData.email || 'Unknown User';
+      const name = userData.name || userData.displayName || userData.email || 'Unknown User';
+      userNameCache.set(userId, name);
+      return name;
     }
   } catch (error) {
     console.error('Error fetching user name:', error);
   }
+  userNameCache.set(userId, 'Unknown User');
   return 'Unknown User';
 }
 
 // Helper function to get client name from Firestore (optimized)
 async function getClientName(clientId: string): Promise<string> {
+  if (clientNameCache.has(clientId)) return clientNameCache.get(clientId)!;
   try {
     const client = await clientService.getById(clientId);
     if (client) {
-      return client.clientName || client.businessName || 'Unknown Client';
+      const name = client.clientName || client.businessName || 'Unknown Client';
+      clientNameCache.set(clientId, name);
+      return name;
     }
   } catch (error) {
     console.error('Error fetching client name:', error);
   }
+  clientNameCache.set(clientId, 'Unknown Client');
   return 'Unknown Client';
 }
 
