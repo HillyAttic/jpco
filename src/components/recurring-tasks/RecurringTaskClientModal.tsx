@@ -131,8 +131,11 @@ export function RecurringTaskClientModal({
   const assigneeByClient = new Map<string, string[]>();
   task?.teamMemberMappings?.forEach(mapping =>
     mapping.clientIds.forEach(clientId => {
+      // Older mappings can lack userName; fall back to the id rather than rendering "undefined".
+      const name = mapping.userName || mapping.userId;
+      if (!name) return;
       const names = assigneeByClient.get(clientId) ?? [];
-      if (!names.includes(mapping.userName)) names.push(mapping.userName);
+      if (!names.includes(name)) names.push(name);
       assigneeByClient.set(clientId, names);
     })
   );

@@ -17,6 +17,19 @@ interface TaskFilters {
   assignee?: string;
 }
 
+// createdAt arrives as an ISO string after JSON serialization, but Firestore Timestamps and
+// missing values occur too. Anything unparseable becomes 0 so the comparator stays numeric
+// (a NaN comparator silently keeps fetch order, which hides a just-created task).
+const createdMs = (task: Task) => {
+  const value = task.createdAt as unknown as Date | string | { seconds: number } | undefined;
+  if (!value) return 0;
+  if (value instanceof Date) return value.getTime();
+  if (typeof value === 'object' && typeof value.seconds === 'number') return value.seconds * 1000;
+  if (typeof value !== 'string') return 0;
+  const ms = new Date(value).getTime();
+  return Number.isNaN(ms) ? 0 : ms;
+};
+
 export default function TasksPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [filteredTasks, setFilteredTasks] = useState<Task[]>([]);
@@ -57,7 +70,7 @@ export default function TasksPage() {
       
       filtered = filtered.filter(task => {
         if (!task.createdAt) return false;
-        const taskDate = new Date(task.createdAt);
+        const taskDate = new Date(createdMs(task));
         const taskDay = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
         
         switch (dateFilter) {
@@ -114,11 +127,7 @@ export default function TasksPage() {
       );
     }
 
-    filtered.sort((a, b) => {
-      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bTime - aTime;
-    });
+    filtered.sort((a, b) => createdMs(b) - createdMs(a));
     
     setFilteredTasks(filtered);
   };
