@@ -30,15 +30,15 @@ export function PrototypeSwitcher({ variants, current, names }: PrototypeSwitche
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) return;
       const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-      if (e.key === 'ArrowLeft') prev();
-      if (e.key === 'ArrowRight') next();
+      if (t?.isContentEditable || t?.closest('input, textarea, select, [contenteditable]')) return;
+      if (e.key === 'ArrowLeft') go(variants[(idx - 1 + variants.length) % variants.length]);
+      else if (e.key === 'ArrowRight') go(variants[(idx + 1) % variants.length]);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [idx]);
+  }, [go, idx, variants]);
 
   const label = names?.[current] ? `${current} · ${names[current]}` : current;
 

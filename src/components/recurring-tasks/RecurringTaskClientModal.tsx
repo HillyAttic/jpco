@@ -126,13 +126,17 @@ export function RecurringTaskClientModal({
     ? filteredClients.filter(c => c.clientName.toLowerCase().includes(searchQuery.trim().toLowerCase()))
     : filteredClients;
 
-  // clientId → team member explicitly assigned to that client for this task
-  const assigneeByClient = new Map<string, string>();
+  // clientId → every team member assigned to that client. Delegation leaves the delegator's
+  // mapping in place, so a client can legitimately have more than one name.
+  const assigneeByClient = new Map<string, string[]>();
   task?.teamMemberMappings?.forEach(mapping =>
     mapping.clientIds.forEach(clientId => {
-      if (!assigneeByClient.has(clientId)) assigneeByClient.set(clientId, mapping.userName);
+      const names = assigneeByClient.get(clientId) ?? [];
+      if (!names.includes(mapping.userName)) names.push(mapping.userName);
+      assigneeByClient.set(clientId, names);
     })
   );
+  const assigneeLabel = (clientId: string) => assigneeByClient.get(clientId)?.join(', ');
 
   const loadCompletions = async () => {
     if (!task || !task.id) return;
@@ -725,7 +729,7 @@ export function RecurringTaskClientModal({
                                 </div>
                               </td>
                               <td className="px-2 sm:px-3 py-2 sm:py-3 text-xs sm:text-sm text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700">
-                                {assigneeByClient.get(client.id) ?? '—'}
+                                {assigneeLabel(client.id) ?? '—'}
                               </td>
                               {visibleMonths.map(month => {
                                 const monthRemark = remarkData.get(client.id)?.get(month.key);
@@ -786,9 +790,9 @@ export function RecurringTaskClientModal({
                                   {client.contact.email}
                                 </div>
                               )}
-                              {assigneeByClient.get(client.id) && (
+                              {assigneeLabel(client.id) && (
                                 <div className="text-xs text-purple-600 dark:text-purple-400 truncate mt-0.5">
-                                  Assigned to {assigneeByClient.get(client.id)}
+                                  Assigned to {assigneeLabel(client.id)}
                                 </div>
                               )}
                             </div>
