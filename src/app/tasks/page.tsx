@@ -113,12 +113,18 @@ export default function TasksPage() {
         task.assignedTo.some(user => user.toLowerCase().includes(assigneeTerm))
       );
     }
+
+    filtered.sort((a, b) => {
+      const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+      const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+      return bTime - aTime;
+    });
     
     setFilteredTasks(filtered);
   };
 
   const handleTaskCreated = (newTask: Task) => {
-    setTasks(prev => [...prev, newTask]);
+    setTasks(prev => [newTask, ...prev]);
   };
 
   const handleTaskClick = (task: Task) => {
