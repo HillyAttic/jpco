@@ -44,6 +44,8 @@ export function MobileCalendarView({ tasks, onTaskClick, onWorkflowTaskClick }: 
   const [clients, setClients] = useState<any[]>([]);
   const [fullRecurringTask, setFullRecurringTask] = useState<RecurringTask | null>(null);
   const [loadingTaskId, setLoadingTaskId] = useState<string | null>(null);
+  const [showMonthPicker, setShowMonthPicker] = useState(false);
+  const [pickerYear, setPickerYear] = useState(new Date().getFullYear());
   const { openModal, closeModal } = useModal();
   const calendarGridRef = React.useRef<HTMLDivElement>(null);
   const calendarContainerRef = React.useRef<HTMLDivElement>(null);
@@ -311,15 +313,25 @@ export function MobileCalendarView({ tasks, onTaskClick, onWorkflowTaskClick }: 
   return (
     <div ref={calendarContainerRef} className="bg-white dark:bg-[#1a1a2e] rounded-2xl shadow-lg max-w-md mx-auto overflow-hidden border border-gray-200 dark:border-gray-800">
       {/* Mobile Header - Google Calendar Style */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white dark:bg-[#1a1a2e]">
+      <div className="relative flex items-center justify-between px-4 py-3 bg-white dark:bg-[#1a1a2e]">
         <div className="flex items-center gap-3">
           <Bars3Icon className="w-6 h-6 text-gray-500 dark:text-gray-400" />
-          <div className="flex items-center gap-1">
-            <h1 className="text-lg font-medium text-gray-900 dark:text-white">
+          <button
+            type="button"
+            onClick={() => {
+              setPickerYear(currentDate.getFullYear());
+              setShowMonthPicker(v => !v);
+            }}
+            className="flex items-center gap-1 rounded-md px-1 -mx-1 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors"
+            aria-haspopup="dialog"
+            aria-expanded={showMonthPicker}
+            title="Jump to month"
+          >
+            <span className="text-lg font-medium text-gray-900 dark:text-white">
               {currentDate.toLocaleDateString('en-US', { month: 'long' })}
-            </h1>
+            </span>
             <ChevronRightIcon className="w-4 h-4 text-gray-400 dark:text-gray-500 rotate-90" />
-          </div>
+          </button>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -331,6 +343,59 @@ export function MobileCalendarView({ tasks, onTaskClick, onWorkflowTaskClick }: 
           <CalendarIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           <EllipsisVerticalIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
         </div>
+
+        {showMonthPicker && (
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setShowMonthPicker(false)}
+            />
+            <div className="absolute left-4 top-full z-20 mt-1 w-64 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e1e36] shadow-lg p-3">
+              <div className="flex items-center justify-between mb-2">
+                <button
+                  type="button"
+                  onClick={() => setPickerYear(y => y - 1)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  aria-label="Previous year"
+                >
+                  <ChevronLeftIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                </button>
+                <span className="text-sm font-semibold text-gray-900 dark:text-white">{pickerYear}</span>
+                <button
+                  type="button"
+                  onClick={() => setPickerYear(y => y + 1)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                  aria-label="Next year"
+                >
+                  <ChevronRightIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                </button>
+              </div>
+              <div className="grid grid-cols-3 gap-1">
+                {['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'].map((m, i) => {
+                  const isActive =
+                    pickerYear === currentDate.getFullYear() && i === currentDate.getMonth();
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => {
+                        setCurrentDate(new Date(pickerYear, i, 1));
+                        setShowMonthPicker(false);
+                      }}
+                      className={`py-1.5 rounded-md text-xs font-medium transition-colors ${
+                        isActive
+                          ? 'bg-blue-600 text-white'
+                          : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
+                      }`}
+                    >
+                      {m}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* Weekday Headers - Google Calendar Style with colored underline for today */}
