@@ -529,6 +529,34 @@ export function RecurringTaskClientModal({
     return clientCompletions.get(clientId)?.has(monthKey) || false;
   };
 
+  // Export the rows currently shown (honours search). xlsx is imported lazily so the
+  // calendar bundle doesn't carry it.
+  const handleExportExcel = async () => {
+    if (!task || visibleMonths.length === 0) return;
+    const XLSX = await import('xlsx');
+    const month = visibleMonths[0];
+    const monthLabel = `${month.monthName} ${month.fullDate.getFullYear()}`;
+    const rows = displayClients.map(client => {
+      const remark = remarkData.get(client.id)?.get(month.key);
+      const arn = arnData.get(client.id)?.get(month.key);
+      return {
+        'Client Name': client.clientName,
+        'Assigned To': assigneeLabel(client.id) ?? '—',
+        [monthLabel]: isCompleted(client.id, month.key) ? 'Done' : 'Tax Pending',
+        'Remark': remark?.remark ?? '',
+        'Remark By': remark?.remarkBy ?? '',
+        'ARN': arn?.arnNumber ?? '',
+        'ARN Name': arn?.arnName ?? '',
+      };
+    });
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 30 }, { wch: 25 }, { wch: 14 }, { wch: 40 }, { wch: 20 }, { wch: 18 }, { wch: 20 }];
+    XLSX.utils.book_append_sheet(wb, ws, 'ITR Audit');
+    const fileName = `${task.title.replace(/[^a-z0-9]+/gi, '_')}_${month.key}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+  };
+
   const handleSave = async () => {
     if (!task || !task.id || !user) {
       console.error('Cannot save: missing task, task.id, or user', { task: task?.id, user: user?.uid });
@@ -662,6 +690,14 @@ export function RecurringTaskClientModal({
                 </p>
               )}
             </div>
+            <button
+              onClick={handleExportExcel}
+              disabled={displayClients.length === 0}
+              className="mr-3 shrink-0 px-3 py-1.5 text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              title="Download the listed clients as an Excel file"
+            >
+              Export Excel
+            </button>
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 dark:text-gray-400 dark:hover:text-gray-300 transition-colors flex-shrink-0"
