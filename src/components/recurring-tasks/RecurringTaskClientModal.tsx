@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, UserGroupIcon, CheckIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline';
 import { RecurringTask } from '@/services/recurring-task.service';
-import { taskCompletionService } from '@/services/task-completion.service';
+import { taskCompletionService, type ClientTaskCompletion } from '@/services/task-completion.service';
+import type { Client as ServiceClient } from '@/services/client.service';
 import { useEnhancedAuth } from '@/contexts/enhanced-auth.context';
 import { auth } from '@/lib/firebase';
 import { getCurrentPeriod } from '@/utils/report-utils';
@@ -42,6 +43,7 @@ export function RecurringTaskClientModal({
   viewingMonth,
 }: RecurringTaskClientModalProps) {
   const [clientCompletions, setClientCompletions] = useState<Map<string, Set<string>>>(new Map());
+  const [rawCompletions, setRawCompletions] = useState<ClientTaskCompletion[]>([]);
   const [arnData, setArnData] = useState<Map<string, Map<string, { arnNumber: string; arnName: string }>>>(new Map());
   const [remarkData, setRemarkData] = useState<Map<string, Map<string, { remark: string; remarkBy: string }>>>(new Map());
   const [loading, setLoading] = useState(false);
@@ -180,6 +182,7 @@ export function RecurringTaskClientModal({
       }
 
       const taskCompletions = await response.json();
+      setRawCompletions(taskCompletions);
       
       taskCompletions.forEach((completion: any) => {
         // Always process remark data (regardless of completion status)
@@ -529,32 +532,20 @@ export function RecurringTaskClientModal({
     return clientCompletions.get(clientId)?.has(monthKey) || false;
   };
 
-  // Export the rows currently shown (honours search). xlsx is imported lazily so the
-  // calendar bundle doesn't carry it.
+  // Same workbook as the /reports export, scoped to the month shown here.
+  // Lazy import keeps jsPDF/xlsx out of the calendar bundle.
   const handleExportExcel = async () => {
-    if (!task || visibleMonths.length === 0) return;
-    const XLSX = await import('xlsx');
-    const month = visibleMonths[0];
-    const monthLabel = `${month.monthName} ${month.fullDate.getFullYear()}`;
-    const rows = displayClients.map(client => {
-      const remark = remarkData.get(client.id)?.get(month.key);
-      const arn = arnData.get(client.id)?.get(month.key);
-      return {
-        'Client Name': client.clientName,
-        'Assigned To': assigneeLabel(client.id) ?? '—',
-        [monthLabel]: isCompleted(client.id, month.key) ? 'Done' : 'Tax Pending',
-        'Remark': remark?.remark ?? '',
-        'Remark By': remark?.remarkBy ?? '',
-        'ARN': arn?.arnNumber ?? '',
-        'ARN Name': arn?.arnName ?? '',
-      };
+    if (!task) return;
+    const { exportToExcel } = await import('@/utils/report-export.utils');
+    exportToExcel({
+      task,
+      // The calendar passes full Client records; the local interface is a subset.
+      clients: displayClients as unknown as ServiceClient[],
+      completions: rawCompletions,
+      months: visibleMonths,
+      isTeamMemberView: filteredClients.length < clients.length,
+      teamMemberName: userProfile?.displayName ?? user?.displayName ?? undefined,
     });
-    const wb = XLSX.utils.book_new();
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 30 }, { wch: 25 }, { wch: 14 }, { wch: 40 }, { wch: 20 }, { wch: 18 }, { wch: 20 }];
-    XLSX.utils.book_append_sheet(wb, ws, 'ITR Audit');
-    const fileName = `${task.title.replace(/[^a-z0-9]+/gi, '_')}_${month.key}.xlsx`;
-    XLSX.writeFile(wb, fileName);
   };
 
   const handleSave = async () => {
@@ -692,7 +683,7 @@ export function RecurringTaskClientModal({
             </div>
             <button
               onClick={handleExportExcel}
-              disabled={displayClients.length === 0}
+              disabled={loading || displayClients.length === 0}
               className="mr-3 shrink-0 px-3 py-1.5 text-xs sm:text-sm font-medium text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               title="Download the listed clients as an Excel file"
             >
